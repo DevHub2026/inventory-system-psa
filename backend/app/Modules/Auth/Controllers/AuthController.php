@@ -3,7 +3,9 @@
 namespace App\Modules\Auth\Controllers;
 
 use App\Modules\Auth\Requests\ChangePasswordRequest;
+use App\Modules\Auth\Requests\ForgotPasswordRequest;
 use App\Modules\Auth\Requests\LoginRequest;
+use App\Modules\Auth\Requests\ResetPasswordRequest;
 use App\Modules\Auth\Requests\UpdateProfileRequest;
 use App\Modules\Auth\Resources\UserResource;
 use App\Modules\Auth\Services\AuthService;
@@ -93,6 +95,28 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Password changed successfully.',
+            'data' => null,
+        ]);
+    }
+
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        $this->authService->forgotPassword($request->validated('email'));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset link sent successfully.',
+            'data' => null,
+        ]);
+    }
+
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        $this->authService->resetPassword($request->validated());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset successfully.',
             'data' => null,
         ]);
     }
