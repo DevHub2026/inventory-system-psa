@@ -1,0 +1,99 @@
+<?php
+
+namespace App\Modules\Auth\Controllers;
+
+use App\Modules\Auth\Requests\ChangePasswordRequest;
+use App\Modules\Auth\Requests\LoginRequest;
+use App\Modules\Auth\Requests\UpdateProfileRequest;
+use App\Modules\Auth\Resources\UserResource;
+use App\Modules\Auth\Services\AuthService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+
+class AuthController extends Controller
+{
+    public function __construct(
+        private readonly AuthService $authService,
+    ) {}
+
+    public function login(LoginRequest $request): JsonResponse
+    {
+        $user = $this->authService->login(
+            $request->validated('email'),
+            $request->validated('password'),
+        );
+
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
+
+        $data = (new UserResource($user))->resolve();
+
+        if (! $request->hasSession()) {
+            $data['token'] = $user->createToken('auth')->plainTextToken;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful.',
+            'data' => $data,
+        ]);
+    }
+
+    public function logout(Request $request): JsonResponse
+    {
+        $this->authService->logout(
+            $request->user(),
+            $request->bearerToken() !== null,
+        );
+
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logout successful.',
+            'data' => null,
+        ]);
+    }
+
+    public function me(Request $request): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Authenticated user retrieved successfully.',
+            'data' => new UserResource($request->user()),
+        ]);
+    }
+
+    public function updateProfile(UpdateProfileRequest $request): JsonResponse
+    {
+        $user = $this->authService->updateProfile(
+            $request->user(),
+            $request->validated(),
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile updated successfully.',
+            'data' => new UserResource($user),
+        ]);
+    }
+
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
+    {
+        $this->authService->changePassword(
+            $request->user(),
+            $request->validated('password'),
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password changed successfully.',
+            'data' => null,
+        ]);
+    }
+}
