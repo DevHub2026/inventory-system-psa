@@ -22,6 +22,18 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*'),
         );
 
+        $exceptions->render(function (ValidationException $exception, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed.',
+                'errors' => $exception->errors(),
+            ], 422);
+        });
+
         $exceptions->render(function (AuthenticationException $exception, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
@@ -29,16 +41,6 @@ return Application::configure(basePath: dirname(__DIR__))
                     'message' => $exception->getMessage() ?: 'Unauthenticated.',
                     'errors' => [],
                 ], 401);
-            }
-        });
-
-        $exceptions->render(function (ValidationException $exception, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed.',
-                    'errors' => $exception->errors(),
-                ], 422);
             }
         });
     })->create();
