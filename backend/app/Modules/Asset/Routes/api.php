@@ -10,21 +10,23 @@ use Illuminate\Support\Facades\Route;
 
 /*
 | Asset domain routes — /api/v1
-| Auth middleware (auth:sanctum) will be applied when Eman completes Auth.
+| Protected by Sanctum (Auth module — Eman).
 */
 
-Route::get('assets/search', [AssetController::class, 'search']);
-Route::get('assets/scan', [AssetController::class, 'scan']);
-Route::post('assets/{asset}/archive', [AssetController::class, 'archive']);
-Route::post('assets/{asset}/transfer', [AssetController::class, 'transfer']);
-Route::apiResource('assets', AssetController::class);
+Route::middleware('auth:sanctum')->group(function (): void {
+    Route::get('assets/search', [AssetController::class, 'search']);
+    Route::get('assets/scan', [AssetController::class, 'scan']);
+    Route::post('assets/{asset}/archive', [AssetController::class, 'archive']);
+    Route::post('assets/{asset}/transfer', [AssetController::class, 'transfer']);
+    Route::apiResource('assets', AssetController::class);
 
-Route::apiResource('asset-categories', AssetCategoryController::class)
-    ->parameters(['asset-categories' => 'assetCategory']);
+    Route::apiResource('asset-categories', AssetCategoryController::class)
+        ->parameters(['asset-categories' => 'assetCategory']);
 
-Route::apiResource('asset-identifiers', AssetIdentifierController::class)
-    ->parameters(['asset-identifiers' => 'assetIdentifier']);
+    Route::apiResource('asset-identifiers', AssetIdentifierController::class)
+        ->parameters(['asset-identifiers' => 'assetIdentifier']);
 
-Route::apiResource('offices', OfficeController::class);
-Route::apiResource('locations', LocationController::class);
-Route::apiResource('manufacturers', ManufacturerController::class);
+    Route::apiResource('offices', OfficeController::class);
+    Route::apiResource('locations', LocationController::class);
+    Route::apiResource('manufacturers', ManufacturerController::class);
+});
