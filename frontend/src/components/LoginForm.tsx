@@ -8,7 +8,24 @@ import {
   Shield,
 } from "lucide-react";
 
+import { useAuth } from "@/hooks/useAuth";
+import type { LoginPayload } from "@/services/authService";
+
 import Input from "./Input";
+
+function describeError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : "";
+
+  switch (raw) {
+    case "The provided credentials are incorrect.":
+    case "Unauthenticated.":
+      return "Invalid email or password.";
+    case "Validation failed.":
+      return "Please check your input and try again.";
+    default:
+      return raw || "Unable to sign in. Please try again.";
+  }
+}
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -16,23 +33,21 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { login } = useAuth();
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     setLoading(true);
+    setError(null);
 
     try {
-      console.log({
-        email,
-        password,
-        remember,
-      });
-
-      // TODO:
-      // await axios.post(...)
-      // await fetch(...)
-      // Laravel Sanctum / API login
+      const payload: LoginPayload = { email, password };
+      await login(payload);
+    } catch (err) {
+      setError(describeError(err));
     } finally {
       setLoading(false);
     }
@@ -78,6 +93,15 @@ export default function LoginForm() {
           )
         }
       />
+
+      {error ? (
+        <p
+          role="alert"
+          className="text-sm font-medium text-red-600"
+        >
+          {error}
+        </p>
+      ) : null}
 
       <div className="flex items-center justify-between pt-[8px]">
 
