@@ -4,22 +4,19 @@ namespace App\Modules\Auth\Services;
 
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use App\Modules\Auth\Repositories\Contracts\UserRepositoryInterface;
+use Illuminate\Support\Facades\Auth;
 
 class UserService
 {
+    public function __construct(
+        private readonly UserRepositoryInterface $userRepository,
+    ) {}
+
     public function create(array $data): User
     {
-        $user = User::create([
-            'employee_number' => $data['employee_number'],
-            'first_name' => $data['first_name'],
-            'middle_name' => $data['middle_name'] ?? null,
-            'last_name' => $data['last_name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-            'department_id' => $data['department_id'] ?? null,
-            'status' => $data['status'] ?? 'active',
-        ]);
+        $data['created_by'] = Auth::id();
+        $user = $this->userRepository->create($data);
 
         if (isset($data['roles']) && is_array($data['roles'])) {
             $user->roles()->sync($data['roles']);
@@ -30,21 +27,8 @@ class UserService
 
     public function update(User $user, array $data): User
     {
-        $updateData = [
-            'employee_number' => $data['employee_number'] ?? $user->employee_number,
-            'first_name' => $data['first_name'] ?? $user->first_name,
-            'middle_name' => $data['middle_name'] ?? $user->middle_name,
-            'last_name' => $data['last_name'] ?? $user->last_name,
-            'email' => $data['email'] ?? $user->email,
-            'department_id' => $data['department_id'] ?? $user->department_id,
-            'status' => $data['status'] ?? $user->status,
-        ];
-
-        if (isset($data['password'])) {
-            $updateData['password'] = Hash::make($data['password']);
-        }
-
-        $user->update($updateData);
+        $data['updated_by'] = Auth::id();
+        $user = $this->userRepository->update($user, $data);
 
         if (isset($data['roles']) && is_array($data['roles'])) {
             $user->roles()->sync($data['roles']);
@@ -55,7 +39,8 @@ class UserService
 
     public function delete(User $user): void
     {
-        $user->delete();
+        $user->update(['deleted_by' => Auth::id()]);
+        $this->userRepository->delete($user);
     }
 
     public function assignRole(User $user, Role $role): void

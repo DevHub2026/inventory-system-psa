@@ -2,6 +2,7 @@
 
 namespace App\Modules\Auth\Requests;
 
+use App\Enums\UserStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -26,7 +27,7 @@ class StoreUserRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', Password::min(8)->letters()->numbers()],
             'department_id' => ['nullable', 'exists:departments,id'],
-            'status' => ['sometimes', 'string', 'in:active,inactive'],
+            'status' => ['sometimes', 'string', Rule::in(UserStatus::values())],
             'roles' => ['sometimes', 'array'],
             'roles.*' => ['exists:roles,id'],
         ];

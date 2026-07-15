@@ -3,31 +3,30 @@
 namespace App\Modules\Auth\Services;
 
 use App\Models\Permission;
+use App\Modules\Auth\Repositories\Contracts\PermissionRepositoryInterface;
+use Illuminate\Support\Facades\Auth;
 
 class PermissionService
 {
+    public function __construct(
+        private readonly PermissionRepositoryInterface $permissionRepository,
+    ) {}
+
     public function create(array $data): Permission
     {
-        return Permission::create([
-            'name' => $data['name'],
-            'module' => $data['module'],
-            'description' => $data['description'] ?? null,
-        ]);
+        $data['created_by'] = Auth::id();
+        return $this->permissionRepository->create($data);
     }
 
     public function update(Permission $permission, array $data): Permission
     {
-        $permission->update([
-            'name' => $data['name'] ?? $permission->name,
-            'module' => $data['module'] ?? $permission->module,
-            'description' => $data['description'] ?? $permission->description,
-        ]);
-
-        return $permission->fresh();
+        $data['updated_by'] = Auth::id();
+        return $this->permissionRepository->update($permission, $data);
     }
 
     public function delete(Permission $permission): void
     {
-        $permission->delete();
+        $permission->update(['deleted_by' => Auth::id()]);
+        $this->permissionRepository->delete($permission);
     }
 }

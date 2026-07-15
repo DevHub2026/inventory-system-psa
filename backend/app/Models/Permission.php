@@ -19,6 +19,9 @@ class Permission extends Model
         'name',
         'module',
         'description',
+        'created_by',
+        'updated_by',
+        'deleted_by',
     ];
 
     /**

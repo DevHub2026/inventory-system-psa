@@ -2,6 +2,7 @@
 
 namespace App\Modules\Auth\Requests;
 
+use App\Enums\UserStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -26,7 +27,7 @@ class UpdateUserRequest extends FormRequest
             'email' => ['sometimes', 'required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->user)],
             'password' => ['sometimes', 'required', 'string', Password::min(8)->letters()->numbers()],
             'department_id' => ['nullable', 'exists:departments,id'],
-            'status' => ['sometimes', 'string', 'in:active,inactive'],
+            'status' => ['sometimes', 'string', Rule::in(UserStatus::values())],
             'roles' => ['sometimes', 'array'],
             'roles.*' => ['exists:roles,id'],
         ];
