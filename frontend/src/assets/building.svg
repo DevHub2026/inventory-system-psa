@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" fill="none">
+  <defs>
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a365d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2c5282;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#skyGrad)"/>
+  
+  <!-- Building silhouettes -->
+  <rect x="100" y="300" width="200" height="780" fill="#0a1628" opacity="0.8"/>
+  <rect x="350" y="200" width="180" height="880" fill="#0d1f3c" opacity="0.8"/>
+  <rect x="580" y="350" width="220" height="730" fill="#0a1628" opacity="0.8"/>
+  <rect x="850" y="150" width="250" height="930" fill="#0d1f3c" opacity="0.8"/>
+  <rect x="1150" y="250" width="200" height="830" fill="#0a1628" opacity="0.8"/>
+  <rect x="1400" y="180" width="220" height="900" fill="#0d1f3c" opacity="0.8"/>
+  <rect x="1680" y="320" width="180" height="760" fill="#0a1628" opacity="0.8"/>
+  
+  <!-- Windows -->
+  <g fill="#4a90e2" opacity="0.3">
+    <rect x="120" y="320" width="30" height="40"/>
+    <rect x="170" y="320" width="30" height="40"/>
+    <rect x="220" y="320" width="30" height="40"/>
+    <rect x="120" y="380" width="30" height="40"/>
+    <rect x="170" y="380" width="30" height="40"/>
+    <rect x="220" y="380" width="30" height="40"/>
+  </g>
+</svg>
