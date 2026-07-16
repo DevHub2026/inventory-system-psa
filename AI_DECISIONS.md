@@ -123,3 +123,45 @@ Authentication context is available throughout the application.
 Future Notes
 
 Avoid wrapping nested providers unless necessary.
+
+## Decision
+
+Use a router-based app shell with a protected route boundary for authenticated screens.
+
+Date
+
+2026-07-16
+
+AI
+
+Name:
+GitHub Copilot
+
+Model:
+MAI-Code-1-Flash
+
+Reason
+
+The frontend needed a consistent way to redirect authenticated users to the dashboard while keeping unauthenticated users on the login page.
+
+Alternatives
+
+- Keep everything rendered from a single conditional component.
+- Add per-page manual redirects.
+- Introduce a shared protected route wrapper.
+
+Selected Option
+
+A shared protected route wrapper with top-level routing.
+
+Why
+
+This keeps the app structure consistent and makes it easier to expand to additional authenticated pages without repeating navigation logic.
+
+Impact
+
+The app now has a clearer authenticated/unauthenticated split, and the login page can redirect to the dashboard automatically after successful sign-in.
+
+Future Notes
+
+Extend the protected route tree as more pages are fully connected to the backend.

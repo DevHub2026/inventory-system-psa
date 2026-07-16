@@ -49,67 +49,44 @@ Mobile
 - Login form connected to authentication service.
 - User model updated.
 - API service configured.
+- Frontend build now compiles successfully.
 
 ---
 
 ## Current Task
 
-Describe the current feature or bug being worked on.
-
-Example:
-
-Investigating why the frontend remains on the Login page after successful authentication.
+Stabilize the authentication flow and protected app navigation for the frontend.
 
 ---
 
 ## Current Known Facts
 
-Write only verified facts.
-
-Example:
-
-- POST /api/v1/login returns HTTP 200.
-- GET /api/v1/me returns HTTP 200.
-- AuthProvider is working.
-- Token generation succeeds.
-- Backend authentication succeeds.
-- LoginForm calls useAuth().login().
-
-Do NOT include assumptions.
+- The frontend build completes successfully with npm run build.
+- The login form now calls the existing auth context and navigates to the dashboard on success.
+- The app shell now uses routing with protected navigation.
+- The shared Button component supports the outline variant required by the settings screen.
 
 ---
 
 ## Current Issues
 
-List only active issues.
-
-Example:
-
 Issue:
-Frontend does not navigate away from LoginPage after successful login.
+End-to-end login behavior still depends on the backend being reachable and returning a valid auth response.
 
 Status:
-Investigating.
+Pending runtime verification in the browser or API environment.
 
 ---
 
 ## Next Investigation
 
-Describe the next debugging step.
-
-Example:
-
-Trace App.tsx rendering logic after authentication.
+Verify the login experience in a running environment and confirm that the dashboard route loads correctly after authentication.
 
 ---
 
 ## Important Decisions
 
-List architecture decisions currently in effect.
-
-Example:
-
-- Preserve existing authentication architecture.
+- Preserve the existing authentication architecture.
 - Do not rewrite backend authentication.
 - Use AuthProvider globally.
 - Prefer minimal fixes over refactoring.
