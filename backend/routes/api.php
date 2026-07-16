@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BorrowController;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PermissionController;
 use App\Modules\Auth\Controllers\RoleController;
@@ -62,5 +63,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/permissions/{permission}', [PermissionController::class, 'show']);
         Route::put('/permissions/{permission}', [PermissionController::class, 'update']);
         Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy']);
+
+        // Borrow routes
+        Route::post('/assets/{asset}/borrow', [BorrowController::class, 'borrow']);
+        Route::post('/assets/{asset}/return', [BorrowController::class, 'return']);
     });
 });

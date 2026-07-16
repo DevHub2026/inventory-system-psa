@@ -27,6 +27,9 @@ export function AssetPage() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [borrowId, setBorrowId] = useState<number | null>(null)
+  const [borrowNotes, setBorrowNotes] = useState('')
+  const [borrowDueDays, setBorrowDueDays] = useState<number | undefined>(undefined)
 
   async function load(nextPage = page) {
     setLoading(true)
@@ -72,6 +75,16 @@ export function AssetPage() {
             <Button size="sm" variant="secondary" onClick={() => setMessage(`Edit asset ${row.asset_number}`)}>
               Edit
             </Button>
+            {row.status === 'AVAILABLE' && (
+              <Button size="sm" variant="primary" onClick={() => setBorrowId(row.id)}>
+                Borrow
+              </Button>
+            )}
+            {row.status === 'BORROWED' && (
+              <Button size="sm" variant="success" onClick={() => setMessage(`Return asset ${row.asset_number}`)}>
+                Return
+              </Button>
+            )}
             <Button size="sm" variant="danger" onClick={() => setDeleteId(row.id)}>
               Delete
             </Button>
@@ -149,6 +162,53 @@ export function AssetPage() {
           void assetService.remove(deleteId).then(() => {
             setDeleteId(null)
             setMessage('Asset delete requested.')
+            void load(page)
+          })
+        }}
+      />
+
+      <ConfirmDialog
+        open={borrowId !== null}
+        title="Borrow asset"
+        message={
+          <div className="space-y-3">
+            <p>Borrow this asset? An email notification will be sent to the admin.</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Due Date (days)</label>
+              <input
+                type="number"
+                min="1"
+                value={borrowDueDays ?? ''}
+                onChange={(e) => setBorrowDueDays(e.target.value ? Number(e.target.value) : undefined)}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="Optional"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Notes</label>
+              <textarea
+                value={borrowNotes}
+                onChange={(e) => setBorrowNotes(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                rows={2}
+                placeholder="Optional notes"
+              />
+            </div>
+          </div>
+        }
+        confirmLabel="Borrow"
+        onCancel={() => {
+          setBorrowId(null)
+          setBorrowNotes('')
+          setBorrowDueDays(undefined)
+        }}
+        onConfirm={() => {
+          if (borrowId === null) return
+          void assetService.borrow(borrowId, borrowDueDays, borrowNotes).then(() => {
+            setBorrowId(null)
+            setBorrowNotes('')
+            setBorrowDueDays(undefined)
+            setMessage('Asset borrowed successfully. Admin has been notified.')
             void load(page)
           })
         }}

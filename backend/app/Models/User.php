@@ -61,6 +61,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the borrows that belong to the user.
+     */
+    public function borrows()
+    {
+        return $this->hasMany(Borrow::class);
+    }
+
+    /**
      * Check if the user has a specific role.
      */
     public function hasRole(string $roleName): bool

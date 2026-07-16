@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
+import type { ReactNode } from 'react'
 
 interface ConfirmDialogProps {
   open: boolean
   title?: string
-  message: string
+  message: string | ReactNode
   confirmLabel?: string
   cancelLabel?: string
   tone?: 'danger' | 'primary'
@@ -38,7 +39,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      <p className="text-sm text-gray-700">{message}</p>
+      <div className="text-sm text-gray-700">{typeof message === 'string' ? <p>{message}</p> : message}</div>
     </Modal>
   )
 }

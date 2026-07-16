@@ -2,6 +2,7 @@
 
 namespace App\Modules\Asset\Models;
 
+use App\Models\Borrow;
 use App\Modules\AssetCategory\Models\AssetCategory;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
 use App\Modules\Asset\Enums\AssetStatus;
@@ -67,6 +68,11 @@ class Asset extends Model
     public function identifiers(): HasMany
     {
         return $this->hasMany(AssetIdentifier::class);
+    }
+
+    public function borrows(): HasMany
+    {
+        return $this->hasMany(Borrow::class);
     }
 
     public function scopeAvailable(Builder $query): Builder

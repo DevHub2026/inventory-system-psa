@@ -130,4 +130,27 @@ export const assetService = {
       async () => undefined,
     )
   },
+
+  async borrow(assetId: number, dueDate?: number, notes?: string): Promise<void> {
+    return withMockFallback(
+      async () => {
+        await api.post(`/assets/${assetId}/borrow`, {
+          due_date: dueDate,
+          notes,
+        })
+      },
+      async () => undefined,
+    )
+  },
+
+  async returnAsset(assetId: number, notes?: string): Promise<void> {
+    return withMockFallback(
+      async () => {
+        await api.post(`/assets/${assetId}/return`, {
+          notes,
+        })
+      },
+      async () => undefined,
+    )
+  },
 }
