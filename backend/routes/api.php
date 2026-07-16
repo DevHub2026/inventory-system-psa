@@ -67,5 +67,11 @@ Route::prefix('v1')->group(function (): void {
         // Borrow routes
         Route::post('/assets/{asset}/borrow', [BorrowController::class, 'borrow']);
         Route::post('/assets/{asset}/return', [BorrowController::class, 'return']);
+
+        // Dashboard routes
+        Route::get('/dashboard/stats', [\App\Modules\Dashboard\Controllers\DashboardController::class, 'stats']);
+        Route::get('/dashboard/recent-activity', [\App\Modules\Dashboard\Controllers\DashboardController::class, 'recentActivity']);
+        Route::get('/dashboard/low-stock', [\App\Modules\Dashboard\Controllers\DashboardController::class, 'lowStock']);
+        Route::get('/dashboard/overdue-assets', [\App\Modules\Dashboard\Controllers\DashboardController::class, 'overdueAssets']);
     });
 });
