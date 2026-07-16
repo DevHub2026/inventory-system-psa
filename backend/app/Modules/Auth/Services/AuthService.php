@@ -12,7 +12,7 @@ class AuthService
     public function login(string $email, string $password): User
     {
         if (! Auth::attempt(['email' => $email, 'password' => $password])) {
-            throw new AuthenticationException('The provided credentials are incorrect.');
+            throw new AuthenticationException('Invalid credentials');
         }
 
         /** @var User $user */

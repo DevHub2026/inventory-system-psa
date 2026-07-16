@@ -30,16 +30,13 @@ class AuthController extends Controller
             $request->session()->regenerate();
         }
 
-        $data = (new UserResource($user))->resolve();
-
-        if (! $request->hasSession()) {
-            $data['token'] = $user->createToken('auth')->plainTextToken;
-        }
+        $token = $user->createToken('auth')->plainTextToken;
 
         return response()->json([
             'success' => true,
             'message' => 'Login successful.',
-            'data' => $data,
+            'user' => (new UserResource($user))->resolve(),
+            'token' => $token,
         ]);
     }
 

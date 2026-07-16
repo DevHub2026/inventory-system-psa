@@ -31,14 +31,14 @@ class AuthenticationTest extends TestCase
             ->assertJsonStructure([
                 'success',
                 'message',
-                'data' => [
+                'user' => [
                     'id',
                     'employee_number',
                     'first_name',
                     'last_name',
                     'email',
-                    'token',
                 ],
+                'token',
             ]);
     }
 
@@ -55,8 +55,10 @@ class AuthenticationTest extends TestCase
         ]);
 
         $response->assertStatus(401)
-            ->assertJson([
+            ->assertExactJson([
                 'success' => false,
+                'message' => 'Invalid credentials',
+                'errors' => [],
             ]);
     }
 

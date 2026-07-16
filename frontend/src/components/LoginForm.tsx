@@ -1,16 +1,28 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Eye, EyeOff, Lock, Shield, User } from 'lucide-react'
+import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
 import Input from './Input'
 
 function describeError(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status
+    const message = err.response?.data?.message
+
+    if (status === 401) return 'Invalid email or password.'
+    if (status === 422) return 'Please check your input and try again.'
+    if (status === 500) return 'The server could not sign you in. Please try again.'
+
+    return message || 'Unable to sign in. Please try again.'
+  }
+
   const raw = err instanceof Error ? err.message : ''
 
   switch (raw) {
-    case 'The provided credentials are incorrect.':
+    case 'Invalid credentials':
     case 'Unauthenticated.':
       return 'Invalid email or password.'
     case 'Validation failed.':

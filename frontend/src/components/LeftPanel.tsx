@@ -14,19 +14,22 @@ function Ribbons() {
         >
             <defs>
                 <linearGradient id="ribbonBlue" x1="100%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#2B7FEE" />
-                    <stop offset="32%" stopColor="#0057D9" />
-                    <stop offset="100%" stopColor="#003DA5" />
+                    <stop offset="0%" stopColor="#58a4ff" />
+                    <stop offset="30%" stopColor="#0867e6" />
+                    <stop offset="72%" stopColor="#003da5" />
+                    <stop offset="100%" stopColor="#002969" />
                 </linearGradient>
                 <linearGradient id="ribbonYellow" x1="100%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#FFE566" />
-                    <stop offset="48%" stopColor="#FFD400" />
-                    <stop offset="100%" stopColor="#D4A800" />
+                    <stop offset="0%" stopColor="#fff09b" />
+                    <stop offset="42%" stopColor="#ffd11a" />
+                    <stop offset="74%" stopColor="#efae00" />
+                    <stop offset="100%" stopColor="#a96f00" />
                 </linearGradient>
                 <linearGradient id="ribbonRed" x1="100%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#FF5A5F" />
-                    <stop offset="48%" stopColor="#E31C23" />
-                    <stop offset="100%" stopColor="#A81016" />
+                    <stop offset="0%" stopColor="#ff7477" />
+                    <stop offset="43%" stopColor="#ea2028" />
+                    <stop offset="76%" stopColor="#bd111c" />
+                    <stop offset="100%" stopColor="#780912" />
                 </linearGradient>
                 <linearGradient id="ribbonShineBlue" x1="100%" y1="0%" x2="0%" y2="0%">
                     <stop offset="0%" stopColor="white" stopOpacity="0.42" />
@@ -44,7 +47,8 @@ function Ribbons() {
                     <stop offset="100%" stopColor="white" stopOpacity="0" />
                 </linearGradient>
                 <filter id="ribbonDrop" x="-60%" y="-2%" width="220%" height="104%">
-                    <feDropShadow dx="-10" dy="8" stdDeviation="16" floodColor="#000" floodOpacity="0.32" />
+                    <feDropShadow dx="-10" dy="8" stdDeviation="16" floodColor="#000" floodOpacity="0.34" />
+                    <feDropShadow dx="-2" dy="0" stdDeviation="3" floodColor="#9fd0ff" floodOpacity="0.38" />
                 </filter>
                 <filter id="ribbonInner" x="-24%" y="-2%" width="148%" height="104%">
                     <feDropShadow dx="-5" dy="4" stdDeviation="7" floodColor="#000" floodOpacity="0.18" />
