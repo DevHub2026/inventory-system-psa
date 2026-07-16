@@ -1,6 +1,4 @@
 import logo from "../assets/logo.png";
-import building from "../assets/building.svg";
-import overlay from "../assets/gradient-overlay.svg";
 
 function Ribbons() {
     return (
@@ -13,128 +11,151 @@ function Ribbons() {
             aria-hidden="true"
         >
             <defs>
+                {/* Enhanced PSA Blue gradient with silk-like depth */}
                 <linearGradient id="ribbonBlue" x1="100%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#58a4ff" />
-                    <stop offset="30%" stopColor="#0867e6" />
-                    <stop offset="72%" stopColor="#003da5" />
-                    <stop offset="100%" stopColor="#002969" />
+                    <stop offset="0%" stopColor="#a8d4ff" />
+                    <stop offset="15%" stopColor="#5b9fff" />
+                    <stop offset="35%" stopColor="#287fed" />
+                    <stop offset="55%" stopColor="#0a5fc9" />
+                    <stop offset="75%" stopColor="#0544a8" />
+                    <stop offset="100%" stopColor="#002b75" />
                 </linearGradient>
+                
+                {/* Philippine Flag Yellow with golden warmth */}
                 <linearGradient id="ribbonYellow" x1="100%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#fff09b" />
-                    <stop offset="42%" stopColor="#ffd11a" />
-                    <stop offset="74%" stopColor="#efae00" />
-                    <stop offset="100%" stopColor="#a96f00" />
+                    <stop offset="0%" stopColor="#fff4ad" />
+                    <stop offset="20%" stopColor="#ffe36a" />
+                    <stop offset="40%" stopColor="#ffd42a" />
+                    <stop offset="60%" stopColor="#eaa900" />
+                    <stop offset="80%" stopColor="#c99000" />
+                    <stop offset="100%" stopColor="#ad7100" />
                 </linearGradient>
+                
+                {/* Philippine Flag Red with depth */}
                 <linearGradient id="ribbonRed" x1="100%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#ff7477" />
-                    <stop offset="43%" stopColor="#ea2028" />
-                    <stop offset="76%" stopColor="#bd111c" />
-                    <stop offset="100%" stopColor="#780912" />
+                    <stop offset="0%" stopColor="#ffb8ba" />
+                    <stop offset="20%" stopColor="#ff6b6f" />
+                    <stop offset="40%" stopColor="#ec2d36" />
+                    <stop offset="60%" stopColor="#c9111b" />
+                    <stop offset="80%" stopColor="#9c0d15" />
+                    <stop offset="100%" stopColor="#750613" />
                 </linearGradient>
+                
+                {/* Premium silk shine overlays */}
                 <linearGradient id="ribbonShineBlue" x1="100%" y1="0%" x2="0%" y2="0%">
-                    <stop offset="0%" stopColor="white" stopOpacity="0.42" />
-                    <stop offset="28%" stopColor="white" stopOpacity="0.16" />
+                    <stop offset="0%" stopColor="white" stopOpacity="0.52" />
+                    <stop offset="25%" stopColor="white" stopOpacity="0.28" />
+                    <stop offset="55%" stopColor="white" stopOpacity="0.12" />
                     <stop offset="100%" stopColor="white" stopOpacity="0" />
                 </linearGradient>
                 <linearGradient id="ribbonShineYellow" x1="100%" y1="0%" x2="0%" y2="0%">
-                    <stop offset="0%" stopColor="white" stopOpacity="0.34" />
-                    <stop offset="28%" stopColor="white" stopOpacity="0.12" />
+                    <stop offset="0%" stopColor="white" stopOpacity="0.44" />
+                    <stop offset="25%" stopColor="white" stopOpacity="0.22" />
+                    <stop offset="55%" stopColor="white" stopOpacity="0.10" />
                     <stop offset="100%" stopColor="white" stopOpacity="0" />
                 </linearGradient>
                 <linearGradient id="ribbonShineRed" x1="100%" y1="0%" x2="0%" y2="0%">
-                    <stop offset="0%" stopColor="white" stopOpacity="0.28" />
-                    <stop offset="28%" stopColor="white" stopOpacity="0.1" />
+                    <stop offset="0%" stopColor="white" stopOpacity="0.36" />
+                    <stop offset="25%" stopColor="white" stopOpacity="0.18" />
+                    <stop offset="55%" stopColor="white" stopOpacity="0.08" />
                     <stop offset="100%" stopColor="white" stopOpacity="0" />
                 </linearGradient>
-                <filter id="ribbonDrop" x="-60%" y="-2%" width="220%" height="104%">
-                    <feDropShadow dx="-10" dy="8" stdDeviation="16" floodColor="#000" floodOpacity="0.34" />
-                    <feDropShadow dx="-2" dy="0" stdDeviation="3" floodColor="#9fd0ff" floodOpacity="0.38" />
+                
+                {/* Ambient reflection for 3D silk effect */}
+                <linearGradient id="ribbonAmbient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="white" stopOpacity="0.08" />
+                    <stop offset="50%" stopColor="white" stopOpacity="0.02" />
+                    <stop offset="100%" stopColor="white" stopOpacity="0.05" />
+                </linearGradient>
+                
+                {/* Enhanced drop shadow for depth */}
+                <filter id="ribbonDrop" x="-70%" y="-5%" width="240%" height="110%">
+                    <feDropShadow dx="-16" dy="12" stdDeviation="18" floodColor="#001b51" floodOpacity="0.42" />
+                    <feDropShadow dx="-4" dy="2" stdDeviation="4" floodColor="#c9e3ff" floodOpacity="0.52" />
+                    <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="#000" floodOpacity="0.12" />
                 </filter>
-                <filter id="ribbonInner" x="-24%" y="-2%" width="148%" height="104%">
-                    <feDropShadow dx="-5" dy="4" stdDeviation="7" floodColor="#000" floodOpacity="0.18" />
+                
+                {/* Inner shadow for ribbon layering */}
+                <filter id="ribbonInner" x="-30%" y="-5%" width="160%" height="110%">
+                    <feDropShadow dx="-8" dy="6" stdDeviation="10" floodColor="#000" floodOpacity="0.22" />
+                    <feDropShadow dx="0" dy="0" stdDeviation="1" floodColor="#000" floodOpacity="0.08" />
                 </filter>
             </defs>
 
-            {/* Blue — widest outer ribbon */}
+            {/* Blue ribbon — widest outer with elegant S-curve */}
             <path
-                d="M 200 0 C 96 190, 20 260, 20 450 C 20 640, 96 710, 200 900 L 200 900 L 200 0 Z"
+                d="M 200 0 
+                   C 140 45, 85 95, 55 165 
+                   C 25 235, 15 320, 25 405 
+                   C 35 490, 75 575, 110 660 
+                   C 145 745, 175 820, 200 900 
+                   L 200 900 L 200 0 Z"
                 fill="url(#ribbonBlue)"
                 filter="url(#ribbonDrop)"
             />
-            {/* Yellow — middle ribbon */}
+            
+            {/* Yellow ribbon — middle with flowing wave */}
             <path
-                d="M 200 0 C 138 205, 76 275, 76 450 C 76 625, 138 695, 200 900 L 200 900 L 200 0 Z"
+                d="M 200 0 
+                   C 165 55, 125 115, 105 185 
+                   C 85 255, 80 340, 88 425 
+                   C 96 510, 125 595, 150 680 
+                   C 175 765, 190 835, 200 900 
+                   L 200 900 L 200 0 Z"
                 fill="url(#ribbonYellow)"
                 filter="url(#ribbonInner)"
             />
-            {/* Red — narrowest inner ribbon */}
+            
+            {/* Red ribbon — narrowest inner with smooth curve */}
             <path
-                d="M 200 0 C 170 220, 132 295, 132 450 C 132 605, 170 680, 200 900 L 200 900 L 200 0 Z"
+                d="M 200 0 
+                   C 180 65, 155 130, 145 200 
+                   C 135 270, 135 355, 142 440 
+                   C 149 525, 165 610, 180 695 
+                   C 195 780, 198 845, 200 900 
+                   L 200 900 L 200 0 Z"
                 fill="url(#ribbonRed)"
                 filter="url(#ribbonInner)"
             />
 
-            {/* Soft highlight overlays */}
+            {/* Premium silk shine overlays */}
             <path
-                d="M 200 0 C 96 190, 20 260, 20 450 C 20 640, 96 710, 200 900 L 200 900 L 200 0 Z"
+                d="M 200 0 
+                   C 140 45, 85 95, 55 165 
+                   C 25 235, 15 320, 25 405 
+                   C 35 490, 75 575, 110 660 
+                   C 145 745, 175 820, 200 900 
+                   L 200 900 L 200 0 Z"
                 fill="url(#ribbonShineBlue)"
             />
             <path
-                d="M 200 0 C 138 205, 76 275, 76 450 C 76 625, 138 695, 200 900 L 200 900 L 200 0 Z"
+                d="M 200 0 
+                   C 165 55, 125 115, 105 185 
+                   C 85 255, 80 340, 88 425 
+                   C 96 510, 125 595, 150 680 
+                   C 175 765, 190 835, 200 900 
+                   L 200 900 L 200 0 Z"
                 fill="url(#ribbonShineYellow)"
             />
             <path
-                d="M 200 0 C 170 220, 132 295, 132 450 C 132 605, 170 680, 200 900 L 200 900 L 200 0 Z"
+                d="M 200 0 
+                   C 180 65, 155 130, 145 200 
+                   C 135 270, 135 355, 142 440 
+                   C 149 525, 165 610, 180 695 
+                   C 195 780, 198 845, 200 900 
+                   L 200 900 L 200 0 Z"
                 fill="url(#ribbonShineRed)"
             />
-        </svg>
-    );
-}
-
-function CircuitTraces() {
-    return (
-        <svg
-            className="left-panel-circuit-traces"
-            viewBox="0 0 380 108"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-        >
+            
+            {/* Ambient reflection for 3D depth */}
             <path
-                d="M12 18 H88 M132 18 H208 M252 18 H328"
-                stroke="rgba(255, 255, 255, 0.15)"
-                strokeWidth="0.75"
-                strokeLinecap="round"
-            />
-            <path
-                d="M12 48 H72 M112 48 H192 M232 48 H312 M352 48 H368"
-                stroke="rgba(169, 200, 255, 0.15)"
-                strokeWidth="0.75"
-                strokeLinecap="round"
-            />
-            <path
-                d="M32 78 H120 M160 78 H248 M288 78 H368"
-                stroke="rgba(255, 255, 255, 0.15)"
-                strokeWidth="0.75"
-                strokeLinecap="round"
-            />
-            <path
-                d="M88 18 V48 M208 18 V48 M192 48 V78"
-                stroke="rgba(216, 232, 255, 0.12)"
-                strokeWidth="0.75"
-                strokeLinecap="round"
-            />
-            <path
-                d="M8 96 H28 M8 96 V76"
-                stroke="rgba(169, 200, 255, 0.15)"
-                strokeWidth="0.75"
-                strokeLinecap="round"
-            />
-            <path
-                d="M352 96 H372 M372 96 V76"
-                stroke="rgba(169, 200, 255, 0.15)"
-                strokeWidth="0.75"
-                strokeLinecap="round"
+                d="M 200 0 
+                   C 140 45, 85 95, 55 165 
+                   C 25 235, 15 320, 25 405 
+                   C 35 490, 75 575, 110 660 
+                   C 145 745, 175 820, 200 900 
+                   L 200 900 L 200 0 Z"
+                fill="url(#ribbonAmbient)"
             />
         </svg>
     );
@@ -174,7 +195,6 @@ function DataTransmissionLine() {
 function BrandingDecorations() {
     return (
         <div className="left-panel-deco-zone">
-            <CircuitTraces />
             <NodeMatrix />
             <DataTransmissionLine />
         </div>
@@ -204,22 +224,17 @@ function FooterIndicators() {
 export default function LeftPanel() {
     return (
         <div className="left-panel relative hidden h-full w-full overflow-hidden lg:flex">
-            {/* Building photograph */}
-            <img
-                src={building}
-                alt=""
-                className="left-panel-building absolute inset-0 h-full w-full object-cover"
-            />
-
-            {/* Gradient overlay asset */}
-            <img
-                src={overlay}
-                alt=""
-                className="left-panel-overlay absolute inset-0 h-full w-full object-cover"
-            />
-
             {/* Blue depth gradient */}
             <div className="left-panel-gradient absolute inset-0" />
+
+            {/* Premium background decorations */}
+            <div className="left-panel-ambient-glow" />
+            <div className="left-panel-glow-line" />
+            <div className="left-panel-floating-dots">
+                {Array.from({ length: 8 }).map((_, index) => (
+                    <span key={index} className="left-panel-floating-dot" />
+                ))}
+            </div>
 
             {/* PSA brand ribbons */}
             <Ribbons />
