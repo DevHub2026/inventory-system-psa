@@ -7,6 +7,28 @@ export interface LoginPayload {
   password: string
 }
 
+export interface UpdateProfilePayload {
+  name?: string
+  email?: string
+}
+
+export interface ChangePasswordPayload {
+  current_password: string
+  password: string
+  password_confirmation: string
+}
+
+export interface ForgotPasswordPayload {
+  email: string
+}
+
+export interface ResetPasswordPayload {
+  token: string
+  email: string
+  password: string
+  password_confirmation: string
+}
+
 /** Login data from AuthController: UserResource fields + token. */
 interface LoginData extends User {
   token: string
@@ -63,5 +85,23 @@ export const authService = {
       const cached = localStorage.getItem('prototype_user')
       return cached ? (JSON.parse(cached) as User) : null
     }
+  },
+
+  async updateProfile(payload: UpdateProfilePayload): Promise<User> {
+    const { data } = await api.put<ApiResponse<User>>('/profile', payload)
+    const updatedUser = unwrapData(data)
+    return persistUser(updatedUser)
+  },
+
+  async changePassword(payload: ChangePasswordPayload): Promise<void> {
+    await api.put('/password', payload)
+  },
+
+  async forgotPassword(payload: ForgotPasswordPayload): Promise<void> {
+    await api.post('/forgot-password', payload)
+  },
+
+  async resetPassword(payload: ResetPasswordPayload): Promise<void> {
+    await api.post('/reset-password', payload)
   },
 }
