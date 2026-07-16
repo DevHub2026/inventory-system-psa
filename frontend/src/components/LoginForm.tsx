@@ -1,168 +1,112 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import {
-  User,
-  Lock,
-  Eye,
-  EyeOff,
-  Shield,
-} from "lucide-react";
+import { User, Lock, Eye, EyeOff, Shield } from "lucide-react";
 
 import Input from "./Input";
 
 export default function LoginForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
-  const [loading, setLoading] = useState(false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [remember, setRemember] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+    async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+        e.preventDefault();
 
-    setLoading(true);
+        setLoading(true);
 
-    try {
-      console.log({
-        email,
-        password,
-        remember,
-      });
+        try {
+            console.log({
+                email,
+                password,
+                remember,
+            });
 
-      // TODO:
-      // await axios.post(...)
-      // await fetch(...)
-      // Laravel Sanctum / API login
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="mt-[48px] space-y-[20px]"
-    >
-      <Input
-        id="email"
-        name="email"
-        placeholder="Username or Email"
-        icon={<User size={20} />}
-        value={email}
-        autoComplete="username"
-        required
-        onChange={(e) => setEmail(e.target.value)}
-      />
-
-      <Input
-        id="password"
-        name="password"
-        type={showPassword ? "text" : "password"}
-        placeholder="Password"
-        icon={<Lock size={20} />}
-        value={password}
-        autoComplete="current-password"
-        required
-        onChange={(e) => setPassword(e.target.value)}
-        rightIcon={
-          showPassword ? (
-            <EyeOff
-              size={20}
-              onClick={() => setShowPassword(false)}
-            />
-          ) : (
-            <Eye
-              size={20}
-              onClick={() => setShowPassword(true)}
-            />
-          )
+            // TODO:
+            // await axios.post(...)
+            // await fetch(...)
+            // Laravel Sanctum / API login
+        } finally {
+            setLoading(false);
         }
-      />
+    }
 
-      <div className="flex items-center justify-between pt-[8px]">
+    return (
+        <form onSubmit={handleSubmit} className="login-card-form-fields">
+            <Input
+                id="email"
+                name="email"
+                placeholder="Username or Email"
+                icon={<User size={20} strokeWidth={2} />}
+                value={email}
+                autoComplete="username"
+                required
+                onChange={(e) => setEmail(e.target.value)}
+            />
 
-        <label className="flex items-center gap-[12px] text-[15px] text-slate-600">
+            <div className="login-card-field-gap">
+                <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    icon={<Lock size={20} strokeWidth={2} />}
+                    value={password}
+                    autoComplete="current-password"
+                    required
+                    onChange={(e) => setPassword(e.target.value)}
+                    rightIcon={
+                        showPassword ? (
+                            <EyeOff size={20} strokeWidth={2} />
+                        ) : (
+                            <Eye size={20} strokeWidth={2} />
+                        )
+                    }
+                    onRightIconClick={() => setShowPassword((prev) => !prev)}
+                />
+            </div>
 
-          <input
-            type="checkbox"
-            checked={remember}
-            onChange={(e) => setRemember(e.target.checked)}
-            className="
-              h-[18px]
-              w-[18px]
-              accent-[#003DA5]
-            "
-          />
+            <div className="remember-row">
+                <label className="flex cursor-pointer items-center gap-[10px] text-[15px] leading-none text-slate-600">
+                    <input
+                        type="checkbox"
+                        checked={remember}
+                        onChange={(e) => setRemember(e.target.checked)}
+                        className="m-0 h-[18px] w-[18px] cursor-pointer accent-[#003DA5]"
+                    />
+                    Remember me
+                </label>
 
-          Remember me
+                <button
+                    type="button"
+                    className="text-[15px] font-medium leading-none text-[#003DA5] transition-colors duration-300 hover:text-[#0057D9] hover:underline"
+                >
+                    Forgot Password?
+                </button>
+            </div>
 
-        </label>
+            <button
+                type="submit"
+                disabled={loading}
+                className="primary-button login-shadow sign-in-button h-[64px] w-full rounded-[18px] text-[16px] font-bold tracking-[5px] duration-300 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+                {loading ? "SIGNING IN..." : "SIGN IN"}
+            </button>
 
-        <button
-          type="button"
-          className="
-            text-[15px]
-            font-medium
-            text-[#003DA5]
-            transition
-            hover:underline
-          "
-        >
-          Forgot Password?
-        </button>
+            <div className="card-divider">
+                <span className="text-[13px] font-medium tracking-[0.22em] text-slate-400">
+                    OR
+                </span>
+            </div>
 
-      </div>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="
-          primary-button
-          login-shadow
-          h-[60px]
-          w-full
-          rounded-[18px]
-          text-[17px]
-          font-bold
-          tracking-[0.32em]
-          duration-300
-          hover:scale-[1.01]
-          disabled:cursor-not-allowed
-          disabled:opacity-60
-        "
-      >
-        {loading ? "SIGNING IN..." : "SIGN IN"}
-      </button>
-
-      <div className="card-divider py-[12px]">
-
-        <span className="text-sm tracking-[0.22em] text-slate-400">
-          OR
-        </span>
-
-      </div>
-
-      <button
-        type="button"
-        className="
-          secondary-button
-          flex
-          h-[60px]
-          w-full
-          items-center
-          justify-center
-          gap-3
-          rounded-[18px]
-          text-[16px]
-          font-semibold
-          duration-300
-        "
-      >
-        <Shield size={22} />
-
-        LOGIN WITH PSA ACCOUNT
-
-      </button>
-    </form>
-  );
+            <button
+                type="button"
+                className="secondary-button flex h-[64px] w-full items-center justify-center gap-[12px] rounded-[18px] text-[14px] font-semibold tracking-[0.06em] duration-300"
+            >
+                <Shield size={20} strokeWidth={2} className="shrink-0 text-[#003DA5]" />
+                LOGIN WITH PSA ACCOUNT
+            </button>
+        </form>
+    );
 }

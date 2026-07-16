@@ -1,117 +1,65 @@
 import type { ChangeEvent, ReactNode } from "react";
 
 interface InputProps {
-  id?: string;
-  name?: string;
-  type?: string;
-  placeholder: string;
-  icon?: ReactNode;
-  rightIcon?: ReactNode;
-  value?: string;
-  autoComplete?: string;
-  disabled?: boolean;
-  required?: boolean;
-  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+    id?: string;
+    name?: string;
+    type?: string;
+    placeholder: string;
+    icon?: ReactNode;
+    rightIcon?: ReactNode;
+    value?: string;
+    autoComplete?: string;
+    disabled?: boolean;
+    required?: boolean;
+    onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+    onRightIconClick?: () => void;
 }
 
 export default function Input({
-  id,
-  name,
-  type = "text",
-  placeholder,
-  icon,
-  rightIcon,
-  value,
-  autoComplete,
-  disabled = false,
-  required = false,
-  onChange,
+    id,
+    name,
+    type = "text",
+    placeholder,
+    icon,
+    rightIcon,
+    value,
+    autoComplete,
+    disabled = false,
+    required = false,
+    onChange,
+    onRightIconClick,
 }: InputProps) {
-  return (
-    <div className="relative">
+    return (
+        <div className="psa-input-wrapper relative">
+            {icon && (
+                <div className="psa-input-icon-left pointer-events-none absolute left-[18px] top-1/2 z-10 -translate-y-1/2 text-[#003DA5]">
+                    {icon}
+                </div>
+            )}
 
-      {icon && (
-        <div
-          className="
-            absolute
-            left-[18px]
-            top-1/2
-            -translate-y-1/2
-            flex
-            items-center
-            justify-center
-            w-[24px]
-            h-[24px]
-            text-[#003DA5]
-            pointer-events-none
-            z-10
-          "
-        >
-          {icon}
+            <input
+                id={id}
+                name={name}
+                type={type}
+                value={value}
+                placeholder={placeholder}
+                autoComplete={autoComplete}
+                disabled={disabled}
+                required={required}
+                onChange={onChange}
+                className="psa-input-field w-full border border-[#D8E1F4] bg-white text-[16px] font-medium leading-none text-slate-700 outline-none transition-all duration-300 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            />
+
+            {rightIcon && (
+                <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={onRightIconClick}
+                    className="psa-input-icon-right absolute right-[18px] top-1/2 z-10 -translate-y-1/2 cursor-pointer text-[#94A3B8] transition-colors duration-300 hover:text-[#003DA5]"
+                >
+                    {rightIcon}
+                </button>
+            )}
         </div>
-      )}
-
-      <input
-        id={id}
-        name={name}
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        disabled={disabled}
-        required={required}
-        onChange={onChange}
-        className="
-          w-full
-          h-[60px]
-          rounded-[18px]
-          border
-          border-slate-300
-          bg-white
-          pl-[68px]
-          pr-[64px]
-          text-[16px]
-          font-medium
-          text-slate-700
-          placeholder:text-slate-400
-          shadow-sm
-          outline-none
-          transition-all
-          duration-300
-          focus:border-[#003DA5]
-          focus:ring-4
-          focus:ring-blue-100
-          disabled:cursor-not-allowed
-          disabled:bg-slate-100
-          disabled:text-slate-400
-        "
-        style={{ paddingLeft: '68px', paddingRight: '64px', height: '60px', borderRadius: '18px' }}
-      />
-
-      {rightIcon && (
-        <button
-          type="button"
-          tabIndex={-1}
-          className="
-            absolute
-            right-[22px]
-            top-1/2
-            -translate-y-1/2
-            flex
-            items-center
-            justify-center
-            w-[24px]
-            h-[24px]
-            text-slate-400
-            transition
-            hover:text-[#003DA5]
-            z-10
-          "
-        >
-          {rightIcon}
-        </button>
-      )}
-
-    </div>
-  );
+    );
 }
