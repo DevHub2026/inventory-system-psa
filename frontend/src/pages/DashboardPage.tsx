@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Badge, Card, EmptyState, Spinner, Table, type Column } from '@/components/ui'
+import { Badge, Button, Card, EmptyState, Spinner, Table, type Column } from '@/components/ui'
 import { dashboardService } from '@/services/dashboardService'
+import { useAuth } from '@/hooks/useAuth'
 import type { ActivityItem, DashboardStats } from '@/types'
 
 export function DashboardPage() {
+  const { logout } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,9 +44,14 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500">Temporary overview for backend integration.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">Dashboard</h1>
+          <p className="text-sm text-gray-500">Temporary overview for backend integration.</p>
+        </div>
+        <Button size="sm" variant="secondary" onClick={() => void logout()}>
+          Logout
+        </Button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
