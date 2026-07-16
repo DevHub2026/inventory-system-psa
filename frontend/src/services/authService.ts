@@ -29,8 +29,10 @@ export interface ResetPasswordPayload {
   password_confirmation: string
 }
 
-/** Login data from AuthController: UserResource fields + token. */
-interface LoginData extends User {
+interface LoginResponse {
+  success: boolean
+  message: string
+  user: User
   token: string
 }
 
@@ -49,17 +51,16 @@ function persistUser(user: User, token?: string): User {
 export const authService = {
   /**
    * Uses Eman's Auth API: POST /api/v1/login
-   * Response data = user fields + token (bearer / Sanctum personal access token).
+   * Response provides an authenticated user and Sanctum bearer token.
    */
   async login(payload: LoginPayload): Promise<User> {
-    const { data } = await api.post<ApiResponse<LoginData>>('/login', payload)
+    const { data } = await api.post<LoginResponse>('/login', payload)
 
-    if (!data.success || !data.data?.token) {
+    if (!data.success || !data.user || !data.token) {
       throw new Error(data.message || 'Login failed.')
     }
 
-    const { token, ...user } = data.data
-    return persistUser(user, token)
+    return persistUser(data.user, data.token)
   },
 
   async logout(): Promise<void> {
@@ -82,8 +83,9 @@ export const authService = {
       const { data } = await api.get<ApiResponse<User>>('/me')
       return persistUser(unwrapData(data))
     } catch {
-      const cached = localStorage.getItem('prototype_user')
-      return cached ? (JSON.parse(cached) as User) : null
+      localStorage.removeItem('prototype_token')
+      localStorage.removeItem('prototype_user')
+      return null
     }
   },
 
@@ -94,7 +96,7 @@ export const authService = {
   },
 
   async changePassword(payload: ChangePasswordPayload): Promise<void> {
-    await api.put('/password', payload)
+    await api.put('/change-password', payload)
   },
 
   async forgotPassword(payload: ForgotPasswordPayload): Promise<void> {
