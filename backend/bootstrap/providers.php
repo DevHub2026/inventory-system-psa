@@ -2,6 +2,7 @@
 
 use App\Modules\Asset\Providers\AssetServiceProvider;
 use App\Modules\Auth\Providers\AuthServiceProvider;
+use App\Modules\Borrowing\Providers\BorrowingServiceProvider;
 use App\Modules\Reservation\Providers\ReservationServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -10,4 +11,5 @@ return [
     AssetServiceProvider::class,
     AuthServiceProvider::class,
     ReservationServiceProvider::class,
+    BorrowingServiceProvider::class,
 ];
