@@ -18,9 +18,6 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/profile', [AuthController::class, 'updateProfile']);
         Route::put('/change-password', [AuthController::class, 'changePassword']);
 
-        // Dashboard routes (admin + staff)
-        require __DIR__.'/../app/Modules/Dashboard/Routes/api.php';
-
         Route::middleware('can:viewAny,App\Models\User')->group(function (): void {
             Route::get('/users', [UserController::class, 'index']);
         });
