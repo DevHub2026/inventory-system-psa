@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Modules\Audit\Providers;
+namespace App\Modules\AuditLog\Providers;
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
-class AuditServiceProvider extends ServiceProvider
+class AuditLogServiceProvider extends ServiceProvider
 {
     public function register(): void
     {

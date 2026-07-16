@@ -1,22 +1,22 @@
 <?php
 
-namespace App\Modules\Audit\Controllers;
+namespace App\Modules\AuditLog\Controllers;
 
 use App\Modules\Asset\Traits\RespondsWithJson;
-use App\Modules\Audit\Services\AuditService;
+use App\Modules\AuditLog\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
-class AuditController extends Controller
+class AuditLogController extends Controller
 {
     use RespondsWithJson;
 
-    public function __construct(private readonly AuditService $auditService) {}
+    public function __construct(private readonly AuditLogService $auditLogService) {}
 
     public function index(Request $request): JsonResponse
     {
-        $logs = $this->auditService->list($request->all());
+        $logs = $this->auditLogService->list($request->all());
 
         return $this->success($logs->map(fn ($log) => [
             'id' => $log->id,
@@ -33,7 +33,7 @@ class AuditController extends Controller
 
     public function userActivity(int $userId): JsonResponse
     {
-        $logs = $this->auditService->getActivityByUser($userId);
+        $logs = $this->auditLogService->getActivityByUser($userId);
 
         return $this->success($logs->map(fn ($log) => [
             'id' => $log->id,
@@ -46,7 +46,7 @@ class AuditController extends Controller
 
     public function moduleActivity(string $module): JsonResponse
     {
-        $logs = $this->auditService->getActivityByModule($module);
+        $logs = $this->auditLogService->getActivityByModule($module);
 
         return $this->success($logs->map(fn ($log) => [
             'id' => $log->id,

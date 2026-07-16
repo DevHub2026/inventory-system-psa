@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Modules\Audit\Services;
+namespace App\Modules\AuditLog\Services;
 
-use App\Modules\Audit\Models\AuditLog;
+use App\Modules\AuditLog\Models\AuditLog;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 
-class AuditService
+class AuditLogService
 {
     public function log(string $action, string $module, ?string $description = null, ?array $oldValues = null, ?array $newValues = null, ?int $userId = null, ?string $ipAddress = null, ?string $userAgent = null): AuditLog
     {

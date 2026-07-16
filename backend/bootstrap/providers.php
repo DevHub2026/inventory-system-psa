@@ -2,7 +2,7 @@
 
 use App\Modules\Asset\Providers\AssetServiceProvider;
 use App\Modules\Auth\Providers\AuthServiceProvider;
-use App\Modules\Audit\Providers\AuditServiceProvider;
+use App\Modules\AuditLog\Providers\AuditLogServiceProvider;
 use App\Modules\Borrowing\Providers\BorrowingServiceProvider;
 use App\Modules\Dashboard\Providers\DashboardServiceProvider;
 use App\Modules\Inventory\Providers\InventoryServiceProvider;
@@ -20,6 +20,6 @@ return [
     InventoryServiceProvider::class,
     DashboardServiceProvider::class,
     ReportServiceProvider::class,
-    AuditServiceProvider::class,
+    AuditLogServiceProvider::class,
     MaintenanceServiceProvider::class,
 ];

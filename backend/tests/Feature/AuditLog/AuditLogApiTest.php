@@ -1,14 +1,14 @@
 <?php
 
-namespace Tests\Feature\Audit;
+namespace Tests\Feature\AuditLog;
 
 use App\Models\User;
-use App\Modules\Audit\Models\AuditLog;
-use App\Modules\Audit\Services\AuditService;
+use App\Modules\AuditLog\Models\AuditLog;
+use App\Modules\AuditLog\Services\AuditLogService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class AuditApiTest extends TestCase
+class AuditLogApiTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -17,7 +17,7 @@ class AuditApiTest extends TestCase
         $user = User::factory()->create();
         $token = $user->createToken('auth')->plainTextToken;
 
-        $auditService = app(AuditService::class);
+        $auditService = app(AuditLogService::class);
         $auditService->log('LOGIN', 'Auth', 'User logged in', null, null, $user->id);
 
         $response = $this->withToken($token)
@@ -40,7 +40,7 @@ class AuditApiTest extends TestCase
         $user = User::factory()->create();
         $token = $user->createToken('auth')->plainTextToken;
 
-        $auditService = app(AuditService::class);
+        $auditService = app(AuditLogService::class);
         $auditService->log('LOGIN', 'Auth', 'User logged in', null, null, $user->id);
         $auditService->log('CREATE', 'Asset', 'Asset created', null, null, $user->id);
 
@@ -63,7 +63,7 @@ class AuditApiTest extends TestCase
         $user = User::factory()->create();
         $token = $user->createToken('auth')->plainTextToken;
 
-        $auditService = app(AuditService::class);
+        $auditService = app(AuditLogService::class);
         $auditService->log('LOGIN', 'Auth', 'User logged in', null, null, $user->id);
         $auditService->log('LOGOUT', 'Auth', 'User logged out', null, null, $user->id);
 
@@ -85,7 +85,7 @@ class AuditApiTest extends TestCase
         $user = User::factory()->create();
         $token = $user->createToken('auth')->plainTextToken;
 
-        $auditService = app(AuditService::class);
+        $auditService = app(AuditLogService::class);
         $auditService->log('CREATE', 'Asset', 'Asset created', null, null, $user->id);
         $auditService->log('UPDATE', 'Asset', 'Asset updated', null, null, $user->id);
 
@@ -106,7 +106,7 @@ class AuditApiTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $auditService = app(AuditService::class);
+        $auditService = app(AuditLogService::class);
         $log = $auditService->log(
             'UPDATE',
             'Asset',
