@@ -2,9 +2,12 @@
 
 use App\Modules\Asset\Providers\AssetServiceProvider;
 use App\Modules\Auth\Providers\AuthServiceProvider;
+use App\Modules\Audit\Providers\AuditServiceProvider;
 use App\Modules\Borrowing\Providers\BorrowingServiceProvider;
 use App\Modules\Dashboard\Providers\DashboardServiceProvider;
 use App\Modules\Inventory\Providers\InventoryServiceProvider;
+use App\Modules\Maintenance\Providers\MaintenanceServiceProvider;
+use App\Modules\Report\Providers\ReportServiceProvider;
 use App\Modules\Reservation\Providers\ReservationServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -16,4 +19,7 @@ return [
     BorrowingServiceProvider::class,
     InventoryServiceProvider::class,
     DashboardServiceProvider::class,
+    ReportServiceProvider::class,
+    AuditServiceProvider::class,
+    MaintenanceServiceProvider::class,
 ];
