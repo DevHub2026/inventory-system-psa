@@ -6,44 +6,44 @@ use App\Models\User;
 use App\Modules\Asset\Models\Asset;
 
 /**
- * Temporary permissive policy so Asset APIs can be developed
- * in parallel with Auth/RBAC (Eman). Replace body with permission
- * checks such as $user->can('asset.view') once RBAC is ready.
+ * A minimal auth guard for asset operations until the RBAC layer is fully
+ * wired for the inventory domain. Authenticated users may access the API,
+ * and explicit permission checks can be introduced later when roles are seeded.
  */
 class AssetPolicy
 {
     public function viewAny(?User $user): bool
     {
-        return true;
+        return $user !== null;
     }
 
     public function view(?User $user, Asset $asset): bool
     {
-        return true;
+        return $user !== null;
     }
 
     public function create(?User $user): bool
     {
-        return true;
+        return $user !== null;
     }
 
     public function update(?User $user, Asset $asset): bool
     {
-        return true;
+        return $user !== null;
     }
 
     public function delete(?User $user, Asset $asset): bool
     {
-        return true;
+        return $user !== null;
     }
 
     public function archive(?User $user, Asset $asset): bool
     {
-        return true;
+        return $user !== null;
     }
 
     public function transfer(?User $user, Asset $asset): bool
     {
-        return true;
+        return $user !== null;
     }
 }
