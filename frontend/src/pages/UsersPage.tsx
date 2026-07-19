@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination } from '@/components/ui'
-import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload } from '@/services/userService'
+import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload, type ImportUsersResult } from '@/services/userService'
 import { displayName } from '@/types'
 import type { Column } from '@/components/ui'
 import type { User } from '@/types'
@@ -11,6 +11,10 @@ export function UsersPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [saving, setSaving] = useState(false)
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<ImportUsersResult | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [filters, setFilters] = useState<UserFilters>({ per_page: 15, page: 1 })
   const [pagination, setPagination] = useState({ current_page: 1, per_page: 15, total: 0, last_page: 1 })
@@ -23,7 +27,7 @@ export function UsersPage() {
     email: '',
     password: '',
     department_id: null,
-    status: 'ACTIVE',
+    status: 'active',
     roles: [],
   })
 
@@ -62,7 +66,7 @@ export function UsersPage() {
       email: '',
       password: '',
       department_id: null,
-      status: 'ACTIVE',
+      status: 'active',
       roles: [],
     })
     setModalOpen(true)
@@ -78,7 +82,7 @@ export function UsersPage() {
       email: user.email,
       password: '',
       department_id: user.department_id || null,
-      status: user.status || 'ACTIVE',
+      status: user.status || 'active',
       roles: [],
     })
     setModalOpen(true)
@@ -117,11 +121,60 @@ export function UsersPage() {
     }
   }
 
+  const handleImport = async () => {
+    if (!importFile) {
+      setMessage({ type: 'error', text: 'Please choose a CSV, JSON, or XLSX file to import.' })
+      return
+    }
+
+    setImporting(true)
+    setImportResult(null)
+    setMessage(null)
+
+    try {
+      const result = await userService.importEmployees(importFile)
+      setImportResult(result)
+      setMessage({
+        type: result.failed > 0 || result.skipped > 0 ? 'success' : 'success',
+        text: `Import complete: ${result.imported} imported, ${result.skipped} skipped, ${result.failed} failed.`,
+      })
+      await loadUsers()
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to import employees.' })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const downloadTemplate = (type: 'csv' | 'json') => {
+    const headers = ['first_name', 'middle_name', 'last_name', 'id_number', 'email', 'role', 'department']
+    const sample = {
+      first_name: 'Juan',
+      middle_name: 'Cruz',
+      last_name: 'Marquez',
+      id_number: '1234-5678',
+      email: 'juan.marquez@example.com',
+      role: 'Employee',
+      department: 'Administration',
+    }
+    const content =
+      type === 'csv'
+        ? `${headers.join(',')}\n${headers.map((header) => sample[header as keyof typeof sample]).join(',')}\n`
+        : `${JSON.stringify([sample], null, 2)}\n`
+    const blob = new Blob([content], { type: type === 'csv' ? 'text/csv' : 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `employee-import-template.${type}`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   const columns: Column<User>[] = [
     { key: 'employee_number', header: 'Employee No.', render: (u) => u.employee_number || '-' },
     { key: 'name', header: 'Name', render: (u) => displayName(u) },
     { key: 'email', header: 'Email', render: (u) => u.email },
-    { key: 'status', header: 'Status', render: (u) => <Badge tone={u.status === 'ACTIVE' ? 'green' : 'yellow'}>{u.status || 'UNKNOWN'}</Badge> },
+    { key: 'status', header: 'Status', render: (u) => <Badge tone={u.status === 'active' ? 'green' : 'yellow'}>{u.status || 'UNKNOWN'}</Badge> },
     {
       key: 'actions',
       header: 'Actions',
@@ -145,7 +198,12 @@ export function UsersPage() {
           <h1 className="text-lg font-semibold text-gray-900">Users</h1>
           <p className="text-sm text-gray-500">Manage system users and their accounts</p>
         </div>
-        <Button onClick={handleCreate}>Add User</Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setImportModalOpen(true)}>
+            Import Employees
+          </Button>
+          <Button onClick={handleCreate}>Add User</Button>
+        </div>
       </div>
 
       {message && (
@@ -228,6 +286,93 @@ export function UsersPage() {
             </Button>
             <Button onClick={handleSubmit} disabled={saving}>
               {saving ? 'Saving...' : editingUser ? 'Update' : 'Create'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        title="Import Employees"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
+            Upload employee records as CSV, JSON, or XLSX. Usernames are generated as lowercase last name without spaces + ID number, for example <strong>marquez1234-5678</strong>. Imported accounts use the temporary password <strong>psasarangani2026</strong>.
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" onClick={() => downloadTemplate('csv')}>
+              Download CSV Template
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => downloadTemplate('json')}>
+              Download JSON Template
+            </Button>
+          </div>
+
+          <Input
+            label="Employee Import File"
+            type="file"
+            accept=".csv,.json,.xlsx"
+            onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+          />
+
+          {importResult && (
+            <div className="space-y-3">
+              <div className="grid gap-2 text-sm md:grid-cols-4">
+                <div className="rounded border p-2">
+                  <div className="text-gray-500">Rows</div>
+                  <div className="font-semibold">{importResult.total_rows}</div>
+                </div>
+                <div className="rounded border p-2">
+                  <div className="text-gray-500">Imported</div>
+                  <div className="font-semibold text-green-700">{importResult.imported}</div>
+                </div>
+                <div className="rounded border p-2">
+                  <div className="text-gray-500">Skipped</div>
+                  <div className="font-semibold text-yellow-700">{importResult.skipped}</div>
+                </div>
+                <div className="rounded border p-2">
+                  <div className="text-gray-500">Failed</div>
+                  <div className="font-semibold text-red-700">{importResult.failed}</div>
+                </div>
+              </div>
+
+              <div className="max-h-64 overflow-auto rounded border">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2">Row</th>
+                      <th className="px-3 py-2">Status</th>
+                      <th className="px-3 py-2">Username</th>
+                      <th className="px-3 py-2">Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {importResult.rows.map((row) => (
+                      <tr key={`${row.row}-${row.email || row.username || row.status}`}>
+                        <td className="px-3 py-2">{row.row}</td>
+                        <td className="px-3 py-2">
+                          <Badge tone={row.status === 'imported' ? 'green' : row.status === 'skipped' ? 'yellow' : 'red'}>
+                            {row.status}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2">{row.username || '-'}</td>
+                        <td className="px-3 py-2">{row.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setImportModalOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={handleImport} disabled={importing || !importFile}>
+              {importing ? 'Importing...' : 'Import Employees'}
             </Button>
           </div>
         </div>

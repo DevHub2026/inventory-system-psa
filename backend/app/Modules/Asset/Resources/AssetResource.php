@@ -3,6 +3,7 @@
 namespace App\Modules\Asset\Resources;
 
 use App\Modules\AssetCategory\Resources\AssetCategoryResource;
+use App\Modules\Asset\Enums\IdentifierType;
 use App\Modules\AssetIdentifier\Resources\AssetIdentifierResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -11,6 +12,11 @@ class AssetResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $psaQrIdentifier = $this->whenLoaded(
+            'identifiers',
+            fn () => $this->identifiers->firstWhere('identifier_type', IdentifierType::PSA_QR),
+        );
+
         return [
             'id' => $this->id,
             'asset_number' => $this->asset_number,
@@ -27,6 +33,8 @@ class AssetResource extends JsonResource
             'purchase_cost' => $this->purchase_cost,
             'warranty_until' => $this->warranty_until,
             'remarks' => $this->remarks,
+            'psa_qr_identifier' => $psaQrIdentifier?->identifier_value,
+            'psa_qr_payload' => $psaQrIdentifier?->identifier_value,
             'category' => AssetCategoryResource::make($this->whenLoaded('category')),
             'manufacturer' => ManufacturerResource::make($this->whenLoaded('manufacturer')),
             'office' => OfficeResource::make($this->whenLoaded('office')),

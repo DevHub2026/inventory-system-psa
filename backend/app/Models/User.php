@@ -4,7 +4,6 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Department;
-use App\Models\Permission;
 use App\Models\Role;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -44,15 +43,6 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the permissions that belong to the user through roles.
-     */
-    public function permissions()
-    {
-        return $this->belongsToMany(Permission::class, 'permission_role', 'role_id', 'permission_id')
-            ->through(Role::class);
-    }
-
-    /**
      * Get the department that the user belongs to.
      */
     public function department()
@@ -81,7 +71,9 @@ class User extends Authenticatable
      */
     public function hasPermission(string $permissionName): bool
     {
-        return $this->permissions()->where('name', $permissionName)->exists();
+        return $this->roles()
+            ->whereHas('permissions', fn ($query) => $query->where('name', $permissionName))
+            ->exists();
     }
 
     /**

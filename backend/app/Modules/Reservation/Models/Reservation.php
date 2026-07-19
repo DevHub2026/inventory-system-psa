@@ -19,6 +19,8 @@ class Reservation extends Model
         'start_date',
         'end_date',
         'remarks',
+        'authorized_by',
+        'authorized_at',
     ];
 
     protected function casts(): array
@@ -26,6 +28,7 @@ class Reservation extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'authorized_at' => 'datetime',
         ];
     }
 
@@ -37,5 +40,10 @@ class Reservation extends Model
     public function assets(): BelongsToMany
     {
         return $this->belongsToMany(Asset::class, 'reservation_items');
+    }
+
+    public function authorizer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'authorized_by');
     }
 }

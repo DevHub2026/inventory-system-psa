@@ -34,7 +34,7 @@ class DashboardService
             $activities[] = [
                 'id' => $borrowing->id,
                 'action' => $borrowing->status === 'BORROWED' ? 'Borrowed' : 'Returned',
-                'user' => $borrowing->user->name ?? 'Unknown',
+                'user' => ($borrowing->user?->full_name ?: $borrowing->user?->email) ?? 'Unknown',
                 'module' => 'Borrowing',
                 'created_at' => $borrowing->created_at->format('Y-m-d H:i:s'),
             ];
@@ -50,7 +50,7 @@ class DashboardService
             $activities[] = [
                 'id' => $reservation->id,
                 'action' => $reservation->status === 'PENDING' ? 'Reserved' : 'Approved',
-                'user' => $reservation->user->name ?? 'Unknown',
+                'user' => ($reservation->user?->full_name ?: $reservation->user?->email) ?? 'Unknown',
                 'module' => 'Reservation',
                 'created_at' => $reservation->created_at->format('Y-m-d H:i:s'),
             ];
@@ -90,7 +90,7 @@ class DashboardService
             ->map(fn ($borrowing) => [
                 'id' => $borrowing->id,
                 'asset_name' => $borrowing->asset->name ?? 'Unknown',
-                'borrower' => $borrowing->user->name ?? 'Unknown',
+                'borrower' => ($borrowing->user?->full_name ?: $borrowing->user?->email) ?? 'Unknown',
                 'due_date' => $borrowing->due_date?->format('Y-m-d'),
                 'days_overdue' => abs(now()->diffInDays($borrowing->due_date)),
             ])

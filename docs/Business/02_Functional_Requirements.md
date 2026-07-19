@@ -75,6 +75,10 @@ Manage user accounts and access permissions.
 - Search users
 - Filter users
 - View account status
+- Bulk import employee accounts from CSV, JSON, or XLSX files
+- Generate employee login usernames from last name and PSA ID number
+- Assign imported employees the configured temporary initial password
+- Report imported, skipped, and failed rows during employee import
 
 ---
 

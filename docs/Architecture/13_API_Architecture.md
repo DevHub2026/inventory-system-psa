@@ -127,6 +127,8 @@ POST
 
 /users
 
+/users/import
+
 PUT
 
 /users/{id}

@@ -15,16 +15,17 @@ export type ReservationStatus =
   | 'EXPIRED'
 
 export type BorrowingStatus =
+  | 'BORROWED'
   | 'ACTIVE'
   | 'PARTIALLY_RETURNED'
   | 'RETURNED'
   | 'OVERDUE'
 
 export type MaintenanceStatus =
-  | 'PENDING'
-  | 'ONGOING'
-  | 'COMPLETED'
-  | 'CANCELLED'
+  | 'scheduled'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled'
 
 /** Matches Auth UserResource (+ optional display helpers). */
 export interface User {
@@ -38,50 +39,106 @@ export interface User {
   email: string
   department_id?: number | null
   status?: string
+  roles?: Array<{
+    id: number
+    name: string
+  }>
 }
 
 export interface Asset {
   id: number
   asset_number: string
+  psa_qr_identifier?: string | null
+  psa_qr_payload?: string | null
   name: string
+  description?: string | null
+  asset_category_id?: number
+  manufacturer_id?: number | null
+  office_id?: number
+  location_id?: number | null
+  model?: string | null
   category?: string
   status: AssetStatus
+  condition_status?: string | null
   location?: string | null
   office?: string | null
+  remarks?: string | null
+  purchase_date?: string | null
+  purchase_cost?: string | number | null
+  warranty_until?: string | null
+  identifiers?: Array<{
+    id: number
+    asset_id: number
+    identifier_type: string
+    identifier_value: string
+    is_primary: boolean
+  }>
 }
 
 export interface Reservation {
   id: number
-  purpose: string
-  employee_name: string
+  user_id?: number
+  purpose?: string
+  employee_name?: string
   status: ReservationStatus
-  reserved_from: string
-  reserved_until: string
+  start_date?: string
+  end_date?: string
+  reserved_from?: string
+  reserved_until?: string
+  remarks?: string | null
+  created_at?: string
+  authorized_by?: number | null
+  authorized_by_name?: string | null
+  authorized_at?: string | null
+  asset_ids?: number[]
+  asset_names?: string[]
+  asset_numbers?: string[]
+  receipt_code?: string
+  receipt_payload?: string
 }
 
 export interface Borrowing {
   id: number
-  asset_name: string
-  employee_name: string
+  user_id?: number
+  asset_id?: number
+  asset_name?: string
+  asset_number?: string
+  employee_name?: string
   status: BorrowingStatus
-  borrowed_at: string
-  due_at: string
+  borrow_date?: string
+  due_date?: string
+  borrowed_at?: string
+  due_at?: string
+  remarks?: string | null
+  created_at?: string
+  authorized_by?: number | null
+  authorized_by_name?: string | null
+  authorized_at?: string | null
+  receipt_code?: string
+  receipt_payload?: string
 }
 
 export interface InventoryItem {
   id: number
+  asset_id?: number | null
+  asset_number?: string | null
   name: string
+  sku?: string
   quantity: number
   status: string
   unit: string
+  reorder_level?: number
+  remarks?: string | null
 }
 
 export interface MaintenanceRequest {
   id: number
+  asset_id?: number
   asset_name: string
   description: string
   status: MaintenanceStatus
-  scheduled_at: string
+  scheduled_date?: string
+  scheduled_at?: string
 }
 
 export interface DashboardStats {

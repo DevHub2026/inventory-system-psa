@@ -3,9 +3,11 @@
 namespace App\Modules\Auth\Controllers;
 
 use App\Models\User;
+use App\Modules\Auth\Requests\ImportUsersRequest;
 use App\Modules\Auth\Requests\StoreUserRequest;
 use App\Modules\Auth\Requests\UpdateUserRequest;
 use App\Modules\Auth\Resources\UserResource;
+use App\Modules\Auth\Services\UserImportService;
 use App\Modules\Auth\Services\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,7 @@ class UserController extends Controller
 {
     public function __construct(
         private readonly UserService $userService,
+        private readonly UserImportService $userImportService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -63,6 +66,25 @@ class UserController extends Controller
             'message' => 'User created successfully.',
             'data' => new UserResource($user),
         ], 201);
+    }
+
+    public function import(ImportUsersRequest $request): JsonResponse
+    {
+        try {
+            $result = $this->userImportService->import($request->file('file'));
+        } catch (\InvalidArgumentException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'data' => null,
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee import processed successfully.',
+            'data' => $result,
+        ]);
     }
 
     public function show(User $user): JsonResponse

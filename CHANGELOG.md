@@ -1,0 +1,393 @@
+# CHANGELOG
+
+## 2026-07-19
+
+### Bulk Employee Import Integration
+
+### Files Modified
+
+- `backend/app/Modules/Auth/Controllers/UserController.php`
+- `backend/app/Modules/Auth/Requests/ImportUsersRequest.php`
+- `backend/app/Modules/Auth/Services/AuthService.php`
+- `backend/app/Modules/Auth/Services/UserImportService.php`
+- `backend/routes/api.php`
+- `frontend/src/pages/UsersPage.tsx`
+- `frontend/src/services/userService.ts`
+- `docs/Business/02_Functional_Requirements.md`
+- `docs/Architecture/13_API_Architecture.md`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Administrators needed a production-ready way to import employee accounts in bulk and let imported employees log in with a generated username plus configured initial password without creating a duplicate authentication system.
+
+### Summary
+
+- Added `POST /api/v1/users/import` behind the existing user creation authorization gate.
+- Added CSV, JSON, and XLSX employee import parsing with per-row imported, skipped, and failed results.
+- Generated imported employee usernames from lowercase last name without spaces plus ID number, such as `marquez1234-5678`.
+- Preserved email login while allowing the existing login field to authenticate by generated employee username.
+- Connected the Users page to the import endpoint with file upload, template downloads, summary counts, and row-level result feedback.
+- Documented the new user-management import capability and API endpoint.
+
+### Impact
+
+- Admins can create multiple employee accounts from a single upload.
+- Duplicate email, duplicate ID number, duplicate generated username, invalid ID format, missing roles, and missing departments are reported per row without blocking valid rows.
+- Imported employees receive the configured temporary initial password `psasarangani2026`.
+- Legacy binary `.xls` files should be saved as `.xlsx`, `.csv`, or `.json` before upload.
+
+## 2026-07-18
+
+### Runtime Fix
+
+- Applied pending backend migration `2026_07_18_000000_add_soft_deletes_to_roles_and_permissions_table` to the local SQLite database.
+- Resolved browser login `500 Internal Server Error` caused by the running database missing `roles.deleted_at` after role soft deletes were added.
+- Verified `POST /api/v1/login` with `admin@example.com` returns `success: true`.
+
+### Files Modified
+
+- `backend/app/Models/User.php`
+- `backend/app/Models/Role.php`
+- `backend/app/Models/Permission.php`
+- `backend/database/factories/UserFactory.php`
+- `backend/database/factories/RoleFactory.php`
+- `backend/database/factories/PermissionFactory.php`
+- `backend/database/migrations/2026_07_18_000000_add_soft_deletes_to_roles_and_permissions_table.php`
+- `frontend/src/types/index.ts`
+- `frontend/src/utils/statusTone.ts`
+- `frontend/src/services/reservationService.ts`
+- `frontend/src/services/borrowingService.ts`
+- `frontend/src/services/inventoryService.ts`
+- `frontend/src/services/maintenanceService.ts`
+- `frontend/src/pages/BorrowingPage.tsx`
+- `frontend/src/pages/MaintenancePage.tsx`
+- `frontend/src/components/AdminDashboard.tsx`
+- `frontend/src/components/StaffDashboard.tsx`
+- `frontend/src/components/EmployeeDashboard.tsx`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Final integration audit found RBAC authorization tests failing, missing model factories, role and permission delete behavior that did not preserve history, and frontend field/status mismatches against current Laravel API responses.
+
+### Summary
+
+- Repaired user permission checks to query permissions through assigned roles.
+- Added missing role and permission factories used by backend feature tests.
+- Added soft deletes for roles and permissions to preserve administrative history.
+- Aligned frontend reservation, borrowing, inventory, and maintenance services with existing backend response fields.
+- Updated borrowing and maintenance status handling so return, complete, cancel, and dashboard filters work with backend values.
+- Added the missing root changelog required by project documentation.
+
+### Impact
+
+- Backend feature tests now pass.
+- Frontend production build now passes.
+- User, role, permission, borrowing, reservation, inventory, and maintenance integration paths are more consistent with the implemented API contract.
+
+### Final Integration Repair
+
+- Connected reservation creation UI to the existing `POST /api/v1/reservations` contract using available backend assets.
+- Replaced dead login controls with real backend-supported password reset behavior and removed unsupported PSA account login UI.
+- Corrected asset borrow/return backend wiring by using the implemented module asset model, adding missing policy actions, and fixing stale notification imports.
+- Made borrow notifications best-effort so mail or queue configuration issues do not block the borrowing workflow.
+- Expanded reservation and borrowing API responses with related employee and asset names used by frontend tables.
+- Allowed operational roles to view all reservations and borrowings while preserving employee self-scope.
+- Fixed dashboard and report user names to use the existing `full_name` accessor instead of a non-existent `name` column.
+- Removed nonfunctional dashboard/top-nav actions and routed dashboard cards through React navigation.
+
+### Files Modified
+
+- `backend/app/Http/Controllers/BorrowController.php`
+- `backend/app/Models/Borrow.php`
+- `backend/app/Modules/Asset/Policies/AssetPolicy.php`
+- `backend/app/Modules/Borrowing/Controllers/BorrowingController.php`
+- `backend/app/Modules/Borrowing/Services/BorrowingService.php`
+- `backend/app/Modules/Dashboard/Services/DashboardService.php`
+- `backend/app/Modules/Report/Controllers/ReportController.php`
+- `backend/app/Modules/Reservation/Controllers/ReservationController.php`
+- `backend/app/Modules/Reservation/Services/ReservationService.php`
+- `backend/app/Notifications/BorrowNotification.php`
+- `frontend/src/components/LoginForm.tsx`
+- `frontend/src/layouts/TopNav.tsx`
+- `frontend/src/pages/AssetPage.tsx`
+- `frontend/src/pages/MaintenancePage.tsx`
+- `frontend/src/pages/ReservationPage.tsx`
+- `frontend/src/services/api.ts`
+- `frontend/src/services/assetService.ts`
+- `frontend/src/services/reservationService.ts`
+
+### Reason
+
+Final production-readiness audit found functional gaps where visible UI actions were placeholders, operational pages received incomplete related data, and asset borrowing routes referenced stale model namespaces.
+
+### Summary
+
+- Repaired existing workflows instead of redesigning the application.
+- Preserved the current Laravel module and React page architecture.
+- Replaced mock fallback behavior with real API error surfacing unless `VITE_USE_MOCK=true`.
+- Verified frontend and backend after repairs.
+
+### Impact
+
+- Login, forgot password, reservations, borrowing, asset details/editing, dashboard cards, and reporting names are more production-ready.
+- Frontend production build passes.
+- Backend test suite passes.
+
+### Inventory-Asset Integration Repair
+
+- Added an `asset_id` link from inventory items to assets.
+- Backfilled existing inventory items into linked asset records so previously added inventory now appears under Assets.
+- Updated inventory creation so new items are automatically shown in Assets by default.
+- Added frontend inventory visibility for linked asset numbers and a `View Asset` action.
+- Kept Inventory as the stock-management module while Assets remains the trackable asset registry.
+
+### Files Modified
+
+- `backend/app/Modules/Inventory/Controllers/InventoryController.php`
+- `backend/app/Modules/Inventory/Models/InventoryItem.php`
+- `backend/app/Modules/Inventory/Requests/StoreInventoryItemRequest.php`
+- `backend/app/Modules/Inventory/Services/InventoryService.php`
+- `backend/database/migrations/2026_07_18_203300_link_inventory_items_to_assets.php`
+- `frontend/src/pages/InventoryPage.tsx`
+- `frontend/src/services/inventoryService.ts`
+- `frontend/src/types/index.ts`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Users expected inventory additions to be visible in Assets, but the implemented backend stored inventory and assets in separate tables with no bridge or UI explanation.
+
+### Summary
+
+- Preserved the existing two-module architecture.
+- Added a production bridge so inventory records can create and maintain a linked asset record.
+- Applied the migration locally and verified existing inventory rows are linked to asset numbers.
+
+### Impact
+
+- Newly added inventory items appear in Assets by default.
+- Existing inventory rows now have linked assets.
+- Frontend production build passes.
+- Backend test suite passes.
+
+### Asset Role Action Restriction
+
+- Removed asset Edit and Delete actions from non-admin frontend views.
+- Restricted backend asset create, update, delete, archive, and transfer authorization to Super Administrator and System Administrator roles.
+- Preserved authenticated asset viewing for employees and staff.
+- Preserved borrow and return authorization for authenticated users.
+
+### Files Modified
+
+- `backend/app/Modules/Asset/Policies/AssetPolicy.php`
+- `frontend/src/pages/AssetPage.tsx`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Employees should not edit asset records, and staff should focus on scanning/authorizing borrowing rather than maintaining asset master data.
+
+### Summary
+
+- Enforced the role restriction in both the React UI and Laravel policy.
+- Verified the frontend production build and backend test suite.
+
+### Impact
+
+- Employee and staff asset pages no longer show Edit/Delete controls.
+- Direct non-admin API attempts to modify asset master data are rejected by policy.
+
+### Borrowing, Reservation Receipt, and Staff Authorization Flow
+
+- Unified direct asset borrowing with the existing `borrowings` module so employee borrow actions now appear in admin/staff Borrowings.
+- Added borrowing receipt codes and receipt payloads to API responses.
+- Added reservation receipt codes and receipt payloads to API responses.
+- Added asset-page reservation action for available assets.
+- Added printable borrow/reservation receipt modal with asset details, employee details, dates, receipt code, and QR image.
+- Reservation creation now marks selected assets as `RESERVED`.
+- Reservation approval now creates real borrowing records and marks approved assets as `BORROWED`.
+- Staff QR scan now accepts reservation receipt payloads and approves the reservation; borrowing receipts route staff to Borrowings.
+- Direct asset return now updates the canonical `borrowings` table instead of the legacy `borrows` table.
+
+### Files Modified
+
+- `backend/app/Http/Controllers/BorrowController.php`
+- `backend/app/Modules/Borrowing/Controllers/BorrowingController.php`
+- `backend/app/Modules/Reservation/Controllers/ReservationController.php`
+- `backend/app/Modules/Reservation/Services/ReservationService.php`
+- `backend/app/Notifications/BorrowNotification.php`
+- `frontend/src/components/StaffDashboard.tsx`
+- `frontend/src/pages/AssetPage.tsx`
+- `frontend/src/services/assetService.ts`
+- `frontend/src/services/borrowingService.ts`
+- `frontend/src/services/reservationService.ts`
+- `frontend/src/types/index.ts`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Employee asset borrowing previously wrote to the legacy `borrows` table while admin/staff Borrowings read from the `borrowings` module, causing actions to be disconnected from admin operations and receipts.
+
+### Summary
+
+- Repaired the existing borrowing/reservation workflow around the implemented `borrowings` module.
+- Added receipt references and QR-based staff processing without redesigning the UI.
+- Verified the frontend production build and backend test suite.
+
+### Impact
+
+- Employee borrow actions immediately mark assets as borrowed and appear in admin/staff Borrowings.
+- Employee reservations generate receipts and become borrowings when staff/admin approve them.
+- Staff can scan/type receipt payloads for reservation approval and borrowing lookup.
+
+## 2026-07-19
+
+### Persistent Receipts and Authorization Metadata
+
+- Added stored authorization metadata for borrowings and reservations.
+- Added reusable receipt modal with local QR-style placeholder/reference block.
+- Added persistent Receipt buttons to Borrowings and Reservations pages.
+- Updated asset borrow/reserve receipt popup to use the same reusable receipt component.
+- Receipts now include asset/item details, asset number, borrower, timestamp, schedule, status, remarks, authorized by, and authorized timestamp.
+- Applied the new authorization metadata migration locally.
+
+### Files Modified
+
+- `backend/app/Http/Controllers/BorrowController.php`
+- `backend/app/Modules/Borrowing/Controllers/BorrowingController.php`
+- `backend/app/Modules/Borrowing/Models/Borrowing.php`
+- `backend/app/Modules/Borrowing/Services/BorrowingService.php`
+- `backend/app/Modules/Reservation/Controllers/ReservationController.php`
+- `backend/app/Modules/Reservation/Models/Reservation.php`
+- `backend/app/Modules/Reservation/Services/ReservationService.php`
+- `backend/database/migrations/2026_07_19_000000_add_authorization_metadata_to_borrowings_and_reservations.php`
+- `frontend/src/components/ReceiptModal.tsx`
+- `frontend/src/pages/AssetPage.tsx`
+- `frontend/src/pages/BorrowingPage.tsx`
+- `frontend/src/pages/ReservationPage.tsx`
+- `frontend/src/services/borrowingService.ts`
+- `frontend/src/services/reservationService.ts`
+- `frontend/src/types/index.ts`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Employees needed a way to retrieve receipts after closing the initial popup, and receipts needed to show who borrowed and who authorized the transaction.
+
+### Summary
+
+- Made receipts recoverable from transaction history pages.
+- Added real backend authorization metadata instead of frontend-only labels.
+- Replaced online-only QR dependency with an always-visible local placeholder/reference block.
+- Verified migration, frontend production build, and backend test suite.
+
+### Impact
+
+- Employees can reopen and print/download receipts from Borrowings and Reservations.
+- Staff/admin can see receipt authorization details.
+- Receipt UI remains available even without internet access.
+
+### Receipt Print Support
+
+- Added receipt-only print styling so printing a receipt no longer prints the full application shell.
+- Renamed the modal action to `Print Receipt`.
+- Kept print output focused on the receipt content, QR-style reference block, asset details, borrower, timestamps, authorization data, and remarks.
+
+### Files Modified
+
+- `frontend/src/components/ReceiptModal.tsx`
+- `frontend/src/index.css`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Receipt printing needed to produce a usable document instead of printing the entire browser page.
+
+### Summary
+
+- Added `receipt-print-area` targeting to the receipt component.
+- Added print media CSS that hides non-receipt UI and formats the receipt for A4 output.
+- Verified frontend production build.
+
+### Impact
+
+- Users can open any receipt and print/save it cleanly from the browser print dialog.
+
+### Reservation Approval Role Restriction
+
+- Removed the reservation `Approve` action from employee-facing reservation views.
+- Restricted reservation approval API access to administrative and staff roles.
+- Employees can still create reservations and view/print receipts.
+
+### Files Modified
+
+- `backend/app/Modules/Reservation/Controllers/ReservationController.php`
+- `frontend/src/pages/ReservationPage.tsx`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Reservation approval is an authorization function and should not be available to employees.
+
+### Summary
+
+- Added backend role guard for reservation approval.
+- Added frontend role guard so only admin/staff users see the approval button.
+- Verified frontend production build and backend test suite.
+
+### Impact
+
+- Employees cannot approve reservations from the UI or by direct API call.
+
+### Permanent PSA Asset QR Identifiers
+
+- Added a permanent organization-owned PSA QR identifier type separate from manufacturer QR/barcode and other identifiers.
+- Automatically generates a stable `PSA-ASSET-000001` style identifier when assets are created.
+- Backfilled existing assets with PSA QR identifiers.
+- Exposed PSA QR identifier and payload fields in asset API responses.
+- Added `PSA QR` action on the Assets page to view and print an official PSA asset label.
+- Label distinguishes PSA-owned QR from manufacturer/supplier identifiers.
+- Kept receipt QR/reference separate from permanent asset QR identifiers.
+
+### Files Modified
+
+- `backend/app/Modules/Asset/Enums/IdentifierType.php`
+- `backend/app/Modules/Asset/Resources/AssetResource.php`
+- `backend/app/Modules/Asset/Services/AssetService.php`
+- `backend/app/Modules/Inventory/Services/InventoryService.php`
+- `backend/database/migrations/2026_07_19_131500_add_permanent_psa_qr_identifiers.php`
+- `frontend/src/index.css`
+- `frontend/src/pages/AssetPage.tsx`
+- `frontend/src/services/assetService.ts`
+- `frontend/src/types/index.ts`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+The system needed a permanent PSA-owned asset QR that identifies the physical organization asset throughout its lifecycle, independent from temporary receipt references and manufacturer identifiers.
+
+### Summary
+
+- Extended the existing AssetIdentifier system instead of creating a parallel QR table.
+- Added PSA QR, manufacturer QR, manufacturer barcode, and property tag identifier types.
+- Ensured new assets and inventory-linked assets receive a permanent PSA QR identifier.
+- Added frontend label viewing and printing for the PSA QR.
+- Applied the migration locally and verified existing assets received PSA QR identifiers.
+- Verified frontend production build and backend test suite.
+
+### Impact
+
+- Any asset can now carry multiple identifiers while resolving to one physical asset.
+- PSA QR remains stable across borrowing, return, transfer, and maintenance workflows.
+- Staff can scan PSA QR, manufacturer QR/barcode, serial number, property tag, or asset tag when those identifiers are stored.

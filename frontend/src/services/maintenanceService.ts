@@ -1,40 +1,75 @@
-import { withMockFallback } from '@/services/api'
-import type { MaintenanceRequest, Paginated } from '@/types'
+import { api, unwrapData } from '@/services/api'
 
-const mockRequests: MaintenanceRequest[] = [
-  {
-    id: 1,
-    asset_name: 'Canon Printer',
-    description: 'Paper jam and ink leak',
-    status: 'ONGOING',
-    scheduled_at: '2026-07-14',
-  },
-  {
-    id: 2,
-    asset_name: 'UPS Unit',
-    description: 'Battery replacement',
-    status: 'PENDING',
-    scheduled_at: '2026-07-18',
-  },
-  {
-    id: 3,
-    asset_name: 'Desktop PC',
-    description: 'Preventive cleaning',
-    status: 'COMPLETED',
-    scheduled_at: '2026-07-05',
-  },
-]
+import type { ApiResponse, MaintenanceRequest, Paginated } from '@/types'
+
+
+
+export interface CreateMaintenancePayload {
+  asset_id: number
+  user_id?: number
+  type: 'corrective' | 'preventive'
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+  scheduled_date: string
+  description?: string
+  notes?: string
+  cost?: number
+}
+
+export interface UpdateMaintenancePayload {
+  asset_id?: number
+  user_id?: number
+  type?: 'corrective' | 'preventive'
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+  scheduled_date?: string
+  completed_date?: string
+  description?: string
+  notes?: string
+  cost?: number
+}
+
+interface BackendMaintenanceRequest extends MaintenanceRequest {
+  scheduled_date: string
+}
+
+function mapMaintenanceRequest(request: BackendMaintenanceRequest): MaintenanceRequest {
+  return {
+    ...request,
+    scheduled_at: request.scheduled_date,
+  }
+}
 
 export const maintenanceService = {
   async list(): Promise<Paginated<MaintenanceRequest>> {
-    return withMockFallback(
-      async () => {
-        throw new Error('Maintenance API not available')
+    const { data } = await api.get<ApiResponse<BackendMaintenanceRequest[]>>('/maintenances')
+    const items = unwrapData(data)
+
+    return {
+      items: Array.isArray(items) ? items.map(mapMaintenanceRequest) : [],
+      meta: {
+        current_page: 1,
+        per_page: Array.isArray(items) ? items.length : 0,
+        total: Array.isArray(items) ? items.length : 0,
+        last_page: 1,
       },
-      async () => ({
-        items: mockRequests,
-        meta: { current_page: 1, per_page: 10, total: mockRequests.length, last_page: 1 },
-      }),
-    )
+    }
+  },
+
+  async create(payload: CreateMaintenancePayload): Promise<MaintenanceRequest> {
+    const { data } = await api.post<ApiResponse<BackendMaintenanceRequest>>('/maintenances', payload)
+    return mapMaintenanceRequest(unwrapData(data))
+  },
+
+  async update(requestId: number, payload: UpdateMaintenancePayload): Promise<MaintenanceRequest> {
+    const { data } = await api.put<ApiResponse<BackendMaintenanceRequest>>(`/maintenances/${requestId}`, payload)
+    return mapMaintenanceRequest(unwrapData(data))
+  },
+
+  async delete(requestId: number): Promise<void> {
+    await api.delete(`/maintenances/${requestId}`)
+  },
+
+  async complete(requestId: number): Promise<MaintenanceRequest> {
+    const { data } = await api.post<ApiResponse<BackendMaintenanceRequest>>(`/maintenances/${requestId}/complete`)
+    return mapMaintenanceRequest(unwrapData(data))
   },
 }

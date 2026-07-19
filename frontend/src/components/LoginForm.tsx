@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Eye, EyeOff, Lock, Shield, User } from 'lucide-react'
+import { Eye, EyeOff, Lock, User } from 'lucide-react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
+import { authService } from '@/services/authService'
 
 import Input from './Input'
 
@@ -36,9 +37,10 @@ export default function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [remember, setRemember] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [forgotLoading, setForgotLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -47,6 +49,7 @@ export default function LoginForm() {
 
     setLoading(true)
     setErrorMessage('')
+    setSuccessMessage('')
 
     try {
       await login({ email, password })
@@ -55,6 +58,26 @@ export default function LoginForm() {
       setErrorMessage(describeError(error))
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleForgotPassword() {
+    setErrorMessage('')
+    setSuccessMessage('')
+
+    if (!email) {
+      setErrorMessage('Enter your email address first, then request a reset link.')
+      return
+    }
+
+    setForgotLoading(true)
+    try {
+      await authService.forgotPassword({ email })
+      setSuccessMessage('Password reset instructions were sent if the account exists.')
+    } catch (error) {
+      setErrorMessage(describeError(error))
+    } finally {
+      setForgotLoading(false)
     }
   }
 
@@ -90,27 +113,22 @@ export default function LoginForm() {
         }
       />
 
-      <div className="flex items-center justify-between pt-[8px]">
-        <label className="flex items-center gap-[12px] text-[15px] text-slate-600">
-          <input
-            type="checkbox"
-            checked={remember}
-            onChange={(e) => setRemember(e.target.checked)}
-            className="h-[18px] w-[18px] accent-[#003DA5]"
-          />
-          Remember me
-        </label>
-
+      <div className="flex justify-end pt-[8px]">
         <button
           type="button"
+          disabled={forgotLoading}
+          onClick={handleForgotPassword}
           className="text-[15px] font-medium leading-none text-[#003DA5] transition-colors duration-300 hover:text-[#0057D9] hover:underline"
         >
-          Forgot Password?
+          {forgotLoading ? 'Sending reset link...' : 'Forgot Password?'}
         </button>
       </div>
 
       {errorMessage ? (
         <p className="text-sm font-medium text-red-600">{errorMessage}</p>
+      ) : null}
+      {successMessage ? (
+        <p className="text-sm font-medium text-emerald-700">{successMessage}</p>
       ) : null}
 
       <button
@@ -119,18 +137,6 @@ export default function LoginForm() {
         className="primary-button login-shadow sign-in-button h-[64px] w-full rounded-[18px] text-[16px] font-bold tracking-[5px] duration-300 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? 'SIGNING IN...' : 'SIGN IN'}
-      </button>
-
-      <div className="card-divider">
-        <span className="text-[13px] font-medium tracking-[0.22em] text-slate-400">OR</span>
-      </div>
-
-      <button
-        type="button"
-        className="secondary-button flex h-[64px] w-full items-center justify-center gap-[12px] rounded-[18px] text-[14px] font-semibold tracking-[0.06em] duration-300"
-      >
-        <Shield size={20} strokeWidth={2} className="shrink-0 text-[#003DA5]" />
-        LOGIN WITH PSA ACCOUNT
       </button>
     </form>
   )

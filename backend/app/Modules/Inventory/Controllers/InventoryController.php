@@ -16,64 +16,50 @@ class InventoryController extends Controller
 
     public function __construct(private readonly InventoryService $inventoryService) {}
 
-    public function index(Request $request): JsonResponse
+    private function transform(InventoryItem $item): array
     {
-        $items = $this->inventoryService->list($request->all());
-
-        return $this->success($items->map(fn (InventoryItem $item) => [
+        return [
             'id' => $item->id,
+            'asset_id' => $item->asset_id,
+            'asset_number' => $item->asset?->asset_number,
             'name' => $item->name,
             'sku' => $item->sku,
             'quantity' => $item->quantity,
             'unit' => $item->unit,
             'reorder_level' => $item->reorder_level,
             'remarks' => $item->remarks,
-        ])->values(), 'Inventory items retrieved successfully.');
+        ];
+    }
+
+    public function index(Request $request): JsonResponse
+    {
+        $items = $this->inventoryService->list($request->all());
+
+        return $this->success(
+            $items->map(fn (InventoryItem $item) => $this->transform($item))->values(),
+            'Inventory items retrieved successfully.',
+        );
     }
 
     public function store(StoreInventoryItemRequest $request): JsonResponse
     {
         $item = $this->inventoryService->create($request->validated());
 
-        return $this->success([
-            'id' => $item->id,
-            'name' => $item->name,
-            'sku' => $item->sku,
-            'quantity' => $item->quantity,
-            'unit' => $item->unit,
-            'reorder_level' => $item->reorder_level,
-            'remarks' => $item->remarks,
-        ], 'Inventory item created successfully.', 201);
+        return $this->success($this->transform($item), 'Inventory item created successfully.', 201);
     }
 
     public function stockIn(InventoryItem $item, Request $request): JsonResponse
     {
         $item = $this->inventoryService->stockIn($item, (int) $request->input('quantity', 0));
 
-        return $this->success([
-            'id' => $item->id,
-            'name' => $item->name,
-            'sku' => $item->sku,
-            'quantity' => $item->quantity,
-            'unit' => $item->unit,
-            'reorder_level' => $item->reorder_level,
-            'remarks' => $item->remarks,
-        ], 'Stock in completed successfully.');
+        return $this->success($this->transform($item), 'Stock in completed successfully.');
     }
 
     public function update(InventoryItem $item, StoreInventoryItemRequest $request): JsonResponse
     {
         $item = $this->inventoryService->update($item, $request->validated());
 
-        return $this->success([
-            'id' => $item->id,
-            'name' => $item->name,
-            'sku' => $item->sku,
-            'quantity' => $item->quantity,
-            'unit' => $item->unit,
-            'reorder_level' => $item->reorder_level,
-            'remarks' => $item->remarks,
-        ], 'Inventory item updated successfully.');
+        return $this->success($this->transform($item), 'Inventory item updated successfully.');
     }
 
     public function destroy(InventoryItem $item): JsonResponse
@@ -87,14 +73,6 @@ class InventoryController extends Controller
     {
         $item = $this->inventoryService->stockOut($item, (int) $request->input('quantity', 0));
 
-        return $this->success([
-            'id' => $item->id,
-            'name' => $item->name,
-            'sku' => $item->sku,
-            'quantity' => $item->quantity,
-            'unit' => $item->unit,
-            'reorder_level' => $item->reorder_level,
-            'remarks' => $item->remarks,
-        ], 'Stock out completed successfully.');
+        return $this->success($this->transform($item), 'Stock out completed successfully.');
     }
 }

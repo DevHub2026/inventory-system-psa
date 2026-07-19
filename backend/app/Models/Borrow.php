@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Modules\Asset\Models\Asset;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;

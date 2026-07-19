@@ -1394,6 +1394,51 @@ p {
     transform: translateY(0);
 }
 
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+
+    .receipt-print-area,
+    .receipt-print-area * {
+        visibility: visible !important;
+    }
+
+    .receipt-print-area {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100% !important;
+        min-height: 100vh !important;
+        padding: 32px !important;
+        background: white !important;
+        color: #111827 !important;
+    }
+
+    .receipt-print-area button {
+        display: none !important;
+    }
+
+    .asset-qr-print-area,
+    .asset-qr-print-area * {
+        visibility: visible !important;
+    }
+
+    .asset-qr-print-area {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100% !important;
+        min-height: 100vh !important;
+        padding: 32px !important;
+        background: white !important;
+        color: #111827 !important;
+    }
+
+    @page {
+        size: A4;
+        margin: 16mm;
+    }
+}
+
 /* Card Divider */
 .card-divider {
     display: flex;

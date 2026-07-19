@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type { ApiResponse } from '@/types'
 
-/** Set VITE_USE_MOCK=true to force mocks. Default: try real API, then mock. */
+/** Set VITE_USE_MOCK=true to force mocks. Default: use the real API and surface errors. */
 const FORCE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 export const api = axios.create({
@@ -32,11 +32,7 @@ export async function withMockFallback<T>(
     return mock()
   }
 
-  try {
-    return await request()
-  } catch {
-    return mock()
-  }
+  return request()
 }
 
 export function unwrapData<T>(payload: ApiResponse<T>): T {

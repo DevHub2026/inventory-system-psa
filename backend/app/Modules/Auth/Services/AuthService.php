@@ -11,7 +11,9 @@ class AuthService
 {
     public function login(string $email, string $password): User
     {
-        if (! Auth::attempt(['email' => $email, 'password' => $password])) {
+        $field = filter_var($email, FILTER_VALIDATE_EMAIL) ? 'email' : 'employee_number';
+
+        if (! Auth::attempt([$field => $email, 'password' => $password])) {
             throw new AuthenticationException('Invalid credentials');
         }
 

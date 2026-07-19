@@ -1,43 +1,81 @@
-import { withMockFallback } from '@/services/api'
-import type { Borrowing, Paginated } from '@/types'
+import { api, unwrapData } from '@/services/api'
 
-const mockBorrowings: Borrowing[] = [
-  {
-    id: 1,
-    asset_name: 'Dell Laptop',
-    employee_name: 'Juan Dela Cruz',
-    status: 'ACTIVE',
-    borrowed_at: '2026-07-10',
-    due_at: '2026-07-17',
-  },
-  {
-    id: 2,
-    asset_name: 'Wireless Speaker',
-    employee_name: 'Maria Santos',
-    status: 'OVERDUE',
-    borrowed_at: '2026-07-01',
-    due_at: '2026-07-08',
-  },
-  {
-    id: 3,
-    asset_name: 'Epson Projector',
-    employee_name: 'Pedro Lopez',
-    status: 'RETURNED',
-    borrowed_at: '2026-06-20',
-    due_at: '2026-06-25',
-  },
-]
+import type { ApiResponse, Borrowing, Paginated } from '@/types'
+
+
+
+export interface CreateBorrowingPayload {
+  asset_id: number
+  borrow_date: string
+  due_date: string
+  remarks?: string
+}
+
+interface BackendBorrowing {
+  id: number
+  user_id: number
+  asset_id: number
+  status: Borrowing['status']
+  borrow_date: string
+  due_date: string
+  remarks: string | null
+  created_at?: string
+  authorized_by?: number | null
+  authorized_by_name?: string | null
+  authorized_at?: string | null
+  asset_name?: string | null
+  asset_number?: string | null
+  employee_name?: string | null
+  receipt_code?: string
+  receipt_payload?: string
+}
+
+function mapBorrowing(borrowing: BackendBorrowing): Borrowing {
+  return {
+    id: borrowing.id,
+    user_id: borrowing.user_id,
+    asset_id: borrowing.asset_id,
+    status: borrowing.status,
+    borrow_date: borrowing.borrow_date,
+    due_date: borrowing.due_date,
+    borrowed_at: borrowing.borrow_date,
+    due_at: borrowing.due_date,
+    remarks: borrowing.remarks,
+    created_at: borrowing.created_at,
+    authorized_by: borrowing.authorized_by,
+    authorized_by_name: borrowing.authorized_by_name,
+    authorized_at: borrowing.authorized_at,
+    asset_name: borrowing.asset_name || `Asset #${borrowing.asset_id}`,
+    asset_number: borrowing.asset_number ?? undefined,
+    employee_name: borrowing.employee_name || `User #${borrowing.user_id}`,
+    receipt_code: borrowing.receipt_code,
+    receipt_payload: borrowing.receipt_payload,
+  }
+}
 
 export const borrowingService = {
   async list(): Promise<Paginated<Borrowing>> {
-    return withMockFallback(
-      async () => {
-        throw new Error('Borrowings API not available')
+    const { data } = await api.get<ApiResponse<BackendBorrowing[]>>('/borrowings')
+    const items = unwrapData(data)
+
+    return {
+      items: Array.isArray(items) ? items.map(mapBorrowing) : [],
+      meta: {
+        current_page: 1,
+        per_page: Array.isArray(items) ? items.length : 0,
+        total: Array.isArray(items) ? items.length : 0,
+        last_page: 1,
       },
-      async () => ({
-        items: mockBorrowings,
-        meta: { current_page: 1, per_page: 10, total: mockBorrowings.length, last_page: 1 },
-      }),
-    )
+    }
+  },
+
+  async create(payload: CreateBorrowingPayload): Promise<Borrowing> {
+    const { data } = await api.post<ApiResponse<BackendBorrowing>>('/borrowings', payload)
+    return mapBorrowing(unwrapData(data))
+  },
+
+  async returnAsset(borrowingId: number, notes?: string): Promise<Borrowing> {
+    const { data } = await api.post<ApiResponse<BackendBorrowing>>(`/borrowings/${borrowingId}/return`, { remarks: notes })
+    return mapBorrowing(unwrapData(data))
   },
 }

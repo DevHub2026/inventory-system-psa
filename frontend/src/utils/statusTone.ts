@@ -33,6 +33,7 @@ export function reservationStatusTone(status: ReservationStatus): BadgeTone {
 
 export function borrowingStatusTone(status: BorrowingStatus): BadgeTone {
   switch (status) {
+    case 'BORROWED':
     case 'ACTIVE':
       return 'blue'
     case 'RETURNED':
@@ -46,11 +47,11 @@ export function borrowingStatusTone(status: BorrowingStatus): BadgeTone {
 
 export function maintenanceStatusTone(status: MaintenanceStatus): BadgeTone {
   switch (status) {
-    case 'COMPLETED':
+    case 'completed':
       return 'green'
-    case 'ONGOING':
+    case 'in_progress':
       return 'blue'
-    case 'CANCELLED':
+    case 'cancelled':
       return 'red'
     default:
       return 'yellow'

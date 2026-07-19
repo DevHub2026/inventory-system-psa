@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Card, EmptyState, Spinner, Table, type Column } from '@/components/ui'
+import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
 import { borrowingService } from '@/services/borrowingService'
 import type { Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
@@ -7,14 +8,36 @@ import { borrowingStatusTone } from '@/utils/statusTone'
 export function BorrowingPage() {
   const [rows, setRows] = useState<Borrowing[]>([])
   const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [receipt, setReceipt] = useState<ReceiptRecord | null>(null)
+
+  const loadBorrowings = async () => {
+    setLoading(true)
+    try {
+      const result = await borrowingService.list()
+      setRows(result.items)
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to load borrowings.' })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    void borrowingService
-      .list()
-      .then((result) => setRows(result.items))
-      .finally(() => setLoading(false))
+    void loadBorrowings()
   }, [])
+
+  const handleReturn = async (borrowingId: number) => {
+    if (!confirm('Are you sure you want to return this asset?')) return
+
+    try {
+      await borrowingService.returnAsset(borrowingId)
+      setMessage({ type: 'success', text: 'Asset returned successfully.' })
+      await loadBorrowings()
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to return asset.' })
+    }
+  }
 
   const columns: Column<Borrowing>[] = [
     { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
@@ -31,15 +54,36 @@ export function BorrowingPage() {
       header: 'Actions',
       render: (row) => (
         <div className="flex flex-wrap gap-1">
-          <Button size="sm" variant="primary" onClick={() => setMessage('Borrow (placeholder)')}>
-            Borrow
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() =>
+              setReceipt({
+                type: 'Borrowing',
+                code: row.receipt_code ?? `PSA-BOR-${row.id}`,
+                payload: row.receipt_payload ?? `PSA-BOR-${row.id}|${row.asset_number ?? row.asset_id}|${row.user_id}`,
+                employee: row.employee_name,
+                assetName: row.asset_name,
+                assetNumber: row.asset_number,
+                timestamp: row.created_at,
+                startDate: row.borrow_date,
+                endDate: row.due_date,
+                status: row.status,
+                authorizedBy: row.authorized_by_name,
+                authorizedAt: row.authorized_at,
+                remarks: row.remarks,
+              })
+            }
+          >
+            Receipt
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => setMessage(`Return #${row.id} (placeholder)`)}>
-            Return
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setMessage('History (placeholder)')}>
-            History
-          </Button>
+          {row.status === 'BORROWED' || row.status === 'ACTIVE' || row.status === 'OVERDUE' ? (
+            <Button size="sm" variant="secondary" onClick={() => handleReturn(row.id)}>
+              Return
+            </Button>
+          ) : (
+            <span className="text-sm text-gray-400">No actions</span>
+          )}
         </div>
       ),
     },
@@ -49,11 +93,11 @@ export function BorrowingPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-lg font-semibold text-gray-900">Borrowings</h1>
-        <p className="text-sm text-gray-500">Mock data until Borrowing API is ready.</p>
+        <p className="text-sm text-gray-500">Manage asset borrowings</p>
       </div>
       {message && (
-        <Alert tone="info" onClose={() => setMessage(null)}>
-          {message}
+        <Alert tone={message.type} onClose={() => setMessage(null)}>
+          {message.text}
         </Alert>
       )}
       <Card>
@@ -68,6 +112,7 @@ export function BorrowingPage() {
           />
         )}
       </Card>
+      <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
     </div>
   )
 }

@@ -7,22 +7,26 @@ import {
   LayoutDashboard,
   Package,
   Settings,
+  Shield,
   Users,
   Wrench,
   X,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import { useAuth } from '@/hooks/useAuth'
+import { isAdmin, isStaff, isEmployee } from '@/utils/roleHelpers'
 
-const links = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/assets', label: 'Assets', icon: Boxes },
-  { to: '/reservations', label: 'Reservations', icon: ClipboardList },
-  { to: '/borrowings', label: 'Borrowings', icon: HandCoins },
-  { to: '/inventory', label: 'Inventory', icon: Package },
-  { to: '/maintenance', label: 'Maintenance', icon: Wrench },
-  { to: '/reports', label: 'Reports', icon: FileBarChart },
-  { to: '/users', label: 'Users', icon: Users },
-  { to: '/settings', label: 'Settings', icon: Settings },
+const allLinks = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'staff', 'employee'] },
+  { to: '/assets', label: 'Assets', icon: Boxes, roles: ['admin', 'staff', 'employee'] },
+  { to: '/reservations', label: 'Reservations', icon: ClipboardList, roles: ['admin', 'staff', 'employee'] },
+  { to: '/borrowings', label: 'Borrowings', icon: HandCoins, roles: ['admin', 'staff', 'employee'] },
+  { to: '/inventory', label: 'Inventory', icon: Package, roles: ['admin', 'staff'] },
+  { to: '/maintenance', label: 'Maintenance', icon: Wrench, roles: ['admin', 'staff'] },
+  { to: '/reports', label: 'Reports', icon: FileBarChart, roles: ['admin', 'staff'] },
+  { to: '/users', label: 'Users', icon: Users, roles: ['admin'] },
+  { to: '/roles', label: 'Roles', icon: Shield, roles: ['admin'] },
+  { to: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'staff', 'employee'] },
 ]
 
 interface SidebarProps {
@@ -31,6 +35,24 @@ interface SidebarProps {
 }
 
 export function Sidebar({ open, onClose }: SidebarProps) {
+  const { user } = useAuth()
+
+  const getVisibleLinks = () => {
+    if (isAdmin(user)) {
+      return allLinks
+    }
+    if (isStaff(user)) {
+      return allLinks.filter((link) => link.roles.includes('staff'))
+    }
+    if (isEmployee(user)) {
+      return allLinks.filter((link) => link.roles.includes('employee'))
+    }
+    // Fallback for users without roles
+    return allLinks.filter((link) => link.roles.includes('employee'))
+  }
+
+  const visibleLinks = getVisibleLinks()
+
   return (
     <>
       {open && (
@@ -56,7 +78,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {links.map((link) => {
+          {visibleLinks.map((link) => {
             const Icon = link.icon
             return (
               <NavLink

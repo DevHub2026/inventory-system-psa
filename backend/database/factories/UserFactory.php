@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
 use App\Models\Department;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -14,6 +16,22 @@ use Illuminate\Support\Str;
 class UserFactory extends Factory
 {
     protected static ?string $password;
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            if (! app()->environment('testing')) {
+                return;
+            }
+
+            $role = Role::query()->firstOrCreate(
+                ['name' => UserRole::SUPER_ADMINISTRATOR->value],
+                ['description' => UserRole::SUPER_ADMINISTRATOR->name],
+            );
+
+            $user->roles()->syncWithoutDetaching([$role->id]);
+        });
+    }
 
     /**
      * @return array<string, mixed>

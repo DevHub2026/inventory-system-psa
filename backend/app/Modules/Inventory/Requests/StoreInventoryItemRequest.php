@@ -20,6 +20,7 @@ class StoreInventoryItemRequest extends FormRequest
             'unit' => ['nullable', 'string', 'max:50'],
             'reorder_level' => ['nullable', 'integer', 'min:0'],
             'remarks' => ['nullable', 'string'],
+            'track_as_asset' => ['nullable', 'boolean'],
         ];
     }
 }

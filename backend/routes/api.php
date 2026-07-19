@@ -23,6 +23,7 @@ Route::prefix('v1')->group(function (): void {
         });
 
         Route::middleware('can:create,App\Models\User')->group(function (): void {
+            Route::post('/users/import', [UserController::class, 'import']);
             Route::post('/users', [UserController::class, 'store']);
         });
 
@@ -69,4 +70,3 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/assets/{asset}/return', [BorrowController::class, 'return']);
     });
 });
-

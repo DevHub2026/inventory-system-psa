@@ -40,7 +40,7 @@ class ReportController extends Controller
         return $this->success($report->map(fn ($borrowing) => [
             'id' => $borrowing->id,
             'asset_name' => $borrowing->asset->name ?? 'N/A',
-            'borrower' => $borrowing->user->name ?? 'N/A',
+            'borrower' => ($borrowing->user?->full_name ?: $borrowing->user?->email) ?? 'N/A',
             'borrow_date' => $borrowing->borrow_date?->format('Y-m-d'),
             'due_date' => $borrowing->due_date?->format('Y-m-d'),
             'status' => $borrowing->status,
@@ -54,7 +54,7 @@ class ReportController extends Controller
 
         return $this->success($report->map(fn ($reservation) => [
             'id' => $reservation->id,
-            'user' => $reservation->user->name ?? 'N/A',
+            'user' => ($reservation->user?->full_name ?: $reservation->user?->email) ?? 'N/A',
             'status' => $reservation->status,
             'start_date' => $reservation->start_date?->format('Y-m-d'),
             'end_date' => $reservation->end_date?->format('Y-m-d'),
@@ -85,7 +85,7 @@ class ReportController extends Controller
         return $this->success($report->map(fn ($borrowing) => [
             'id' => $borrowing->id,
             'asset_name' => $borrowing->asset->name ?? 'N/A',
-            'borrower' => $borrowing->user->name ?? 'N/A',
+            'borrower' => ($borrowing->user?->full_name ?: $borrowing->user?->email) ?? 'N/A',
             'due_date' => $borrowing->due_date?->format('Y-m-d'),
             'days_overdue' => abs(now()->diffInDays($borrowing->due_date)),
         ])->values(), 'Overdue items report generated successfully.');
@@ -111,7 +111,7 @@ class ReportController extends Controller
 
         return $this->success($report->map(fn ($borrowing) => [
             'id' => $borrowing->id,
-            'user' => $borrowing->user->name ?? 'N/A',
+            'user' => ($borrowing->user?->full_name ?: $borrowing->user?->email) ?? 'N/A',
             'asset_name' => $borrowing->asset->name ?? 'N/A',
             'action' => $borrowing->status === 'BORROWED' ? 'Borrowed' : 'Returned',
             'date' => $borrowing->borrow_date?->format('Y-m-d'),

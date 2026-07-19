@@ -2,6 +2,7 @@
 
 namespace App\Modules\Borrowing\Services;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\Borrowing\Models\Borrowing;
@@ -13,7 +14,8 @@ class BorrowingService
     public function list(User $user): Collection
     {
         return Borrowing::query()
-            ->where('user_id', $user->id)
+            ->with(['user', 'asset', 'authorizer'])
+            ->when(! $this->canViewAllBorrowings($user), fn ($query) => $query->where('user_id', $user->id))
             ->orderByDesc('created_at')
             ->get();
     }
@@ -30,11 +32,13 @@ class BorrowingService
                 'due_date' => $data['due_date'],
                 'status' => 'BORROWED',
                 'remarks' => $data['remarks'] ?? null,
+                'authorized_by' => $user->id,
+                'authorized_at' => now(),
             ]);
 
             $asset->update(['status' => 'BORROWED']);
 
-            return $borrowing;
+            return $borrowing->load(['user', 'asset', 'authorizer']);
         });
     }
 
@@ -44,7 +48,15 @@ class BorrowingService
             $borrowing->update(['status' => 'RETURNED']);
             $borrowing->asset()->update(['status' => 'AVAILABLE']);
 
-            return $borrowing->fresh();
+            return $borrowing->fresh()->load(['user', 'asset', 'authorizer']);
         });
+    }
+
+    private function canViewAllBorrowings(User $user): bool
+    {
+        return $user->hasRole(UserRole::SUPER_ADMINISTRATOR->value)
+            || $user->hasRole(UserRole::SYSTEM_ADMINISTRATOR->value)
+            || $user->hasRole(UserRole::PROPERTY_CUSTODIAN->value)
+            || $user->hasRole(UserRole::DEPARTMENT_HEAD->value);
     }
 }

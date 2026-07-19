@@ -33,6 +33,24 @@ export interface UpdateUserPayload {
   roles?: number[]
 }
 
+export interface ImportUserResultRow {
+  row: number
+  status: 'imported' | 'skipped' | 'failed'
+  username?: string | null
+  email?: string | null
+  reason: string
+}
+
+export interface ImportUsersResult {
+  total_rows: number
+  imported: number
+  skipped: number
+  failed: number
+  initial_password: string
+  username_rule: string
+  rows: ImportUserResultRow[]
+}
+
 export const userService = {
   /**
    * Get paginated list of users with optional filters
@@ -78,6 +96,21 @@ export const userService = {
    */
   async createUser(payload: CreateUserPayload): Promise<User> {
     const { data } = await api.post<ApiResponse<User>>('/users', payload)
+    return unwrapData(data)
+  },
+
+  /**
+   * Import employee accounts from CSV, JSON, or XLSX.
+   * Uses Eman's User API: POST /api/v1/users/import
+   */
+  async importEmployees(file: File): Promise<ImportUsersResult> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const { data } = await api.post<ApiResponse<ImportUsersResult>>('/users/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
     return unwrapData(data)
   },
 

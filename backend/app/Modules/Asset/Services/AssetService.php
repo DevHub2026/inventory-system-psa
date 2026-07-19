@@ -3,6 +3,7 @@
 namespace App\Modules\Asset\Services;
 
 use App\Modules\Asset\Enums\AssetStatus;
+use App\Modules\Asset\Enums\IdentifierType;
 use App\Modules\Asset\Exceptions\AssetNotAvailableException;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
@@ -84,11 +85,17 @@ class AssetService
 
             $asset = Asset::query()->create($data);
 
+            $this->ensurePsaQrIdentifier($asset);
+
             foreach ($identifiers as $identifier) {
+                if ($identifier['identifier_type'] === IdentifierType::PSA_QR->value) {
+                    continue;
+                }
+
                 $asset->identifiers()->create([
                     'identifier_type' => $identifier['identifier_type'],
                     'identifier_value' => $identifier['identifier_value'],
-                    'is_primary' => (bool) ($identifier['is_primary'] ?? false),
+                    'is_primary' => false,
                 ]);
             }
 
@@ -157,5 +164,24 @@ class AssetService
         return $identifier->asset()
             ->with(['category', 'manufacturer', 'office', 'location', 'identifiers'])
             ->first();
+    }
+
+    public function ensurePsaQrIdentifier(Asset $asset): AssetIdentifier
+    {
+        return AssetIdentifier::query()->firstOrCreate(
+            [
+                'asset_id' => $asset->id,
+                'identifier_type' => IdentifierType::PSA_QR->value,
+            ],
+            [
+                'identifier_value' => $this->psaQrValue($asset),
+                'is_primary' => true,
+            ],
+        );
+    }
+
+    private function psaQrValue(Asset $asset): string
+    {
+        return 'PSA-ASSET-'.str_pad((string) $asset->id, 6, '0', STR_PAD_LEFT);
     }
 }

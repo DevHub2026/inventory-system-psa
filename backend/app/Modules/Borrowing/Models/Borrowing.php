@@ -19,6 +19,8 @@ class Borrowing extends Model
         'due_date',
         'status',
         'remarks',
+        'authorized_by',
+        'authorized_at',
     ];
 
     protected function casts(): array
@@ -26,6 +28,7 @@ class Borrowing extends Model
         return [
             'borrow_date' => 'date',
             'due_date' => 'date',
+            'authorized_at' => 'datetime',
         ];
     }
 
@@ -37,5 +40,10 @@ class Borrowing extends Model
     public function asset(): BelongsTo
     {
         return $this->belongsTo(Asset::class);
+    }
+
+    public function authorizer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'authorized_by');
     }
 }

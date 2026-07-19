@@ -23,6 +23,12 @@ class UserResource extends JsonResource
             'email_verified_at' => $this->email_verified_at,
             'department_id' => $this->department_id,
             'status' => $this->status,
+            'roles' => $this->whenLoaded('roles', function () {
+                return $this->roles->map(fn ($role) => [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                ]);
+            }),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
