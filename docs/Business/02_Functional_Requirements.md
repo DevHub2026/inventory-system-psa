@@ -54,6 +54,7 @@ Allows authorized users to securely access the system.
 - Session management
 - Remember login (optional)
 - Role verification
+- Backend role enforcement for protected API modules
 - Account activation/deactivation
 
 ---
@@ -409,6 +410,11 @@ View:
 - Manage departments
 - Manage locations
 - Manage suppliers
+- Manage offices
+- Manage manufacturers
+- Maintain common setup/reference data without code changes
+- Provide admin shortcuts for users, roles, permissions, and QR labels
+- Restrict system setup tools to administrator roles
 - Manage system settings
 - Manage notifications
 - Backup database (manual)

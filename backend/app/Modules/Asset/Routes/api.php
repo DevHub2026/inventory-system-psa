@@ -20,13 +20,16 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('assets/{asset}/transfer', [AssetController::class, 'transfer']);
     Route::apiResource('assets', AssetController::class);
 
-    Route::apiResource('asset-categories', AssetCategoryController::class)
-        ->parameters(['asset-categories' => 'assetCategory']);
+    Route::middleware('role:Super Administrator,System Administrator')->group(function (): void {
+        Route::apiResource('asset-categories', AssetCategoryController::class)
+            ->parameters(['asset-categories' => 'assetCategory']);
+
+        Route::apiResource('offices', OfficeController::class);
+        Route::apiResource('locations', LocationController::class);
+        Route::apiResource('manufacturers', ManufacturerController::class);
+    });
 
     Route::apiResource('asset-identifiers', AssetIdentifierController::class)
+        ->middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer')
         ->parameters(['asset-identifiers' => 'assetIdentifier']);
-
-    Route::apiResource('offices', OfficeController::class);
-    Route::apiResource('locations', LocationController::class);
-    Route::apiResource('manufacturers', ManufacturerController::class);
 });

@@ -8,6 +8,7 @@ import {
   Landmark,
   Package,
   Settings,
+  SlidersHorizontal,
   Shield,
   Users,
   Wrench,
@@ -27,6 +28,7 @@ const allLinks = [
   { to: '/reports', label: 'Reports', icon: FileBarChart, roles: ['admin', 'staff'] },
   { to: '/users', label: 'Users', icon: Users, roles: ['admin'] },
   { to: '/roles', label: 'Roles', icon: Shield, roles: ['admin'] },
+  { to: '/system-setup', label: 'System Setup', icon: SlidersHorizontal, roles: ['admin'] },
   { to: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'staff', 'employee'] },
 ]
 

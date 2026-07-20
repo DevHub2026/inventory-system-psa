@@ -59,14 +59,17 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('/roles/{role}', [RoleController::class, 'destroy']);
         });
 
-        Route::get('/permissions', [PermissionController::class, 'index']);
-        Route::post('/permissions', [PermissionController::class, 'store']);
-        Route::get('/permissions/{permission}', [PermissionController::class, 'show']);
-        Route::put('/permissions/{permission}', [PermissionController::class, 'update']);
-        Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy']);
+        Route::middleware('role:Super Administrator')->group(function (): void {
+            Route::get('/permissions', [PermissionController::class, 'index']);
+            Route::post('/permissions', [PermissionController::class, 'store']);
+            Route::get('/permissions/{permission}', [PermissionController::class, 'show']);
+            Route::put('/permissions/{permission}', [PermissionController::class, 'update']);
+            Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy']);
+        });
 
         // Borrow routes
         Route::post('/assets/{asset}/borrow', [BorrowController::class, 'borrow']);
-        Route::post('/assets/{asset}/return', [BorrowController::class, 'return']);
+        Route::post('/assets/{asset}/return', [BorrowController::class, 'return'])
+            ->middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head');
     });
 });
