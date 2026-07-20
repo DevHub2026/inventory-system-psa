@@ -102,6 +102,7 @@ class BorrowController extends Controller
 
         $borrowing->update([
             'status' => 'RETURNED',
+            'returned_at' => now(),
             'remarks' => $request->input('notes', $borrowing->remarks),
         ]);
 

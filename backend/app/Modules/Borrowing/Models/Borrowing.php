@@ -28,7 +28,8 @@ class Borrowing extends Model
         return [
             'borrow_date' => 'date',
             'due_date' => 'date',
-            'authorized_at' => 'datetime',
+'authorized_at' => 'datetime',
+            'returned_at' => 'datetime',
         ];
     }
 

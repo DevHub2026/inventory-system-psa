@@ -14,7 +14,13 @@ return new class extends Migration
             $table->foreignId('asset_id')->constrained('assets')->cascadeOnDelete();
             $table->date('borrow_date');
             $table->date('due_date');
+
+            // Borrow/return status tracking
             $table->string('status')->default('BORROWED');
+
+            // Store explicit return date/time (set when status becomes RETURNED)
+            $table->timestamp('returned_at')->nullable();
+
             $table->text('remarks')->nullable();
             $table->timestamps();
             $table->softDeletes();
