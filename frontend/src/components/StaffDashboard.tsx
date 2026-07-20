@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AlertTriangle, CalendarClock, ClipboardCheck, HandCoins } from 'lucide-react'
 import { Badge, Button, Card, EmptyState, Spinner, Table, Alert, Input, type Column } from '@/components/ui'
+import { DashboardStatCard } from '@/components/DashboardStatCard'
 import { AssetQrScanner } from '@/components/AssetQrScanner'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
@@ -144,16 +146,17 @@ export function StaffDashboard() {
   ]
 
   const statCards = [
-    { label: 'Pending Approvals', value: pendingReservations.length, accent: 'yellow', subtitle: 'Awaiting action' },
-    { label: 'Active Borrowings', value: activeBorrowings.length, accent: 'blue', subtitle: 'Currently borrowed' },
-    { label: 'Overdue Items', value: overdueBorrowings.length, accent: 'red', subtitle: 'Past due date' },
+    { label: 'Pending Reservations', value: pendingReservations.length, description: 'Awaiting your processing', icon: CalendarClock, tone: 'blue' as const },
+    { label: 'Active Borrowings', value: activeBorrowings.length, description: 'Currently borrowed items', icon: HandCoins, tone: 'green' as const },
+    { label: 'Overdue Items', value: overdueBorrowings.length, description: 'Need immediate follow-up', icon: AlertTriangle, tone: 'red' as const },
+    { label: 'Ready to Process', value: pendingReservations.length + activeBorrowings.length, description: 'Operations requiring attention', icon: ClipboardCheck, tone: 'amber' as const },
   ]
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-gray-900">Staff Dashboard</h1>
-        <p className="text-sm text-gray-500">Operations management - reservations, borrowings, and inventory</p>
+        <h1>Staff Dashboard</h1>
+        <p className="mt-1 text-sm text-slate-500">Manage operational requests and asset handovers.</p>
       </div>
 
       {message && (
@@ -162,13 +165,9 @@ export function StaffDashboard() {
         </Alert>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => (
-          <Card key={card.label} className="p-4">
-            <div className="text-sm text-gray-500">{card.label}</div>
-            <div className="text-2xl font-semibold text-gray-900">{card.value}</div>
-            <div className="text-xs text-gray-400">{card.subtitle}</div>
-          </Card>
+          <DashboardStatCard key={card.label} {...card} />
         ))}
       </div>
 

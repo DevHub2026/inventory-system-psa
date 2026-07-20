@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AlertTriangle, CalendarDays, ClipboardList, HandCoins } from 'lucide-react'
 import { Badge, Button, Card, EmptyState, Spinner, Table, Alert, type Column } from '@/components/ui'
+import { DashboardStatCard } from '@/components/DashboardStatCard'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
 import type { Reservation, Borrowing } from '@/types'
@@ -90,17 +92,20 @@ export function EmployeeDashboard() {
     },
   ]
 
+  const overdueItems = activeBorrowings.filter((borrowing) => borrowing.status === 'OVERDUE').length
+  const dueSoonItems = activeBorrowings.filter((borrowing) => borrowing.status !== 'OVERDUE').length
   const statCards = [
-    { label: 'My Reservations', value: myReservations.length, accent: 'blue', subtitle: 'Total requests' },
-    { label: 'Active Items', value: activeBorrowings.length, accent: 'green', subtitle: 'Currently borrowed' },
-    { label: 'Total Borrowed', value: myBorrowings.length, accent: 'yellow', subtitle: 'All time' },
+    { label: 'My Reservations', value: myReservations.length, description: 'Your reservation requests', icon: ClipboardList, tone: 'blue' as const },
+    { label: 'My Borrowings', value: activeBorrowings.length, description: 'Items currently borrowed', icon: HandCoins, tone: 'green' as const },
+    { label: 'Due Soon', value: dueSoonItems, description: 'Active items to monitor', icon: CalendarDays, tone: 'amber' as const },
+    { label: 'Overdue', value: overdueItems, description: 'Items needing return', icon: AlertTriangle, tone: 'red' as const },
   ]
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-gray-900">My Dashboard</h1>
-        <p className="text-sm text-gray-500">Manage your asset reservations and borrowings</p>
+        <h1>Employee Dashboard</h1>
+        <p className="mt-1 text-sm text-slate-500">Welcome back. Here is your asset activity overview.</p>
       </div>
 
       {message && (
@@ -109,13 +114,9 @@ export function EmployeeDashboard() {
         </Alert>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => (
-          <Card key={card.label} className="p-4">
-            <div className="text-sm text-gray-500">{card.label}</div>
-            <div className="text-2xl font-semibold text-gray-900">{card.value}</div>
-            <div className="text-xs text-gray-400">{card.subtitle}</div>
-          </Card>
+          <DashboardStatCard key={card.label} {...card} />
         ))}
       </div>
 

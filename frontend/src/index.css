@@ -127,6 +127,12 @@ body {
     margin: 0 auto;
 }
 
+@media (min-width: 1024px) {
+    .app-shell > aside {
+        min-height: 100dvh;
+    }
+}
+
 .app-page > :first-child h1,
 .app-page > h1 {
     color: #172b4d;
@@ -137,6 +143,19 @@ body {
 
 .app-page p {
     line-height: 1.5;
+}
+
+.dashboard-stat-card {
+    min-height: 138px;
+}
+
+.dashboard-stat-card > div {
+    height: 100%;
+}
+
+.dashboard-stat-card:hover {
+    border-color: #d7e5fb;
+    box-shadow: 0 8px 20px rgba(15, 45, 92, .06);
 }
 
 button, input, select, textarea {
