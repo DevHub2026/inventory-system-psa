@@ -1,5 +1,51 @@
 # CHANGELOG
 
+## 2026-07-20
+
+### Camera Scanner, RBAC Hardening, and System Setup
+
+### Files Modified
+
+- `backend/app/Http/Middleware/EnsureUserHasRole.php`
+- `backend/bootstrap/app.php`
+- `backend/routes/api.php`
+- `backend/app/Modules/Asset/Routes/api.php`
+- `backend/app/Modules/AuditLog/Routes/api.php`
+- `backend/app/Modules/Borrowing/Routes/api.php`
+- `backend/app/Modules/Inventory/Routes/api.php`
+- `backend/app/Modules/Maintenance/Routes/api.php`
+- `backend/app/Modules/Report/Routes/api.php`
+- `backend/app/Modules/Reservation/Routes/api.php`
+- `frontend/src/components/AssetQrScanner.tsx`
+- `frontend/src/components/StaffDashboard.tsx`
+- `frontend/src/pages/SystemSetupPage.tsx`
+- `frontend/src/services/setupService.ts`
+- `frontend/src/layouts/Sidebar.tsx`
+- `frontend/src/App.tsx`
+- `docs/Business/02_Functional_Requirements.md`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Camera preview was blocked on browsers without native QR decoding support, several backend modules relied on frontend visibility instead of server-side role enforcement, and administrators needed a no-code setup area for common reference data.
+
+### Summary
+
+- Fixed asset QR scanner startup so camera preview opens before QR decoder support is checked.
+- Added a staff dashboard `Open Camera` scanner action.
+- Added reusable backend `role` middleware and applied it to sensitive API modules.
+- Restricted permissions, operational modules, audit logs, reference data, returns, and reservation approvals to appropriate roles.
+- Added admin-only System Setup page for asset categories, offices, locations, and manufacturers.
+- Added admin setup shortcuts for Users, Roles, Permissions, and Asset QR label printing.
+
+### Impact
+
+- Camera users can see the webcam preview even when automatic QR detection requires a supported browser.
+- Employee API access is more tightly scoped; unauthorized direct calls now receive `403`.
+- Non-programmer admins can maintain core setup/reference data through the UI.
+- Backend tests and frontend production build pass after the changes.
+
 ## 2026-07-19
 
 ### QR Generation and Camera Scanner Proof of Concept

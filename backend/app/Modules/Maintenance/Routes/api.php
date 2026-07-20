@@ -3,7 +3,10 @@
 use App\Modules\Maintenance\Controllers\MaintenanceController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware([
+    'auth:sanctum',
+    'role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head',
+])->group(function (): void {
     Route::get('maintenances', [MaintenanceController::class, 'index']);
     Route::post('maintenances', [MaintenanceController::class, 'store']);
     Route::put('maintenances/{maintenance}', [MaintenanceController::class, 'update']);

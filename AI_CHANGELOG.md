@@ -18,6 +18,70 @@ Always append new entries.
 
 ---
 
+## 2026-07-20 10:42
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Fixed camera scanner startup, hardened backend RBAC routes, and added an admin System Setup panel for non-programmer maintainers.
+
+---
+
+### Files Modified
+
+- backend/app/Http/Middleware/EnsureUserHasRole.php
+- backend/bootstrap/app.php
+- backend/routes/api.php
+- backend/app/Modules/Asset/Routes/api.php
+- backend/app/Modules/AuditLog/Routes/api.php
+- backend/app/Modules/Borrowing/Routes/api.php
+- backend/app/Modules/Inventory/Routes/api.php
+- backend/app/Modules/Maintenance/Routes/api.php
+- backend/app/Modules/Report/Routes/api.php
+- backend/app/Modules/Reservation/Routes/api.php
+- frontend/src/components/AssetQrScanner.tsx
+- frontend/src/components/StaffDashboard.tsx
+- frontend/src/pages/SystemSetupPage.tsx
+- frontend/src/services/setupService.ts
+- frontend/src/layouts/Sidebar.tsx
+- frontend/src/App.tsx
+- docs/Business/02_Functional_Requirements.md
+- AI_CHANGELOG.md
+- CHANGELOG.md
+
+---
+
+### Summary
+
+- Moved camera access before native QR decoder detection so the webcam preview can open even when automatic detection is unsupported.
+- Added camera scanner access to the Staff Dashboard.
+- Added reusable backend role middleware and applied it to sensitive route groups.
+- Restricted operational/admin modules to administrator and staff roles based on current business responsibilities.
+- Added an admin-only System Setup page for categories, offices, locations, and manufacturers using existing APIs.
+- Added admin shortcuts for user management, role management, permission management, and QR label printing.
+
+---
+
+### Reason
+
+The project needed stronger server-side authority boundaries and a non-programmer setup workflow before handoff.
+
+---
+
+### Risks
+
+- Existing users without assigned roles may lose access to operational modules until assigned an appropriate role.
+- Native QR decoding still requires browser support, but camera preview and manual fallback remain available.
+- System settings such as QR prefixes and default temporary passwords are still code-backed and should become database-backed in a later admin settings iteration.
+
+---
+
 ## 2026-07-19 13:49
 
 ### AI

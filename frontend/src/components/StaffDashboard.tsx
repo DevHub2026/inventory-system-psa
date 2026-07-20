@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Button, Card, EmptyState, Spinner, Table, Alert, Input, type Column } from '@/components/ui'
+import { AssetQrScanner } from '@/components/AssetQrScanner'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
 import type { Reservation, Borrowing } from '@/types'
@@ -14,6 +15,7 @@ export function StaffDashboard() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [qrCode, setQrCode] = useState('')
+  const [scannerOpen, setScannerOpen] = useState(false)
 
   const loadData = async () => {
     setLoading(true)
@@ -185,8 +187,11 @@ export function StaffDashboard() {
             }}
           />
           <Button onClick={() => void handleScanQR()}>Scan</Button>
+          <Button variant="secondary" onClick={() => setScannerOpen(true)}>Open Camera</Button>
         </div>
       </Card>
+
+      <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

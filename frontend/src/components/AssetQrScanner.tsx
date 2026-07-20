@@ -82,13 +82,6 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
       return
     }
 
-    const BarcodeDetector = getBarcodeDetector()
-    if (!BarcodeDetector) {
-      setState('unsupported')
-      setMessage('This browser does not support native QR detection. Use Chrome or Edge, or use the development fallback below.')
-      return
-    }
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' } },
@@ -99,6 +92,13 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
+      }
+
+      const BarcodeDetector = getBarcodeDetector()
+      if (!BarcodeDetector) {
+        setState('unsupported')
+        setMessage('Camera preview is open, but this browser does not support native QR detection. Use Chrome or Edge for automatic scanning, or use the development fallback below.')
+        return
       }
 
       const detector = new BarcodeDetector({ formats: ['qr_code'] })
