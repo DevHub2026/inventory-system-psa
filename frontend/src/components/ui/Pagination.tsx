@@ -13,8 +13,8 @@ export function Pagination({ page, lastPage, total, onPageChange }: PaginationPr
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 pt-3">
-      <p className="text-xs text-gray-500">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+      <p className="text-xs font-medium text-slate-500">
         Page {page} of {lastPage} · {total} records
       </p>
       <div className="flex gap-2">

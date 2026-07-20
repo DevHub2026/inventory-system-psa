@@ -14,14 +14,14 @@ interface AlertProps {
 
 const tones: Record<AlertTone, string> = {
   info: 'border-blue-200 bg-blue-50 text-blue-900',
-  success: 'border-green-200 bg-green-50 text-green-900',
-  warning: 'border-yellow-200 bg-yellow-50 text-yellow-900',
+  success: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+  warning: 'border-amber-200 bg-amber-50 text-amber-900',
   error: 'border-red-200 bg-red-50 text-red-900',
 }
 
 export function Alert({ tone = 'info', title, children, onClose, className }: AlertProps) {
   return (
-    <div className={cn('rounded-md border px-3 py-2 text-sm', tones[tone], className)}>
+    <div className={cn('rounded-xl border px-4 py-3 text-sm shadow-sm', tones[tone], className)}>
       <div className="flex items-start justify-between gap-3">
         <div>
           {title && <p className="font-medium">{title}</p>}

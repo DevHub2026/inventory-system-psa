@@ -25,14 +25,14 @@ export function Dropdown({
   return (
     <div className="w-full">
       {label && (
-        <label htmlFor={selectId} className="mb-1 block text-sm font-medium text-gray-700">
+        <label htmlFor={selectId} className="mb-1.5 block text-sm font-medium text-slate-700">
           {label}
         </label>
       )}
       <select
         id={selectId}
         className={cn(
-          'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500',
+          'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 shadow-sm',
           className,
         )}
         {...props}

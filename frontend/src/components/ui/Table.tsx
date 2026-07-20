@@ -22,12 +22,12 @@ export function Table<T>({ columns, rows, rowKey, empty, className }: TableProps
   }
 
   return (
-    <div className={cn('overflow-x-auto', className)}>
+    <div className={cn('overflow-x-auto rounded-lg border border-slate-100', className)}>
       <table className="min-w-full text-left text-sm">
-        <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
+        <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] uppercase tracking-[0.055em] text-slate-500">
           <tr>
             {columns.map((column) => (
-              <th key={column.key} className={cn('px-3 py-2 font-medium', column.className)}>
+              <th key={column.key} className={cn('px-4 py-3 font-semibold', column.className)}>
                 {column.header}
               </th>
             ))}
@@ -35,9 +35,9 @@ export function Table<T>({ columns, rows, rowKey, empty, className }: TableProps
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={rowKey(row)} className="border-b border-gray-100 hover:bg-gray-50">
+            <tr key={rowKey(row)} className="border-b border-slate-100 last:border-0 hover:bg-brand-50/35">
               {columns.map((column) => (
-                <td key={column.key} className={cn('px-3 py-2 align-middle text-gray-800', column.className)}>
+                <td key={column.key} className={cn('px-4 py-3.5 align-middle text-slate-700', column.className)}>
                   {column.render(row)}
                 </td>
               ))}

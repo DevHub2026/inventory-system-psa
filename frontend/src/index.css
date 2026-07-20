@@ -1,6 +1,17 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
+@theme {
+    --color-brand-50: #eef5ff;
+    --color-brand-100: #d8e8ff;
+    --color-brand-500: #176ad4;
+    --color-brand-600: #0758c7;
+    --color-brand-700: #003da5;
+    --color-brand-800: #002a75;
+    --color-danger: #c5313a;
+    --color-success: #147a5a;
+}
+
 /* ============================================
    1. ROOT VARIABLES
    ============================================ */
@@ -102,6 +113,40 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.6;
+}
+
+/* Application shell: shared dashboard design language */
+.app-shell {
+    background:
+        radial-gradient(circle at 94% -8%, rgba(31, 102, 210, .08), transparent 26rem),
+        var(--psa-background);
+}
+
+.app-main {
+    width: min(100%, 1600px);
+    margin: 0 auto;
+}
+
+.app-page > :first-child h1,
+.app-page > h1 {
+    color: #172b4d;
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -.025em;
+}
+
+.app-page p {
+    line-height: 1.5;
+}
+
+button, input, select, textarea {
+    transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease, transform .18s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: var(--psa-blue-light) !important;
+    box-shadow: 0 0 0 3px rgba(0, 87, 217, .12);
+    outline: none;
 }
 
 h1, h2, h3, h4, h5, h6 {

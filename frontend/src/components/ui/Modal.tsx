@@ -16,20 +16,20 @@ export function Modal({ open, title, children, onClose, footer }: ModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-[2px]">
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-lg rounded-md border border-gray-200 bg-white shadow-sm"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/20"
       >
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-          <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-          <button type="button" onClick={onClose} aria-label="Close modal">
-            <X className="h-4 w-4 text-gray-500" />
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+          <button type="button" onClick={onClose} aria-label="Close modal" className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+            <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="px-4 py-4">{children}</div>
-        <div className="flex justify-end gap-2 border-t border-gray-100 px-4 py-3">
+        <div className="px-5 py-5">{children}</div>
+        <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/60 px-5 py-4">
           {footer ?? (
             <Button variant="secondary" onClick={onClose}>
               Close
