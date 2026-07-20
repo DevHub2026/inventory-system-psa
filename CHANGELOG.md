@@ -2,6 +2,64 @@
 
 ## 2026-07-20
 
+### LAN Runner and QR Camera Testing Setup
+
+### Files Modified
+
+- `runner.js`
+- `start.bat`
+- `frontend/.env.example`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Phone testing needed the frontend and backend to bind to LAN-accessible hosts, and the existing Windows start script did not actually execute the runner.
+
+### Summary
+
+- Updated `runner.js` to start Laravel on `0.0.0.0:8000` and Vite on `0.0.0.0:5173`.
+- Added LAN IP detection and printed phone-friendly URLs when the runner starts.
+- Kept frontend API calls on `/api/v1` by default so Vite proxy handles backend access from phone browsers.
+- Fixed `start.bat` so it actually runs `node runner.js`.
+- Documented when to use `VITE_API_BASE_URL` in `frontend/.env.example`.
+
+### Impact
+
+- Running `start.bat` from the project root now starts both backend and frontend for local/LAN testing.
+- Phones on the same Wi-Fi can open `http://PC_IP:5173`.
+- Phone camera scanning may still require HTTPS because mobile browsers usually block camera access on LAN HTTP origins.
+
+### Integrated Demo Data for Testing
+
+### Files Modified
+
+- `backend/database/seeders/DemoDataSeeder.php`
+- `backend/database/seeders/DatabaseSeeder.php`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+The local database only had roles, departments, and a few users, which was not enough to test feature relationships across assets, QR identifiers, inventory, reservations, borrowings, maintenance, reports, and RBAC.
+
+### Summary
+
+- Added an idempotent integrated demo seeder that creates connected setup data, users, assets, identifiers, inventory items, reservations, borrowings, and maintenance records.
+- Seeded realistic test users for Super Administrator, Property Custodian, Inventory Officer, Employee, and Auditor roles.
+- Seeded available, borrowed, reserved, maintenance, returned-history, and inventory-linked asset scenarios.
+- Ensured every seeded asset receives a permanent PSA QR identifier through the existing AssetIdentifier system.
+- Linked every seeded inventory item to an asset record so Inventory and Assets can be tested together.
+- Made the returned borrowing sample tolerate local databases that have not yet added the optional `returned_at` column.
+
+### Impact
+
+- `php artisan db:seed` now prepares the application for relationship and workflow testing.
+- Admin, staff, auditor, and employee logins have meaningful data to exercise access boundaries.
+- QR scan testing can use seeded PSA QR identifiers such as `PSA-ASSET-000003`.
+- Existing manually created local records are preserved; the seeder does not truncate or reset user data.
+- Backend tests and frontend production build pass after seeding.
+
 ### Camera Scanner, RBAC Hardening, and System Setup
 
 ### Files Modified

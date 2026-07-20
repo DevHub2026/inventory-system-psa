@@ -18,6 +18,101 @@ Always append new entries.
 
 ---
 
+## 2026-07-20 15:37
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Fixed the root runner and clarified LAN/frontend environment usage for phone QR testing.
+
+---
+
+### Files Modified
+
+- runner.js
+- start.bat
+- frontend/.env.example
+- AI_CHANGELOG.md
+- CHANGELOG.md
+
+---
+
+### Summary
+
+- Updated the root runner to bind backend and frontend servers to `0.0.0.0`.
+- Added automatic LAN IP detection and printed local/phone URLs.
+- Kept frontend API calls proxied through `/api/v1` by default.
+- Fixed `start.bat` so it executes `node runner.js`.
+- Documented when to use `VITE_API_BASE_URL` and when not to use it.
+
+---
+
+### Reason
+
+The user needed a simple way to run the system so a phone on the same network could open the frontend for QR testing.
+
+---
+
+### Risks
+
+- Mobile browsers may still block camera APIs on LAN HTTP; HTTPS or desktop `localhost` testing may be required for real camera permission.
+
+---
+
+## 2026-07-20 15:14
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Added integrated demo data to make feature relationships testable before adding more features.
+
+---
+
+### Files Modified
+
+- backend/database/seeders/DemoDataSeeder.php
+- backend/database/seeders/DatabaseSeeder.php
+- AI_CHANGELOG.md
+- CHANGELOG.md
+
+---
+
+### Summary
+
+- Added an idempotent demo seeder with connected users, roles, offices, locations, manufacturers, categories, assets, identifiers, inventory, reservations, borrowings, and maintenance records.
+- Seeded multiple workflow states: available, borrowed, reserved, maintenance, returned, low-stock inventory, and QR-identifiable assets.
+- Ensured seeded inventory items are linked to asset records.
+- Ensured seeded assets have permanent PSA QR identifiers through the existing AssetIdentifier system.
+- Connected the demo seeder into the default `DatabaseSeeder`.
+- Ran `php artisan db:seed`, backend tests, frontend build, and relationship count checks.
+
+---
+
+### Reason
+
+The project needed reliable sample data so feature relationships and role access could be tested end-to-end without manually creating records through the UI.
+
+---
+
+### Risks
+
+- Existing local demo/manual records are preserved, so the database may contain extra test assets beyond the seeded baseline.
+- The local SQLite database is missing the optional `borrowings.returned_at` column even though the migration file defines it; the seeder now tolerates that schema drift.
+
+---
+
 ## 2026-07-20 10:42
 
 ### AI
