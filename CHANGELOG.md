@@ -2,6 +2,41 @@
 
 ## 2026-07-19
 
+### QR Generation and Camera Scanner Proof of Concept
+
+### Files Modified
+
+- `backend/app/Modules/Asset/Controllers/AssetController.php`
+- `frontend/src/components/AssetQrScanner.tsx`
+- `frontend/src/components/QrCode.tsx`
+- `frontend/src/pages/AssetPage.tsx`
+- `frontend/src/services/assetService.ts`
+- `docs/Business/02_Functional_Requirements.md`
+- `docs/Architecture/13_API_Architecture.md`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+The asset page displayed a QR-style placeholder instead of a real scannable QR code, and the scanner flow relied on manual text entry instead of real camera access.
+
+### Summary
+
+- Added a local SVG QR renderer for permanent PSA asset identifiers without storing QR image blobs.
+- Replaced the Asset page QR placeholder with a generated QR encoding the stable PSA identifier payload.
+- Added a real camera scanner modal using browser camera access and native QR detection.
+- Connected decoded QR values to the existing `GET /api/v1/assets/scan?value=...` backend endpoint.
+- Added scan states for camera permission, unsupported browser/device, scanning, successful lookup, not found, invalid values, and scan again.
+- Added a clearly separated development fallback manual resolver for camera-limited desktop testing.
+- Tightened backend scan validation by trimming the identifier and rejecting values longer than 255 characters.
+
+### Impact
+
+- Assets can display printable PSA QR labels backed by stored `AssetIdentifier` values.
+- Camera scans are resolved by the backend source of truth instead of trusting frontend decoding.
+- Scanning only identifies an asset; borrowing, returning, editing, deleting, and authorization remain protected by existing backend policies.
+- Real-camera behavior still requires testing on a camera-enabled browser with `BarcodeDetector` support, such as current Chrome or Edge over `localhost` or HTTPS.
+
 ### Bulk Employee Import Integration
 
 ### Files Modified

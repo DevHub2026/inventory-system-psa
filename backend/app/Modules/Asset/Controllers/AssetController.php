@@ -134,10 +134,17 @@ class AssetController extends Controller
         $this->authorize('viewAny', Asset::class);
 
         $value = (string) $request->query('value', $request->input('value', ''));
+        $value = trim($value);
 
         if ($value === '') {
             return $this->error('Identifier value is required.', [
                 'value' => ['The value field is required.'],
+            ], 422);
+        }
+
+        if (mb_strlen($value) > 255) {
+            return $this->error('Identifier value is invalid.', [
+                'value' => ['The value field may not be greater than 255 characters.'],
             ], 422);
         }
 

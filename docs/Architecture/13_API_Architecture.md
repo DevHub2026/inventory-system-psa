@@ -205,6 +205,10 @@ Identifiers
 
 /assets/scan
 
+Scanner clients send the decoded identifier value to `/assets/scan?value={identifier}`.
+The backend resolves the value through `asset_identifiers.identifier_value` and returns the matching asset resource.
+Scanning identifies an asset only; privileged actions still require authenticated API calls and backend authorization.
+
 Transfer
 
 /assets/{id}/transfer

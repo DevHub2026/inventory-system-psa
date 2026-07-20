@@ -20,6 +20,8 @@ import { assetService, type UpdateAssetPayload } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
 import { useAuth } from '@/hooks/useAuth'
 import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
+import { AssetQrScanner } from '@/components/AssetQrScanner'
+import { QrCode } from '@/components/QrCode'
 import type { Asset, AssetStatus } from '@/types'
 import { assetStatusTone } from '@/utils/statusTone'
 import { isAdmin } from '@/utils/roleHelpers'
@@ -49,6 +51,7 @@ export function AssetPage() {
   const [receipt, setReceipt] = useState<ReceiptRecord | null>(null)
   const [viewAsset, setViewAsset] = useState<Asset | null>(null)
   const [qrAsset, setQrAsset] = useState<Asset | null>(null)
+  const [scannerOpen, setScannerOpen] = useState(false)
   const [editAsset, setEditAsset] = useState<Asset | null>(null)
   const [saving, setSaving] = useState(false)
   const [editForm, setEditForm] = useState<UpdateAssetPayload>({
@@ -209,9 +212,12 @@ export function AssetPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">Assets</h1>
-        <p className="text-sm text-gray-500">Connected to GET /api/v1/assets when backend is available.</p>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">Assets</h1>
+          <p className="text-sm text-gray-500">Connected to GET /api/v1/assets when backend is available.</p>
+        </div>
+        <Button onClick={() => setScannerOpen(true)}>Scan Asset QR</Button>
       </div>
 
       {message && (
@@ -453,6 +459,7 @@ export function AssetPage() {
       />
 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
+      <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} />
 
       <Modal open={viewAsset !== null} title="Asset details" onClose={() => setViewAsset(null)}>
         {viewAsset && (
@@ -523,13 +530,10 @@ export function AssetPage() {
               <h3 className="mt-1 text-xl font-semibold text-gray-900">{qrAsset.name}</h3>
               <p className="text-sm text-gray-500">Permanent organization-owned asset identifier</p>
             </div>
-            <div className="grid h-48 w-48 grid-cols-8 gap-1 rounded border border-gray-300 bg-white p-3">
-              {Array.from({ length: 64 }, (_, index) => {
-                const payload = qrAsset.psa_qr_payload ?? qrAsset.psa_qr_identifier ?? qrAsset.asset_number
-                const charCode = payload.charCodeAt(index % Math.max(payload.length, 1)) || index
-                return <span key={index} className={(charCode + index) % 3 !== 1 ? 'bg-gray-900' : 'bg-gray-100'} />
-              })}
-            </div>
+            <QrCode
+              value={qrAsset.psa_qr_payload ?? qrAsset.psa_qr_identifier ?? qrAsset.asset_number}
+              className="rounded border border-gray-300 bg-white p-2 text-gray-950"
+            />
             <div>
               <div className="text-lg font-bold tracking-wide text-gray-900">
                 {qrAsset.psa_qr_identifier ?? 'PSA QR not generated'}

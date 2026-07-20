@@ -72,6 +72,60 @@ Bulk onboarding was required so employee accounts can be created quickly using e
 
 ---
 
+## 2026-07-19 14:05
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Implemented permanent PSA asset QR rendering and a real camera-based asset QR scanner proof of concept.
+
+---
+
+### Files Modified
+
+- backend/app/Modules/Asset/Controllers/AssetController.php
+- frontend/src/components/AssetQrScanner.tsx
+- frontend/src/components/QrCode.tsx
+- frontend/src/pages/AssetPage.tsx
+- frontend/src/services/assetService.ts
+- docs/Business/02_Functional_Requirements.md
+- docs/Architecture/13_API_Architecture.md
+- AI_CHANGELOG.md
+- CHANGELOG.md
+
+---
+
+### Summary
+
+- Replaced the asset QR placeholder with a generated local SVG QR code using the stored PSA asset identifier.
+- Added a camera scanner modal that requests camera access, previews video, scans QR codes with native browser QR detection, and resolves the decoded value through the backend.
+- Reused the existing `/api/v1/assets/scan` endpoint and existing AssetIdentifier records.
+- Added camera permission, unsupported browser, not-found, invalid value, asset-found, close, and scan-again states.
+- Added a clearly separated manual development fallback for camera-limited testing.
+- Tightened backend identifier scan validation.
+
+---
+
+### Reason
+
+The project needed a testable end-to-end proof of concept for generating a permanent PSA asset QR, scanning it with a real camera, resolving it through the backend, and displaying the matched asset.
+
+---
+
+### Risks
+
+- Native QR detection depends on browser `BarcodeDetector` support; Chrome or Edge is recommended for camera testing.
+- Real camera scanning could not be physically verified from the coding environment and must be tested on a camera-enabled device.
+- The local QR renderer targets the PSA asset identifier payload length used by this system; unusually long fallback values are shown as unsupported.
+
+---
+
 # Entry Template
 
 ## YYYY-MM-DD HH:MM

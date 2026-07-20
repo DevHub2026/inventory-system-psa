@@ -237,15 +237,19 @@ The system shall:
 
 - Generate QR Codes for assets.
 - Generate Barcodes for assets.
+- Generate permanent PSA-owned asset QR identifiers separate from manufacturer identifiers.
+- Render PSA asset QR labels dynamically from stored identifier values.
 - Support manual serial number lookup.
 - Support Property Number (ICS) lookup.
 - Support Asset Tag lookup.
 - Scan QR Codes using supported devices.
+- Scan PSA asset QR codes using the device camera where browser support is available.
 - Scan Barcodes using supported scanners.
 - Search assets by serial number.
 - Search assets by property number.
 - Search assets by asset tag.
 - Retrieve complete asset information instantly.
+- Resolve scanned identifiers through the backend AssetIdentifier records.
 - Validate asset identity before transactions.
 - Print identification labels.
 - Reprint damaged labels.
