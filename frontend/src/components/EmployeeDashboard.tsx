@@ -7,6 +7,7 @@ import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
 import type { Reservation, Borrowing } from '@/types'
 import { reservationStatusTone, borrowingStatusTone } from '@/utils/statusTone'
+import { borrowingStatusLabel, reservationStatusLabel } from '@/utils/displayLabels'
 
 export function EmployeeDashboard() {
   const navigate = useNavigate()
@@ -55,7 +56,7 @@ export function EmployeeDashboard() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <Badge tone={reservationStatusTone(row.status)}>{row.status}</Badge>,
+      render: (row) => <Badge tone={reservationStatusTone(row.status)}>{reservationStatusLabel(row.status)}</Badge>,
     },
     { key: 'dates', header: 'Schedule', render: (row) => `${row.reserved_from} → ${row.reserved_until}` },
   ]
@@ -66,7 +67,7 @@ export function EmployeeDashboard() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{row.status}</Badge>,
+      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{borrowingStatusLabel(row.status)}</Badge>,
     },
     { key: 'borrowed_at', header: 'Borrowed', render: (row) => row.borrowed_at },
     { key: 'due_at', header: 'Due', render: (row) => row.due_at },
@@ -78,7 +79,7 @@ export function EmployeeDashboard() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{row.status}</Badge>,
+      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{borrowingStatusLabel(row.status)}</Badge>,
     },
     { key: 'due_at', header: 'Due', render: (row) => row.due_at },
     {
@@ -86,7 +87,7 @@ export function EmployeeDashboard() {
       header: 'Actions',
       render: (row) => (
         <Button size="sm" variant="primary" onClick={() => handleReturnBorrowing(row.id)}>
-          Return
+          Return Item
         </Button>
       ),
     },
@@ -95,8 +96,8 @@ export function EmployeeDashboard() {
   const overdueItems = activeBorrowings.filter((borrowing) => borrowing.status === 'OVERDUE').length
   const dueSoonItems = activeBorrowings.filter((borrowing) => borrowing.status !== 'OVERDUE').length
   const statCards = [
-    { label: 'My Reservations', value: myReservations.length, description: 'Your reservation requests', icon: ClipboardList, tone: 'blue' as const },
-    { label: 'My Borrowings', value: activeBorrowings.length, description: 'Items currently borrowed', icon: HandCoins, tone: 'green' as const },
+    { label: 'My Borrow Requests', value: myReservations.length, description: 'Requests you submitted', icon: ClipboardList, tone: 'blue' as const },
+    { label: 'My Borrowed Items', value: activeBorrowings.length, description: 'Items currently borrowed', icon: HandCoins, tone: 'green' as const },
     { label: 'Due Soon', value: dueSoonItems, description: 'Active items to monitor', icon: CalendarDays, tone: 'amber' as const },
     { label: 'Overdue', value: overdueItems, description: 'Items needing return', icon: AlertTriangle, tone: 'red' as const },
   ]
@@ -133,7 +134,7 @@ export function EmployeeDashboard() {
               columns={activeColumns}
               rows={activeBorrowings}
               rowKey={(row) => row.id}
-              empty={<EmptyState title="No active borrowings" />}
+              empty={<EmptyState title="No borrowed items" />}
             />
           )}
         </Card>
@@ -142,38 +143,38 @@ export function EmployeeDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">My Reservations</h2>
-            <p className="text-sm text-gray-500">Track your asset reservation requests</p>
+            <h2 className="text-md font-semibold text-gray-900">My Borrow Requests</h2>
+            <p className="text-sm text-gray-500">Track requests you sent for asset borrowing.</p>
           </div>
           {loading ? (
             <Spinner />
           ) : myReservations.length === 0 ? (
-            <EmptyState title="No reservations" description="You don't have any reservations yet." />
+            <EmptyState title="No borrow requests yet" description="Send a borrow request when you need an available asset." />
           ) : (
             <Table
               columns={reservationColumns}
               rows={myReservations}
               rowKey={(row) => row.id}
-              empty={<EmptyState title="No reservations" />}
+              empty={<EmptyState title="No borrow requests yet" />}
             />
           )}
         </Card>
 
         <Card>
           <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">Borrowing History</h2>
-            <p className="text-sm text-gray-500">View your past and current borrowings</p>
+            <h2 className="text-md font-semibold text-gray-900">Borrowed Item History</h2>
+            <p className="text-sm text-gray-500">View your past and current borrowed items.</p>
           </div>
           {loading ? (
             <Spinner />
           ) : myBorrowings.length === 0 ? (
-            <EmptyState title="No borrowings" description="You haven't borrowed any items yet." />
+            <EmptyState title="No borrowed items yet" description="Items you borrow will appear here." />
           ) : (
             <Table
               columns={borrowingColumns}
               rows={myBorrowings}
               rowKey={(row) => row.id}
-              empty={<EmptyState title="No borrowings" />}
+              empty={<EmptyState title="No borrowed items yet" />}
             />
           )}
         </Card>
@@ -187,10 +188,10 @@ export function EmployeeDashboard() {
         <div className="grid gap-3 md:grid-cols-2">
           <Button onClick={() => navigate('/assets')}>Browse Available Assets</Button>
           <Button variant="secondary" onClick={() => navigate('/reservations')}>
-            Make New Reservation
+            Send Borrow Request
           </Button>
           <Button variant="secondary" onClick={() => navigate('/borrowings')}>
-            View All My Borrowings
+            View My Borrowed Items
           </Button>
           <Button variant="secondary" onClick={() => navigate('/settings')}>
             My Profile Settings

@@ -4,9 +4,10 @@ import { cn } from '@/utils/cn'
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
   error?: string
+  helperText?: string
 }
 
-export function Input({ label, error, className, id, ...props }: InputProps) {
+export function Input({ label, error, helperText, className, id, ...props }: InputProps) {
   const inputId = id ?? props.name
 
   return (
@@ -25,6 +26,7 @@ export function Input({ label, error, className, id, ...props }: InputProps) {
         )}
         {...props}
       />
+      {helperText && !error && <p className="mt-1 text-xs text-slate-500">{helperText}</p>}
       {error && <p className="mt-1 text-xs text-danger">{error}</p>}
     </div>
   )

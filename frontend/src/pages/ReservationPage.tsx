@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import type { Asset, Reservation } from '@/types'
 import { reservationStatusTone } from '@/utils/statusTone'
 import { isAdmin, isStaff } from '@/utils/roleHelpers'
+import { reservationStatusLabel } from '@/utils/displayLabels'
 
 export function ReservationPage() {
   const { user } = useAuth()
@@ -31,7 +32,7 @@ export function ReservationPage() {
       const result = await reservationService.list()
       setRows(result.items)
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to load reservations.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load borrow requests.' })
     } finally {
       setLoading(false)
     }
@@ -50,7 +51,7 @@ export function ReservationPage() {
 
   const handleCreate = async () => {
     if (!form.assetIds.length || !form.startDate || !form.endDate) {
-      setMessage({ type: 'error', text: 'Select at least one asset and provide reservation dates.' })
+      setMessage({ type: 'error', text: 'Select at least one asset and provide the borrowing dates.' })
       return
     }
 
@@ -79,10 +80,10 @@ export function ReservationPage() {
       })
       setCreateOpen(false)
       setForm({ assetIds: [], startDate: '', endDate: '', remarks: '' })
-      setMessage({ type: 'success', text: 'Reservation created successfully.' })
+      setMessage({ type: 'success', text: 'Borrow request sent successfully.' })
       await loadReservations()
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to create reservation.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to send borrow request.' })
     } finally {
       setSaving(false)
     }
@@ -110,10 +111,10 @@ export function ReservationPage() {
         authorizedAt: reservation.authorized_at,
         remarks: reservation.remarks,
       })
-      setMessage({ type: 'success', text: 'Reservation approved successfully.' })
+      setMessage({ type: 'success', text: 'Borrow request approved successfully.' })
       await loadReservations()
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to approve reservation.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to approve borrow request.' })
     }
   }
 
@@ -124,7 +125,7 @@ export function ReservationPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <Badge tone={reservationStatusTone(row.status)}>{row.status}</Badge>,
+      render: (row) => <Badge tone={reservationStatusTone(row.status)}>{reservationStatusLabel(row.status)}</Badge>,
     },
     {
       key: 'dates',
@@ -161,7 +162,7 @@ export function ReservationPage() {
           </Button>
           {canApproveReservations && row.status === 'PENDING' && (
             <Button size="sm" variant="success" onClick={() => handleApprove(row.id)}>
-              Approve
+              Approve Request
             </Button>
           )}
         </div>
@@ -173,10 +174,10 @@ export function ReservationPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Reservations</h1>
-          <p className="text-sm text-gray-500">Manage asset reservations</p>
+          <h1 className="text-lg font-semibold text-gray-900">Borrow Requests</h1>
+          <p className="text-sm text-gray-500">Send and manage requests to borrow assets.</p>
         </div>
-        <Button onClick={openCreate}>New Reservation</Button>
+        <Button onClick={openCreate}>New Borrow Request</Button>
       </div>
       {message && (
         <Alert tone={message.type} onClose={() => setMessage(null)}>
@@ -191,14 +192,14 @@ export function ReservationPage() {
             columns={columns}
             rows={rows}
             rowKey={(row) => row.id}
-            empty={<EmptyState title="No reservations" />}
+            empty={<EmptyState title="No borrow requests found" description="Create a borrow request when you need an available asset." />}
           />
         )}
       </Card>
 
       <Modal
         open={createOpen}
-        title="New Reservation"
+        title="New Borrow Request"
         onClose={() => setCreateOpen(false)}
         footer={
           <>
@@ -206,7 +207,7 @@ export function ReservationPage() {
               Cancel
             </Button>
             <Button onClick={handleCreate} disabled={saving}>
-              {saving ? 'Saving...' : 'Create Reservation'}
+              {saving ? 'Saving...' : 'Send Borrow Request'}
             </Button>
           </>
         }
@@ -234,7 +235,7 @@ export function ReservationPage() {
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-gray-500">Hold Ctrl or Shift to select multiple assets.</p>
+            <p className="mt-1 text-xs text-gray-500">Hold Ctrl or Shift to select multiple assets for the same request.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input
@@ -254,7 +255,7 @@ export function ReservationPage() {
             label="Remarks"
             value={form.remarks}
             onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
-            placeholder="Purpose or notes"
+            placeholder="Purpose or notes for this borrow request"
           />
         </div>
       </Modal>

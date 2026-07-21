@@ -18,6 +18,68 @@ Always append new entries.
 
 ---
 
+## 2026-07-21 09:28
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Performed a frontend terminology and user-experience simplification pass.
+
+---
+
+### Files Modified
+
+- frontend/src/components/ReceiptModal.tsx
+- frontend/src/components/ui/Input.tsx
+- frontend/src/components/AdminDashboard.tsx
+- frontend/src/components/EmployeeDashboard.tsx
+- frontend/src/components/StaffDashboard.tsx
+- frontend/src/layouts/Sidebar.tsx
+- frontend/src/layouts/TopNav.tsx
+- frontend/src/pages/AssetPage.tsx
+- frontend/src/pages/BorrowingPage.tsx
+- frontend/src/pages/InventoryPage.tsx
+- frontend/src/pages/MaintenancePage.tsx
+- frontend/src/pages/ReportPage.tsx
+- frontend/src/pages/ReservationPage.tsx
+- frontend/src/pages/RolesPage.tsx
+- frontend/src/services/api.ts
+- frontend/src/utils/displayLabels.ts
+- AI_CHANGELOG.md
+- CHANGELOG.md
+
+---
+
+### Summary
+
+- Added frontend-only display label helpers for raw backend status values.
+- Reworded visible UI text to use employee-friendly terminology.
+- Added helper text support to the shared Input component.
+- Improved user-facing error messages through the API response interceptor.
+- Preserved backend routes, payload fields, response fields, and status values.
+- Verified the frontend production build.
+
+---
+
+### Reason
+
+Ordinary employees and inventory staff need simpler UI language while the technical backend architecture and API contract remain unchanged.
+
+---
+
+### Risks
+
+- Some internal variable names still use backend terminology such as reservation and borrowing by design to preserve API alignment.
+- Vite still reports the existing large bundle warning because the QR scanner library is included in the main bundle.
+
+---
+
 ## 2026-07-21 09:06
 
 ### AI

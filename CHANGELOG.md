@@ -2,6 +2,50 @@
 
 ## 2026-07-21
 
+### Frontend Terminology and UX Simplification Pass
+
+### Files Modified
+
+- `frontend/src/components/ReceiptModal.tsx`
+- `frontend/src/components/ui/Input.tsx`
+- `frontend/src/components/AdminDashboard.tsx`
+- `frontend/src/components/EmployeeDashboard.tsx`
+- `frontend/src/components/StaffDashboard.tsx`
+- `frontend/src/layouts/Sidebar.tsx`
+- `frontend/src/layouts/TopNav.tsx`
+- `frontend/src/pages/AssetPage.tsx`
+- `frontend/src/pages/BorrowingPage.tsx`
+- `frontend/src/pages/InventoryPage.tsx`
+- `frontend/src/pages/MaintenancePage.tsx`
+- `frontend/src/pages/ReportPage.tsx`
+- `frontend/src/pages/ReservationPage.tsx`
+- `frontend/src/pages/RolesPage.tsx`
+- `frontend/src/services/api.ts`
+- `frontend/src/utils/displayLabels.ts`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+The frontend exposed technical module names, raw backend status values, and developer-oriented messages that were harder for employees and inventory staff to understand.
+
+### Summary
+
+- Added frontend-only display label helpers for asset, reservation, borrowing, maintenance, and inventory statuses.
+- Reworded visible labels such as Reservations to Borrow Requests, Borrowings to Borrowed Items, SKU to Item Code, Reorder Level to Low Stock Alert, Stock In to Add Stock, and Stock Out to Remove Stock.
+- Added helper text for inventory item code, low-stock alert, and maintenance asset identifier fields.
+- Improved empty states, success messages, confirmation messages, and report/dashboard copy.
+- Added centralized API error messaging for common 401, 403, 404, 422, and 500 responses.
+- Preserved backend field names, routes, payloads, status constants, and API contracts.
+
+### Impact
+
+- Employees and staff see simpler workflow language without changing backend behavior.
+- Raw backend status values are translated into readable labels in key UI areas.
+- Frontend production build passes after the copy and UX changes.
+
+## 2026-07-21
+
 ### Camera Scanner Reliability Fix
 
 ### Files Modified

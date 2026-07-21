@@ -3,6 +3,7 @@ import { Alert, Badge, Button, Card, EmptyState, Input, Modal, Spinner, Table, t
 import { maintenanceService, type CreateMaintenancePayload, type UpdateMaintenancePayload } from '@/services/maintenanceService'
 import type { MaintenanceRequest } from '@/types'
 import { maintenanceStatusTone } from '@/utils/statusTone'
+import { maintenanceStatusLabel } from '@/utils/displayLabels'
 
 type MaintenanceFormStatus = CreateMaintenancePayload['status']
 
@@ -28,7 +29,7 @@ export function MaintenancePage() {
       const result = await maintenanceService.list()
       setRows(result.items)
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to load maintenance requests.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load maintenance records.' })
     } finally {
       setLoading(false)
     }
@@ -63,7 +64,7 @@ export function MaintenancePage() {
   }
 
   const handleDelete = async (request: MaintenanceRequest) => {
-    if (!confirm(`Are you sure you want to delete maintenance for ${request.asset_name}?`)) return
+    if (!confirm(`Are you sure you want to delete the maintenance record for ${request.asset_name}?`)) return
 
     try {
       await maintenanceService.delete(request.id)
@@ -89,7 +90,7 @@ export function MaintenancePage() {
       setModalOpen(false)
       await loadMaintenance()
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save maintenance request.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to save maintenance details.' })
     } finally {
       setSaving(false)
     }
@@ -125,7 +126,7 @@ export function MaintenancePage() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <Badge tone={maintenanceStatusTone(row.status)}>{row.status}</Badge>,
+      render: (row) => <Badge tone={maintenanceStatusTone(row.status)}>{maintenanceStatusLabel(row.status)}</Badge>,
     },
     { key: 'scheduled_at', header: 'Scheduled', render: (row) => row.scheduled_at },
     {
@@ -159,9 +160,9 @@ export function MaintenancePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Maintenance</h1>
-          <p className="text-sm text-gray-500">Manage asset maintenance requests</p>
+          <p className="text-sm text-gray-500">Track asset repairs, inspections, and maintenance history.</p>
         </div>
-        <Button onClick={handleCreate}>Schedule Maintenance</Button>
+        <Button onClick={handleCreate}>Report a Problem</Button>
       </div>
 
       {message && (
@@ -178,7 +179,7 @@ export function MaintenancePage() {
             columns={columns}
             rows={rows}
             rowKey={(row) => row.id}
-            empty={<EmptyState title="No maintenance requests" />}
+            empty={<EmptyState title="No maintenance records found" description="Report a problem or schedule maintenance when an asset needs attention." />}
           />
         )}
       </Card>
@@ -186,11 +187,12 @@ export function MaintenancePage() {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingRequest ? 'Edit Maintenance' : 'Schedule Maintenance'}
+        title={editingRequest ? 'Edit Maintenance' : 'Report a Problem'}
       >
         <div className="space-y-4">
           <Input
-            label="Asset ID"
+            label="Asset ID / Identifier"
+            helperText="Enter the asset ID used to identify the item needing maintenance."
             type="number"
             value={formData.asset_id.toString()}
             onChange={(e) => setFormData({ ...formData, asset_id: parseInt(e.target.value) || 0 })}
@@ -237,7 +239,7 @@ export function MaintenancePage() {
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={saving}>
-              {saving ? 'Saving...' : editingRequest ? 'Update' : 'Schedule'}
+              {saving ? 'Saving...' : editingRequest ? 'Save Changes' : 'Save Maintenance Record'}
             </Button>
           </div>
         </div>

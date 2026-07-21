@@ -4,6 +4,7 @@ import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
 import { borrowingService } from '@/services/borrowingService'
 import type { Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
+import { borrowingStatusLabel } from '@/utils/displayLabels'
 
 export function BorrowingPage() {
   const [rows, setRows] = useState<Borrowing[]>([])
@@ -17,7 +18,7 @@ export function BorrowingPage() {
       const result = await borrowingService.list()
       setRows(result.items)
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to load borrowings.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load borrowed items.' })
     } finally {
       setLoading(false)
     }
@@ -28,14 +29,14 @@ export function BorrowingPage() {
   }, [])
 
   const handleReturn = async (borrowingId: number) => {
-    if (!confirm('Are you sure you want to return this asset?')) return
+    if (!confirm('Are you sure you want to return this item?')) return
 
     try {
       await borrowingService.returnAsset(borrowingId)
-      setMessage({ type: 'success', text: 'Asset returned successfully.' })
+      setMessage({ type: 'success', text: 'Item returned successfully.' })
       await loadBorrowings()
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to return asset.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to return item.' })
     }
   }
 
@@ -45,7 +46,7 @@ export function BorrowingPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{row.status}</Badge>,
+      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{borrowingStatusLabel(row.status)}</Badge>,
     },
     { key: 'borrowed_at', header: 'Borrowed', render: (row) => row.borrowed_at },
     { key: 'due_at', header: 'Due', render: (row) => row.due_at },
@@ -79,7 +80,7 @@ export function BorrowingPage() {
           </Button>
           {row.status === 'BORROWED' || row.status === 'ACTIVE' || row.status === 'OVERDUE' ? (
             <Button size="sm" variant="secondary" onClick={() => handleReturn(row.id)}>
-              Return
+              Return Item
             </Button>
           ) : (
             <span className="text-sm text-gray-400">No actions</span>
@@ -92,8 +93,8 @@ export function BorrowingPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-lg font-semibold text-gray-900">Borrowings</h1>
-        <p className="text-sm text-gray-500">Manage asset borrowings</p>
+        <h1 className="text-lg font-semibold text-gray-900">Borrowed Items</h1>
+        <p className="text-sm text-gray-500">View borrowed assets and process returns.</p>
       </div>
       {message && (
         <Alert tone={message.type} onClose={() => setMessage(null)}>
@@ -108,7 +109,7 @@ export function BorrowingPage() {
             columns={columns}
             rows={rows}
             rowKey={(row) => row.id}
-            empty={<EmptyState title="No borrowings" />}
+            empty={<EmptyState title="No borrowed items found" description="Borrowed assets will appear here after a request is approved or an item is borrowed." />}
           />
         )}
       </Card>

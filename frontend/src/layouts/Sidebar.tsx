@@ -23,13 +23,13 @@ import { displayName } from '@/types'
 const allLinks = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'staff', 'employee'] },
   { to: '/assets', label: 'Assets', icon: Boxes, roles: ['admin', 'staff', 'employee'] },
-  { to: '/reservations', label: 'Reservations', icon: ClipboardList, roles: ['admin', 'staff', 'employee'] },
-  { to: '/borrowings', label: 'Borrowings', icon: HandCoins, roles: ['admin', 'staff', 'employee'] },
+  { to: '/reservations', label: 'Borrow Requests', icon: ClipboardList, roles: ['admin', 'staff', 'employee'] },
+  { to: '/borrowings', label: 'Borrowed Items', icon: HandCoins, roles: ['admin', 'staff', 'employee'] },
   { to: '/inventory', label: 'Inventory', icon: Package, roles: ['admin', 'staff'] },
   { to: '/maintenance', label: 'Maintenance', icon: Wrench, roles: ['admin', 'staff'] },
   { to: '/reports', label: 'Reports', icon: FileBarChart, roles: ['admin', 'staff'] },
   { to: '/users', label: 'Users', icon: Users, roles: ['admin'] },
-  { to: '/roles', label: 'Roles', icon: Shield, roles: ['admin'] },
+  { to: '/roles', label: 'Roles & Permissions', icon: Shield, roles: ['admin'] },
   { to: '/system-setup', label: 'System Setup', icon: SlidersHorizontal, roles: ['admin'] },
   { to: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'staff', 'employee'] },
 ]
