@@ -120,8 +120,8 @@ export function RolesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Roles</h1>
-          <p className="text-sm text-gray-500">Manage system roles and permissions</p>
+          <h1 className="text-lg font-semibold text-gray-900">Roles & Permissions</h1>
+          <p className="text-sm text-gray-500">Manage what each type of user can access.</p>
         </div>
         <Button onClick={handleCreate}>Add Role</Button>
       </div>
@@ -142,7 +142,7 @@ export function RolesPage() {
             <Spinner />
           </div>
         ) : roles.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No roles found</div>
+          <div className="text-center py-8 text-gray-500">No roles found. Add a role to control user access.</div>
         ) : (
           <>
             <Table columns={columns} rows={roles} rowKey={(r) => r.id} />
@@ -179,7 +179,7 @@ export function RolesPage() {
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={saving}>
-              {saving ? 'Saving...' : editingRole ? 'Update' : 'Create'}
+              {saving ? 'Saving...' : editingRole ? 'Save Changes' : 'Add Role'}
             </Button>
           </div>
         </div>

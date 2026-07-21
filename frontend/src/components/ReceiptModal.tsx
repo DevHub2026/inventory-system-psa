@@ -1,4 +1,5 @@
 import { Button, Modal } from '@/components/ui'
+import { borrowingStatusLabel, reservationStatusLabel } from '@/utils/displayLabels'
 
 export interface ReceiptRecord {
   type: 'Borrowing' | 'Reservation'
@@ -36,11 +37,20 @@ function QRPlaceholder({ payload }: { payload: string }) {
   )
 }
 
+function receiptTypeLabel(type: ReceiptRecord['type']) {
+  return type === 'Reservation' ? 'Borrow Request' : 'Borrowed Item'
+}
+
+function receiptStatusLabel(receipt: ReceiptRecord) {
+  if (!receipt.status) return 'Not available'
+  return receipt.type === 'Reservation' ? reservationStatusLabel(receipt.status) : borrowingStatusLabel(receipt.status)
+}
+
 export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
   return (
     <Modal
       open={receipt !== null}
-      title={`${receipt?.type ?? 'Transaction'} Receipt`}
+      title={`${receipt ? receiptTypeLabel(receipt.type) : 'Transaction'} Receipt`}
       onClose={onClose}
       footer={
         <>
@@ -55,7 +65,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
         <div className="receipt-print-area space-y-4 text-sm">
           <div className="rounded-md border border-gray-200 p-4">
             <div className="text-xs uppercase tracking-widest text-gray-500">Philippine Statistics Authority</div>
-            <h3 className="mt-1 text-lg font-semibold text-gray-900">{receipt.type} Receipt</h3>
+            <h3 className="mt-1 text-lg font-semibold text-gray-900">{receiptTypeLabel(receipt.type)} Receipt</h3>
             <p className="text-xs text-gray-500">Official transaction reference for asset custody verification.</p>
           </div>
 
@@ -91,7 +101,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
               </div>
               <div>
                 <dt className="text-gray-500">Status</dt>
-                <dd>{receipt.status ?? 'Not available'}</dd>
+                <dd>{receiptStatusLabel(receipt)}</dd>
               </div>
               <div>
                 <dt className="text-gray-500">Authorized By</dt>

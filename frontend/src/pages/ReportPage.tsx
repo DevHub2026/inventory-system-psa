@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, Card, EmptyState, Spinner, Table, Alert, type Column } from '@/components/ui'
 import { reportService, type AssetReportItem, type BorrowingReportItem, type OverdueReportItem } from '@/services/reportService'
+import { borrowingStatusLabel, inventoryStatusLabel } from '@/utils/displayLabels'
 
 type ReportType = 'assets' | 'borrowings' | 'overdue'
 type ReportData = AssetReportItem[] | BorrowingReportItem[] | OverdueReportItem[]
@@ -43,7 +44,7 @@ export function ReportPage() {
     { key: 'asset_number', header: 'Asset Number', render: (row) => row.asset_number },
     { key: 'name', header: 'Name', render: (row) => row.name },
     { key: 'category', header: 'Category', render: (row) => row.category },
-    { key: 'status', header: 'Status', render: (row) => row.status },
+    { key: 'status', header: 'Status', render: (row) => inventoryStatusLabel(row.status) },
     { key: 'location', header: 'Location', render: (row) => row.location },
   ]
 
@@ -52,7 +53,7 @@ export function ReportPage() {
     { key: 'borrower', header: 'Borrower', render: (row) => row.borrower },
     { key: 'borrow_date', header: 'Borrow Date', render: (row) => row.borrow_date },
     { key: 'due_date', header: 'Due Date', render: (row) => row.due_date },
-    { key: 'status', header: 'Status', render: (row) => row.status },
+    { key: 'status', header: 'Status', render: (row) => borrowingStatusLabel(row.status) },
   ]
 
   const overdueColumns: Column<OverdueReportItem>[] = [
@@ -66,7 +67,7 @@ export function ReportPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-lg font-semibold text-gray-900">Reports</h1>
-        <p className="text-sm text-gray-500">Analytics and reporting</p>
+        <p className="text-sm text-gray-500">View asset, borrowing, and overdue item reports.</p>
       </div>
 
       <div className="flex gap-2">
@@ -74,7 +75,7 @@ export function ReportPage() {
           Assets
         </Button>
         <Button variant={reportType === 'borrowings' ? 'primary' : 'secondary'} onClick={() => setReportType('borrowings')}>
-          Borrowings
+          Borrowed Items
         </Button>
         <Button variant={reportType === 'overdue' ? 'primary' : 'secondary'} onClick={() => setReportType('overdue')}>
           Overdue
@@ -91,7 +92,7 @@ export function ReportPage() {
         {loading ? (
           <Spinner />
         ) : data.length === 0 ? (
-          <EmptyState title="No data available" description="This report has no data to display." />
+          <EmptyState title="No report data found" description="No matching records are available for this report yet." />
         ) : reportType === 'assets' ? (
           <Table columns={assetColumns} rows={data as AssetReportItem[]} rowKey={(row) => row.id} />
         ) : reportType === 'borrowings' ? (

@@ -25,6 +25,7 @@ import { QrCode } from '@/components/QrCode'
 import type { Asset, AssetStatus } from '@/types'
 import { assetStatusTone } from '@/utils/statusTone'
 import { isAdmin } from '@/utils/roleHelpers'
+import { assetStatusLabel } from '@/utils/displayLabels'
 
 export function AssetPage() {
   const { user } = useAuth()
@@ -158,13 +159,13 @@ export function AssetPage() {
 
   const columns: Column<Asset>[] = useMemo(
     () => [
-      { key: 'asset_number', header: 'Asset Code', render: (row) => row.asset_number },
+      { key: 'asset_number', header: 'Asset Number', render: (row) => row.asset_number },
       { key: 'name', header: 'Name', render: (row) => row.name },
       { key: 'category', header: 'Category', render: (row) => row.category ?? '—' },
       {
         key: 'status',
         header: 'Status',
-        render: (row) => <Badge tone={assetStatusTone(row.status)}>{row.status}</Badge>,
+        render: (row) => <Badge tone={assetStatusTone(row.status)}>{assetStatusLabel(row.status)}</Badge>,
       },
       { key: 'location', header: 'Location', render: (row) => row.location ?? '—' },
       {
@@ -189,13 +190,13 @@ export function AssetPage() {
                   Borrow
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => setReserveId(row.id)}>
-                  Reserve
+                  Send Request
                 </Button>
               </>
             )}
             {row.status === 'BORROWED' && (
               <Button size="sm" variant="success" onClick={() => setReturnId(row.id)}>
-                Return
+                  Return Item
               </Button>
             )}
             {canManageAssets && (
@@ -215,7 +216,7 @@ export function AssetPage() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Assets</h1>
-          <p className="text-sm text-gray-500">Connected to GET /api/v1/assets when backend is available.</p>
+          <p className="text-sm text-gray-500">Search, scan, borrow, and view PSA-tracked assets.</p>
         </div>
         <Button onClick={() => setScannerOpen(true)}>Scan Asset QR</Button>
       </div>
@@ -262,7 +263,7 @@ export function AssetPage() {
               columns={columns}
               rows={rows}
               rowKey={(row) => row.id}
-              empty={<EmptyState title="No assets found" />}
+              empty={<EmptyState title="No assets found" description="Try another search term or clear the status filter." />}
             />
             <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void load(p)} />
           </>
@@ -271,15 +272,15 @@ export function AssetPage() {
 
       <ConfirmDialog
         open={deleteId !== null}
-        title="Delete asset"
-        message="Soft-delete / archive this asset? This calls DELETE /api/v1/assets/{asset}."
-        confirmLabel="Delete"
+        title="Archive asset"
+        message="Are you sure you want to archive this asset? It will no longer appear as an active item."
+        confirmLabel="Archive Item"
         onCancel={() => setDeleteId(null)}
         onConfirm={() => {
           if (deleteId === null) return
           void assetService.remove(deleteId).then(() => {
             setDeleteId(null)
-            setMessage('Asset delete requested.')
+            setMessage('Asset archive requested.')
             void load(page)
           })
         }}
@@ -287,10 +288,10 @@ export function AssetPage() {
 
       <ConfirmDialog
         open={returnId !== null}
-        title="Return asset"
+        title="Return Item"
         message={
           <div className="space-y-3">
-            <p>Return this borrowed asset and mark it available again?</p>
+            <p>Return this borrowed item and mark it available again?</p>
             <div>
               <label className="block text-sm font-medium text-gray-700">Return Notes</label>
               <textarea
@@ -303,7 +304,7 @@ export function AssetPage() {
             </div>
           </div>
         }
-        confirmLabel="Return"
+        confirmLabel="Return Item"
         tone="primary"
         onCancel={() => {
           setReturnId(null)
@@ -314,7 +315,7 @@ export function AssetPage() {
           void assetService.returnAsset(returnId, returnNotes).then(() => {
             setReturnId(null)
             setReturnNotes('')
-            setMessage('Asset returned successfully.')
+            setMessage('Item returned successfully.')
             void load(page)
           })
         }}
@@ -322,10 +323,10 @@ export function AssetPage() {
 
       <ConfirmDialog
         open={borrowId !== null}
-        title="Borrow asset"
+        title="Borrow Item"
         message={
           <div className="space-y-3">
-            <p>Borrow this asset? An email notification will be sent to the admin.</p>
+            <p>Borrow this item now? A receipt will be generated for the transaction.</p>
             <div>
               <label className="block text-sm font-medium text-gray-700">Due Date (days)</label>
               <input
@@ -349,7 +350,7 @@ export function AssetPage() {
             </div>
           </div>
         }
-        confirmLabel="Borrow"
+        confirmLabel="Borrow Item"
         onCancel={() => {
           setBorrowId(null)
           setBorrowNotes('')
@@ -376,7 +377,7 @@ export function AssetPage() {
               authorizedAt: borrowing.authorized_at,
               remarks: borrowing.remarks,
             })
-            setMessage('Asset borrowed successfully. Admin has been notified.')
+            setMessage('Item borrowed successfully. Your receipt is ready.')
             void load(page)
           })
         }}
@@ -384,10 +385,10 @@ export function AssetPage() {
 
       <ConfirmDialog
         open={reserveId !== null}
-        title="Reserve asset"
+        title="Send Borrow Request"
         message={
           <div className="space-y-3">
-            <p>Reserve this asset for later pickup. Staff will approve it and convert it into a borrowing.</p>
+            <p>Send a request to borrow this asset later. Staff will approve it before release.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Start Date</label>
@@ -409,18 +410,18 @@ export function AssetPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Purpose / Notes</label>
+                <label className="block text-sm font-medium text-gray-700">Purpose / Notes</label>
               <textarea
                 value={reserveRemarks}
                 onChange={(e) => setReserveRemarks(e.target.value)}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 rows={2}
-                placeholder="Optional reservation purpose"
+                placeholder="Optional borrow request purpose"
               />
             </div>
           </div>
         }
-        confirmLabel="Reserve"
+        confirmLabel="Send Request"
         onCancel={() => {
           setReserveId(null)
           setReserveRemarks('')
@@ -452,7 +453,7 @@ export function AssetPage() {
                 authorizedAt: reservation.authorized_at,
                 remarks: reservation.remarks,
               })
-              setMessage('Reservation created successfully. Present the receipt QR/reference to staff for approval.')
+              setMessage('Borrow request sent successfully. Present the receipt QR/reference to staff for approval.')
               void load(page)
             })
         }}
@@ -471,7 +472,7 @@ export function AssetPage() {
             <div>
               <dt className="text-gray-500">Status</dt>
               <dd>
-                <Badge tone={assetStatusTone(viewAsset.status)}>{viewAsset.status}</Badge>
+                <Badge tone={assetStatusTone(viewAsset.status)}>{assetStatusLabel(viewAsset.status)}</Badge>
               </dd>
             </div>
             <div>

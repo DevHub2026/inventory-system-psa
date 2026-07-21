@@ -9,6 +9,7 @@ import { borrowingService } from '@/services/borrowingService'
 import { maintenanceService } from '@/services/maintenanceService'
 import type { DashboardStats, ActivityItem, Reservation, Borrowing, MaintenanceRequest } from '@/types'
 import { maintenanceStatusTone } from '@/utils/statusTone'
+import { maintenanceStatusLabel } from '@/utils/displayLabels'
 
 export function AdminDashboard() {
   const navigate = useNavigate()
@@ -49,10 +50,10 @@ export function AdminDashboard() {
   const handleApproveReservation = async (reservationId: number) => {
     try {
       await reservationService.approve(reservationId)
-      setMessage({ type: 'success', text: 'Reservation approved successfully.' })
+      setMessage({ type: 'success', text: 'Borrow request approved successfully.' })
       await loadData()
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to approve reservation.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to approve borrow request.' })
     }
   }
 
@@ -73,7 +74,7 @@ export function AdminDashboard() {
       header: 'Actions',
       render: (row) => (
         <Button size="sm" variant="success" onClick={() => handleApproveReservation(row.id)}>
-          Approve
+          Approve Request
         </Button>
       ),
     },
@@ -93,7 +94,7 @@ export function AdminDashboard() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <Badge tone={maintenanceStatusTone(row.status)}>{row.status}</Badge>,
+      render: (row) => <Badge tone={maintenanceStatusTone(row.status)}>{maintenanceStatusLabel(row.status)}</Badge>,
     },
     { key: 'scheduled_at', header: 'Scheduled', render: (row) => row.scheduled_at },
   ]
@@ -104,7 +105,7 @@ export function AdminDashboard() {
     { label: 'Borrowed', value: stats?.borrowed || 0, description: 'Currently in use', icon: Archive, tone: 'amber' as const },
     { label: 'Reserved', value: stats?.reserved || 0, description: 'Pending collection', icon: Clock3, tone: 'violet' as const },
     { label: 'Maintenance', value: stats?.maintenance || 0, description: 'Requires attention', icon: Wrench, tone: 'red' as const },
-    { label: 'Pending Approvals', value: pendingReservations.length, description: 'Awaiting action', icon: CalendarClock, tone: 'amber' as const },
+    { label: 'Borrow Requests', value: pendingReservations.length, description: 'Waiting for approval', icon: CalendarClock, tone: 'amber' as const },
     { label: 'Overdue Items', value: overdueBorrowings.length, description: 'Past due date', icon: Activity, tone: 'red' as const },
     { label: 'Pending Maintenance', value: pendingMaintenance.length, description: 'Scheduled repairs', icon: Wrench, tone: 'teal' as const },
   ]
@@ -144,7 +145,7 @@ export function AdminDashboard() {
         </Card>
         <Card>
           <div className="flex items-center justify-between gap-4">
-            <div><p className="text-sm font-semibold text-slate-700">System Health</p><p className="mt-1 text-xs text-slate-400">Based on overdue items and pending approvals</p></div>
+            <div><p className="text-sm font-semibold text-slate-700">System Health</p><p className="mt-1 text-xs text-slate-400">Based on overdue items and pending borrow requests</p></div>
             <span className={healthStatus === 'Healthy' ? 'inline-flex items-center gap-1.5 text-lg font-bold text-emerald-600' : 'inline-flex items-center gap-1.5 text-lg font-bold text-amber-600'}><ShieldCheck className="h-5 w-5" />{healthStatus}</span>
           </div>
         </Card>
@@ -172,19 +173,19 @@ export function AdminDashboard() {
 
         <Card>
           <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">Pending Reservations</h2>
-            <p className="text-sm text-gray-500">Awaiting admin approval</p>
+            <h2 className="text-md font-semibold text-gray-900">Borrow Requests Waiting for Approval</h2>
+            <p className="text-sm text-gray-500">Review requests before assets are released.</p>
           </div>
           {loading ? (
             <Spinner />
           ) : pendingReservations.length === 0 ? (
-            <EmptyState title="No pending reservations" description="All reservations processed." />
+            <EmptyState title="No borrow requests waiting" description="All borrow requests have been processed." />
           ) : (
             <Table
               columns={reservationColumns}
               rows={pendingReservations}
               rowKey={(row) => row.id}
-              empty={<EmptyState title="No pending reservations" />}
+              empty={<EmptyState title="No borrow requests waiting" />}
             />
           )}
         </Card>
@@ -193,7 +194,7 @@ export function AdminDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">Overdue Borrowings</h2>
+            <h2 className="text-md font-semibold text-gray-900">Overdue Borrowed Items</h2>
             <p className="text-sm text-gray-500">Items past due date requiring attention</p>
           </div>
           {loading ? (
@@ -238,10 +239,10 @@ export function AdminDashboard() {
         <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
           <Button onClick={() => navigate('/assets')}>Manage Assets</Button>
           <Button variant="secondary" onClick={() => navigate('/reservations')}>
-            Reservations
+            Borrow Requests
           </Button>
           <Button variant="secondary" onClick={() => navigate('/borrowings')}>
-            Borrowings
+            Borrowed Items
           </Button>
           <Button variant="secondary" onClick={() => navigate('/inventory')}>
             Inventory

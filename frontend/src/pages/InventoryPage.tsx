@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Badge, Button, Card, EmptyState, Input, Modal, Spinner, Table, Alert, type Column } from '@/components/ui'
 import { inventoryService, type CreateInventoryItemPayload, type UpdateInventoryItemPayload } from '@/services/inventoryService'
 import type { InventoryItem } from '@/types'
+import { inventoryStatusLabel } from '@/utils/displayLabels'
 
 export function InventoryPage() {
   const navigate = useNavigate()
@@ -32,7 +33,7 @@ export function InventoryPage() {
       const result = await inventoryService.list()
       setRows(result.items)
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to load inventory.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load inventory items.' })
     } finally {
       setLoading(false)
     }
@@ -126,15 +127,15 @@ export function InventoryPage() {
     try {
       if (stockType === 'in') {
         await inventoryService.stockIn(stockItem.id, stockQuantity)
-        setMessage({ type: 'success', text: 'Stock in completed successfully.' })
+        setMessage({ type: 'success', text: 'Stock added successfully.' })
       } else {
         await inventoryService.stockOut(stockItem.id, stockQuantity)
-        setMessage({ type: 'success', text: 'Stock out completed successfully.' })
+        setMessage({ type: 'success', text: 'Stock removed successfully.' })
       }
       setStockModalOpen(false)
       await loadInventory()
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to update stock.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to update the item quantity.' })
     } finally {
       setSaving(false)
     }
@@ -142,8 +143,8 @@ export function InventoryPage() {
 
   const columns: Column<InventoryItem>[] = [
     { key: 'name', header: 'Item', render: (row) => row.name },
-    { key: 'asset_number', header: 'Asset No.', render: (row) => row.asset_number ?? 'Not linked' },
-    { key: 'quantity', header: 'Qty', render: (row) => row.quantity },
+    { key: 'asset_number', header: 'Asset Number', render: (row) => row.asset_number ?? 'Not linked' },
+    { key: 'quantity', header: 'Available Quantity', render: (row) => row.quantity },
     { key: 'unit', header: 'Unit', render: (row) => row.unit },
     {
       key: 'status',
@@ -154,7 +155,7 @@ export function InventoryPage() {
             row.status === 'OUT_OF_STOCK' ? 'red' : row.status === 'LOW_STOCK' ? 'yellow' : 'green'
           }
         >
-          {row.status}
+          {inventoryStatusLabel(row.status)}
         </Badge>
       ),
     },
@@ -164,10 +165,10 @@ export function InventoryPage() {
       render: (row) => (
         <div className="flex gap-2">
           <Button size="sm" variant="success" onClick={() => handleStockIn(row)}>
-            Stock In
+            Add Stock
           </Button>
           <Button size="sm" variant="secondary" onClick={() => handleStockOut(row)}>
-            Stock Out
+            Remove Stock
           </Button>
           <Button size="sm" variant="secondary" onClick={() => handleEdit(row)}>
             Edit
@@ -190,7 +191,7 @@ export function InventoryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Inventory</h1>
-          <p className="text-sm text-gray-500">Manage consumable stock</p>
+          <p className="text-sm text-gray-500">Manage consumable items and available quantities.</p>
         </div>
         <Button onClick={handleCreate}>Add Item</Button>
       </div>
@@ -209,7 +210,7 @@ export function InventoryPage() {
             columns={columns}
             rows={rows}
             rowKey={(row) => row.id}
-            empty={<EmptyState title="No inventory records" />}
+            empty={<EmptyState title="No inventory items found" description="Add your first item to begin tracking stock." />}
           />
         )}
       </Card>
@@ -226,13 +227,14 @@ export function InventoryPage() {
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           />
           <Input
-            label="SKU"
+            label="Item Code"
+            helperText="Use the existing item code or stock keeping code if available."
             value={formData.sku || ''}
             onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
           />
           <div className="grid gap-3 md:grid-cols-2">
             <Input
-              label="Quantity"
+              label="Available Quantity"
               type="number"
               value={formData.quantity.toString()}
               onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
@@ -244,7 +246,8 @@ export function InventoryPage() {
             />
           </div>
           <Input
-            label="Reorder Level"
+            label="Low Stock Alert"
+            helperText="Show a warning when the available quantity reaches this number."
             type="number"
             value={formData.reorder_level?.toString() || '0'}
             onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })}
@@ -257,14 +260,14 @@ export function InventoryPage() {
               disabled={Boolean(editingItem?.asset_id)}
               className="h-4 w-4 accent-brand-600"
             />
-            Also show this inventory item in Assets
+            Also show this item in Assets
           </label>
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setModalOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={saving}>
-              {saving ? 'Saving...' : editingItem ? 'Update' : 'Create'}
+              {saving ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Item'}
             </Button>
           </div>
         </div>
@@ -273,7 +276,7 @@ export function InventoryPage() {
       <Modal
         open={stockModalOpen}
         onClose={() => setStockModalOpen(false)}
-        title={`${stockType === 'in' ? 'Stock In' : 'Stock Out'} - ${stockItem?.name}`}
+        title={`${stockType === 'in' ? 'Add Stock' : 'Remove Stock'} - ${stockItem?.name}`}
       >
         <div className="space-y-4">
           <Input
@@ -288,7 +291,7 @@ export function InventoryPage() {
               Cancel
             </Button>
             <Button onClick={handleStockSubmit} disabled={saving}>
-              {saving ? 'Processing...' : stockType === 'in' ? 'Stock In' : 'Stock Out'}
+              {saving ? 'Processing...' : stockType === 'in' ? 'Add Stock' : 'Remove Stock'}
             </Button>
           </div>
         </div>

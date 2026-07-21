@@ -18,25 +18,56 @@ Always append new entries.
 
 ---
 
+<<<<<<< HEAD
 ## 2026-07-20 16:15
+=======
+## 2026-07-21 09:28
+>>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 
 ### AI
 
 Name: Codex
+<<<<<<< HEAD
 Model: GPT-5.6
+=======
+Model: GPT-5.2
+>>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 
 ---
 
 ### Task
 
+<<<<<<< HEAD
 Audit and harden permanent asset identifier and camera scanning behavior.
+=======
+Performed a frontend terminology and user-experience simplification pass.
+>>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 
 ---
 
 ### Files Modified
 
+<<<<<<< HEAD
 - backend/app/Modules/AssetIdentifier/Services/AssetIdentifierService.php
 - frontend/src/components/AssetQrScanner.tsx
+=======
+- frontend/src/components/ReceiptModal.tsx
+- frontend/src/components/ui/Input.tsx
+- frontend/src/components/AdminDashboard.tsx
+- frontend/src/components/EmployeeDashboard.tsx
+- frontend/src/components/StaffDashboard.tsx
+- frontend/src/layouts/Sidebar.tsx
+- frontend/src/layouts/TopNav.tsx
+- frontend/src/pages/AssetPage.tsx
+- frontend/src/pages/BorrowingPage.tsx
+- frontend/src/pages/InventoryPage.tsx
+- frontend/src/pages/MaintenancePage.tsx
+- frontend/src/pages/ReportPage.tsx
+- frontend/src/pages/ReservationPage.tsx
+- frontend/src/pages/RolesPage.tsx
+- frontend/src/services/api.ts
+- frontend/src/utils/displayLabels.ts
+>>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 - AI_CHANGELOG.md
 - CHANGELOG.md
 
@@ -44,20 +75,34 @@ Audit and harden permanent asset identifier and camera scanning behavior.
 
 ### Summary
 
+<<<<<<< HEAD
 - Preserved system-generated PSA QR identifiers by rejecting manual creation, update, and deletion through the AssetIdentifier service.
 - Expanded automatic camera decoding from QR only to QR Code, Code 128, and Code 39 when supported by the browser.
 - Stop the camera after any decoded lookup completes or decoder failure occurs, so an unresolved scan does not leave a stream active.
+=======
+- Added frontend-only display label helpers for raw backend status values.
+- Reworded visible UI text to use employee-friendly terminology.
+- Added helper text support to the shared Input component.
+- Improved user-facing error messages through the API response interceptor.
+- Preserved backend routes, payload fields, response fields, and status values.
+- Verified the frontend production build.
+>>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 
 ---
 
 ### Reason
 
+<<<<<<< HEAD
 The permanent asset label must remain stable across its lifecycle, and the documented scanner supports both QR and barcode identifiers.
+=======
+Ordinary employees and inventory staff need simpler UI language while the technical backend architecture and API contract remain unchanged.
+>>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 
 ---
 
 ### Risks
 
+<<<<<<< HEAD
 Automatic decoding remains dependent on browser BarcodeDetector support. Manual lookup remains available where that capability is unavailable.
 
 ---
@@ -71,6 +116,57 @@ Revert the files listed in this entry.
 ### Status
 
 Completed.
+=======
+- Some internal variable names still use backend terminology such as reservation and borrowing by design to preserve API alignment.
+- Vite still reports the existing large bundle warning because the QR scanner library is included in the main bundle.
+
+---
+
+## 2026-07-21 09:06
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Fixed QR camera scanning reliability and QR label generation.
+
+---
+
+### Files Modified
+
+- frontend/src/components/AssetQrScanner.tsx
+- frontend/src/components/QrCode.tsx
+- AI_CHANGELOG.md
+- CHANGELOG.md
+
+---
+
+### Summary
+
+- Replaced browser-native `BarcodeDetector` usage with `@zxing/browser` `BrowserQRCodeReader`.
+- Replaced the custom QR SVG matrix renderer with `@zxing/browser` `BrowserQRCodeSvgWriter`.
+- Added a clear insecure-LAN camera warning for phone testing over HTTP network URLs.
+- Preserved the existing backend identifier resolution endpoint.
+- Verified the frontend production build.
+
+---
+
+### Reason
+
+Native QR detection support is inconsistent, and using a proven QR scanner/writer library improves real device testing reliability.
+
+---
+
+### Risks
+
+- Mobile browsers may still require HTTPS or explicit insecure-origin flags for camera access on LAN HTTP URLs.
+- ZXing increases the frontend bundle size, triggering Vite's large chunk warning during build.
+>>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 
 ---
 

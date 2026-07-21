@@ -16,7 +16,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const titles: Record<string, string> = {
-    '/dashboard': 'Dashboard', '/assets': 'Assets', '/reservations': 'Reservations', '/borrowings': 'Borrowings',
+    '/dashboard': 'Dashboard', '/assets': 'Assets', '/reservations': 'Borrow Requests', '/borrowings': 'Borrowed Items',
     '/inventory': 'Inventory', '/maintenance': 'Maintenance', '/reports': 'Reports', '/users': 'Users',
     '/roles': 'Roles & Permissions', '/permissions': 'Permissions', '/settings': 'Settings',
   }

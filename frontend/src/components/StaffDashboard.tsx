@@ -8,6 +8,7 @@ import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
 import type { Reservation, Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
+import { borrowingStatusLabel } from '@/utils/displayLabels'
 
 export function StaffDashboard() {
   const navigate = useNavigate()
@@ -43,10 +44,10 @@ export function StaffDashboard() {
   const handleApproveReservation = async (reservationId: number) => {
     try {
       await reservationService.approve(reservationId)
-      setMessage({ type: 'success', text: 'Reservation approved successfully.' })
+      setMessage({ type: 'success', text: 'Borrow request approved successfully.' })
       await loadData()
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to approve reservation.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to approve borrow request.' })
     }
   }
 
@@ -81,7 +82,7 @@ export function StaffDashboard() {
     }
 
     if (receiptCode.startsWith('PSA-BOR-')) {
-      setMessage({ type: 'success', text: `Borrowing receipt ${receiptCode} scanned. Opening borrowings...` })
+      setMessage({ type: 'success', text: `Borrow receipt ${receiptCode} scanned. Opening borrowed items...` })
       setQrCode('')
       setTimeout(() => navigate('/borrowings'), 500)
       return
@@ -102,7 +103,7 @@ export function StaffDashboard() {
       header: 'Actions',
       render: (row) => (
         <Button size="sm" variant="success" onClick={() => handleApproveReservation(row.id)}>
-          Approve
+          Approve Request
         </Button>
       ),
     },
@@ -118,7 +119,7 @@ export function StaffDashboard() {
       header: 'Actions',
       render: (row) => (
         <Button size="sm" variant="primary" onClick={() => handleReturnBorrowing(row.id)}>
-          Return
+          Return Item
         </Button>
       ),
     },
@@ -131,7 +132,7 @@ export function StaffDashboard() {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{row.status}</Badge>,
+      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{borrowingStatusLabel(row.status)}</Badge>,
     },
     { key: 'due_at', header: 'Due', render: (row) => row.due_at },
     {
@@ -139,15 +140,15 @@ export function StaffDashboard() {
       header: 'Actions',
       render: (row) => (
         <Button size="sm" variant="danger" onClick={() => handleReturnBorrowing(row.id)}>
-          Return Now
+          Return Item
         </Button>
       ),
     },
   ]
 
   const statCards = [
-    { label: 'Pending Reservations', value: pendingReservations.length, description: 'Awaiting your processing', icon: CalendarClock, tone: 'blue' as const },
-    { label: 'Active Borrowings', value: activeBorrowings.length, description: 'Currently borrowed items', icon: HandCoins, tone: 'green' as const },
+    { label: 'Borrow Requests', value: pendingReservations.length, description: 'Waiting for approval', icon: CalendarClock, tone: 'blue' as const },
+    { label: 'Borrowed Items', value: activeBorrowings.length, description: 'Currently borrowed items', icon: HandCoins, tone: 'green' as const },
     { label: 'Overdue Items', value: overdueBorrowings.length, description: 'Need immediate follow-up', icon: AlertTriangle, tone: 'red' as const },
     { label: 'Ready to Process', value: pendingReservations.length + activeBorrowings.length, description: 'Operations requiring attention', icon: ClipboardCheck, tone: 'amber' as const },
   ]
@@ -195,38 +196,38 @@ export function StaffDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">Pending Reservations</h2>
-            <p className="text-sm text-gray-500">Approve reservation requests for asset collection</p>
+            <h2 className="text-md font-semibold text-gray-900">Borrow Requests Waiting for Approval</h2>
+            <p className="text-sm text-gray-500">Approve requests before releasing assets for pickup.</p>
           </div>
           {loading ? (
             <Spinner />
           ) : pendingReservations.length === 0 ? (
-            <EmptyState title="No pending reservations" description="All reservations have been processed." />
+            <EmptyState title="No borrow requests waiting" description="All borrow requests have been processed." />
           ) : (
             <Table
               columns={reservationColumns}
               rows={pendingReservations}
               rowKey={(row) => row.id}
-              empty={<EmptyState title="No pending reservations" />}
+              empty={<EmptyState title="No borrow requests waiting" />}
             />
           )}
         </Card>
 
         <Card>
           <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">Active Borrowings</h2>
+            <h2 className="text-md font-semibold text-gray-900">Currently Borrowed Items</h2>
             <p className="text-sm text-gray-500">Process returns for currently borrowed items</p>
           </div>
           {loading ? (
             <Spinner />
           ) : activeBorrowings.length === 0 ? (
-            <EmptyState title="No active borrowings" description="No items are currently borrowed." />
+            <EmptyState title="No borrowed items" description="No items are currently borrowed." />
           ) : (
             <Table
               columns={borrowingColumns}
               rows={activeBorrowings}
               rowKey={(row) => row.id}
-              empty={<EmptyState title="No active borrowings" />}
+              empty={<EmptyState title="No borrowed items" />}
             />
           )}
         </Card>
@@ -253,9 +254,9 @@ export function StaffDashboard() {
           <p className="text-sm text-gray-500">Access operational modules for daily tasks</p>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
-          <Button onClick={() => navigate('/reservations')}>All Reservations</Button>
+          <Button onClick={() => navigate('/reservations')}>All Borrow Requests</Button>
           <Button variant="secondary" onClick={() => navigate('/borrowings')}>
-            All Borrowings
+            All Borrowed Items
           </Button>
           <Button variant="secondary" onClick={() => navigate('/inventory')}>
             Inventory Management
