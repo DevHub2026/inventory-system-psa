@@ -14,7 +14,7 @@ class AssetResource extends JsonResource
     {
         $psaQrIdentifier = $this->whenLoaded(
             'identifiers',
-            fn () => $this->identifiers->firstWhere('identifier_type', IdentifierType::PSA_QR),
+            fn () => $this->identifiers->firstWhere('identifier_type', IdentifierType::PSA_QR->value),
         );
 
         return [

@@ -15,8 +15,14 @@ type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => {
   detect(source: HTMLVideoElement): Promise<Array<{ rawValue?: string }>>
 }
 
-function getBarcodeDetector(): BarcodeDetectorConstructor | null {
-  const candidate = (window as Window & { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector
+type BarcodeDetectorStatic = BarcodeDetectorConstructor & {
+  getSupportedFormats?: () => Promise<string[]>
+}
+
+const supportedIdentifierFormats = ['qr_code', 'code_128', 'code_39']
+
+function getBarcodeDetector(): BarcodeDetectorStatic | null {
+  const candidate = (window as Window & { BarcodeDetector?: BarcodeDetectorStatic }).BarcodeDetector
   return candidate ?? null
 }
 
@@ -58,14 +64,17 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
 
     try {
       const resolvedAsset = await assetService.scan(identifier)
-      stopCamera()
       setAsset(resolvedAsset)
       setState('found')
       setMessage('Asset found from backend identifier lookup.')
     } catch (error: unknown) {
-      resolvingRef.current = false
       setState('not_found')
       setMessage(error instanceof Error ? error.message : 'No asset matched that identifier.')
+    } finally {
+      // A decoded value completes this scan attempt, even when it has no asset match.
+      // Requiring an explicit "Scan Again" prevents a live camera from continuing in
+      // the background while the user reads the outcome.
+      stopCamera()
     }
   }
 
@@ -101,7 +110,17 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
         return
       }
 
-      const detector = new BarcodeDetector({ formats: ['qr_code'] })
+      const formats = BarcodeDetector.getSupportedFormats
+        ? (await BarcodeDetector.getSupportedFormats()).filter((format) => supportedIdentifierFormats.includes(format))
+        : ['qr_code']
+
+      if (formats.length === 0) {
+        setState('unsupported')
+        setMessage('Camera preview is open, but this browser cannot detect supported QR or barcode formats. Use Chrome or Edge, or use the development fallback below.')
+        return
+      }
+
+      const detector = new BarcodeDetector({ formats })
       setState('scanning')
 
       const scanFrame = async () => {
@@ -118,8 +137,9 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
             }
           }
         } catch {
+          stopCamera()
           setState('camera_error')
-          setMessage('The camera opened, but QR detection failed.')
+          setMessage('The camera opened, but QR/barcode detection failed.')
           return
         }
 
@@ -193,7 +213,7 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
           <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
             <Spinner />
             {state === 'starting' && 'Requesting camera permission...'}
-            {state === 'scanning' && 'Point the camera at a PSA asset QR code.'}
+            {state === 'scanning' && 'Point the camera at an asset QR code or supported barcode.'}
             {state === 'resolving' && 'Resolving scanned identifier with the backend...'}
           </div>
         )}

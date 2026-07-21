@@ -18,6 +18,62 @@ Always append new entries.
 
 ---
 
+## 2026-07-20 16:15
+
+### AI
+
+Name: Codex
+Model: GPT-5.6
+
+---
+
+### Task
+
+Audit and harden permanent asset identifier and camera scanning behavior.
+
+---
+
+### Files Modified
+
+- backend/app/Modules/AssetIdentifier/Services/AssetIdentifierService.php
+- frontend/src/components/AssetQrScanner.tsx
+- AI_CHANGELOG.md
+- CHANGELOG.md
+
+---
+
+### Summary
+
+- Preserved system-generated PSA QR identifiers by rejecting manual creation, update, and deletion through the AssetIdentifier service.
+- Expanded automatic camera decoding from QR only to QR Code, Code 128, and Code 39 when supported by the browser.
+- Stop the camera after any decoded lookup completes or decoder failure occurs, so an unresolved scan does not leave a stream active.
+
+---
+
+### Reason
+
+The permanent asset label must remain stable across its lifecycle, and the documented scanner supports both QR and barcode identifiers.
+
+---
+
+### Risks
+
+Automatic decoding remains dependent on browser BarcodeDetector support. Manual lookup remains available where that capability is unavailable.
+
+---
+
+### Rollback
+
+Revert the files listed in this entry.
+
+---
+
+### Status
+
+Completed.
+
+---
+
 ## 2026-07-20 15:37
 
 ### AI

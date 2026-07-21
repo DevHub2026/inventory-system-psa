@@ -2,6 +2,16 @@
 
 ## 2026-07-20
 
+### QR Scanner and Permanent Identifier Hardening
+
+### Summary
+
+- Protected permanent PSA QR identifiers from manual creation, change, and deletion.
+- Added Code 128 and Code 39 camera-decoding support where the browser exposes those formats.
+- Stopped camera streams after a lookup completes or detection fails.
+
+## 2026-07-20
+
 ### LAN Runner and QR Camera Testing Setup
 
 ### Files Modified
