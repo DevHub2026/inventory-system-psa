@@ -12,24 +12,6 @@ interface AssetQrScannerProps {
 
 type ScannerState = 'idle' | 'starting' | 'scanning' | 'resolving' | 'found' | 'not_found' | 'invalid' | 'unsupported' | 'permission_denied' | 'camera_error'
 
-<<<<<<< HEAD
-type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => {
-  detect(source: HTMLVideoElement): Promise<Array<{ rawValue?: string }>>
-}
-
-type BarcodeDetectorStatic = BarcodeDetectorConstructor & {
-  getSupportedFormats?: () => Promise<string[]>
-}
-
-const supportedIdentifierFormats = ['qr_code', 'code_128', 'code_39']
-
-function getBarcodeDetector(): BarcodeDetectorStatic | null {
-  const candidate = (window as Window & { BarcodeDetector?: BarcodeDetectorStatic }).BarcodeDetector
-  return candidate ?? null
-}
-
-=======
->>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const controlsRef = useRef<IScannerControls | null>(null)
@@ -126,56 +108,9 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
         (result) => {
           const rawValue = result?.getText()?.trim()
 
-<<<<<<< HEAD
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-
-      const BarcodeDetector = getBarcodeDetector()
-      if (!BarcodeDetector) {
-        setState('unsupported')
-        setMessage('Camera preview is open, but this browser does not support native QR detection. Use Chrome or Edge for automatic scanning, or use the development fallback below.')
-        return
-      }
-
-      const formats = BarcodeDetector.getSupportedFormats
-        ? (await BarcodeDetector.getSupportedFormats()).filter((format) => supportedIdentifierFormats.includes(format))
-        : ['qr_code']
-
-      if (formats.length === 0) {
-        setState('unsupported')
-        setMessage('Camera preview is open, but this browser cannot detect supported QR or barcode formats. Use Chrome or Edge, or use the development fallback below.')
-        return
-      }
-
-      const detector = new BarcodeDetector({ formats })
-      setState('scanning')
-
-      const scanFrame = async () => {
-        if (!videoRef.current || resolvingRef.current || !streamRef.current) return
-
-        try {
-          if (videoRef.current.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-            const codes = await detector.detect(videoRef.current)
-            const rawValue = codes.find((code) => code.rawValue)?.rawValue
-
-            if (rawValue) {
-              void resolveIdentifier(rawValue)
-              return
-            }
-          }
-        } catch {
-          stopCamera()
-          setState('camera_error')
-          setMessage('The camera opened, but QR/barcode detection failed.')
-          return
-        }
-=======
           if (!rawValue || resolvingRef.current) {
             return
           }
->>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 
           controlsRef.current?.stop()
           void resolveIdentifier(rawValue)
