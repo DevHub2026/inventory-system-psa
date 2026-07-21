@@ -18,39 +18,162 @@ Always append new entries.
 
 ---
 
-<<<<<<< HEAD
-## 2026-07-20 16:15
-=======
-## 2026-07-21 09:28
->>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
+## 2026-07-21 11:55
 
 ### AI
 
 Name: Codex
-<<<<<<< HEAD
-Model: GPT-5.6
-=======
 Model: GPT-5.2
->>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 
 ---
 
 ### Task
 
-<<<<<<< HEAD
-Audit and harden permanent asset identifier and camera scanning behavior.
-=======
-Performed a frontend terminology and user-experience simplification pass.
->>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
+Implemented Priority 1 inventory reliability features and continued production stability handoff work.
 
 ---
 
 ### Files Modified
 
-<<<<<<< HEAD
+- backend/database/factories/AssetFactory.php
+- backend/database/factories/AssetCategoryFactory.php
+- backend/database/factories/LocationFactory.php
+- backend/database/factories/ManufacturerFactory.php
+- backend/database/factories/OfficeFactory.php
+- backend/app/Models/User.php
+- backend/app/Http/Controllers/BorrowController.php
+- backend/app/Modules/Borrowing/Controllers/BorrowingController.php
+- backend/app/Modules/Borrowing/Models/Borrowing.php
+- backend/app/Modules/Borrowing/Services/BorrowingService.php
+- backend/app/Modules/Inventory/Controllers/InventoryController.php
+- backend/app/Modules/Inventory/Models/InventoryItem.php
+- backend/app/Modules/Inventory/Models/StockTransaction.php
+- backend/app/Modules/Inventory/Requests/StoreInventoryItemRequest.php
+- backend/app/Modules/Inventory/Routes/api.php
+- backend/app/Modules/Inventory/Services/InventoryService.php
+- backend/app/Modules/Maintenance/Controllers/MaintenanceController.php
+- backend/app/Modules/Maintenance/Services/MaintenanceService.php
+- backend/app/Modules/Reservation/Controllers/ReservationController.php
+- backend/app/Modules/Reservation/Services/ReservationService.php
+- backend/bootstrap/app.php
+- backend/database/migrations/2026_07_21_113000_add_returned_at_to_borrowings.php
+- frontend/src/pages/InventoryPage.tsx
+- frontend/src/services/api.ts
+- frontend/src/services/borrowingService.ts
+- frontend/src/services/inventoryService.ts
+- frontend/src/services/maintenanceService.ts
+- frontend/src/services/reservationService.ts
+- frontend/src/types/index.ts
+- backend/tests/Feature/Inventory/InventoryManagementTest.php
+- backend/tests/Feature/Maintenance/MaintenanceApiTest.php
+- backend/tests/Feature/Asset/AssetManagementTest.php
+- docs/Architecture/13_API_Architecture.md
+- docs/Business/02_Functional_Requirements.md
+- AI_CHANGELOG.md
+- CHANGELOG.md
+
+---
+
+### Summary
+
+- Added stock movement history using the existing `stock_transactions` table.
+- Added quantity correction with required reason through `/api/v1/inventory/{item}/adjust`.
+- Added `/api/v1/inventory/{item}/history`.
+- Added backend-derived inventory status and frontend filters/search/pagination.
+- Added duplicate SKU validation with a user-friendly message.
+- Added shared frontend paginated response handling.
+- Added missing Asset support factories and aligned legacy Asset tests with `/api/v1/assets`.
+- Preserved existing data and avoided destructive migration commands.
+- Cleaned literal conflict markers from this changelog.
+
+---
+
+### Reason
+
+Inventory quantity changes must be reliable, traceable, and production-ready before additional feature work continues.
+
+---
+
+### Risks
+
+- Full backend test suite still contains legacy Asset tests that reference missing old factories and `/api/assets` routes.
+- QR/HTTPS handoff phases remain pending after database and inventory stabilization.
+
+---
+
+## 2026-07-20 16:15
+
+### AI
+
+Name: Codex
+Model: GPT-5.6
+
+---
+
+### Task
+
+Audit and harden permanent asset identifier and camera scanning behavior.
+
+---
+
+### Files Modified
+
 - backend/app/Modules/AssetIdentifier/Services/AssetIdentifierService.php
 - frontend/src/components/AssetQrScanner.tsx
-=======
+- AI_CHANGELOG.md
+- CHANGELOG.md
+
+---
+
+### Summary
+
+- Preserved system-generated PSA QR identifiers by rejecting manual creation, update, and deletion through the AssetIdentifier service.
+- Expanded automatic camera decoding from QR only to QR Code, Code 128, and Code 39 when supported by the browser.
+- Stop the camera after any decoded lookup completes or decoder failure occurs, so an unresolved scan does not leave a stream active.
+
+---
+
+### Reason
+
+The permanent asset label must remain stable across its lifecycle, and the documented scanner supports both QR and barcode identifiers.
+
+---
+
+### Risks
+
+Automatic decoding remains dependent on browser BarcodeDetector support. Manual lookup remains available where that capability is unavailable.
+
+---
+
+### Rollback
+
+Revert the files listed in this entry.
+
+---
+
+### Status
+
+Completed.
+
+---
+
+## 2026-07-21 09:28
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Performed a frontend terminology and user-experience simplification pass.
+
+---
+
+### Files Modified
+
 - frontend/src/components/ReceiptModal.tsx
 - frontend/src/components/ui/Input.tsx
 - frontend/src/components/AdminDashboard.tsx
@@ -67,7 +190,6 @@ Performed a frontend terminology and user-experience simplification pass.
 - frontend/src/pages/RolesPage.tsx
 - frontend/src/services/api.ts
 - frontend/src/utils/displayLabels.ts
->>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 - AI_CHANGELOG.md
 - CHANGELOG.md
 
@@ -75,48 +197,23 @@ Performed a frontend terminology and user-experience simplification pass.
 
 ### Summary
 
-<<<<<<< HEAD
-- Preserved system-generated PSA QR identifiers by rejecting manual creation, update, and deletion through the AssetIdentifier service.
-- Expanded automatic camera decoding from QR only to QR Code, Code 128, and Code 39 when supported by the browser.
-- Stop the camera after any decoded lookup completes or decoder failure occurs, so an unresolved scan does not leave a stream active.
-=======
 - Added frontend-only display label helpers for raw backend status values.
 - Reworded visible UI text to use employee-friendly terminology.
 - Added helper text support to the shared Input component.
 - Improved user-facing error messages through the API response interceptor.
 - Preserved backend routes, payload fields, response fields, and status values.
 - Verified the frontend production build.
->>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 
 ---
 
 ### Reason
 
-<<<<<<< HEAD
-The permanent asset label must remain stable across its lifecycle, and the documented scanner supports both QR and barcode identifiers.
-=======
 Ordinary employees and inventory staff need simpler UI language while the technical backend architecture and API contract remain unchanged.
->>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 
 ---
 
 ### Risks
 
-<<<<<<< HEAD
-Automatic decoding remains dependent on browser BarcodeDetector support. Manual lookup remains available where that capability is unavailable.
-
----
-
-### Rollback
-
-Revert the files listed in this entry.
-
----
-
-### Status
-
-Completed.
-=======
 - Some internal variable names still use backend terminology such as reservation and borrowing by design to preserve API alignment.
 - Vite still reports the existing large bundle warning because the QR scanner library is included in the main bundle.
 
@@ -166,7 +263,6 @@ Native QR detection support is inconsistent, and using a proven QR scanner/write
 
 - Mobile browsers may still require HTTPS or explicit insecure-origin flags for camera access on LAN HTTP URLs.
 - ZXing increases the frontend bundle size, triggering Vite's large chunk warning during build.
->>>>>>> 0f4690e29627ec1e4d6e71ddb7606e027b661df1
 
 ---
 

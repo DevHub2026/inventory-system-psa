@@ -13,4 +13,6 @@ Route::middleware([
     Route::delete('inventory/{item}', [InventoryController::class, 'destroy']);
     Route::post('inventory/{item}/stock-in', [InventoryController::class, 'stockIn']);
     Route::post('inventory/{item}/stock-out', [InventoryController::class, 'stockOut']);
+    Route::post('inventory/{item}/adjust', [InventoryController::class, 'adjust']);
+    Route::get('inventory/{item}/history', [InventoryController::class, 'history']);
 });

@@ -1,14 +1,29 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Button, Card, EmptyState, Input, Modal, Spinner, Table, Alert, type Column } from '@/components/ui'
+import { Alert, Badge, Button, Card, Dropdown, EmptyState, Input, Modal, Pagination, SearchBar, Spinner, Table, type Column } from '@/components/ui'
 import { inventoryService, type CreateInventoryItemPayload, type UpdateInventoryItemPayload } from '@/services/inventoryService'
-import type { InventoryItem } from '@/types'
+import type { InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
+
+function movementTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    stock_in: 'Stock Added',
+    stock_out: 'Stock Removed',
+    adjustment: 'Quantity Corrected',
+  }
+
+  return labels[type] ?? type
+}
 
 export function InventoryPage() {
   const navigate = useNavigate()
   const [rows, setRows] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [lastPage, setLastPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
   const [saving, setSaving] = useState(false)
@@ -16,7 +31,14 @@ export function InventoryPage() {
   const [stockModalOpen, setStockModalOpen] = useState(false)
   const [stockItem, setStockItem] = useState<InventoryItem | null>(null)
   const [stockQuantity, setStockQuantity] = useState(1)
+  const [stockReason, setStockReason] = useState('')
   const [stockType, setStockType] = useState<'in' | 'out'>('in')
+  const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null)
+  const [adjustQuantity, setAdjustQuantity] = useState(0)
+  const [adjustReason, setAdjustReason] = useState('')
+  const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null)
+  const [historyRows, setHistoryRows] = useState<StockMovement[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   const [formData, setFormData] = useState<CreateInventoryItemPayload>({
     name: '',
@@ -27,11 +49,19 @@ export function InventoryPage() {
     track_as_asset: true,
   })
 
-  const loadInventory = async () => {
+  const loadInventory = async (nextPage = page) => {
     setLoading(true)
     try {
-      const result = await inventoryService.list()
+      const result = await inventoryService.list({
+        page: nextPage,
+        per_page: 10,
+        search: search || undefined,
+        status: statusFilter || undefined,
+      })
       setRows(result.items)
+      setPage(result.meta.current_page)
+      setLastPage(result.meta.last_page)
+      setTotal(result.meta.total)
     } catch (error: unknown) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load inventory items.' })
     } finally {
@@ -41,7 +71,7 @@ export function InventoryPage() {
 
   useEffect(() => {
     const run = async () => {
-      await loadInventory()
+      await loadInventory(1)
     }
 
     void run()
@@ -110,6 +140,7 @@ export function InventoryPage() {
     setStockItem(item)
     setStockType('in')
     setStockQuantity(1)
+    setStockReason('')
     setStockModalOpen(true)
   }
 
@@ -117,7 +148,27 @@ export function InventoryPage() {
     setStockItem(item)
     setStockType('out')
     setStockQuantity(1)
+    setStockReason('')
     setStockModalOpen(true)
+  }
+
+  const handleAdjust = (item: InventoryItem) => {
+    setAdjustItem(item)
+    setAdjustQuantity(item.quantity)
+    setAdjustReason('')
+  }
+
+  const loadHistory = async (item: InventoryItem) => {
+    setHistoryItem(item)
+    setHistoryLoading(true)
+    try {
+      const result = await inventoryService.history(item.id)
+      setHistoryRows(result.items)
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load stock movement history.' })
+    } finally {
+      setHistoryLoading(false)
+    }
   }
 
   const handleStockSubmit = async () => {
@@ -126,16 +177,40 @@ export function InventoryPage() {
     setSaving(true)
     try {
       if (stockType === 'in') {
-        await inventoryService.stockIn(stockItem.id, stockQuantity)
+        await inventoryService.stockIn(stockItem.id, { quantity: stockQuantity, reason: stockReason || undefined })
         setMessage({ type: 'success', text: 'Stock added successfully.' })
       } else {
-        await inventoryService.stockOut(stockItem.id, stockQuantity)
+        await inventoryService.stockOut(stockItem.id, { quantity: stockQuantity, reason: stockReason || undefined })
         setMessage({ type: 'success', text: 'Stock removed successfully.' })
       }
       setStockModalOpen(false)
-      await loadInventory()
+      await loadInventory(page)
     } catch (error: unknown) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to update the item quantity.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleAdjustSubmit = async () => {
+    if (!adjustItem) return
+
+    if (!adjustReason.trim()) {
+      setMessage({ type: 'error', text: 'Please provide a reason for correcting the quantity.' })
+      return
+    }
+
+    setSaving(true)
+    try {
+      await inventoryService.adjust(adjustItem.id, {
+        quantity: adjustQuantity,
+        reason: adjustReason.trim(),
+      })
+      setAdjustItem(null)
+      setMessage({ type: 'success', text: 'Stock quantity corrected successfully.' })
+      await loadInventory(page)
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to correct stock quantity.' })
     } finally {
       setSaving(false)
     }
@@ -170,6 +245,12 @@ export function InventoryPage() {
           <Button size="sm" variant="secondary" onClick={() => handleStockOut(row)}>
             Remove Stock
           </Button>
+          <Button size="sm" variant="secondary" onClick={() => handleAdjust(row)}>
+            Correct Quantity
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => void loadHistory(row)}>
+            History
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => handleEdit(row)}>
             Edit
           </Button>
@@ -203,15 +284,43 @@ export function InventoryPage() {
       )}
 
       <Card>
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <SearchBar
+            placeholder="Search item name, code, or unit..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void loadInventory(1)
+            }}
+          />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Dropdown
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              placeholder="All stock statuses"
+              options={[
+                { label: 'In Stock', value: 'IN_STOCK' },
+                { label: 'Low Stock', value: 'LOW_STOCK' },
+                { label: 'Out of Stock', value: 'OUT_OF_STOCK' },
+              ]}
+            />
+            <Button variant="secondary" onClick={() => void loadInventory(1)}>
+              Apply Filters
+            </Button>
+          </div>
+        </div>
         {loading ? (
           <Spinner />
         ) : (
-          <Table
-            columns={columns}
-            rows={rows}
-            rowKey={(row) => row.id}
-            empty={<EmptyState title="No inventory items found" description="Add your first item to begin tracking stock." />}
-          />
+          <>
+            <Table
+              columns={columns}
+              rows={rows}
+              rowKey={(row) => row.id}
+              empty={<EmptyState title="No inventory items found" description="Add your first item to begin tracking stock." />}
+            />
+            <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(nextPage) => void loadInventory(nextPage)} />
+          </>
         )}
       </Card>
 
@@ -237,6 +346,8 @@ export function InventoryPage() {
               label="Available Quantity"
               type="number"
               value={formData.quantity.toString()}
+              disabled={Boolean(editingItem)}
+              helperText={editingItem ? 'Use Correct Quantity to update stock and record a reason.' : undefined}
               onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
             />
             <Input
@@ -286,6 +397,12 @@ export function InventoryPage() {
             onChange={(e) => setStockQuantity(parseInt(e.target.value) || 1)}
             min={1}
           />
+          <Input
+            label="Reason"
+            value={stockReason}
+            onChange={(e) => setStockReason(e.target.value)}
+            placeholder={stockType === 'in' ? 'New supplies received' : 'Office use'}
+          />
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setStockModalOpen(false)}>
               Cancel
@@ -295,6 +412,93 @@ export function InventoryPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={adjustItem !== null}
+        onClose={() => setAdjustItem(null)}
+        title={`Correct Stock Quantity - ${adjustItem?.name}`}
+      >
+        {adjustItem && (
+          <div className="space-y-4">
+            <div className="grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm md:grid-cols-3">
+              <div>
+                <div className="text-gray-500">Current Quantity</div>
+                <div className="font-semibold text-gray-900">{adjustItem.quantity}</div>
+              </div>
+              <div>
+                <div className="text-gray-500">New Quantity</div>
+                <div className="font-semibold text-gray-900">{adjustQuantity}</div>
+              </div>
+              <div>
+                <div className="text-gray-500">Difference</div>
+                <div className={adjustQuantity - adjustItem.quantity < 0 ? 'font-semibold text-red-700' : 'font-semibold text-green-700'}>
+                  {adjustQuantity - adjustItem.quantity > 0 ? '+' : ''}
+                  {adjustQuantity - adjustItem.quantity}
+                </div>
+              </div>
+            </div>
+            <Input
+              label="Corrected Quantity"
+              type="number"
+              min={0}
+              value={adjustQuantity.toString()}
+              onChange={(event) => setAdjustQuantity(parseInt(event.target.value) || 0)}
+            />
+            <Input
+              label="Reason"
+              value={adjustReason}
+              onChange={(event) => setAdjustReason(event.target.value)}
+              placeholder="Damaged, lost, expired, physical count correction, or data entry error"
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setAdjustItem(null)}>
+                Cancel
+              </Button>
+              <Button onClick={() => void handleAdjustSubmit()} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Correction'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={historyItem !== null}
+        onClose={() => {
+          setHistoryItem(null)
+          setHistoryRows([])
+        }}
+        title={`Stock Movement History - ${historyItem?.name}`}
+      >
+        {historyLoading ? (
+          <Spinner />
+        ) : historyRows.length === 0 ? (
+          <EmptyState title="No stock movement history" description="Stock changes will appear here after quantities are added, removed, or corrected." />
+        ) : (
+          <div className="space-y-3">
+            {historyRows.map((movement) => (
+              <div key={movement.id} className="rounded-lg border border-gray-200 bg-white p-3 text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="font-semibold text-gray-900">{movementTypeLabel(movement.type)}</div>
+                    <div className="text-xs text-gray-500">{movement.created_at ?? 'Date not available'}</div>
+                  </div>
+                  <div className={movement.quantity < 0 ? 'font-mono font-semibold text-red-700' : 'font-mono font-semibold text-green-700'}>
+                    {movement.quantity > 0 ? '+' : ''}
+                    {movement.quantity}
+                  </div>
+                </div>
+                <dl className="mt-3 grid gap-2 text-xs text-gray-600 sm:grid-cols-2">
+                  <div>Previous Quantity: <span className="font-medium text-gray-900">{movement.quantity_before}</span></div>
+                  <div>New Quantity: <span className="font-medium text-gray-900">{movement.quantity_after}</span></div>
+                  <div>Reason: <span className="font-medium text-gray-900">{movement.reason ?? 'Not provided'}</span></div>
+                  <div>Performed by: <span className="font-medium text-gray-900">{movement.performed_by ?? 'System'}</span></div>
+                </dl>
+              </div>
+            ))}
+          </div>
+        )}
       </Modal>
     </div>
   )

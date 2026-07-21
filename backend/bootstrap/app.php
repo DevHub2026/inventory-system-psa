@@ -47,4 +47,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 401);
             }
         });
+
+        $exceptions->render(function (InvalidArgumentException $exception, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                    'errors' => [],
+                ], 422);
+            }
+        });
     })->create();

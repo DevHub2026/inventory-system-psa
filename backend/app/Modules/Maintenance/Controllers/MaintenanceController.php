@@ -17,9 +17,10 @@ class MaintenanceController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $maintenances = $this->maintenanceService->list($request->all());
+        $perPage = (int) $request->query('per_page', 20);
+        $maintenances = $this->maintenanceService->list($request->all(), $perPage);
 
-        return $this->success($maintenances->map(fn ($maintenance) => [
+        $items = collect($maintenances->items())->map(fn ($maintenance) => [
             'id' => $maintenance->id,
             'asset_name' => $maintenance->asset->name ?? 'N/A',
             'assigned_to' => $maintenance->user->name ?? 'Unassigned',
@@ -29,7 +30,23 @@ class MaintenanceController extends Controller
             'completed_date' => $maintenance->completed_date?->format('Y-m-d'),
             'description' => $maintenance->description,
             'cost' => $maintenance->cost,
-        ])->values(), 'Maintenances retrieved successfully.');
+        ])->values();
+
+        return $this->success([
+            'items' => $items,
+            'meta' => [
+                'current_page' => $maintenances->currentPage(),
+                'per_page' => $maintenances->perPage(),
+                'total' => $maintenances->total(),
+                'last_page' => $maintenances->lastPage(),
+            ],
+            'links' => [
+                'first' => $maintenances->url(1),
+                'last' => $maintenances->url($maintenances->lastPage()),
+                'prev' => $maintenances->previousPageUrl(),
+                'next' => $maintenances->nextPageUrl(),
+            ],
+        ], 'Maintenances retrieved successfully.');
     }
 
     public function store(Request $request): JsonResponse

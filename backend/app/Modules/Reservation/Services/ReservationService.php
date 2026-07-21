@@ -7,18 +7,18 @@ use App\Models\User;
 use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\Borrowing\Models\Borrowing;
 use App\Modules\Reservation\Models\Reservation;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class ReservationService
 {
-    public function list(User $user, array $filters = []): Collection
+    public function list(User $user, int $perPage = 20): LengthAwarePaginator
     {
         return Reservation::query()
             ->with(['user', 'assets', 'authorizer'])
             ->when(! $this->canViewAllReservations($user), fn ($query) => $query->where('user_id', $user->id))
             ->orderByDesc('created_at')
-            ->get();
+            ->paginate($perPage);
     }
 
     public function create(User $user, array $data): Reservation

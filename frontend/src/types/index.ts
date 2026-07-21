@@ -109,6 +109,7 @@ export interface Borrowing {
   due_date?: string
   borrowed_at?: string
   due_at?: string
+  returned_at?: string | null
   remarks?: string | null
   created_at?: string
   authorized_by?: number | null
@@ -129,6 +130,20 @@ export interface InventoryItem {
   unit: string
   reorder_level?: number
   remarks?: string | null
+}
+
+export interface StockMovement {
+  id: number
+  inventory_item_id: number
+  item_name?: string | null
+  type: 'stock_in' | 'stock_out' | 'adjustment' | string
+  quantity: number
+  quantity_before: number
+  quantity_after: number
+  reason?: string | null
+  remarks?: string | null
+  performed_by?: string | null
+  created_at?: string | null
 }
 
 export interface MaintenanceRequest {
@@ -164,6 +179,12 @@ export interface Paginated<T> {
     per_page: number
     total: number
     last_page: number
+  }
+  links?: {
+    first?: string | null
+    last?: string | null
+    prev?: string | null
+    next?: string | null
   }
 }
 

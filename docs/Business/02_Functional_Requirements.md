@@ -138,12 +138,15 @@ Manage consumable office supplies.
 - Edit inventory item
 - Stock-in
 - Stock-out
-- Stock adjustment
+- Stock adjustment with required reason
 - View stock balance
 - Low stock monitoring
-- View inventory history
+- View stock movement history
 - Search inventory
 - Filter inventory
+- Paginate inventory results
+- Prevent duplicate item codes
+- Display clear inventory statuses: In Stock, Low Stock, Out of Stock
 
 ---
 

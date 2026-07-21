@@ -28,6 +28,7 @@ class BorrowingController extends Controller
             'status' => $borrowing->status,
             'borrow_date' => $borrowing->borrow_date?->format('Y-m-d'),
             'due_date' => $borrowing->due_date?->format('Y-m-d'),
+            'returned_at' => $borrowing->returned_at?->format('Y-m-d H:i:s'),
             'remarks' => $borrowing->remarks,
             'created_at' => $borrowing->created_at?->format('Y-m-d H:i:s'),
             'authorized_by' => $borrowing->authorized_by,
@@ -40,12 +41,24 @@ class BorrowingController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $borrowings = $this->borrowingService->list($request->user());
+        $perPage = (int) $request->query('per_page', 20);
+        $borrowings = $this->borrowingService->list($request->user(), $perPage);
 
-        return $this->success(
-            $borrowings->map(fn (Borrowing $borrowing) => $this->transform($borrowing))->values(),
-            'Borrowings retrieved successfully.',
-        );
+        return $this->success([
+            'items' => collect($borrowings->items())->map(fn (Borrowing $b) => $this->transform($b))->values(),
+            'meta' => [
+                'current_page' => $borrowings->currentPage(),
+                'per_page' => $borrowings->perPage(),
+                'total' => $borrowings->total(),
+                'last_page' => $borrowings->lastPage(),
+            ],
+            'links' => [
+                'first' => $borrowings->url(1),
+                'last' => $borrowings->url($borrowings->lastPage()),
+                'prev' => $borrowings->previousPageUrl(),
+                'next' => $borrowings->nextPageUrl(),
+            ],
+        ], 'Borrowings retrieved successfully.');
     }
 
     public function store(StoreBorrowingRequest $request): JsonResponse

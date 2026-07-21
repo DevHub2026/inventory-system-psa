@@ -1,4 +1,4 @@
-import { api, unwrapData, withMockFallback } from '@/services/api'
+import { api, unwrapData, unwrapPaginated, withMockFallback } from '@/services/api'
 import type { ApiResponse, Paginated, Reservation } from '@/types'
 
 const mockReservations: Reservation[] = [
@@ -82,16 +82,11 @@ export const reservationService = {
   async list(): Promise<Paginated<Reservation>> {
     return withMockFallback(
       async () => {
-        const { data } = await api.get<ApiResponse<BackendReservation[]>>('/reservations')
-        const items = unwrapData(data)
+        const { data } = await api.get<ApiResponse<BackendReservation[] | Paginated<BackendReservation>>>('/reservations')
+        const result = unwrapPaginated(data)
         return {
-          items: Array.isArray(items) ? items.map(mapReservation) : [],
-          meta: {
-            current_page: 1,
-            per_page: 15,
-            total: Array.isArray(items) ? items.length : 0,
-            last_page: 1,
-          },
+          ...result,
+          items: result.items.map(mapReservation),
         }
       },
       async () => ({

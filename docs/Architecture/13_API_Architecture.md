@@ -287,15 +287,33 @@ PUT
 
 Stock In
 
-/inventory/stock-in
+/inventory/{id}/stock-in
 
 Stock Out
 
-/inventory/stock-out
+/inventory/{id}/stock-out
 
 Adjustment
 
-/inventory/adjustment
+/inventory/{id}/adjust
+
+History
+
+/inventory/{id}/history
+
+Inventory list responses return paginated payloads:
+
+{
+    items,
+    meta,
+    links
+}
+
+Inventory item status is derived from quantity and `reorder_level`:
+
+- quantity <= 0: OUT_OF_STOCK
+- quantity <= reorder_level: LOW_STOCK
+- otherwise: IN_STOCK
 
 ---
 

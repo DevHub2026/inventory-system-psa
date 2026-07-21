@@ -5,6 +5,7 @@ namespace App\Modules\Inventory\Models;
 use App\Modules\Asset\Models\Asset;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class InventoryItem extends Model
@@ -26,5 +27,10 @@ class InventoryItem extends Model
     public function asset(): BelongsTo
     {
         return $this->belongsTo(Asset::class);
+    }
+
+    public function stockTransactions(): HasMany
+    {
+        return $this->hasMany(StockTransaction::class);
     }
 }

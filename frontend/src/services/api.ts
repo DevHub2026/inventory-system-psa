@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios'
-import type { ApiResponse } from '@/types'
+import type { ApiResponse, Paginated } from '@/types'
 
 /** Set VITE_USE_MOCK=true to force mocks. Default: use the real API and surface errors. */
 const FORCE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
@@ -69,4 +69,22 @@ export async function withMockFallback<T>(
 
 export function unwrapData<T>(payload: ApiResponse<T>): T {
   return payload.data
+}
+
+export function unwrapPaginated<T>(payload: ApiResponse<T[] | Paginated<T>>): Paginated<T> {
+  const data = unwrapData(payload)
+
+  if (Array.isArray(data)) {
+    return {
+      items: data,
+      meta: {
+        current_page: 1,
+        per_page: data.length,
+        total: data.length,
+        last_page: 1,
+      },
+    }
+  }
+
+  return data
 }

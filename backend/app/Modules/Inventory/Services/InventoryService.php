@@ -10,34 +10,63 @@ use App\Modules\Asset\Models\Office;
 use App\Modules\AssetCategory\Models\AssetCategory;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
 use App\Modules\Inventory\Models\InventoryItem;
-use Illuminate\Database\Eloquent\Collection;
+use App\Modules\Inventory\Models\StockTransaction;
+use App\Models\User;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class InventoryService
 {
-    public function list(array $filters = []): Collection
+    public function list(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
         $query = InventoryItem::query()->with('asset');
 
-        if (isset($filters['search'])) {
-            $query->where('name', 'like', '%'.$filters['search'].'%')
-                ->orWhere('sku', 'like', '%'.$filters['search'].'%');
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($query) use ($search): void {
+                $query->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('sku', 'like', '%'.$search.'%')
+                    ->orWhere('unit', 'like', '%'.$search.'%');
+            });
         }
 
-        if (isset($filters['low_stock'])) {
-            $query->whereColumn('quantity', '<=', 'reorder_level');
+        if (! empty($filters['status'])) {
+            match ($filters['status']) {
+                'OUT_OF_STOCK' => $query->where('quantity', '<=', 0),
+                'LOW_STOCK' => $query->where('quantity', '>', 0)->whereColumn('quantity', '<=', 'reorder_level'),
+                'IN_STOCK' => $query->where('quantity', '>', 0)->where(function ($query): void {
+                    $query->whereNull('reorder_level')
+                        ->orWhere('reorder_level', '<=', 0)
+                        ->orWhereColumn('quantity', '>', 'reorder_level');
+                }),
+                default => null,
+            };
+        } elseif (isset($filters['low_stock'])) {
+            $query->where('quantity', '>', 0)->whereColumn('quantity', '<=', 'reorder_level');
         }
 
-        return $query->orderByDesc('created_at')->get();
+        return $query->orderByDesc('created_at')->paginate(min(max($perPage, 1), 100));
     }
 
-    public function create(array $data): InventoryItem
+    public function create(array $data, ?User $user = null): InventoryItem
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data, $user) {
             $trackAsAsset = (bool) ($data['track_as_asset'] ?? true);
             unset($data['track_as_asset']);
 
             $item = InventoryItem::create($data);
+
+            if ($item->quantity > 0) {
+                $this->recordMovement(
+                    $item,
+                    'stock_in',
+                    $item->quantity,
+                    0,
+                    $item->quantity,
+                    'Initial inventory quantity',
+                    $user,
+                );
+            }
 
             if ($trackAsAsset) {
                 $asset = $this->createAssetForInventoryItem($item);
@@ -52,6 +81,10 @@ class InventoryService
     {
         $trackAsAsset = (bool) ($data['track_as_asset'] ?? false);
         unset($data['track_as_asset']);
+
+        if (array_key_exists('quantity', $data) && (int) $data['quantity'] !== (int) $item->quantity) {
+            throw new \InvalidArgumentException('Use Correct Stock Quantity to change quantity and provide a reason.');
+        }
 
         $item->update($data);
 
@@ -76,30 +109,94 @@ class InventoryService
         $item->delete();
     }
 
-    public function stockIn(InventoryItem $item, int $quantity): InventoryItem
+    public function stockIn(InventoryItem $item, int $quantity, ?string $reason = null, ?User $user = null): InventoryItem
     {
-        $item->update([
-            'quantity' => $item->quantity + $quantity,
-        ]);
+        if ($quantity <= 0) {
+            throw new \InvalidArgumentException('Quantity must be greater than zero.');
+        }
 
-        $this->syncLinkedAsset($item->fresh('asset'));
+        return DB::transaction(function () use ($item, $quantity, $reason, $user): InventoryItem {
+            $before = $item->quantity;
+            $after = $before + $quantity;
 
-        return $item->fresh('asset');
+            $item->update(['quantity' => $after]);
+            $this->recordMovement($item, 'stock_in', $quantity, $before, $after, $reason, $user);
+            $this->syncLinkedAsset($item->fresh('asset'));
+
+            return $item->fresh('asset');
+        });
     }
 
-    public function stockOut(InventoryItem $item, int $quantity): InventoryItem
+    public function stockOut(InventoryItem $item, int $quantity, ?string $reason = null, ?User $user = null): InventoryItem
     {
+        if ($quantity <= 0) {
+            throw new \InvalidArgumentException('Quantity must be greater than zero.');
+        }
+
         if ($item->quantity < $quantity) {
             throw new \InvalidArgumentException('Insufficient stock for stock-out operation.');
         }
 
-        $item->update([
-            'quantity' => $item->quantity - $quantity,
+        return DB::transaction(function () use ($item, $quantity, $reason, $user): InventoryItem {
+            $before = $item->quantity;
+            $after = $before - $quantity;
+
+            $item->update(['quantity' => $after]);
+            $this->recordMovement($item, 'stock_out', -$quantity, $before, $after, $reason, $user);
+            $this->syncLinkedAsset($item->fresh('asset'));
+
+            return $item->fresh('asset');
+        });
+    }
+
+    public function adjust(InventoryItem $item, int $newQuantity, string $reason, ?User $user = null): InventoryItem
+    {
+        if ($newQuantity < 0) {
+            throw new \InvalidArgumentException('Corrected quantity cannot be negative.');
+        }
+
+        return DB::transaction(function () use ($item, $newQuantity, $reason, $user): InventoryItem {
+            $before = $item->quantity;
+            $difference = $newQuantity - $before;
+
+            if ($difference === 0) {
+                throw new \InvalidArgumentException('Corrected quantity is the same as the current quantity.');
+            }
+
+            $item->update(['quantity' => $newQuantity]);
+            $this->recordMovement($item, 'adjustment', $difference, $before, $newQuantity, $reason, $user);
+            $this->syncLinkedAsset($item->fresh('asset'));
+
+            return $item->fresh('asset');
+        });
+    }
+
+    public function history(InventoryItem $item, int $perPage = 20): LengthAwarePaginator
+    {
+        return $item->stockTransactions()
+            ->with('user')
+            ->orderByDesc('created_at')
+            ->paginate(min(max($perPage, 1), 100));
+    }
+
+    private function recordMovement(
+        InventoryItem $item,
+        string $type,
+        int $quantity,
+        int $quantityBefore,
+        int $quantityAfter,
+        ?string $reason = null,
+        ?User $user = null,
+    ): void {
+        StockTransaction::query()->create([
+            'inventory_item_id' => $item->id,
+            'type' => $type,
+            'quantity' => $quantity,
+            'quantity_before' => $quantityBefore,
+            'quantity_after' => $quantityAfter,
+            'user_id' => $user?->id ?? auth()->id(),
+            'reason' => $reason,
         ]);
-
-        $this->syncLinkedAsset($item->fresh('asset'));
-
-        return $item->fresh('asset');
     }
 
     private function createAssetForInventoryItem(InventoryItem $item): Asset

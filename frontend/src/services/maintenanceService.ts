@@ -1,4 +1,4 @@
-import { api, unwrapData } from '@/services/api'
+import { api, unwrapData, unwrapPaginated } from '@/services/api'
 
 import type { ApiResponse, MaintenanceRequest, Paginated } from '@/types'
 
@@ -40,17 +40,12 @@ function mapMaintenanceRequest(request: BackendMaintenanceRequest): MaintenanceR
 
 export const maintenanceService = {
   async list(): Promise<Paginated<MaintenanceRequest>> {
-    const { data } = await api.get<ApiResponse<BackendMaintenanceRequest[]>>('/maintenances')
-    const items = unwrapData(data)
+    const { data } = await api.get<ApiResponse<BackendMaintenanceRequest[] | Paginated<BackendMaintenanceRequest>>>('/maintenances')
+    const result = unwrapPaginated(data)
 
     return {
-      items: Array.isArray(items) ? items.map(mapMaintenanceRequest) : [],
-      meta: {
-        current_page: 1,
-        per_page: Array.isArray(items) ? items.length : 0,
-        total: Array.isArray(items) ? items.length : 0,
-        last_page: 1,
-      },
+      ...result,
+      items: result.items.map(mapMaintenanceRequest),
     }
   },
 

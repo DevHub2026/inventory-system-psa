@@ -3,11 +3,12 @@
 namespace App\Modules\Maintenance\Services;
 
 use App\Modules\Maintenance\Models\Maintenance;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 
 class MaintenanceService
 {
-    public function list(array $filters = []): Collection
+    public function list(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
         $query = Maintenance::query()->with(['asset', 'user']);
 
@@ -23,7 +24,7 @@ class MaintenanceService
             $query->where('asset_id', $filters['asset_id']);
         }
 
-        return $query->orderByDesc('created_at')->get();
+        return $query->orderByDesc('created_at')->paginate(min(max($perPage, 1), 100));
     }
 
     public function create(array $data): Maintenance

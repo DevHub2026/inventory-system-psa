@@ -2,6 +2,73 @@
 
 ## 2026-07-21
 
+### Inventory Reliability and Migration Stability Pass
+
+### Files Modified
+
+- `backend/database/factories/AssetFactory.php`
+- `backend/database/factories/AssetCategoryFactory.php`
+- `backend/database/factories/LocationFactory.php`
+- `backend/database/factories/ManufacturerFactory.php`
+- `backend/database/factories/OfficeFactory.php`
+- `backend/app/Models/User.php`
+- `backend/app/Http/Controllers/BorrowController.php`
+- `backend/app/Modules/Borrowing/Controllers/BorrowingController.php`
+- `backend/app/Modules/Borrowing/Models/Borrowing.php`
+- `backend/app/Modules/Borrowing/Services/BorrowingService.php`
+- `backend/app/Modules/Inventory/Controllers/InventoryController.php`
+- `backend/app/Modules/Inventory/Models/InventoryItem.php`
+- `backend/app/Modules/Inventory/Models/StockTransaction.php`
+- `backend/app/Modules/Inventory/Requests/StoreInventoryItemRequest.php`
+- `backend/app/Modules/Inventory/Routes/api.php`
+- `backend/app/Modules/Inventory/Services/InventoryService.php`
+- `backend/app/Modules/Maintenance/Controllers/MaintenanceController.php`
+- `backend/app/Modules/Maintenance/Services/MaintenanceService.php`
+- `backend/app/Modules/Reservation/Controllers/ReservationController.php`
+- `backend/app/Modules/Reservation/Services/ReservationService.php`
+- `backend/bootstrap/app.php`
+- `backend/database/migrations/2026_07_21_113000_add_returned_at_to_borrowings.php`
+- `frontend/src/pages/InventoryPage.tsx`
+- `frontend/src/services/api.ts`
+- `frontend/src/services/borrowingService.ts`
+- `frontend/src/services/inventoryService.ts`
+- `frontend/src/services/maintenanceService.ts`
+- `frontend/src/services/reservationService.ts`
+- `frontend/src/types/index.ts`
+- `backend/tests/Feature/Inventory/InventoryManagementTest.php`
+- `backend/tests/Feature/Maintenance/MaintenanceApiTest.php`
+- `backend/tests/Feature/Asset/AssetManagementTest.php`
+- `docs/Architecture/13_API_Architecture.md`
+- `docs/Business/02_Functional_Requirements.md`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Inventory quantity changes were not fully traceable, duplicate pending create-table migrations had to be reconciled safely, and frontend services needed to consume real paginated API responses.
+
+### Summary
+
+- Reused the existing `stock_transactions` table by adding a module StockTransaction model and recording stock-in, stock-out, initial quantity, and quantity correction movements.
+- Added inventory adjustment and movement history endpoints under the existing inventory API module.
+- Added required adjustment reasons, non-negative quantity protection, and friendly duplicate item-code validation.
+- Made inventory status authoritative from backend quantity and `reorder_level` rules.
+- Added frontend search, status filtering, pagination, stock movement history, and Correct Stock Quantity with reason.
+- Preserved backend fields such as `sku` and `reorder_level` while showing user-friendly labels.
+- Added real pagination response handling for borrowing, reservation, inventory, and maintenance services.
+- Kept the legacy asset borrow/return endpoint as compatibility while delegating borrowing behavior to the canonical BorrowingService.
+- Added missing model factories and updated Asset feature tests to the current `/api/v1/assets` contract.
+- Cleaned literal conflict markers from `AI_CHANGELOG.md`.
+
+### Impact
+
+- Inventory stock changes are traceable and visible from the UI.
+- Add Stock, Remove Stock, and Correct Quantity now refresh backend data instead of relying on frontend-only updates.
+- `php artisan migrate` no longer fails on the verified duplicate create-table migration state.
+- Focused inventory, maintenance, and asset test paths are aligned with the current backend API contract.
+
+## 2026-07-21
+
 ### Frontend Terminology and UX Simplification Pass
 
 ### Files Modified

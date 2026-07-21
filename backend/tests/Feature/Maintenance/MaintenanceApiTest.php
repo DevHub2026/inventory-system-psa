@@ -68,7 +68,7 @@ class MaintenanceApiTest extends TestCase
                 'message' => 'Maintenances retrieved successfully.',
             ]);
 
-        $data = $response->json('data');
+        $data = $response->json('data.items');
         $this->assertCount(1, $data);
     }
 

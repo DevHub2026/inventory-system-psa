@@ -81,7 +81,7 @@ class InventoryManagementTest extends TestCase
             ->putJson('/api/v1/inventory/'.$item['id'], [
                 'name' => 'Printer Paper Premium',
                 'sku' => 'PP-001',
-                'quantity' => 15,
+                'quantity' => 10,
                 'unit' => 'ream',
                 'reorder_level' => 10,
             ]);
@@ -95,7 +95,7 @@ class InventoryManagementTest extends TestCase
         $this->assertDatabaseHas('inventory_items', [
             'id' => $item['id'],
             'name' => 'Printer Paper Premium',
-            'quantity' => 15,
+            'quantity' => 10,
         ]);
     }
 
@@ -175,7 +175,11 @@ class InventoryManagementTest extends TestCase
                 'quantity' => 10,
             ]);
 
-        $response->assertStatus(500);
+        $response->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Insufficient stock for stock-out operation.',
+            ]);
     }
 
     public function test_authenticated_user_can_filter_inventory_by_search(): void
@@ -208,7 +212,7 @@ class InventoryManagementTest extends TestCase
                 'message' => 'Inventory items retrieved successfully.',
             ]);
 
-        $data = $response->json('data');
+        $data = $response->json('data.items');
         $this->assertCount(1, $data);
         $this->assertEquals('Printer Paper', $data[0]['name']);
     }
@@ -245,8 +249,79 @@ class InventoryManagementTest extends TestCase
                 'message' => 'Inventory items retrieved successfully.',
             ]);
 
-        $data = $response->json('data');
+        $data = $response->json('data.items');
         $this->assertCount(1, $data);
         $this->assertEquals('Toner Cartridge', $data[0]['name']);
+    }
+
+    public function test_authenticated_user_can_adjust_inventory_quantity_with_reason(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $item = $this->withToken($token)
+            ->postJson('/api/v1/inventory', [
+                'name' => 'Printer Paper',
+                'sku' => 'PP-001',
+                'quantity' => 50,
+                'unit' => 'ream',
+                'reorder_level' => 5,
+            ])->decodeResponseJson()['data'];
+
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/inventory/'.$item['id'].'/adjust', [
+                'quantity' => 47,
+                'reason' => 'Physical count correction',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Stock quantity corrected successfully.',
+                'data' => [
+                    'quantity' => 47,
+                ],
+            ]);
+
+        $this->assertDatabaseHas('stock_transactions', [
+            'inventory_item_id' => $item['id'],
+            'type' => 'adjustment',
+            'quantity' => -3,
+            'quantity_before' => 50,
+            'quantity_after' => 47,
+            'reason' => 'Physical count correction',
+        ]);
+    }
+
+    public function test_authenticated_user_can_view_inventory_history(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $item = $this->withToken($token)
+            ->postJson('/api/v1/inventory', [
+                'name' => 'Printer Paper',
+                'sku' => 'PP-001',
+                'quantity' => 10,
+                'unit' => 'ream',
+                'reorder_level' => 5,
+            ])->decodeResponseJson()['data'];
+
+        $this->withToken($token)
+            ->postJson('/api/v1/inventory/'.$item['id'].'/stock-in', [
+                'quantity' => 5,
+                'reason' => 'New supplies received',
+            ]);
+
+        $response = $this->withToken($token)
+            ->getJson('/api/v1/inventory/'.$item['id'].'/history');
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Stock movement history retrieved successfully.',
+            ]);
+
+        $this->assertGreaterThanOrEqual(1, count($response->json('data.items')));
     }
 }

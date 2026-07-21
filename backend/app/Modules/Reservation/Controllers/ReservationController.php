@@ -41,12 +41,24 @@ class ReservationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $reservations = $this->reservationService->list($request->user(), $request->all());
+        $perPage = (int) $request->query('per_page', 20);
+        $reservations = $this->reservationService->list($request->user(), $perPage);
 
-        return $this->success(
-            $reservations->map(fn (Reservation $reservation) => $this->transform($reservation))->values(),
-            'Reservations retrieved successfully.',
-        );
+        return $this->success([
+            'items' => collect($reservations->items())->map(fn (Reservation $r) => $this->transform($r))->values(),
+            'meta' => [
+                'current_page' => $reservations->currentPage(),
+                'per_page' => $reservations->perPage(),
+                'total' => $reservations->total(),
+                'last_page' => $reservations->lastPage(),
+            ],
+            'links' => [
+                'first' => $reservations->url(1),
+                'last' => $reservations->url($reservations->lastPage()),
+                'prev' => $reservations->previousPageUrl(),
+                'next' => $reservations->nextPageUrl(),
+            ],
+        ], 'Reservations retrieved successfully.');
     }
 
     public function store(StoreReservationRequest $request): JsonResponse

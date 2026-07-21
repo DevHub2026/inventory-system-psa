@@ -1,4 +1,4 @@
-import { api, unwrapData } from '@/services/api'
+import { api, unwrapData, unwrapPaginated } from '@/services/api'
 
 import type { ApiResponse, Borrowing, Paginated } from '@/types'
 
@@ -18,6 +18,7 @@ interface BackendBorrowing {
   status: Borrowing['status']
   borrow_date: string
   due_date: string
+  returned_at?: string | null
   remarks: string | null
   created_at?: string
   authorized_by?: number | null
@@ -40,6 +41,7 @@ function mapBorrowing(borrowing: BackendBorrowing): Borrowing {
     due_date: borrowing.due_date,
     borrowed_at: borrowing.borrow_date,
     due_at: borrowing.due_date,
+    returned_at: borrowing.returned_at,
     remarks: borrowing.remarks,
     created_at: borrowing.created_at,
     authorized_by: borrowing.authorized_by,
@@ -55,17 +57,12 @@ function mapBorrowing(borrowing: BackendBorrowing): Borrowing {
 
 export const borrowingService = {
   async list(): Promise<Paginated<Borrowing>> {
-    const { data } = await api.get<ApiResponse<BackendBorrowing[]>>('/borrowings')
-    const items = unwrapData(data)
+    const { data } = await api.get<ApiResponse<BackendBorrowing[] | Paginated<BackendBorrowing>>>('/borrowings')
+    const result = unwrapPaginated(data)
 
     return {
-      items: Array.isArray(items) ? items.map(mapBorrowing) : [],
-      meta: {
-        current_page: 1,
-        per_page: Array.isArray(items) ? items.length : 0,
-        total: Array.isArray(items) ? items.length : 0,
-        last_page: 1,
-      },
+      ...result,
+      items: result.items.map(mapBorrowing),
     }
   },
 

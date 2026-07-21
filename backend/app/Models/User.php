@@ -67,6 +67,19 @@ class User extends Authenticatable
     }
 
     /**
+     * Assign a role by name while preserving existing role assignments.
+     */
+    public function assignRole(string $roleName): void
+    {
+        $role = Role::query()->firstOrCreate(
+            ['name' => $roleName],
+            ['description' => $roleName],
+        );
+
+        $this->roles()->syncWithoutDetaching([$role->id]);
+    }
+
+    /**
      * Check if the user has a specific permission.
      */
     public function hasPermission(string $permissionName): bool

@@ -2,19 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\Asset\Exceptions\AssetNotAvailableException;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\Borrowing\Models\Borrowing;
+use App\Modules\Borrowing\Services\BorrowingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
+/**
+ * Legacy BorrowController — delegates to the canonical BorrowingService.
+ *
+ * Keep this controller for backwards compatibility with the frontend
+ * assetService.borrow() / assetService.returnAsset() calls.
+ */
 class BorrowController extends Controller
 {
+    public function __construct(private readonly BorrowingService $borrowingService) {}
+
     public function borrow(Request $request, Asset $asset): JsonResponse
     {
         $this->authorize('borrow', $asset);
@@ -29,35 +36,12 @@ class BorrowController extends Controller
             ? now()->addDays((int) $request->input('due_date'))->toDateString()
             : now()->addDays(7)->toDateString();
 
-        $borrowing = Borrowing::create([
+        $borrowing = $this->borrowingService->create($user, [
             'asset_id' => $asset->id,
-            'user_id' => $user->id,
             'borrow_date' => now()->toDateString(),
             'due_date' => $dueDate,
-            'status' => 'BORROWED',
             'remarks' => $request->input('notes'),
-            'authorized_by' => $user->id,
-            'authorized_at' => now(),
         ]);
-
-        $asset->update(['status' => AssetStatus::BORROWED]);
-
-        $admin = User::whereHas('roles', function ($query) {
-            $query->whereIn('name', ['Super Administrator', 'System Administrator', 'Property Custodian']);
-        })->first();
-
-        if ($admin) {
-            try {
-                $admin->notify(new \App\Notifications\BorrowNotification($borrowing, $user, $asset));
-            } catch (\Throwable $exception) {
-                Log::warning('Borrow notification could not be sent.', [
-                    'borrowing_id' => $borrowing->id,
-                    'asset_id' => $asset->id,
-                    'user_id' => $user->id,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
 
         return response()->json([
             'success' => true,
@@ -77,6 +61,7 @@ class BorrowController extends Controller
                 'authorized_by' => $borrowing->authorized_by,
                 'authorized_by_name' => $user->full_name ?: $user->email,
                 'authorized_at' => $borrowing->authorized_at?->format('Y-m-d H:i:s'),
+                'returned_at' => null,
                 'receipt_code' => 'PSA-BOR-'.$borrowing->id,
                 'receipt_payload' => 'PSA-BOR-'.$borrowing->id.'|'.$asset->asset_number.'|'.$user->id,
             ],
@@ -100,20 +85,26 @@ class BorrowController extends Controller
             ], 400);
         }
 
-        $borrowing->update([
-            'status' => 'RETURNED',
-            'returned_at' => now(),
-            'remarks' => $request->input('notes', $borrowing->remarks),
-        ]);
-
-        $asset->update(['status' => AssetStatus::AVAILABLE]);
+        $borrowing = $this->borrowingService->return($borrowing);
 
         return response()->json([
             'success' => true,
             'message' => 'Asset returned successfully.',
             'data' => [
-                'borrowing' => $borrowing,
-                'asset' => $asset,
+                'id' => $borrowing->id,
+                'user_id' => $borrowing->user_id,
+                'asset_id' => $borrowing->asset_id,
+                'asset_name' => $borrowing->asset?->name,
+                'asset_number' => $borrowing->asset?->asset_number,
+                'employee_name' => $borrowing->user?->full_name ?: $borrowing->user?->email,
+                'status' => $borrowing->status,
+                'borrow_date' => $borrowing->borrow_date?->format('Y-m-d'),
+                'due_date' => $borrowing->due_date?->format('Y-m-d'),
+                'returned_at' => $borrowing->returned_at?->format('Y-m-d H:i:s'),
+                'remarks' => $request->input('notes', $borrowing->remarks),
+                'created_at' => $borrowing->created_at?->format('Y-m-d H:i:s'),
+                'receipt_code' => 'PSA-BOR-'.$borrowing->id,
+                'receipt_payload' => 'PSA-BOR-'.$borrowing->id.'|'.$borrowing->asset?->asset_number.'|'.$borrowing->user_id,
             ],
         ], 200);
     }

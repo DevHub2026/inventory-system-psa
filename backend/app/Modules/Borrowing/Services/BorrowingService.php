@@ -6,18 +6,18 @@ use App\Enums\UserRole;
 use App\Models\User;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\Borrowing\Models\Borrowing;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class BorrowingService
 {
-    public function list(User $user): Collection
+    public function list(User $user, int $perPage = 20): LengthAwarePaginator
     {
         return Borrowing::query()
             ->with(['user', 'asset', 'authorizer'])
             ->when(! $this->canViewAllBorrowings($user), fn ($query) => $query->where('user_id', $user->id))
             ->orderByDesc('created_at')
-            ->get();
+            ->paginate($perPage);
     }
 
     public function create(User $user, array $data): Borrowing
@@ -45,7 +45,10 @@ class BorrowingService
     public function return(Borrowing $borrowing): Borrowing
     {
         return DB::transaction(function () use ($borrowing) {
-            $borrowing->update(['status' => 'RETURNED']);
+            $borrowing->update([
+                'status' => 'RETURNED',
+                'returned_at' => now(),
+            ]);
             $borrowing->asset()->update(['status' => 'AVAILABLE']);
 
             return $borrowing->fresh()->load(['user', 'asset', 'authorizer']);
