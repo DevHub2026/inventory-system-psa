@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Modules\Asset\Enums\AssetStatus;
-use App\Modules\Asset\Exceptions\AssetNotAvailableException;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\Borrowing\Models\Borrowing;
 use App\Modules\Borrowing\Services\BorrowingService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -20,15 +20,13 @@ use Illuminate\Support\Facades\Auth;
  */
 class BorrowController extends Controller
 {
+    use AuthorizesRequests;
+
     public function __construct(private readonly BorrowingService $borrowingService) {}
 
     public function borrow(Request $request, Asset $asset): JsonResponse
     {
         $this->authorize('borrow', $asset);
-
-        if ($asset->status !== AssetStatus::AVAILABLE) {
-            throw new AssetNotAvailableException('Asset is not available for borrowing.');
-        }
 
         $user = Auth::user();
 

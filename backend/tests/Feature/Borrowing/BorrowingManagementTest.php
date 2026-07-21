@@ -42,6 +42,57 @@ class BorrowingManagementTest extends TestCase
         ]);
     }
 
+    public function test_legacy_asset_borrow_route_delegates_to_canonical_service(): void
+    {
+        User::factory()->count(3)->create();
+        $user = User::factory()->create(['id' => 4]);
+        $asset = $this->createAsset(['id' => 10, 'asset_number' => 'AST-0010']);
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/assets/10/borrow', [
+                'due_date' => 7,
+                'notes' => 'Phone QR test borrow',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Asset borrowed successfully.',
+                'data' => [
+                    'user_id' => 4,
+                    'asset_id' => 10,
+                    'status' => 'BORROWED',
+                    'asset_number' => 'AST-0010',
+                    'remarks' => 'Phone QR test borrow',
+                    'returned_at' => null,
+                ],
+            ]);
+
+        $this->assertDatabaseHas('borrowings', [
+            'user_id' => 4,
+            'asset_id' => 10,
+            'status' => 'BORROWED',
+            'remarks' => 'Phone QR test borrow',
+        ]);
+
+        $this->assertDatabaseHas('assets', [
+            'id' => 10,
+            'status' => 'BORROWED',
+        ]);
+    }
+
+    public function test_legacy_asset_borrow_route_requires_authentication(): void
+    {
+        $asset = $this->createAsset();
+
+        $response = $this->postJson("/api/v1/assets/{$asset->id}/borrow", [
+            'due_date' => 7,
+        ]);
+
+        $response->assertStatus(401);
+    }
+
     public function test_authenticated_user_can_return_a_borrowing(): void
     {
         $user = User::factory()->create();
@@ -69,36 +120,75 @@ class BorrowingManagementTest extends TestCase
             'id' => $borrowing['id'],
             'status' => 'RETURNED',
         ]);
+
+        $this->assertDatabaseMissing('borrowings', [
+            'id' => $borrowing['id'],
+            'returned_at' => null,
+        ]);
+
+        $this->assertDatabaseHas('assets', [
+            'id' => $asset->id,
+            'status' => 'AVAILABLE',
+        ]);
     }
 
-    private function createAsset(): Asset
+    public function test_borrowing_cannot_be_returned_twice(): void
     {
+        $user = User::factory()->create();
+        $asset = $this->createAsset();
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $borrowing = $this->withToken($token)
+            ->postJson('/api/v1/borrowings', [
+                'asset_id' => $asset->id,
+                'borrow_date' => '2026-07-20',
+                'due_date' => '2026-07-24',
+            ])
+            ->decodeResponseJson()['data'];
+
+        $this->withToken($token)
+            ->postJson('/api/v1/borrowings/'.$borrowing['id'].'/return')
+            ->assertStatus(200);
+
+        $this->withToken($token)
+            ->postJson('/api/v1/borrowings/'.$borrowing['id'].'/return')
+            ->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Borrowing has already been returned.',
+            ]);
+    }
+
+    private function createAsset(array $overrides = []): Asset
+    {
+        $unique = fake()->unique()->numerify('####');
+
         $office = Office::create([
-            'name' => 'Main Office',
-            'code' => 'MO',
+            'name' => 'Main Office '.$unique,
+            'code' => 'MO-'.$unique,
             'description' => 'Main office',
         ]);
 
         $location = Location::create([
             'office_id' => $office->id,
-            'name' => 'Storage Room',
-            'code' => 'SR',
+            'name' => 'Storage Room '.$unique,
+            'code' => 'SR-'.$unique,
             'description' => 'Storage room',
         ]);
 
         $category = AssetCategory::create([
-            'name' => 'Laptop',
-            'code' => 'LAP',
+            'name' => 'Laptop '.$unique,
+            'code' => 'LAP-'.$unique,
             'description' => 'Laptops',
         ]);
 
         $manufacturer = Manufacturer::create([
-            'name' => 'Dell',
-            'code' => 'DEL',
+            'name' => 'Dell '.$unique,
+            'code' => 'DEL-'.$unique,
             'description' => 'Dell computers',
         ]);
 
-        return Asset::create([
+        return Asset::unguarded(fn () => Asset::create(array_merge([
             'asset_number' => 'AST-'.rand(1000, 9999),
             'name' => 'Laptop 14',
             'description' => 'Test asset',
@@ -113,6 +203,6 @@ class BorrowingManagementTest extends TestCase
             'purchase_cost' => 1200.00,
             'warranty_until' => '2027-01-01',
             'remarks' => 'Test asset',
-        ]);
+        ], $overrides)));
     }
 }

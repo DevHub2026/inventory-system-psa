@@ -4,6 +4,8 @@ namespace App\Modules\Borrowing\Services;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Modules\Asset\Enums\AssetStatus;
+use App\Modules\Asset\Exceptions\AssetNotAvailableException;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\Borrowing\Models\Borrowing;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -23,7 +25,20 @@ class BorrowingService
     public function create(User $user, array $data): Borrowing
     {
         return DB::transaction(function () use ($user, $data) {
-            $asset = Asset::query()->findOrFail($data['asset_id']);
+            $asset = Asset::query()->lockForUpdate()->findOrFail($data['asset_id']);
+
+            if ($asset->status !== AssetStatus::AVAILABLE) {
+                throw new AssetNotAvailableException('Asset is not available for borrowing.');
+            }
+
+            $hasActiveBorrowing = Borrowing::query()
+                ->where('asset_id', $asset->id)
+                ->where('status', 'BORROWED')
+                ->exists();
+
+            if ($hasActiveBorrowing) {
+                throw new AssetNotAvailableException('Asset already has an active borrowing record.');
+            }
 
             $borrowing = Borrowing::create([
                 'user_id' => $user->id,
@@ -36,7 +51,7 @@ class BorrowingService
                 'authorized_at' => now(),
             ]);
 
-            $asset->update(['status' => 'BORROWED']);
+            $asset->update(['status' => AssetStatus::BORROWED]);
 
             return $borrowing->load(['user', 'asset', 'authorizer']);
         });
@@ -45,11 +60,20 @@ class BorrowingService
     public function return(Borrowing $borrowing): Borrowing
     {
         return DB::transaction(function () use ($borrowing) {
+            $borrowing = Borrowing::query()
+                ->with('asset')
+                ->lockForUpdate()
+                ->findOrFail($borrowing->id);
+
+            if ($borrowing->status !== 'BORROWED') {
+                throw new \InvalidArgumentException('Borrowing has already been returned.');
+            }
+
             $borrowing->update([
                 'status' => 'RETURNED',
                 'returned_at' => now(),
             ]);
-            $borrowing->asset()->update(['status' => 'AVAILABLE']);
+            $borrowing->asset()->update(['status' => AssetStatus::AVAILABLE]);
 
             return $borrowing->fresh()->load(['user', 'asset', 'authorizer']);
         });

@@ -38,6 +38,7 @@
 - `backend/tests/Feature/Inventory/InventoryManagementTest.php`
 - `backend/tests/Feature/Maintenance/MaintenanceApiTest.php`
 - `backend/tests/Feature/Asset/AssetManagementTest.php`
+- `backend/tests/Feature/Borrowing/BorrowingManagementTest.php`
 - `docs/Architecture/13_API_Architecture.md`
 - `docs/Business/02_Functional_Requirements.md`
 - `AI_CHANGELOG.md`
@@ -57,6 +58,8 @@ Inventory quantity changes were not fully traceable, duplicate pending create-ta
 - Preserved backend fields such as `sku` and `reorder_level` while showing user-friendly labels.
 - Added real pagination response handling for borrowing, reservation, inventory, and maintenance services.
 - Kept the legacy asset borrow/return endpoint as compatibility while delegating borrowing behavior to the canonical BorrowingService.
+- Fixed the legacy borrow endpoint authorization crash by restoring Laravel authorization support on the compatibility controller.
+- Moved borrow availability and repeated-return guards into the canonical BorrowingService.
 - Added missing model factories and updated Asset feature tests to the current `/api/v1/assets` contract.
 - Cleaned literal conflict markers from `AI_CHANGELOG.md`.
 

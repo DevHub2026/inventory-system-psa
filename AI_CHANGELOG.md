@@ -67,6 +67,7 @@ Implemented Priority 1 inventory reliability features and continued production s
 - backend/tests/Feature/Inventory/InventoryManagementTest.php
 - backend/tests/Feature/Maintenance/MaintenanceApiTest.php
 - backend/tests/Feature/Asset/AssetManagementTest.php
+- backend/tests/Feature/Borrowing/BorrowingManagementTest.php
 - docs/Architecture/13_API_Architecture.md
 - docs/Business/02_Functional_Requirements.md
 - AI_CHANGELOG.md
@@ -83,6 +84,8 @@ Implemented Priority 1 inventory reliability features and continued production s
 - Added duplicate SKU validation with a user-friendly message.
 - Added shared frontend paginated response handling.
 - Added missing Asset support factories and aligned legacy Asset tests with `/api/v1/assets`.
+- Fixed the legacy asset borrow endpoint by keeping it as an authorized compatibility wrapper over the canonical BorrowingService.
+- Added borrowing service guards for unavailable assets and repeated returns.
 - Preserved existing data and avoided destructive migration commands.
 - Cleaned literal conflict markers from this changelog.
 
