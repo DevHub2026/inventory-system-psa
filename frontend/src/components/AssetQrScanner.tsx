@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser'
 import { Alert, Badge, Button, Input, Modal, Spinner } from '@/components/ui'
 import { assetService } from '@/services/assetService'
 import type { Asset } from '@/types'
@@ -11,19 +12,10 @@ interface AssetQrScannerProps {
 
 type ScannerState = 'idle' | 'starting' | 'scanning' | 'resolving' | 'found' | 'not_found' | 'invalid' | 'unsupported' | 'permission_denied' | 'camera_error'
 
-type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => {
-  detect(source: HTMLVideoElement): Promise<Array<{ rawValue?: string }>>
-}
-
-function getBarcodeDetector(): BarcodeDetectorConstructor | null {
-  const candidate = (window as Window & { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector
-  return candidate ?? null
-}
-
 export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const scanLoopRef = useRef<number | null>(null)
+  const controlsRef = useRef<IScannerControls | null>(null)
+  const codeReaderRef = useRef<BrowserQRCodeReader | null>(null)
   const resolvingRef = useRef(false)
   const [state, setState] = useState<ScannerState>('idle')
   const [message, setMessage] = useState('')
@@ -31,14 +23,18 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
   const [manualValue, setManualValue] = useState('')
   const [asset, setAsset] = useState<Asset | null>(null)
 
+  function isLocalhost() {
+    return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+  }
+
   function stopCamera() {
-    if (scanLoopRef.current !== null) {
-      cancelAnimationFrame(scanLoopRef.current)
-      scanLoopRef.current = null
+    controlsRef.current?.stop()
+    controlsRef.current = null
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
     }
 
-    streamRef.current?.getTracks().forEach((track) => track.stop())
-    streamRef.current = null
     resolvingRef.current = false
   }
 
@@ -76,57 +72,49 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
     setMessage('')
     setState('starting')
 
+    if (!window.isSecureContext && !isLocalhost()) {
+      setState('unsupported')
+      setMessage('Camera access is blocked because this page is opened over LAN HTTP. Use desktop localhost, HTTPS, or allow this LAN origin as secure in Chrome flags for phone testing.')
+      return
+    }
+
     if (!navigator.mediaDevices?.getUserMedia) {
       setState('unsupported')
-      setMessage('This browser does not support camera access.')
+      setMessage('This browser does not expose camera access. Check browser permissions, HTTPS requirements, or try Chrome/Edge.')
+      return
+    }
+
+    if (!videoRef.current) {
+      setState('camera_error')
+      setMessage('Camera preview is not ready. Close the scanner and try again.')
       return
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      })
-      streamRef.current = stream
+      codeReaderRef.current = new BrowserQRCodeReader()
+      controlsRef.current = await codeReaderRef.current.decodeFromConstraints(
+        {
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        },
+        videoRef.current,
+        (result) => {
+          const rawValue = result?.getText()?.trim()
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-
-      const BarcodeDetector = getBarcodeDetector()
-      if (!BarcodeDetector) {
-        setState('unsupported')
-        setMessage('Camera preview is open, but this browser does not support native QR detection. Use Chrome or Edge for automatic scanning, or use the development fallback below.')
-        return
-      }
-
-      const detector = new BarcodeDetector({ formats: ['qr_code'] })
-      setState('scanning')
-
-      const scanFrame = async () => {
-        if (!videoRef.current || resolvingRef.current || !streamRef.current) return
-
-        try {
-          if (videoRef.current.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-            const codes = await detector.detect(videoRef.current)
-            const rawValue = codes.find((code) => code.rawValue)?.rawValue
-
-            if (rawValue) {
-              void resolveIdentifier(rawValue)
-              return
-            }
+          if (!rawValue || resolvingRef.current) {
+            return
           }
-        } catch {
-          setState('camera_error')
-          setMessage('The camera opened, but QR detection failed.')
-          return
-        }
 
-        scanLoopRef.current = requestAnimationFrame(scanFrame)
-      }
-
-      scanLoopRef.current = requestAnimationFrame(scanFrame)
+          controlsRef.current?.stop()
+          void resolveIdentifier(rawValue)
+        },
+      )
+      setState('scanning')
+      setMessage('Camera is active. Point it at a PSA asset QR code.')
     } catch (error: unknown) {
       stopCamera()
 
@@ -137,7 +125,7 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
       }
 
       setState('camera_error')
-      setMessage('No usable camera was found or the camera could not be opened.')
+      setMessage(error instanceof Error ? error.message : 'No usable camera was found or the camera could not be opened.')
     }
   }
 
@@ -242,7 +230,7 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
         <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3">
           <div className="mb-2 text-sm font-semibold text-gray-700">Development fallback</div>
           <p className="mb-3 text-xs text-gray-500">
-            Use this only on devices without a camera or without browser QR detection support. Production flow remains camera scan → backend lookup.
+            Use this only on devices without a camera or without browser QR detection support. Production flow remains camera scan to backend lookup.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input

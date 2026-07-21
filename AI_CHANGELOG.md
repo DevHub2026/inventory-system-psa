@@ -18,6 +18,53 @@ Always append new entries.
 
 ---
 
+## 2026-07-21 09:06
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Fixed QR camera scanning reliability and QR label generation.
+
+---
+
+### Files Modified
+
+- frontend/src/components/AssetQrScanner.tsx
+- frontend/src/components/QrCode.tsx
+- AI_CHANGELOG.md
+- CHANGELOG.md
+
+---
+
+### Summary
+
+- Replaced browser-native `BarcodeDetector` usage with `@zxing/browser` `BrowserQRCodeReader`.
+- Replaced the custom QR SVG matrix renderer with `@zxing/browser` `BrowserQRCodeSvgWriter`.
+- Added a clear insecure-LAN camera warning for phone testing over HTTP network URLs.
+- Preserved the existing backend identifier resolution endpoint.
+- Verified the frontend production build.
+
+---
+
+### Reason
+
+Native QR detection support is inconsistent, and using a proven QR scanner/writer library improves real device testing reliability.
+
+---
+
+### Risks
+
+- Mobile browsers may still require HTTPS or explicit insecure-origin flags for camera access on LAN HTTP URLs.
+- ZXing increases the frontend bundle size, triggering Vite's large chunk warning during build.
+
+---
+
 ## 2026-07-20 15:37
 
 ### AI
