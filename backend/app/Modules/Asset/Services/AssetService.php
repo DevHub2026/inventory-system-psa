@@ -7,11 +7,14 @@ use App\Modules\Asset\Enums\IdentifierType;
 use App\Modules\Asset\Exceptions\AssetNotAvailableException;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
+use App\Modules\AssetIdentifier\Services\AssetIdentifierService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class AssetService
 {
+    public function __construct(private readonly AssetIdentifierService $assetIdentifierService) {}
+
     public function list(array $filters = []): LengthAwarePaginator
     {
         $perPage = (int) ($filters['per_page'] ?? 20);
@@ -153,9 +156,7 @@ class AssetService
 
     public function findByIdentifier(string $value): ?Asset
     {
-        $identifier = AssetIdentifier::query()
-            ->where('identifier_value', $value)
-            ->first();
+        $identifier = $this->assetIdentifierService->findByValue($value);
 
         if (! $identifier) {
             return null;

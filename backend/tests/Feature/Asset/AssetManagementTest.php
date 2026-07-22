@@ -10,6 +10,8 @@ use App\Models\Location;
 use App\Models\User;
 use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\Asset\Enums\ConditionStatus;
+use App\Modules\Asset\Enums\IdentifierType;
+use App\Modules\AssetIdentifier\Models\AssetIdentifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -193,6 +195,29 @@ class AssetManagementTest extends TestCase
 
         $response->assertStatus(200);
         $this->assertCount(1, $response->json('data.items'));
+    }
+
+    public function test_scan_resolves_unpadded_psa_asset_qr_to_stored_identifier(): void
+    {
+        $asset = Asset::factory()->create(['id' => 125]);
+        AssetIdentifier::create([
+            'asset_id' => $asset->id,
+            'identifier_type' => IdentifierType::PSA_QR->value,
+            'identifier_value' => 'PSA-ASSET-000125',
+            'is_primary' => true,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/v1/assets/scan?value=PSA-ASSET-125');
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'id' => $asset->id,
+                    'psa_qr_identifier' => 'PSA-ASSET-000125',
+                ],
+            ]);
     }
 
     public function test_asset_number_must_be_unique(): void

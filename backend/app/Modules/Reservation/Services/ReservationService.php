@@ -5,13 +5,15 @@ namespace App\Modules\Reservation\Services;
 use App\Enums\UserRole;
 use App\Models\User;
 use App\Modules\Asset\Enums\AssetStatus;
-use App\Modules\AssetIdentifier\Models\AssetIdentifier;
+use App\Modules\AssetIdentifier\Services\AssetIdentifierService;
 use App\Modules\Reservation\Models\Reservation;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class ReservationService
 {
+    public function __construct(private readonly AssetIdentifierService $assetIdentifierService) {}
+
     public function list(User $user, int $perPage = 20): LengthAwarePaginator
     {
         return Reservation::query()
@@ -88,10 +90,7 @@ class ReservationService
             return $reservationId > 0 ? Reservation::query()->find($reservationId) : null;
         }
 
-        $asset = AssetIdentifier::query()
-            ->where('identifier_value', $value)
-            ->first()
-            ?->asset;
+        $asset = $this->assetIdentifierService->findByValue($value)?->asset;
 
         if (! $asset) {
             return null;

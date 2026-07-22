@@ -249,7 +249,7 @@ class BorrowingManagementTest extends TestCase
 
         $this->withToken($token)->postJson('/api/v1/assets/scan', ['value' => $identifier])
             ->assertOk()
-            ->assertJson(['success' => true, 'message' => 'Asset successfully borrowed.']);
+            ->assertJson(['success' => true, 'message' => 'Borrowing marked as borrowed successfully.']);
 
         $this->assertDatabaseHas('borrowings', ['asset_id' => $asset->id, 'status' => 'BORROWED']);
         $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'BORROWED']);
@@ -261,6 +261,38 @@ class BorrowingManagementTest extends TestCase
         $this->assertDatabaseHas('borrowings', ['asset_id' => $asset->id, 'status' => 'RETURNED']);
         $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'AVAILABLE']);
         $this->assertDatabaseHas('asset_identifiers', ['asset_id' => $asset->id, 'identifier_value' => $identifier]);
+    }
+
+    public function test_qr_scan_accepts_unpadded_psa_asset_identifier(): void
+    {
+        $staff = $this->staffUser();
+        $asset = $this->createAsset(['id' => 125]);
+        $this->authorizeAsset($staff, $asset);
+        AssetIdentifier::create([
+            'asset_id' => $asset->id,
+            'identifier_type' => IdentifierType::PSA_QR->value,
+            'identifier_value' => 'PSA-ASSET-000125',
+            'is_primary' => true,
+        ]);
+
+        $this->withToken($staff->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/assets/scan', ['value' => 'PSA-ASSET-125'])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Borrowing marked as borrowed successfully.',
+                'data' => [
+                    'asset_id' => 125,
+                    'status' => 'BORROWED',
+                ],
+            ]);
+
+        $this->assertDatabaseHas('borrowings', ['asset_id' => $asset->id, 'status' => 'BORROWED']);
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'BORROWED']);
+        $this->assertDatabaseHas('asset_identifiers', [
+            'asset_id' => $asset->id,
+            'identifier_value' => 'PSA-ASSET-000125',
+        ]);
     }
 
     public function test_staff_can_authorize_a_pending_request_from_receipt_qr(): void
@@ -288,6 +320,140 @@ class BorrowingManagementTest extends TestCase
             ->assertJson(['success' => false, 'message' => 'Borrow request is already authorized or completed.']);
     }
 
+    public function test_staff_receipt_scan_marks_pending_borrow_request_as_borrowed(): void
+    {
+        $employee = User::factory()->create();
+        $staff = $this->staffUser();
+        $asset = $this->createAsset(['status' => 'RESERVED']);
+        $reservation = $this->pendingReservation($employee, $asset);
+        $receiptPayload = 'PSA-RES-'.$reservation->id.'|'.$asset->asset_number.'|'.$employee->id;
+
+        $response = $this->withToken($staff->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/assets/scan', ['value' => $receiptPayload])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Borrowing marked as borrowed successfully.',
+                'data' => [
+                    'user_id' => $employee->id,
+                    'asset_id' => $asset->id,
+                    'asset_number' => $asset->asset_number,
+                    'status' => 'BORROWED',
+                    'authorized_by' => $staff->id,
+                ],
+            ]);
+
+        $borrowingId = $response->decodeResponseJson()['data']['id'];
+
+        $this->assertDatabaseHas('reservations', [
+            'id' => $reservation->id,
+            'status' => 'APPROVED',
+            'authorized_by' => $staff->id,
+        ]);
+        $this->assertDatabaseHas('reservation_items', [
+            'reservation_id' => $reservation->id,
+            'asset_id' => $asset->id,
+        ]);
+        $this->assertDatabaseMissing('reservation_items', [
+            'reservation_id' => $reservation->id,
+            'asset_id' => $asset->id,
+            'fulfilled_at' => null,
+        ]);
+        $this->assertDatabaseHas('borrowings', [
+            'id' => $borrowingId,
+            'user_id' => $employee->id,
+            'asset_id' => $asset->id,
+            'reservation_id' => $reservation->id,
+            'status' => 'BORROWED',
+            'authorized_by' => $staff->id,
+        ]);
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'BORROWED']);
+    }
+
+    public function test_duplicate_receipt_scan_does_not_create_second_borrowing(): void
+    {
+        $employee = User::factory()->create();
+        $staff = $this->staffUser();
+        $asset = $this->createAsset(['status' => 'RESERVED']);
+        $reservation = $this->pendingReservation($employee, $asset);
+        $receiptPayload = 'PSA-RES-'.$reservation->id.'|'.$asset->asset_number.'|'.$employee->id;
+        $token = $staff->createToken('auth')->plainTextToken;
+
+        $this->withToken($token)
+            ->postJson('/api/v1/assets/scan', ['value' => $receiptPayload])
+            ->assertOk();
+
+        $this->withToken($token)
+            ->postJson('/api/v1/assets/scan', ['value' => $receiptPayload])
+            ->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Borrowing is already marked as borrowed.',
+            ]);
+
+        $this->assertDatabaseCount('borrowings', 1);
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'BORROWED']);
+    }
+
+    public function test_returned_receipt_scan_reports_completed_transaction(): void
+    {
+        $employee = User::factory()->create();
+        $staff = $this->staffUser();
+        $asset = $this->createAsset(['status' => 'RESERVED']);
+        $reservation = $this->pendingReservation($employee, $asset);
+        $receiptPayload = 'PSA-RES-'.$reservation->id.'|'.$asset->asset_number.'|'.$employee->id;
+        $token = $staff->createToken('auth')->plainTextToken;
+
+        $borrowResponse = $this->withToken($token)
+            ->postJson('/api/v1/assets/scan', ['value' => $receiptPayload])
+            ->assertOk();
+
+        $borrowingId = $borrowResponse->decodeResponseJson()['data']['id'];
+
+        $this->withToken($token)
+            ->postJson('/api/v1/borrowings/'.$borrowingId.'/return')
+            ->assertOk();
+
+        $this->withToken($token)
+            ->postJson('/api/v1/assets/scan', ['value' => $receiptPayload])
+            ->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'message' => 'This borrowing transaction has already been returned.',
+            ]);
+
+        $this->assertDatabaseCount('borrowings', 1);
+        $this->assertDatabaseHas('borrowings', ['id' => $borrowingId, 'status' => 'RETURNED']);
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'AVAILABLE']);
+    }
+
+    public function test_employee_cannot_mark_pending_receipt_as_borrowed(): void
+    {
+        $employee = User::factory()->create();
+        $employee->roles()->sync([
+            \App\Models\Role::query()->firstOrCreate(['name' => UserRole::EMPLOYEE->value])->id,
+        ]);
+        $asset = $this->createAsset(['status' => 'RESERVED']);
+        $reservation = $this->pendingReservation($employee, $asset);
+        $receiptPayload = 'PSA-RES-'.$reservation->id.'|'.$asset->asset_number.'|'.$employee->id;
+
+        $this->withToken($employee->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/assets/scan', ['value' => $receiptPayload])
+            ->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+                'message' => 'You are not authorized to complete this borrowing transaction.',
+            ]);
+
+        $this->assertDatabaseMissing('borrowings', [
+            'reservation_id' => $reservation->id,
+        ]);
+        $this->assertDatabaseHas('reservations', [
+            'id' => $reservation->id,
+            'status' => 'PENDING',
+        ]);
+    }
+
     public function test_receipt_qr_borrows_then_return_receipt_qr_returns_and_preserves_history(): void
     {
         $employee = User::factory()->create();
@@ -307,7 +473,7 @@ class BorrowingManagementTest extends TestCase
                 'value' => 'PSA-RES-'.$reservation->id.'|'.$asset->asset_number.'|'.$employee->id,
             ])
             ->assertOk()
-            ->assertJson(['success' => true, 'message' => 'Asset successfully borrowed.']);
+            ->assertJson(['success' => true, 'message' => 'Borrowing marked as borrowed successfully.']);
 
         $borrowingId = $borrowResponse->decodeResponseJson()['data']['id'];
 
@@ -356,7 +522,7 @@ class BorrowingManagementTest extends TestCase
         $this->withToken($staff->createToken('auth')->plainTextToken)
             ->postJson('/api/v1/assets/scan', ['value' => $identifier])
             ->assertOk()
-            ->assertJson(['success' => true, 'message' => 'Asset successfully borrowed.']);
+            ->assertJson(['success' => true, 'message' => 'Borrowing marked as borrowed successfully.']);
 
         $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'BORROWED']);
         $this->assertDatabaseHas('borrowings', ['asset_id' => $asset->id, 'status' => 'BORROWED']);

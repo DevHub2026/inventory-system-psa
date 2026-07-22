@@ -91,7 +91,9 @@ class BorrowingController extends Controller
 
         return $this->success(
             $this->transform($borrowing),
-            $borrowing->status === 'RETURNED' ? 'Asset successfully returned.' : 'Asset successfully borrowed.',
+            $borrowing->status === 'RETURNED'
+                ? 'Asset successfully returned.'
+                : 'Borrowing marked as borrowed successfully.',
         );
     }
 }
