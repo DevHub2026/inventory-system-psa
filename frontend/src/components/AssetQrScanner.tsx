@@ -55,8 +55,9 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
     try {
       const resolvedAsset = await assetService.scan(identifier)
       setAsset(resolvedAsset)
+      const borrowing = await assetService.scanTransaction(identifier)
+      setMessage(borrowing.status === 'RETURNED' ? 'Asset successfully returned.' : 'Asset successfully borrowed.')
       setState('found')
-      setMessage('Asset found from backend identifier lookup.')
     } catch (error: unknown) {
       setState('not_found')
       setMessage(error instanceof Error ? error.message : 'No asset matched that identifier.')
@@ -184,8 +185,8 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
           <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
             <Spinner />
             {state === 'starting' && 'Requesting camera permission...'}
-            {state === 'scanning' && 'Point the camera at an asset QR code or supported barcode.'}
-            {state === 'resolving' && 'Resolving scanned identifier with the backend...'}
+            {state === 'scanning' && 'Point the camera at a PSA asset QR code.'}
+            {state === 'resolving' && 'Resolving the asset and completing the authorized QR workflow...'}
           </div>
         )}
 

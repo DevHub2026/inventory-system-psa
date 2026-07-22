@@ -109,6 +109,11 @@ export const assetService = {
     return mapAsset(unwrapData(data))
   },
 
+  async scanTransaction(value: string): Promise<Borrowing> {
+    const { data } = await api.post<ApiResponse<Borrowing>>('/assets/scan', { value })
+    return unwrapData(data)
+  },
+
   async update(assetId: number, payload: UpdateAssetPayload): Promise<Asset> {
     const { data } = await api.put<ApiResponse<BackendAsset>>(`/assets/${assetId}`, payload)
     return mapAsset(unwrapData(data))

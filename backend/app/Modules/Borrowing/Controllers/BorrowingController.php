@@ -72,13 +72,26 @@ class BorrowingController extends Controller
         );
     }
 
-    public function return(Borrowing $borrowing): JsonResponse
+    public function return(Request $request, Borrowing $borrowing): JsonResponse
     {
-        $borrowing = $this->borrowingService->return($borrowing);
+        $borrowing = $this->borrowingService->return($request->user(), $borrowing);
 
         return $this->success(
             $this->transform($borrowing),
             'Borrowing returned successfully.',
+        );
+    }
+
+    public function scan(Request $request): JsonResponse
+    {
+        $value = trim((string) $request->input('value', ''));
+        abort_if($value === '', 422, 'Identifier value is required.');
+
+        $borrowing = $this->borrowingService->scan($request->user(), $value);
+
+        return $this->success(
+            $this->transform($borrowing),
+            $borrowing->status === 'RETURNED' ? 'Asset successfully returned.' : 'Asset successfully borrowed.',
         );
     }
 }

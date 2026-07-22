@@ -69,7 +69,6 @@ Route::prefix('v1')->group(function (): void {
 
         // Borrow routes
         Route::post('/assets/{asset}/borrow', [BorrowController::class, 'borrow']);
-        Route::post('/assets/{asset}/return', [BorrowController::class, 'return'])
-            ->middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head');
+        Route::post('/assets/{asset}/return', [BorrowController::class, 'return']);
     });
 });

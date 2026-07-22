@@ -3,11 +3,15 @@
 namespace Tests\Feature\Borrowing;
 
 use App\Models\User;
+use App\Enums\UserRole;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\Asset\Models\Location;
 use App\Modules\Asset\Models\Manufacturer;
 use App\Modules\Asset\Models\Office;
 use App\Modules\AssetCategory\Models\AssetCategory;
+use App\Modules\Reservation\Models\Reservation;
+use App\Modules\AssetIdentifier\Models\AssetIdentifier;
+use App\Modules\Asset\Enums\IdentifierType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,8 +21,9 @@ class BorrowingManagementTest extends TestCase
 
     public function test_authenticated_user_can_create_a_borrowing(): void
     {
-        $user = User::factory()->create();
+        $user = $this->staffUser();
         $asset = $this->createAsset();
+        $this->authorizeAsset($user, $asset);
         $token = $user->createToken('auth')->plainTextToken;
 
         $response = $this->withToken($token)
@@ -45,8 +50,9 @@ class BorrowingManagementTest extends TestCase
     public function test_legacy_asset_borrow_route_delegates_to_canonical_service(): void
     {
         User::factory()->count(3)->create();
-        $user = User::factory()->create(['id' => 4]);
+        $user = $this->staffUser(['id' => 4]);
         $asset = $this->createAsset(['id' => 10, 'asset_number' => 'AST-0010']);
+        $this->authorizeAsset($user, $asset);
         $token = $user->createToken('auth')->plainTextToken;
 
         $response = $this->withToken($token)
@@ -95,8 +101,9 @@ class BorrowingManagementTest extends TestCase
 
     public function test_authenticated_user_can_return_a_borrowing(): void
     {
-        $user = User::factory()->create();
+        $user = $this->staffUser();
         $asset = $this->createAsset();
+        $this->authorizeAsset($user, $asset);
         $token = $user->createToken('auth')->plainTextToken;
 
         $borrowing = $this->withToken($token)
@@ -134,8 +141,9 @@ class BorrowingManagementTest extends TestCase
 
     public function test_borrowing_cannot_be_returned_twice(): void
     {
-        $user = User::factory()->create();
+        $user = $this->staffUser();
         $asset = $this->createAsset();
+        $this->authorizeAsset($user, $asset);
         $token = $user->createToken('auth')->plainTextToken;
 
         $borrowing = $this->withToken($token)
@@ -204,5 +212,102 @@ class BorrowingManagementTest extends TestCase
             'warranty_until' => '2027-01-01',
             'remarks' => 'Test asset',
         ], $overrides)));
+    }
+
+    public function test_employee_cannot_bypass_authorization_with_borrow_api(): void
+    {
+        $employee = User::factory()->create();
+        $employee->roles()->sync([
+            \App\Models\Role::query()->firstOrCreate(['name' => UserRole::EMPLOYEE->value])->id,
+        ]);
+        $asset = $this->createAsset();
+        $this->authorizeAsset($employee, $asset);
+
+        $this->withToken($employee->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/borrowings', [
+                'asset_id' => $asset->id,
+                'borrow_date' => '2026-07-20',
+                'due_date' => '2026-07-24',
+            ])
+            ->assertStatus(422)
+            ->assertJson(['success' => false, 'message' => 'You are not authorized to complete this borrowing transaction.']);
+    }
+
+    public function test_qr_scan_borrows_then_returns_the_same_authorized_asset(): void
+    {
+        $staff = $this->staffUser();
+        $asset = $this->createAsset();
+        $this->authorizeAsset($staff, $asset);
+        $identifier = 'PSA-ASSET-TEST-'.$asset->id;
+        AssetIdentifier::create([
+            'asset_id' => $asset->id,
+            'identifier_type' => IdentifierType::PSA_QR->value,
+            'identifier_value' => $identifier,
+            'is_primary' => true,
+        ]);
+        $token = $staff->createToken('auth')->plainTextToken;
+
+        $this->withToken($token)->postJson('/api/v1/assets/scan', ['value' => $identifier])
+            ->assertOk()
+            ->assertJson(['success' => true, 'message' => 'Asset successfully borrowed.']);
+
+        $this->assertDatabaseHas('borrowings', ['asset_id' => $asset->id, 'status' => 'BORROWED']);
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'BORROWED']);
+
+        $this->withToken($token)->postJson('/api/v1/assets/scan', ['value' => $identifier])
+            ->assertOk()
+            ->assertJson(['success' => true, 'message' => 'Asset successfully returned.']);
+
+        $this->assertDatabaseHas('borrowings', ['asset_id' => $asset->id, 'status' => 'RETURNED']);
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'AVAILABLE']);
+        $this->assertDatabaseHas('asset_identifiers', ['asset_id' => $asset->id, 'identifier_value' => $identifier]);
+    }
+
+    public function test_authorized_borrow_cannot_create_a_duplicate_active_record(): void
+    {
+        $staff = $this->staffUser();
+        $asset = $this->createAsset();
+        $this->authorizeAsset($staff, $asset);
+        $token = $staff->createToken('auth')->plainTextToken;
+        $payload = ['asset_id' => $asset->id, 'borrow_date' => '2026-07-20', 'due_date' => '2026-07-24'];
+
+        $this->withToken($token)->postJson('/api/v1/borrowings', $payload)->assertCreated();
+        $this->withToken($token)->postJson('/api/v1/borrowings', $payload)
+            ->assertStatus(409)
+            ->assertJson(['success' => false, 'message' => 'Asset is not available for borrowing.']);
+
+        $this->assertDatabaseCount('borrowings', 1);
+    }
+
+    public function test_return_without_an_active_borrowing_is_rejected(): void
+    {
+        $staff = $this->staffUser();
+        $asset = $this->createAsset();
+
+        $this->withToken($staff->createToken('auth')->plainTextToken)
+            ->postJson("/api/v1/assets/{$asset->id}/return")
+            ->assertStatus(400)
+            ->assertJson(['success' => false, 'message' => 'No active borrow record found for this asset.']);
+    }
+
+    private function staffUser(array $attributes = []): User
+    {
+        $user = User::factory()->create($attributes);
+        $user->assignRole(UserRole::PROPERTY_CUSTODIAN->value);
+
+        return $user;
+    }
+
+    private function authorizeAsset(User $borrower, Asset $asset): void
+    {
+        $reservation = Reservation::create([
+            'user_id' => $borrower->id,
+            'status' => 'APPROVED',
+            'start_date' => '2026-07-20',
+            'end_date' => '2026-07-24',
+            'authorized_by' => $borrower->id,
+            'authorized_at' => now(),
+        ]);
+        $reservation->assets()->attach($asset->id);
     }
 }

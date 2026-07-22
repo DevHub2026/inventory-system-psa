@@ -26,8 +26,6 @@ class BorrowController extends Controller
 
     public function borrow(Request $request, Asset $asset): JsonResponse
     {
-        $this->authorize('borrow', $asset);
-
         $user = Auth::user();
 
         $dueDate = $request->input('due_date')
@@ -50,14 +48,14 @@ class BorrowController extends Controller
                 'asset_id' => $borrowing->asset_id,
                 'asset_name' => $asset->name,
                 'asset_number' => $asset->asset_number,
-                'employee_name' => $user->full_name ?: $user->email,
+                'employee_name' => $borrowing->user?->full_name ?: $borrowing->user?->email,
                 'status' => $borrowing->status,
                 'borrow_date' => $borrowing->borrow_date?->format('Y-m-d'),
                 'due_date' => $borrowing->due_date?->format('Y-m-d'),
                 'remarks' => $borrowing->remarks,
                 'created_at' => $borrowing->created_at?->format('Y-m-d H:i:s'),
                 'authorized_by' => $borrowing->authorized_by,
-                'authorized_by_name' => $user->full_name ?: $user->email,
+                'authorized_by_name' => $borrowing->authorizer?->full_name ?: $borrowing->authorizer?->email,
                 'authorized_at' => $borrowing->authorized_at?->format('Y-m-d H:i:s'),
                 'returned_at' => null,
                 'receipt_code' => 'PSA-BOR-'.$borrowing->id,
@@ -68,8 +66,6 @@ class BorrowController extends Controller
 
     public function return(Request $request, Asset $asset): JsonResponse
     {
-        $this->authorize('return', $asset);
-
         $borrowing = Borrowing::query()
             ->where('asset_id', $asset->id)
             ->where('status', 'BORROWED')
@@ -83,7 +79,7 @@ class BorrowController extends Controller
             ], 400);
         }
 
-        $borrowing = $this->borrowingService->return($borrowing);
+        $borrowing = $this->borrowingService->return($request->user(), $borrowing);
 
         return response()->json([
             'success' => true,

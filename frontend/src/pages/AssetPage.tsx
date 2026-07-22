@@ -24,13 +24,14 @@ import { AssetQrScanner } from '@/components/AssetQrScanner'
 import { QrCode } from '@/components/QrCode'
 import type { Asset, AssetStatus } from '@/types'
 import { assetStatusTone } from '@/utils/statusTone'
-import { isAdmin } from '@/utils/roleHelpers'
+import { isAdmin, isStaff } from '@/utils/roleHelpers'
 import { assetStatusLabel } from '@/utils/displayLabels'
 
 export function AssetPage() {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const canManageAssets = isAdmin(user)
+  const canCompleteBorrowing = isAdmin(user) || isStaff(user)
   const [rows, setRows] = useState<Asset[]>([])
   const [page, setPage] = useState(1)
   const [lastPage, setLastPage] = useState(1)
@@ -186,15 +187,17 @@ export function AssetPage() {
             )}
             {row.status === 'AVAILABLE' && (
               <>
-                <Button size="sm" variant="primary" onClick={() => setBorrowId(row.id)}>
-                  Borrow
-                </Button>
+                {canCompleteBorrowing && (
+                  <Button size="sm" variant="primary" onClick={() => setBorrowId(row.id)}>
+                    Complete Borrow
+                  </Button>
+                )}
                 <Button size="sm" variant="secondary" onClick={() => setReserveId(row.id)}>
-                  Send Request
+                  Request Borrow
                 </Button>
               </>
             )}
-            {row.status === 'BORROWED' && (
+            {row.status === 'BORROWED' && canCompleteBorrowing && (
               <Button size="sm" variant="success" onClick={() => setReturnId(row.id)}>
                   Return Item
               </Button>
@@ -208,7 +211,7 @@ export function AssetPage() {
         ),
       },
     ],
-    [canManageAssets],
+    [canManageAssets, canCompleteBorrowing],
   )
 
   return (
@@ -216,7 +219,7 @@ export function AssetPage() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Assets</h1>
-          <p className="text-sm text-gray-500">Search, scan, borrow, and view PSA-tracked assets.</p>
+          <p className="text-sm text-gray-500">Search, request, scan, and view PSA-tracked assets.</p>
         </div>
         <Button onClick={() => setScannerOpen(true)}>Scan Asset QR</Button>
       </div>
@@ -326,7 +329,7 @@ export function AssetPage() {
         title="Borrow Item"
         message={
           <div className="space-y-3">
-            <p>Borrow this item now? A receipt will be generated for the transaction.</p>
+            <p>Complete an authorized borrow request for this item. A receipt will be generated for the transaction.</p>
             <div>
               <label className="block text-sm font-medium text-gray-700">Due Date (days)</label>
               <input

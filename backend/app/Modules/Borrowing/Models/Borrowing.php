@@ -15,6 +15,7 @@ class Borrowing extends Model
     protected $fillable = [
         'user_id',
         'asset_id',
+        'reservation_id',
         'borrow_date',
         'due_date',
         'status',
@@ -47,5 +48,10 @@ class Borrowing extends Model
     public function authorizer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'authorized_by');
+    }
+
+    public function reservation(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Reservation\Models\Reservation::class);
     }
 }
