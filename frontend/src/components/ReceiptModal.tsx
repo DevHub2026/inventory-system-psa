@@ -1,4 +1,5 @@
 import { Button, Modal } from '@/components/ui'
+import { QrCode } from '@/components/QrCode'
 import { borrowingStatusLabel, reservationStatusLabel } from '@/utils/displayLabels'
 
 export interface ReceiptRecord {
@@ -20,21 +21,6 @@ export interface ReceiptRecord {
 interface ReceiptModalProps {
   receipt: ReceiptRecord | null
   onClose: () => void
-}
-
-function QRPlaceholder({ payload }: { payload: string }) {
-  const cells = Array.from({ length: 49 }, (_, index) => {
-    const charCode = payload.charCodeAt(index % Math.max(payload.length, 1)) || index
-    return (charCode + index) % 3 !== 0
-  })
-
-  return (
-    <div className="grid h-40 w-40 grid-cols-7 gap-1 rounded border border-gray-300 bg-white p-3">
-      {cells.map((filled, index) => (
-        <span key={index} className={filled ? 'bg-gray-900' : 'bg-gray-100'} />
-      ))}
-    </div>
-  )
 }
 
 function receiptTypeLabel(type: ReceiptRecord['type']) {
@@ -71,7 +57,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
 
           <div className="grid gap-4 sm:grid-cols-[170px_1fr]">
             <div className="flex flex-col items-center gap-2">
-              <QRPlaceholder payload={receipt.payload} />
+              <QrCode value={receipt.payload} className="h-40 w-40 rounded border border-gray-300 bg-white p-2 text-gray-950" />
               <div className="break-all text-center text-xs font-semibold text-gray-700">{receipt.code}</div>
               <div className="break-all text-center text-[10px] text-gray-400">{receipt.payload}</div>
             </div>

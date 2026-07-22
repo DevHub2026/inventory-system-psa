@@ -19,6 +19,7 @@ export function StaffDashboard() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [qrCode, setQrCode] = useState('')
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [scannerMode, setScannerMode] = useState<'transaction' | 'authorize'>('transaction')
 
   const loadData = async () => {
     setLoading(true)
@@ -187,11 +188,28 @@ export function StaffDashboard() {
             }}
           />
           <Button onClick={() => void handleScanQR()}>Scan</Button>
-          <Button variant="secondary" onClick={() => setScannerOpen(true)}>Open Camera</Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setScannerMode('authorize')
+              setScannerOpen(true)
+            }}
+          >
+            Scan QR to Authorize
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setScannerMode('transaction')
+              setScannerOpen(true)
+            }}
+          >
+            Scan QR to Borrow/Return
+          </Button>
         </div>
       </Card>
 
-      <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} />
+      <AssetQrScanner open={scannerOpen} mode={scannerMode} onClose={() => setScannerOpen(false)} onCompleted={loadData} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

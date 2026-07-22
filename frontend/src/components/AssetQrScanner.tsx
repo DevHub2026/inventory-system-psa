@@ -2,17 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser'
 import { Alert, Badge, Button, Input, Modal, Spinner } from '@/components/ui'
 import { assetService } from '@/services/assetService'
+import { reservationService } from '@/services/reservationService'
 import type { Asset } from '@/types'
 import { assetStatusTone } from '@/utils/statusTone'
 
 interface AssetQrScannerProps {
   open: boolean
   onClose: () => void
+  mode?: 'transaction' | 'authorize'
+  onCompleted?: () => void
 }
 
-type ScannerState = 'idle' | 'starting' | 'scanning' | 'resolving' | 'found' | 'not_found' | 'invalid' | 'unsupported' | 'permission_denied' | 'camera_error'
+type ScannerState = 'idle' | 'starting' | 'scanning' | 'resolving' | 'found' | 'not_found' | 'transaction_failed' | 'invalid' | 'unsupported' | 'permission_denied' | 'camera_error'
 
-export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
+export function AssetQrScanner({ open, onClose, mode = 'transaction', onCompleted }: AssetQrScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const controlsRef = useRef<IScannerControls | null>(null)
   const codeReaderRef = useRef<BrowserQRCodeReader | null>(null)
@@ -53,14 +56,33 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
     setAsset(null)
 
     try {
-      const resolvedAsset = await assetService.scan(identifier)
-      setAsset(resolvedAsset)
+      if (mode === 'authorize') {
+        await reservationService.authorizeScan(identifier)
+        setMessage('Borrow request authorized successfully. The asset can now be released through the borrow scan.')
+        setState('found')
+        onCompleted?.()
+        return
+      }
+
       const borrowing = await assetService.scanTransaction(identifier)
+
+      if (borrowing.asset_id) {
+        setAsset(await assetService.show(borrowing.asset_id))
+      }
+
       setMessage(borrowing.status === 'RETURNED' ? 'Asset successfully returned.' : 'Asset successfully borrowed.')
       setState('found')
+      onCompleted?.()
     } catch (error: unknown) {
-      setState('not_found')
-      setMessage(error instanceof Error ? error.message : 'No asset matched that identifier.')
+      try {
+        const resolvedAsset = await assetService.scan(identifier)
+        setAsset(resolvedAsset)
+        setState('transaction_failed')
+        setMessage(error instanceof Error ? `Asset found, but the transaction was not completed: ${error.message}` : 'Asset found, but the borrowing transaction failed.')
+      } catch {
+        setState('not_found')
+        setMessage(error instanceof Error ? error.message : 'No asset or transaction matched that QR code.')
+      }
     } finally {
       // A decoded value completes this scan attempt, even when it has no asset match.
       // Requiring an explicit "Scan Again" prevents a live camera from continuing in
@@ -118,7 +140,7 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
         },
       )
       setState('scanning')
-      setMessage('Camera is active. Point it at a PSA asset QR code.')
+      setMessage(mode === 'authorize' ? 'Camera is active. Scan a borrow request receipt or PSA asset QR to authorize.' : 'Camera is active. Scan a PSA asset QR or valid transaction receipt.')
     } catch (error: unknown) {
       stopCamera()
 
@@ -145,12 +167,12 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
 
   useEffect(() => () => stopCamera(), [])
 
-  const canScanAgain = ['found', 'not_found', 'invalid', 'unsupported', 'permission_denied', 'camera_error'].includes(state)
+  const canScanAgain = ['found', 'not_found', 'transaction_failed', 'invalid', 'unsupported', 'permission_denied', 'camera_error'].includes(state)
 
   return (
     <Modal
       open={open}
-      title="Scan Asset QR"
+      title={mode === 'authorize' ? 'Scan QR to Authorize' : 'Scan QR to Borrow or Return'}
       onClose={() => {
         stopCamera()
         onClose()
@@ -172,7 +194,7 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
     >
       <div className="space-y-4">
         {message && (
-          <Alert tone={state === 'found' ? 'success' : state === 'not_found' || state === 'invalid' ? 'error' : 'info'}>
+          <Alert tone={state === 'found' ? 'success' : state === 'not_found' || state === 'transaction_failed' || state === 'invalid' ? 'error' : 'info'}>
             {message}
           </Alert>
         )}
@@ -185,8 +207,8 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
           <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
             <Spinner />
             {state === 'starting' && 'Requesting camera permission...'}
-            {state === 'scanning' && 'Point the camera at a PSA asset QR code.'}
-            {state === 'resolving' && 'Resolving the asset and completing the authorized QR workflow...'}
+            {state === 'scanning' && (mode === 'authorize' ? 'Point the camera at a borrow request receipt or asset QR code.' : 'Point the camera at a PSA asset QR or transaction receipt.')}
+            {state === 'resolving' && (mode === 'authorize' ? 'Resolving and authorizing the borrow request...' : 'Resolving and completing the authorized QR workflow...')}
           </div>
         )}
 

@@ -132,4 +132,9 @@ export const reservationService = {
       },
     )
   },
+
+  async authorizeScan(value: string): Promise<Reservation> {
+    const { data } = await api.post<ApiResponse<BackendReservation>>('/reservations/scan-authorize', { value })
+    return mapReservation(unwrapData(data))
+  },
 }

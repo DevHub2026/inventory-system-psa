@@ -31,7 +31,13 @@ class BorrowingService
         return DB::transaction(function () use ($actor, $data) {
             $asset = Asset::query()->lockForUpdate()->findOrFail($data['asset_id']);
 
-            if ($asset->status !== AssetStatus::AVAILABLE) {
+            // Approved reservations created before the standardized workflow may
+            // still leave the asset in RESERVED. That state represents the same
+            // approved request and can be fulfilled exactly once by this service.
+            $reservation = $this->authorizedReservationForAsset($asset);
+
+            if ($asset->status !== AssetStatus::AVAILABLE
+                && ! ($asset->status === AssetStatus::RESERVED && $reservation)) {
                 throw new AssetNotAvailableException('Asset is not available for borrowing.');
             }
 
@@ -43,8 +49,6 @@ class BorrowingService
             if ($hasActiveBorrowing) {
                 throw new AssetNotAvailableException('Asset already has an active borrowing record.');
             }
-
-            $reservation = $this->authorizedReservationForAsset($asset);
 
             if (! $reservation) {
                 throw new \InvalidArgumentException('Borrowing is not authorized for this asset.');
@@ -97,10 +101,54 @@ class BorrowingService
 
     public function scan(User $actor, string $identifier): Borrowing
     {
+        $identifier = trim($identifier);
+
+        if ($identifier === '') {
+            throw new \InvalidArgumentException('Identifier value is required.');
+        }
+
+        $receiptBorrowing = $this->borrowingFromReceipt($identifier);
+
+        if ($receiptBorrowing) {
+            if ($receiptBorrowing->status !== 'BORROWED') {
+                throw new \InvalidArgumentException('Borrowing has already been returned.');
+            }
+
+            return $this->return($actor, $receiptBorrowing);
+        }
+
+        $reservation = $this->reservationFromReceipt($identifier);
+
+        if ($reservation) {
+            if ($reservation->status !== 'APPROVED') {
+                throw new \InvalidArgumentException('Borrow request must be authorized before borrowing.');
+            }
+
+            $asset = $reservation->assets()
+                ->whereNull('reservation_items.fulfilled_at')
+                ->orderBy('assets.id')
+                ->first();
+
+            if (! $asset) {
+                throw new \InvalidArgumentException('Borrow request has already been completed.');
+            }
+
+            return $this->create($actor, [
+                'asset_id' => $asset->id,
+                'borrow_date' => now()->toDateString(),
+                'due_date' => $reservation->end_date?->toDateString() ?? now()->addDays(7)->toDateString(),
+            ]);
+        }
+
         $asset = AssetIdentifier::query()
-            ->where('identifier_value', trim($identifier))
-            ->firstOrFail()
-            ->asset;
+            ->where('identifier_value', $identifier)
+            ->first();
+
+        if (! $asset) {
+            throw new \InvalidArgumentException('Asset not found for the given identifier.');
+        }
+
+        $asset = $asset->asset;
 
         $activeBorrowing = Borrowing::query()
             ->where('asset_id', $asset->id)
@@ -117,6 +165,36 @@ class BorrowingService
             'borrow_date' => now()->toDateString(),
             'due_date' => now()->addDays(7)->toDateString(),
         ]);
+    }
+
+    private function borrowingFromReceipt(string $identifier): ?Borrowing
+    {
+        $reference = strtok($identifier, '|') ?: $identifier;
+
+        if (! str_starts_with($reference, 'PSA-BOR-')) {
+            return null;
+        }
+
+        $borrowingId = (int) substr($reference, strlen('PSA-BOR-'));
+
+        return $borrowingId > 0
+            ? Borrowing::query()->with(['user', 'asset', 'authorizer'])->find($borrowingId)
+            : null;
+    }
+
+    private function reservationFromReceipt(string $identifier): ?Reservation
+    {
+        $reference = strtok($identifier, '|') ?: $identifier;
+
+        if (! str_starts_with($reference, 'PSA-RES-')) {
+            return null;
+        }
+
+        $reservationId = (int) substr($reference, strlen('PSA-RES-'));
+
+        return $reservationId > 0
+            ? Reservation::query()->with(['user', 'assets', 'authorizer'])->find($reservationId)
+            : null;
     }
 
     private function authorizedReservationForAsset(Asset $asset): ?Reservation

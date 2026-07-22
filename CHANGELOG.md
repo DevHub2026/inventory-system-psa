@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## 2026-07-22
+
+### QR Borrowing Authorization and Receipt Flow Fix
+
+### Files Modified
+
+- `backend/app/Http/Controllers/BorrowController.php`
+- `backend/app/Modules/Borrowing/Services/BorrowingService.php`
+- `backend/app/Modules/Reservation/Controllers/ReservationController.php`
+- `backend/app/Modules/Reservation/Routes/api.php`
+- `backend/app/Modules/Reservation/Services/ReservationService.php`
+- `backend/tests/Feature/Borrowing/BorrowingManagementTest.php`
+- `frontend/src/components/AssetQrScanner.tsx`
+- `frontend/src/components/ReceiptModal.tsx`
+- `frontend/src/components/StaffDashboard.tsx`
+- `frontend/src/services/reservationService.ts`
+- `docs/Architecture/13_API_Architecture.md`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Receipt QR values were displayed as transaction references, but the scanner first treated every QR as a permanent asset identifier. That prevented receipt QR scans from reliably authorizing, borrowing, or returning the backend transaction.
+
+### Summary
+
+- Added scan-based reservation authorization through `POST /api/v1/reservations/scan-authorize`.
+- Extended the canonical `BorrowingService::scan()` path to resolve permanent asset QR identifiers, `PSA-RES-*` receipt references, and `PSA-BOR-*` receipt references.
+- Preserved the permanent asset QR system and existing borrowing service architecture.
+- Replaced fake receipt QR blocks with the existing standards-compliant `QrCode` component.
+- Added staff scanner modes for authorization and borrow/return processing.
+- Added tests for receipt QR authorization, duplicate authorization rejection, receipt QR borrow, receipt QR return, and history preservation.
+
+### Impact
+
+- Request -> Authorize -> Borrow -> Return is enforced by backend state transitions.
+- Employee-facing manual borrow remains hidden from employees; staff/admin users complete authorized release.
+- Historical borrowing records remain queryable after return.
+
 ## 2026-07-21
 
 ### Inventory Reliability and Migration Stability Pass

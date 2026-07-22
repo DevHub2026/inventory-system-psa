@@ -18,6 +18,75 @@ Always append new entries.
 
 ---
 
+## 2026-07-22 00:00
+
+### AI
+
+Name: Codex
+Model: GPT-5
+
+---
+
+### Task
+
+Fixed QR borrowing authorization, receipt QR resolution, borrow/return state transitions, and transaction history verification.
+
+---
+
+### Files Modified
+
+- backend/app/Http/Controllers/BorrowController.php
+- backend/app/Modules/Borrowing/Services/BorrowingService.php
+- backend/app/Modules/Reservation/Controllers/ReservationController.php
+- backend/app/Modules/Reservation/Routes/api.php
+- backend/app/Modules/Reservation/Services/ReservationService.php
+- backend/tests/Feature/Borrowing/BorrowingManagementTest.php
+- frontend/src/components/AssetQrScanner.tsx
+- frontend/src/components/ReceiptModal.tsx
+- frontend/src/components/StaffDashboard.tsx
+- frontend/src/services/reservationService.ts
+- docs/Architecture/13_API_Architecture.md
+- CHANGELOG.md
+- AI_CHANGELOG.md
+
+---
+
+### Summary
+
+- Added `POST /api/v1/reservations/scan-authorize` for staff/admin authorization by receipt QR or asset QR.
+- Extended canonical borrowing scan logic to resolve permanent asset QR identifiers and receipt references (`PSA-RES-*`, `PSA-BOR-*`).
+- Kept the permanent asset QR and canonical BorrowingService architecture intact.
+- Replaced fake receipt QR visuals with the existing generated QR component using backend-supported receipt payloads.
+- Added staff camera actions for authorization and borrow/return processing.
+- Added focused tests for authorization, duplicate authorization rejection, receipt QR borrow, receipt QR return, and history preservation.
+
+---
+
+### Reason
+
+Receipt QR payloads were transaction references, but the scanner treated every QR value as an asset identifier before completing a transaction. This made receipt QR scans fail or stop before the backend could update borrowing state.
+
+---
+
+### Risks
+
+- The borrowing transaction scan processes the first unfulfilled approved reservation item for a reservation receipt.
+- The existing schema still uses soft deletes on `borrowings` and `reservations`, although transaction history remains preserved by this workflow.
+
+---
+
+### Rollback
+
+Revert the files listed in this entry.
+
+---
+
+### Status
+
+Completed.
+
+---
+
 ## 2026-07-21 11:55
 
 ### AI

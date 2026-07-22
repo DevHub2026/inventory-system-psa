@@ -26,6 +26,8 @@ class BorrowController extends Controller
 
     public function borrow(Request $request, Asset $asset): JsonResponse
     {
+        $this->authorize('borrow', $asset);
+
         $user = Auth::user();
 
         $dueDate = $request->input('due_date')
@@ -66,6 +68,8 @@ class BorrowController extends Controller
 
     public function return(Request $request, Asset $asset): JsonResponse
     {
+        $this->authorize('return', $asset);
+
         $borrowing = Borrowing::query()
             ->where('asset_id', $asset->id)
             ->where('status', 'BORROWED')
