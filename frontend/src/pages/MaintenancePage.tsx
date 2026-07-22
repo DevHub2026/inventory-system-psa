@@ -4,6 +4,7 @@ import { maintenanceService, type CreateMaintenancePayload, type UpdateMaintenan
 import type { MaintenanceRequest } from '@/types'
 import { maintenanceStatusTone } from '@/utils/statusTone'
 import { maintenanceStatusLabel } from '@/utils/displayLabels'
+import { PageHeader } from '@/components/PageHeader'
 
 type MaintenanceFormStatus = CreateMaintenancePayload['status']
 
@@ -121,19 +122,19 @@ export function MaintenancePage() {
   }
 
   const columns: Column<MaintenanceRequest>[] = [
-    { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
-    { key: 'description', header: 'Description', render: (row) => row.description },
+    { key: 'asset_name', header: 'Asset', render: (row) => <span className="font-medium text-slate-800">{row.asset_name}</span> },
+    { key: 'description', header: 'Description', render: (row) => <span className="text-slate-600">{row.description}</span> },
     {
       key: 'status',
       header: 'Status',
       render: (row) => <Badge tone={maintenanceStatusTone(row.status)}>{maintenanceStatusLabel(row.status)}</Badge>,
     },
-    { key: 'scheduled_at', header: 'Scheduled', render: (row) => row.scheduled_at },
+    { key: 'scheduled_at', header: 'Scheduled', render: (row) => <span className="font-mono text-xs text-slate-600">{row.scheduled_at}</span> },
     {
       key: 'actions',
       header: 'Actions',
       render: (row) => (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {row.status === 'scheduled' && (
             <>
               <Button size="sm" variant="success" onClick={() => handleComplete(row.id)}>
@@ -156,14 +157,12 @@ export function MaintenancePage() {
   ]
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Maintenance</h1>
-          <p className="text-sm text-gray-500">Track asset repairs, inspections, and maintenance history.</p>
-        </div>
-        <Button onClick={handleCreate}>Report a Problem</Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Maintenance"
+        subtitle="Track asset repairs, inspections, and maintenance history."
+        actions={<Button onClick={handleCreate}>Report a Problem</Button>}
+      />
 
       {message && (
         <Alert tone={message.type} onClose={() => setMessage(null)}>
@@ -171,15 +170,21 @@ export function MaintenancePage() {
         </Alert>
       )}
 
-      <Card>
+      <Card noPadding>
         {loading ? (
-          <Spinner />
+          <div className="flex items-center justify-center py-14">
+            <Spinner />
+          </div>
         ) : (
           <Table
             columns={columns}
             rows={rows}
             rowKey={(row) => row.id}
-            empty={<EmptyState title="No maintenance records found" description="Report a problem or schedule maintenance when an asset needs attention." />}
+            empty={
+              <div className="py-14">
+                <EmptyState title="No maintenance records found" description="Report a problem or schedule maintenance when an asset needs attention." />
+              </div>
+            }
           />
         )}
       </Card>
@@ -199,22 +204,22 @@ export function MaintenancePage() {
           />
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Type</label>
               <select
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value as 'corrective' | 'preventive' })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[#003DA5] focus:outline-none focus:ring-2 focus:ring-[#003DA5]/15"
               >
                 <option value="preventive">Preventive</option>
                 <option value="corrective">Corrective</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Status</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as MaintenanceFormStatus })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-[#003DA5] focus:outline-none focus:ring-2 focus:ring-[#003DA5]/15"
               >
                 <option value="scheduled">Scheduled</option>
                 <option value="in_progress">In Progress</option>
@@ -234,14 +239,6 @@ export function MaintenancePage() {
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           />
-          <div className="flex gap-2 justify-end">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={saving}>
-              {saving ? 'Saving...' : editingRequest ? 'Save Changes' : 'Save Maintenance Record'}
-            </Button>
-          </div>
         </div>
       </Modal>
     </div>

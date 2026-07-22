@@ -10,18 +10,18 @@ interface BadgeProps {
 }
 
 const tones: Record<Tone, string> = {
-  gray: 'border border-slate-200 bg-slate-100 text-slate-700',
-  blue: 'border border-blue-200 bg-blue-50 text-blue-800',
-  green: 'border border-emerald-200 bg-emerald-50 text-emerald-800',
-  red: 'border border-red-200 bg-red-50 text-red-800',
-  yellow: 'border border-amber-200 bg-amber-50 text-amber-800',
+  gray:   'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
+  blue:   'bg-[#EEF4FF] text-[#003DA5] ring-1 ring-[#C5D8FF]',
+  green:  'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  red:    'bg-red-50 text-[#E31C23] ring-1 ring-red-200',
+  yellow: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
 }
 
 export function Badge({ children, tone = 'gray', className }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.01em]',
+        'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold leading-5 whitespace-nowrap',
         tones[tone],
         className,
       )}

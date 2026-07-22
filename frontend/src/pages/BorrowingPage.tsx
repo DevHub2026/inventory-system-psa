@@ -5,6 +5,7 @@ import { borrowingService } from '@/services/borrowingService'
 import type { Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
+import { PageHeader } from '@/components/PageHeader'
 
 export function BorrowingPage() {
   const [rows, setRows] = useState<Borrowing[]>([])
@@ -41,23 +42,23 @@ export function BorrowingPage() {
   }
 
   const columns: Column<Borrowing>[] = [
-    { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
+    { key: 'asset_name', header: 'Asset', render: (row) => <span className="font-medium text-slate-800">{row.asset_name}</span> },
     { key: 'employee_name', header: 'Borrower', render: (row) => row.employee_name },
     {
       key: 'status',
       header: 'Status',
       render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{borrowingStatusLabel(row.status)}</Badge>,
     },
-    { key: 'borrowed_at', header: 'Borrowed', render: (row) => row.borrowed_at },
-    { key: 'due_at', header: 'Due', render: (row) => row.due_at },
+    { key: 'borrowed_at', header: 'Borrowed', render: (row) => <span className="font-mono text-xs text-slate-600">{row.borrowed_at}</span> },
+    { key: 'due_at', header: 'Due', render: (row) => <span className="font-mono text-xs text-slate-600">{row.due_at}</span> },
     {
       key: 'actions',
       header: 'Actions',
       render: (row) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Button
             size="sm"
-            variant="secondary"
+            variant="ghost"
             onClick={() =>
               setReceipt({
                 type: 'Borrowing',
@@ -79,11 +80,11 @@ export function BorrowingPage() {
             Receipt
           </Button>
           {row.status === 'BORROWED' || row.status === 'ACTIVE' || row.status === 'OVERDUE' ? (
-            <Button size="sm" variant="secondary" onClick={() => handleReturn(row.id)}>
-              Return Item
+            <Button size="sm" variant="success" onClick={() => handleReturn(row.id)}>
+              Return
             </Button>
           ) : (
-            <span className="text-sm text-gray-400">No actions</span>
+            <span className="text-xs text-slate-400">—</span>
           )}
         </div>
       ),
@@ -91,25 +92,31 @@ export function BorrowingPage() {
   ]
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">Borrowed Items</h1>
-        <p className="text-sm text-gray-500">View borrowed assets and process returns.</p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Borrowed Items"
+        subtitle="View borrowed assets and process returns."
+      />
       {message && (
         <Alert tone={message.type} onClose={() => setMessage(null)}>
           {message.text}
         </Alert>
       )}
-      <Card>
+      <Card noPadding>
         {loading ? (
-          <Spinner />
+          <div className="flex items-center justify-center py-14">
+            <Spinner />
+          </div>
         ) : (
           <Table
             columns={columns}
             rows={rows}
             rowKey={(row) => row.id}
-            empty={<EmptyState title="No borrowed items found" description="Borrowed assets will appear here after a request is approved or an item is borrowed." />}
+            empty={
+              <div className="py-14">
+                <EmptyState title="No borrowed items found" description="Borrowed assets will appear here after a request is approved or an item is borrowed." />
+              </div>
+            }
           />
         )}
       </Card>

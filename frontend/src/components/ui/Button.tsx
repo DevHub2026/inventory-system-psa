@@ -1,8 +1,8 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/utils/cn'
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'ghost'
-type Size = 'sm' | 'md'
+export type Variant = 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'ghost'
+export type Size = 'sm' | 'md'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
@@ -11,17 +11,23 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
-  primary: 'border border-brand-700 bg-brand-700 text-white shadow-[0_2px_5px_rgba(0,61,165,0.18)] hover:bg-brand-800 hover:shadow-[0_5px_14px_rgba(0,61,165,0.2)]',
-  secondary: 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50',
-  outline: 'border border-brand-700/30 bg-transparent text-brand-700 hover:bg-brand-50',
-  danger: 'border border-danger bg-danger text-white shadow-sm hover:bg-red-700',
-  success: 'border border-success bg-success text-white shadow-sm hover:bg-emerald-800',
-  ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+  primary:
+    'bg-[#003DA5] text-white border border-[#003DA5] shadow-sm hover:bg-[#002A75] hover:border-[#002A75] focus-visible:ring-2 focus-visible:ring-[#003DA5]/40',
+  secondary:
+    'bg-white text-slate-700 border border-slate-300 shadow-sm hover:bg-slate-50 hover:border-slate-400',
+  outline:
+    'bg-transparent text-[#003DA5] border border-[#003DA5]/40 hover:bg-[#EEF4FF]',
+  danger:
+    'bg-[#E31C23] text-white border border-[#E31C23] shadow-sm hover:bg-red-700 hover:border-red-700',
+  success:
+    'bg-emerald-600 text-white border border-emerald-600 shadow-sm hover:bg-emerald-700',
+  ghost:
+    'bg-transparent text-slate-600 border border-transparent hover:bg-slate-100 hover:text-slate-900',
 }
 
 const sizes: Record<Size, string> = {
-  sm: 'px-2.5 py-1.5 text-xs',
-  md: 'px-3 py-2 text-sm',
+  sm: 'h-7 px-3 text-xs gap-1',
+  md: 'h-9 px-4 text-sm gap-1.5',
 }
 
 export function Button({
@@ -36,7 +42,10 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 enabled:active:translate-y-px',
+        'inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap transition-colors duration-150',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        'enabled:active:translate-y-px',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
         variants[variant],
         sizes[size],
         className,

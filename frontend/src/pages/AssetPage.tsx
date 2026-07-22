@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { ScanLine } from 'lucide-react'
 import {
   Alert,
   Badge,
@@ -16,6 +17,7 @@ import {
   Table,
   type Column,
 } from '@/components/ui'
+import { PageHeader } from '@/components/PageHeader'
 import { assetService, type UpdateAssetPayload } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
 import { useAuth } from '@/hooks/useAuth'
@@ -172,12 +174,12 @@ export function AssetPage() {
         key: 'actions',
         header: 'Actions',
         render: (row) => (
-          <div className="flex flex-wrap gap-1">
-            <Button size="sm" variant="secondary" onClick={() => void openView(row.id)}>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button size="sm" variant="ghost" onClick={() => void openView(row.id)}>
               View
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => void openQrLabel(row.id)}>
-              PSA QR
+            <Button size="sm" variant="ghost" onClick={() => void openQrLabel(row.id)}>
+              QR Label
             </Button>
             {canManageAssets && (
               <Button size="sm" variant="secondary" onClick={() => void openEdit(row.id)}>
@@ -189,14 +191,14 @@ export function AssetPage() {
                 <Button size="sm" variant="primary" onClick={() => setBorrowId(row.id)}>
                   Borrow
                 </Button>
-                <Button size="sm" variant="secondary" onClick={() => setReserveId(row.id)}>
-                  Send Request
+                <Button size="sm" variant="outline" onClick={() => setReserveId(row.id)}>
+                  Request
                 </Button>
               </>
             )}
             {row.status === 'BORROWED' && (
               <Button size="sm" variant="success" onClick={() => setReturnId(row.id)}>
-                  Return Item
+                Return
               </Button>
             )}
             {canManageAssets && (
@@ -212,14 +214,17 @@ export function AssetPage() {
   )
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Assets</h1>
-          <p className="text-sm text-gray-500">Search, scan, borrow, and view PSA-tracked assets.</p>
-        </div>
-        <Button onClick={() => setScannerOpen(true)}>Scan Asset QR</Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Assets"
+        subtitle="Search, scan, borrow, and view PSA-tracked assets."
+        actions={
+          <Button onClick={() => setScannerOpen(true)}>
+            <ScanLine className="h-4 w-4" />
+            Scan Asset QR
+          </Button>
+        }
+      />
 
       {message && (
         <Alert tone="info" onClose={() => setMessage(null)}>
@@ -227,17 +232,18 @@ export function AssetPage() {
         </Alert>
       )}
 
-      <Card>
-        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <Card noPadding>
+        {/* Toolbar */}
+        <div className="flex flex-col gap-3 border-b border-[#EEF2F8] px-5 py-4 md:flex-row md:items-center md:justify-between">
           <SearchBar
-            placeholder="Search assets..."
+            placeholder="Search assets…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') void load(1)
             }}
           />
-          <div className="flex w-full max-w-xs gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <Dropdown
               options={[
                 { label: 'Available', value: 'AVAILABLE' },
@@ -255,17 +261,26 @@ export function AssetPage() {
           </div>
         </div>
 
+        {/* Table */}
         {loading ? (
-          <Spinner />
+          <div className="flex items-center justify-center py-14">
+            <Spinner />
+          </div>
         ) : (
           <>
             <Table
               columns={columns}
               rows={rows}
               rowKey={(row) => row.id}
-              empty={<EmptyState title="No assets found" description="Try another search term or clear the status filter." />}
+              empty={
+                <div className="py-14">
+                  <EmptyState title="No assets found" description="Try another search term or clear the status filter." />
+                </div>
+              }
             />
-            <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void load(p)} />
+            <div className="border-t border-[#EEF2F8] px-5 py-3">
+              <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void load(p)} />
+            </div>
           </>
         )}
       </Card>
@@ -291,13 +306,13 @@ export function AssetPage() {
         title="Return Item"
         message={
           <div className="space-y-3">
-            <p>Return this borrowed item and mark it available again?</p>
+            <p className="text-sm text-slate-600">Return this borrowed item and mark it available again?</p>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Return Notes</label>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Return Notes</label>
               <textarea
                 value={returnNotes}
                 onChange={(e) => setReturnNotes(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="block w-full rounded-lg border border-[#CBD5E1] px-3 py-2.5 text-sm text-slate-900 focus:border-[#003DA5] focus:outline-none focus:ring-2 focus:ring-[#003DA5]/15"
                 rows={2}
                 placeholder="Optional return notes"
               />
@@ -326,24 +341,24 @@ export function AssetPage() {
         title="Borrow Item"
         message={
           <div className="space-y-3">
-            <p>Borrow this item now? A receipt will be generated for the transaction.</p>
+            <p className="text-sm text-slate-600">Borrow this item now? A receipt will be generated for the transaction.</p>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Due Date (days)</label>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Due Date (days)</label>
               <input
                 type="number"
                 min="1"
                 value={borrowDueDays ?? ''}
                 onChange={(e) => setBorrowDueDays(e.target.value ? Number(e.target.value) : undefined)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="block w-full rounded-lg border border-[#CBD5E1] px-3 py-2.5 text-sm text-slate-900 focus:border-[#003DA5] focus:outline-none focus:ring-2 focus:ring-[#003DA5]/15"
                 placeholder="Optional"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Notes</label>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Notes</label>
               <textarea
                 value={borrowNotes}
                 onChange={(e) => setBorrowNotes(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="block w-full rounded-lg border border-[#CBD5E1] px-3 py-2.5 text-sm text-slate-900 focus:border-[#003DA5] focus:outline-none focus:ring-2 focus:ring-[#003DA5]/15"
                 rows={2}
                 placeholder="Optional notes"
               />
@@ -388,33 +403,33 @@ export function AssetPage() {
         title="Send Borrow Request"
         message={
           <div className="space-y-3">
-            <p>Send a request to borrow this asset later. Staff will approve it before release.</p>
+            <p className="text-sm text-slate-600">Send a request to borrow this asset later. Staff will approve it before release.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Start Date</label>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Start Date</label>
                 <input
                   type="date"
                   value={reserveStartDate}
                   onChange={(e) => setReserveStartDate(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="block w-full rounded-lg border border-[#CBD5E1] px-3 py-2.5 text-sm text-slate-900 focus:border-[#003DA5] focus:outline-none focus:ring-2 focus:ring-[#003DA5]/15"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">End Date</label>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">End Date</label>
                 <input
                   type="date"
                   value={reserveEndDate}
                   onChange={(e) => setReserveEndDate(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="block w-full rounded-lg border border-[#CBD5E1] px-3 py-2.5 text-sm text-slate-900 focus:border-[#003DA5] focus:outline-none focus:ring-2 focus:ring-[#003DA5]/15"
                 />
               </div>
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700">Purpose / Notes</label>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Purpose / Notes</label>
               <textarea
                 value={reserveRemarks}
                 onChange={(e) => setReserveRemarks(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="block w-full rounded-lg border border-[#CBD5E1] px-3 py-2.5 text-sm text-slate-900 focus:border-[#003DA5] focus:outline-none focus:ring-2 focus:ring-[#003DA5]/15"
                 rows={2}
                 placeholder="Optional borrow request purpose"
               />

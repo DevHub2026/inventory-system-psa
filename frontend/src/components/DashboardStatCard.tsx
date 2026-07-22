@@ -1,5 +1,4 @@
 import type { LucideIcon } from 'lucide-react'
-import { Card } from '@/components/ui'
 import { cn } from '@/utils/cn'
 
 type MetricTone = 'blue' | 'green' | 'amber' | 'red' | 'violet' | 'teal'
@@ -12,28 +11,41 @@ interface DashboardStatCardProps {
   tone?: MetricTone
 }
 
-const toneClasses: Record<MetricTone, string> = {
-  blue: 'bg-blue-50 text-blue-700 ring-blue-100',
-  green: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
-  amber: 'bg-amber-50 text-amber-700 ring-amber-100',
-  red: 'bg-red-50 text-red-700 ring-red-100',
-  violet: 'bg-violet-50 text-violet-700 ring-violet-100',
-  teal: 'bg-teal-50 text-teal-700 ring-teal-100',
+const toneConfig: Record<MetricTone, { card: string; icon: string; bar: string }> = {
+  blue:   { card: 'border-blue-100',   icon: 'bg-[#003DA5] text-white',      bar: 'bg-[#003DA5]' },
+  green:  { card: 'border-emerald-100',icon: 'bg-emerald-600 text-white',     bar: 'bg-emerald-500' },
+  amber:  { card: 'border-amber-100',  icon: 'bg-[#FFD400] text-[#003DA5]',  bar: 'bg-[#FFD400]' },
+  red:    { card: 'border-red-100',    icon: 'bg-[#E31C23] text-white',       bar: 'bg-[#E31C23]' },
+  violet: { card: 'border-violet-100', icon: 'bg-violet-600 text-white',      bar: 'bg-violet-500' },
+  teal:   { card: 'border-teal-100',   icon: 'bg-teal-600 text-white',        bar: 'bg-teal-500' },
 }
 
 export function DashboardStatCard({ label, value, description, icon: Icon, tone = 'blue' }: DashboardStatCardProps) {
+  const cfg = toneConfig[tone]
+
   return (
-    <Card className="dashboard-stat-card">
+    <div className={cn(
+      'dashboard-stat-card relative flex flex-col justify-between overflow-hidden rounded-xl border bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
+      cfg.card,
+    )}>
+      {/* Top row */}
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold text-slate-500">{label}</p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+          <p className="mt-1.5 text-[1.75rem] font-extrabold leading-none tracking-tight text-slate-900">
+            {value}
+          </p>
         </div>
-        <span className={cn('grid h-9 w-9 place-items-center rounded-xl ring-1', toneClasses[tone])}>
-          <Icon className="h-[18px] w-[18px]" />
+        <span className={cn('mt-0.5 grid h-10 w-10 flex-none place-items-center rounded-xl shadow-sm', cfg.icon)}>
+          <Icon className="h-5 w-5" />
         </span>
       </div>
-      <p className="mt-3 text-[11px] text-slate-400">{description}</p>
-    </Card>
+
+      {/* Description */}
+      <p className="mt-3 text-[11px] font-medium text-slate-400">{description}</p>
+
+      {/* Colour accent line at bottom */}
+      <span className={cn('absolute bottom-0 left-0 h-[3px] w-full opacity-80', cfg.bar)} aria-hidden="true" />
+    </div>
   )
 }

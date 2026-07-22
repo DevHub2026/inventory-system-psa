@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Activity, Archive, BadgeCheck, Boxes, CalendarClock, Clock3, ShieldCheck, Wrench } from 'lucide-react'
 import { Badge, Button, Card, EmptyState, Spinner, Table, Alert, type Column } from '@/components/ui'
 import { DashboardStatCard } from '@/components/DashboardStatCard'
+import { PageHeader } from '@/components/PageHeader'
 import { dashboardService } from '@/services/dashboardService'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
@@ -115,13 +116,15 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1>Admin Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-500">Full system overview and management controls</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-500 shadow-sm">Live system overview</div>
-      </div>
+      <PageHeader
+        title="Admin Dashboard"
+        subtitle="Full system overview and management controls."
+        actions={
+          <span className="rounded-lg border border-[#E2EAF3] bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm">
+            Live system overview
+          </span>
+        }
+      />
 
       {message && (
         <Alert tone={message.type} onClose={() => setMessage(null)}>
@@ -138,15 +141,27 @@ export function AdminDashboard() {
       <div className="grid gap-3 lg:grid-cols-2">
         <Card>
           <div className="flex items-center justify-between gap-4">
-            <div><p className="text-sm font-semibold text-slate-700">Asset Utilization Rate</p><p className="mt-1 text-xs text-slate-400">Percentage of assets currently borrowed</p></div>
-            <span className="text-2xl font-bold text-slate-900">{utilizationRate}%</span>
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Asset Utilization Rate</p>
+              <p className="mt-0.5 text-xs text-slate-400">Percentage of assets currently borrowed</p>
+            </div>
+            <span className="text-2xl font-extrabold text-slate-900">{utilizationRate}%</span>
           </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-brand-700" style={{ width: `${utilizationRate}%` }} /></div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-[#003DA5] transition-all" style={{ width: `${utilizationRate}%` }} />
+          </div>
         </Card>
         <Card>
           <div className="flex items-center justify-between gap-4">
-            <div><p className="text-sm font-semibold text-slate-700">System Health</p><p className="mt-1 text-xs text-slate-400">Based on overdue items and pending borrow requests</p></div>
-            <span className={healthStatus === 'Healthy' ? 'inline-flex items-center gap-1.5 text-lg font-bold text-emerald-600' : 'inline-flex items-center gap-1.5 text-lg font-bold text-amber-600'}><ShieldCheck className="h-5 w-5" />{healthStatus}</span>
+            <div>
+              <p className="text-sm font-semibold text-slate-700">System Health</p>
+              <p className="mt-0.5 text-xs text-slate-400">Based on overdue items and pending borrow requests</p>
+            </div>
+            <span className={healthStatus === 'Healthy'
+              ? 'inline-flex items-center gap-1.5 text-lg font-bold text-emerald-600'
+              : 'inline-flex items-center gap-1.5 text-lg font-bold text-amber-600'}>
+              <ShieldCheck className="h-5 w-5" />{healthStatus}
+            </span>
           </div>
         </Card>
       </div>
@@ -231,37 +246,17 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      <Card>
-        <div className="mb-4">
-          <h2 className="text-md font-semibold text-gray-900">Quick Actions</h2>
-          <p className="text-sm text-gray-500">Access all system management modules</p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
+      <Card title="Quick Actions" subtitle="Access all system management modules">
+        <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           <Button onClick={() => navigate('/assets')}>Manage Assets</Button>
-          <Button variant="secondary" onClick={() => navigate('/reservations')}>
-            Borrow Requests
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/borrowings')}>
-            Borrowed Items
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/inventory')}>
-            Inventory
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/maintenance')}>
-            Maintenance
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/reports')}>
-            Reports
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/users')}>
-            User Management
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/roles')}>
-            Role Management
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/settings')}>
-            System Settings
-          </Button>
+          <Button variant="secondary" onClick={() => navigate('/reservations')}>Borrow Requests</Button>
+          <Button variant="secondary" onClick={() => navigate('/borrowings')}>Borrowed Items</Button>
+          <Button variant="secondary" onClick={() => navigate('/inventory')}>Inventory</Button>
+          <Button variant="secondary" onClick={() => navigate('/maintenance')}>Maintenance</Button>
+          <Button variant="secondary" onClick={() => navigate('/reports')}>Reports</Button>
+          <Button variant="secondary" onClick={() => navigate('/users')}>User Management</Button>
+          <Button variant="secondary" onClick={() => navigate('/roles')}>Role Management</Button>
+          <Button variant="secondary" onClick={() => navigate('/settings')}>System Settings</Button>
         </div>
       </Card>
     </div>

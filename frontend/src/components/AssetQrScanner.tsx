@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser'
-import { Alert, Badge, Button, Input, Modal, Spinner } from '@/components/ui'
+import { ScanLine, AlertCircle, CheckCircle2, Info } from 'lucide-react'
+import { Badge, Button, Input, Modal, Spinner } from '@/components/ui'
 import { assetService } from '@/services/assetService'
 import type { Asset } from '@/types'
 import { assetStatusTone } from '@/utils/statusTone'
@@ -10,60 +11,61 @@ interface AssetQrScannerProps {
   onClose: () => void
 }
 
-type ScannerState = 'idle' | 'starting' | 'scanning' | 'resolving' | 'found' | 'not_found' | 'invalid' | 'unsupported' | 'permission_denied' | 'camera_error'
+type ScannerState =
+  | 'idle'
+  | 'starting'
+  | 'scanning'
+  | 'resolving'
+  | 'found'
+  | 'not_found'
+  | 'invalid'
+  | 'unsupported'
+  | 'permission_denied'
+  | 'camera_error'
+
+function isLocalhost() {
+  return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+}
 
 export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const controlsRef = useRef<IScannerControls | null>(null)
   const codeReaderRef = useRef<BrowserQRCodeReader | null>(null)
   const resolvingRef = useRef(false)
+
   const [state, setState] = useState<ScannerState>('idle')
   const [message, setMessage] = useState('')
   const [scannedValue, setScannedValue] = useState('')
   const [manualValue, setManualValue] = useState('')
   const [asset, setAsset] = useState<Asset | null>(null)
 
-  function isLocalhost() {
-    return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
-  }
-
   function stopCamera() {
     controlsRef.current?.stop()
     controlsRef.current = null
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-
+    if (videoRef.current) videoRef.current.srcObject = null
     resolvingRef.current = false
   }
 
   async function resolveIdentifier(value: string) {
     const identifier = value.trim()
-
     if (!identifier) {
       setState('invalid')
-      setMessage('The scanned QR value was empty.')
+      setMessage('The QR value was empty.')
       return
     }
-
     resolvingRef.current = true
     setScannedValue(identifier)
     setState('resolving')
     setAsset(null)
-
     try {
       const resolvedAsset = await assetService.scan(identifier)
       setAsset(resolvedAsset)
       setState('found')
-      setMessage('Asset found from backend identifier lookup.')
+      setMessage('Asset found.')
     } catch (error: unknown) {
       setState('not_found')
       setMessage(error instanceof Error ? error.message : 'No asset matched that identifier.')
     } finally {
-      // A decoded value completes this scan attempt, even when it has no asset match.
-      // Requiring an explicit "Scan Again" prevents a live camera from continuing in
-      // the background while the user reads the outcome.
       stopCamera()
     }
   }
@@ -77,67 +79,48 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
 
     if (!window.isSecureContext && !isLocalhost()) {
       setState('unsupported')
-      setMessage('Camera access is blocked because this page is opened over LAN HTTP. Use desktop localhost, HTTPS, or allow this LAN origin as secure in Chrome flags for phone testing.')
+      setMessage('Camera access requires HTTPS. Use localhost, HTTPS, or allow this origin in Chrome flags.')
       return
     }
-
     if (!navigator.mediaDevices?.getUserMedia) {
       setState('unsupported')
-      setMessage('This browser does not expose camera access. Check browser permissions, HTTPS requirements, or try Chrome/Edge.')
+      setMessage('This browser does not expose camera access. Try Chrome or Edge over HTTPS.')
       return
     }
-
     if (!videoRef.current) {
       setState('camera_error')
-      setMessage('Camera preview is not ready. Close the scanner and try again.')
+      setMessage('Camera preview not ready. Close and try again.')
       return
     }
 
     try {
       codeReaderRef.current = new BrowserQRCodeReader()
       controlsRef.current = await codeReaderRef.current.decodeFromConstraints(
-        {
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
-        },
+        { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
         videoRef.current,
         (result) => {
-          const rawValue = result?.getText()?.trim()
-
-          if (!rawValue || resolvingRef.current) {
-            return
-          }
-
+          const raw = result?.getText()?.trim()
+          if (!raw || resolvingRef.current) return
           controlsRef.current?.stop()
-          void resolveIdentifier(rawValue)
+          void resolveIdentifier(raw)
         },
       )
       setState('scanning')
-      setMessage('Camera is active. Point it at a PSA asset QR code.')
+      setMessage('Point the camera at a PSA asset QR code.')
     } catch (error: unknown) {
       stopCamera()
-
       if (error instanceof DOMException && (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError')) {
         setState('permission_denied')
-        setMessage('Camera permission was denied. Allow camera access to scan a real asset QR code.')
+        setMessage('Camera permission denied. Allow camera access to scan.')
         return
       }
-
       setState('camera_error')
-      setMessage(error instanceof Error ? error.message : 'No usable camera was found or the camera could not be opened.')
+      setMessage(error instanceof Error ? error.message : 'No usable camera found.')
     }
   }
 
   useEffect(() => {
-    if (open) {
-      void startCamera()
-      return
-    }
-
+    if (open) { void startCamera(); return }
     stopCamera()
     setState('idle')
   }, [open])
@@ -145,110 +128,138 @@ export function AssetQrScanner({ open, onClose }: AssetQrScannerProps) {
   useEffect(() => () => stopCamera(), [])
 
   const canScanAgain = ['found', 'not_found', 'invalid', 'unsupported', 'permission_denied', 'camera_error'].includes(state)
+  const isActive = state === 'starting' || state === 'scanning' || state === 'resolving'
+
+  /* ── Alert banner ── */
+  const alertConfig = (() => {
+    if (!message) return null
+    if (state === 'found')
+      return { Icon: CheckCircle2, bg: 'bg-emerald-50 border-emerald-200 text-emerald-800' }
+    if (state === 'not_found' || state === 'invalid')
+      return { Icon: AlertCircle, bg: 'bg-red-50 border-[#E31C23]/20 text-[#E31C23]' }
+    return { Icon: Info, bg: 'bg-[#EEF4FF] border-[#C5D8FF] text-[#003DA5]' }
+  })()
 
   return (
     <Modal
       open={open}
       title="Scan Asset QR"
-      onClose={() => {
-        stopCamera()
-        onClose()
-      }}
+      onClose={() => { stopCamera(); onClose() }}
       footer={
         <>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              stopCamera()
-              onClose()
-            }}
-          >
-            Close
-          </Button>
+          <Button variant="secondary" onClick={() => { stopCamera(); onClose() }}>Close</Button>
           {canScanAgain && <Button onClick={() => void startCamera()}>Scan Again</Button>}
         </>
       }
     >
       <div className="space-y-4">
-        {message && (
-          <Alert tone={state === 'found' ? 'success' : state === 'not_found' || state === 'invalid' ? 'error' : 'info'}>
-            {message}
-          </Alert>
+
+        {/* Status banner */}
+        {alertConfig && message && (
+          <div className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm font-medium ${alertConfig.bg}`}>
+            <alertConfig.Icon className="mt-px h-4 w-4 flex-none" />
+            <span>{message}</span>
+          </div>
         )}
 
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-black">
-          <video ref={videoRef} className="aspect-video w-full object-cover" muted playsInline />
+        {/* Camera viewport */}
+        <div className="relative overflow-hidden rounded-xl border border-[#E2EAF3] bg-slate-950 shadow-inner">
+          <video
+            ref={videoRef}
+            className="aspect-video w-full object-cover"
+            muted
+            playsInline
+          />
+
+          {/* Corner scan brackets */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
+            <div className="relative h-40 w-40">
+              {/* TL */ }<span className="absolute left-0 top-0 h-6 w-6 rounded-tl-md border-l-2 border-t-2 border-[#FFD400]" />
+              {/* TR */ }<span className="absolute right-0 top-0 h-6 w-6 rounded-tr-md border-r-2 border-t-2 border-[#FFD400]" />
+              {/* BL */ }<span className="absolute bottom-0 left-0 h-6 w-6 rounded-bl-md border-b-2 border-l-2 border-[#FFD400]" />
+              {/* BR */ }<span className="absolute bottom-0 right-0 h-6 w-6 rounded-br-md border-b-2 border-r-2 border-[#FFD400]" />
+              {/* Scan line */}
+              {state === 'scanning' && (
+                <span className="absolute inset-x-2 h-[2px] animate-[scan_2s_ease-in-out_infinite] rounded-full bg-[#FFD400]/80" />
+              )}
+            </div>
+          </div>
+
+          {/* Overlay label */}
+          {state === 'idle' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/60">
+              <ScanLine className="h-8 w-8 text-slate-400" />
+              <p className="text-xs font-medium text-slate-400">Camera inactive</p>
+            </div>
+          )}
         </div>
 
-        {(state === 'starting' || state === 'scanning' || state === 'resolving') && (
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+        {/* Spinner row */}
+        {isActive && (
+          <div className="flex items-center justify-center gap-2.5 text-sm text-slate-500">
             <Spinner />
-            {state === 'starting' && 'Requesting camera permission...'}
-            {state === 'scanning' && 'Point the camera at an asset QR code or supported barcode.'}
-            {state === 'resolving' && 'Resolving scanned identifier with the backend...'}
+            <span>
+              {state === 'starting'  && 'Requesting camera permission…'}
+              {state === 'scanning'  && 'Ready — point at a PSA asset QR code.'}
+              {state === 'resolving' && 'Looking up asset…'}
+            </span>
           </div>
         )}
 
+        {/* Decoded value chip */}
         {scannedValue && (
-          <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm">
-            <div className="text-gray-500">Decoded QR value</div>
-            <div className="font-mono font-semibold text-gray-900">{scannedValue}</div>
+          <div className="flex items-center gap-2 rounded-lg border border-[#E2EAF3] bg-[#F4F7FC] px-3.5 py-2.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Decoded</span>
+            <span className="flex-1 truncate font-mono text-sm font-semibold text-slate-800">{scannedValue}</span>
           </div>
         )}
 
+        {/* Asset result card */}
         {asset && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-            <div className="mb-2 text-sm font-semibold text-green-900">Asset Found</div>
-            <dl className="grid gap-3 text-sm md:grid-cols-2">
-              <div>
-                <dt className="text-green-700">Name</dt>
-                <dd className="font-medium text-gray-900">{asset.name}</dd>
-              </div>
-              <div>
-                <dt className="text-green-700">Asset Number</dt>
-                <dd className="font-medium text-gray-900">{asset.asset_number}</dd>
-              </div>
-              <div>
-                <dt className="text-green-700">PSA QR</dt>
-                <dd className="font-mono text-gray-900">{asset.psa_qr_identifier ?? scannedValue}</dd>
-              </div>
-              <div>
-                <dt className="text-green-700">Status</dt>
-                <dd>
-                  <Badge tone={assetStatusTone(asset.status)}>{asset.status}</Badge>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-green-700">Office</dt>
-                <dd>{asset.office ?? 'Not set'}</dd>
-              </div>
-              <div>
-                <dt className="text-green-700">Location</dt>
-                <dd>{asset.location ?? 'Not set'}</dd>
-              </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50">
+            <div className="flex items-center gap-2 border-b border-emerald-200 px-4 py-3">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <p className="text-sm font-bold text-emerald-800">Asset Found</p>
+            </div>
+            <dl className="grid gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-2">
+              {[
+                { label: 'Name',         value: asset.name },
+                { label: 'Asset Number', value: asset.asset_number },
+                { label: 'PSA QR ID',    value: asset.psa_qr_identifier ?? scannedValue, mono: true },
+                { label: 'Status',       value: <Badge tone={assetStatusTone(asset.status)}>{asset.status}</Badge> },
+                { label: 'Office',       value: asset.office ?? '—' },
+                { label: 'Location',     value: asset.location ?? '—' },
+              ].map((item) => (
+                <div key={item.label}>
+                  <dt className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">{item.label}</dt>
+                  <dd className={`mt-0.5 text-sm font-medium text-slate-900 ${item.mono ? 'font-mono' : ''}`}>
+                    {item.value}
+                  </dd>
+                </div>
+              ))}
             </dl>
           </div>
         )}
 
-        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3">
-          <div className="mb-2 text-sm font-semibold text-gray-700">Development fallback</div>
-          <p className="mb-3 text-xs text-gray-500">
-            Use this only on devices without a camera or without browser QR detection support. Production flow remains camera scan to backend lookup.
+        {/* Manual / dev fallback */}
+        <div className="rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFD] p-4">
+          <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Manual lookup</p>
+          <p className="mb-3 text-xs text-slate-400">
+            Use on devices without a camera or when browser QR support is unavailable.
           </p>
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex gap-2">
             <Input
               value={manualValue}
-              onChange={(event) => setManualValue(event.target.value)}
+              onChange={(e) => setManualValue(e.target.value)}
               placeholder="PSA-ASSET-000123"
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') void resolveIdentifier(manualValue)
-              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') void resolveIdentifier(manualValue) }}
             />
             <Button variant="secondary" onClick={() => void resolveIdentifier(manualValue)}>
               Resolve
             </Button>
           </div>
         </div>
+
       </div>
     </Modal>
   )

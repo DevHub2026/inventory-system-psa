@@ -4,6 +4,7 @@ import { Alert, Badge, Button, Card, Dropdown, EmptyState, Input, Modal, Paginat
 import { inventoryService, type CreateInventoryItemPayload, type UpdateInventoryItemPayload } from '@/services/inventoryService'
 import type { InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
+import { PageHeader } from '@/components/PageHeader'
 
 function movementTypeLabel(type: string) {
   const labels: Record<string, string> = {
@@ -238,15 +239,15 @@ export function InventoryPage() {
       key: 'actions',
       header: 'Actions',
       render: (row) => (
-        <div className="flex gap-2">
-          <Button size="sm" variant="success" onClick={() => handleStockIn(row)}>
-            Add Stock
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button size="sm" variant="primary" onClick={() => handleStockIn(row)}>
+            + Stock
           </Button>
           <Button size="sm" variant="secondary" onClick={() => handleStockOut(row)}>
-            Remove Stock
+            − Stock
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => handleAdjust(row)}>
-            Correct Quantity
+          <Button size="sm" variant="ghost" onClick={() => handleAdjust(row)}>
+            Adjust
           </Button>
           <Button size="sm" variant="ghost" onClick={() => void loadHistory(row)}>
             History
@@ -256,7 +257,7 @@ export function InventoryPage() {
           </Button>
           {row.asset_number && (
             <Button size="sm" variant="ghost" onClick={() => navigate(`/assets?search=${encodeURIComponent(row.asset_number ?? '')}`)}>
-              View Asset
+              Asset
             </Button>
           )}
           <Button size="sm" variant="danger" onClick={() => handleDelete(row)}>
@@ -268,14 +269,12 @@ export function InventoryPage() {
   ]
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Inventory</h1>
-          <p className="text-sm text-gray-500">Manage consumable items and available quantities.</p>
-        </div>
-        <Button onClick={handleCreate}>Add Item</Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Inventory"
+        subtitle="Manage consumable items and available quantities."
+        actions={<Button onClick={handleCreate}>Add Item</Button>}
+      />
 
       {message && (
         <Alert tone={message.type} onClose={() => setMessage(null)}>
@@ -283,17 +282,17 @@ export function InventoryPage() {
         </Alert>
       )}
 
-      <Card>
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <Card noPadding>
+        <div className="flex flex-col gap-3 border-b border-[#EEF2F8] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
           <SearchBar
-            placeholder="Search item name, code, or unit..."
+            placeholder="Search item name, code, or unit…"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') void loadInventory(1)
             }}
           />
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex shrink-0 items-center gap-2">
             <Dropdown
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
@@ -305,21 +304,29 @@ export function InventoryPage() {
               ]}
             />
             <Button variant="secondary" onClick={() => void loadInventory(1)}>
-              Apply Filters
+              Filter
             </Button>
           </div>
         </div>
         {loading ? (
-          <Spinner />
+          <div className="flex items-center justify-center py-14">
+            <Spinner />
+          </div>
         ) : (
           <>
             <Table
               columns={columns}
               rows={rows}
               rowKey={(row) => row.id}
-              empty={<EmptyState title="No inventory items found" description="Add your first item to begin tracking stock." />}
+              empty={
+                <div className="py-14">
+                  <EmptyState title="No inventory items found" description="Add your first item to begin tracking stock." />
+                </div>
+              }
             />
-            <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(nextPage) => void loadInventory(nextPage)} />
+            <div className="border-t border-[#EEF2F8] px-5 py-3">
+              <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(nextPage) => void loadInventory(nextPage)} />
+            </div>
           </>
         )}
       </Card>

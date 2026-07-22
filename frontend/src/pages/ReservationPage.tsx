@@ -8,6 +8,7 @@ import type { Asset, Reservation } from '@/types'
 import { reservationStatusTone } from '@/utils/statusTone'
 import { isAdmin, isStaff } from '@/utils/roleHelpers'
 import { reservationStatusLabel } from '@/utils/displayLabels'
+import { PageHeader } from '@/components/PageHeader'
 
 export function ReservationPage() {
   const { user } = useAuth()
@@ -119,8 +120,8 @@ export function ReservationPage() {
   }
 
   const columns: Column<Reservation>[] = [
-    { key: 'id', header: 'ID', render: (row) => row.id },
-    { key: 'employee_name', header: 'Employee', render: (row) => row.employee_name },
+    { key: 'id', header: '#', render: (row) => <span className="font-mono text-xs text-slate-400">#{row.id}</span> },
+    { key: 'employee_name', header: 'Employee', render: (row) => <span className="font-medium text-slate-800">{row.employee_name}</span> },
     { key: 'purpose', header: 'Purpose', render: (row) => row.purpose },
     {
       key: 'status',
@@ -130,16 +131,20 @@ export function ReservationPage() {
     {
       key: 'dates',
       header: 'Schedule',
-      render: (row) => `${row.reserved_from} → ${row.reserved_until}`,
+      render: (row) => (
+        <span className="whitespace-nowrap font-mono text-xs text-slate-600">
+          {row.reserved_from} → {row.reserved_until}
+        </span>
+      ),
     },
     {
       key: 'actions',
       header: 'Actions',
       render: (row) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Button
             size="sm"
-            variant="secondary"
+            variant="ghost"
             onClick={() =>
               setReceipt({
                 type: 'Reservation',
@@ -162,7 +167,7 @@ export function ReservationPage() {
           </Button>
           {canApproveReservations && row.status === 'PENDING' && (
             <Button size="sm" variant="success" onClick={() => handleApprove(row.id)}>
-              Approve Request
+              Approve
             </Button>
           )}
         </div>
@@ -171,28 +176,32 @@ export function ReservationPage() {
   ]
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Borrow Requests</h1>
-          <p className="text-sm text-gray-500">Send and manage requests to borrow assets.</p>
-        </div>
-        <Button onClick={openCreate}>New Borrow Request</Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Borrow Requests"
+        subtitle="Send and manage requests to borrow assets."
+        actions={<Button onClick={openCreate}>New Borrow Request</Button>}
+      />
       {message && (
         <Alert tone={message.type} onClose={() => setMessage(null)}>
           {message.text}
         </Alert>
       )}
-      <Card>
+      <Card noPadding>
         {loading ? (
-          <Spinner />
+          <div className="flex items-center justify-center py-14">
+            <Spinner />
+          </div>
         ) : (
           <Table
             columns={columns}
             rows={rows}
             rowKey={(row) => row.id}
-            empty={<EmptyState title="No borrow requests found" description="Create a borrow request when you need an available asset." />}
+            empty={
+              <div className="py-14">
+                <EmptyState title="No borrow requests found" description="Create a borrow request when you need an available asset." />
+              </div>
+            }
           />
         )}
       </Card>

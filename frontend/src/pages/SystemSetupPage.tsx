@@ -4,6 +4,7 @@ import { Alert, Badge, Button, Card, Dropdown, EmptyState, Input, Modal, Spinner
 import { setupService, type SetupPayload, type SetupRecord, type SetupResource } from '@/services/setupService'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdmin } from '@/utils/roleHelpers'
+import { PageHeader } from '@/components/PageHeader'
 
 interface SetupSection {
   resource: SetupResource
@@ -14,49 +15,20 @@ interface SetupSection {
 }
 
 const sections: SetupSection[] = [
-  {
-    resource: 'asset-categories',
-    title: 'Asset Categories',
-    description: 'Group assets for easier searching, reporting, and inventory classification.',
-    codeLabel: 'Category Code',
-  },
-  {
-    resource: 'offices',
-    title: 'Offices',
-    description: 'Maintain PSA offices or accountable organizational units.',
-    codeLabel: 'Office Code',
-  },
-  {
-    resource: 'locations',
-    title: 'Locations',
-    description: 'Maintain rooms, storage areas, or deployment locations under offices.',
-    codeLabel: 'Location Code',
-    needsOffice: true,
-  },
-  {
-    resource: 'manufacturers',
-    title: 'Manufacturers',
-    description: 'Maintain brands, suppliers, and manufacturers used by asset records.',
-  },
+  { resource: 'asset-categories', title: 'Asset Categories', description: 'Group assets for easier searching, reporting, and inventory classification.', codeLabel: 'Category Code' },
+  { resource: 'offices',          title: 'Offices',          description: 'Maintain PSA offices or accountable organizational units.',                  codeLabel: 'Office Code' },
+  { resource: 'locations',        title: 'Locations',        description: 'Maintain rooms, storage areas, or deployment locations under offices.',      codeLabel: 'Location Code', needsOffice: true },
+  { resource: 'manufacturers',    title: 'Manufacturers',    description: 'Maintain brands, suppliers, and manufacturers used by asset records.' },
 ]
 
-const emptyForm: SetupPayload = {
-  name: '',
-  code: '',
-  description: '',
-  office_id: null,
-  is_active: true,
-}
+const emptyForm: SetupPayload = { name: '', code: '', description: '', office_id: null, is_active: true }
 
 export function SystemSetupPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [activeResource, setActiveResource] = useState<SetupResource>('asset-categories')
   const [records, setRecords] = useState<Record<SetupResource, SetupRecord[]>>({
-    'asset-categories': [],
-    offices: [],
-    locations: [],
-    manufacturers: [],
+    'asset-categories': [], offices: [], locations: [], manufacturers: [],
   })
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -65,9 +37,9 @@ export function SystemSetupPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  const activeSection = sections.find((section) => section.resource === activeResource) ?? sections[0]
+  const activeSection = sections.find((s) => s.resource === activeResource) ?? sections[0]
   const activeRecords = records[activeResource]
-  const officeOptions = records.offices.map((office) => ({ label: office.name, value: String(office.id) }))
+  const officeOptions = records.offices.map((o) => ({ label: o.name, value: String(o.id) }))
 
   async function loadSetupData() {
     setLoading(true)
@@ -86,45 +58,38 @@ export function SystemSetupPage() {
     }
   }
 
-  useEffect(() => {
-    void loadSetupData()
-  }, [])
+  useEffect(() => { void loadSetupData() }, [])
 
-  const columns: Column<SetupRecord>[] = useMemo(
-    () => [
-      { key: 'name', header: 'Name', render: (row) => row.name },
-      { key: 'code', header: 'Code', render: (row) => row.code || '—' },
-      {
-        key: 'office',
-        header: 'Office',
-        render: (row) => records.offices.find((office) => office.id === row.office_id)?.name ?? '—',
-      },
-      {
-        key: 'status',
-        header: 'Status',
-        render: (row) => <Badge tone={row.is_active === false ? 'yellow' : 'green'}>{row.is_active === false ? 'Inactive' : 'Active'}</Badge>,
-      },
-      {
-        key: 'actions',
-        header: 'Actions',
-        render: (row) => (
-          <div className="flex gap-2">
-            <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>
-              Edit
-            </Button>
-            <Button size="sm" variant="danger" onClick={() => void handleDelete(row)}>
-              Delete
-            </Button>
-          </div>
-        ),
-      },
-    ],
-    [records.offices, activeResource],
-  )
+  const columns: Column<SetupRecord>[] = useMemo(() => [
+    { key: 'name',   header: 'Name',   render: (row) => <span className="font-medium text-slate-800">{row.name}</span> },
+    { key: 'code',   header: 'Code',   render: (row) => <span className="font-mono text-xs text-slate-600">{row.code || '—'}</span> },
+    {
+      key: 'office',
+      header: 'Office',
+      render: (row) => records.offices.find((o) => o.id === row.office_id)?.name ?? '—',
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => (
+        <Badge tone={row.is_active === false ? 'yellow' : 'green'}>
+          {row.is_active === false ? 'Inactive' : 'Active'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => (
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="secondary" onClick={() => openEdit(row)}>Edit</Button>
+          <Button size="sm" variant="danger" onClick={() => void handleDelete(row)}>Delete</Button>
+        </div>
+      ),
+    },
+  ], [records.offices, activeResource])
 
-  if (!isAdmin(user)) {
-    return <Navigate to="/dashboard" replace />
-  }
+  if (!isAdmin(user)) return <Navigate to="/dashboard" replace />
 
   function openCreate() {
     setEditingRecord(null)
@@ -134,20 +99,13 @@ export function SystemSetupPage() {
 
   function openEdit(record: SetupRecord) {
     setEditingRecord(record)
-    setForm({
-      name: record.name,
-      code: record.code ?? '',
-      description: record.description ?? '',
-      office_id: record.office_id ?? null,
-      is_active: record.is_active !== false,
-    })
+    setForm({ name: record.name, code: record.code ?? '', description: record.description ?? '', office_id: record.office_id ?? null, is_active: record.is_active !== false })
     setModalOpen(true)
   }
 
   async function handleSave() {
     setSaving(true)
     setMessage(null)
-
     try {
       const payload: SetupPayload = {
         name: form.name.trim(),
@@ -156,7 +114,6 @@ export function SystemSetupPage() {
         office_id: activeSection.needsOffice ? form.office_id ?? null : undefined,
         is_active: form.is_active,
       }
-
       if (editingRecord) {
         await setupService.update(activeResource, editingRecord.id, payload)
         setMessage({ type: 'success', text: `${activeSection.title} record updated.` })
@@ -164,122 +121,140 @@ export function SystemSetupPage() {
         await setupService.create(activeResource, payload)
         setMessage({ type: 'success', text: `${activeSection.title} record created.` })
       }
-
       setModalOpen(false)
       await loadSetupData()
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to save setup record.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to save record.' })
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(record: SetupRecord) {
-    if (!confirm(`Delete "${record.name}" from ${activeSection.title}?`)) return
-
+    if (!confirm(`Delete "${record.name}"?`)) return
     try {
       await setupService.remove(activeResource, record.id)
       setMessage({ type: 'success', text: `${activeSection.title} record deleted.` })
       await loadSetupData()
     } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to delete setup record.' })
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to delete record.' })
     }
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">System Setup</h1>
-        <p className="text-sm text-gray-500">Admin tools for maintaining setup data without touching code.</p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="System Setup"
+        subtitle="Admin tools for maintaining setup data without touching code."
+      />
 
       {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
+        <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>
       )}
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <Card className="md:col-span-3">
-          <div className="mb-4 grid gap-2 md:grid-cols-4">
-            {sections.map((section) => (
-              <Button
-                key={section.resource}
-                variant={section.resource === activeResource ? 'primary' : 'secondary'}
-                onClick={() => setActiveResource(section.resource)}
-              >
-                {section.title}
-              </Button>
-            ))}
+      <div className="grid gap-5 lg:grid-cols-[1fr_260px]">
+        {/* Main panel */}
+        <Card noPadding>
+          {/* Tab bar */}
+          <div className="flex flex-wrap gap-0 border-b border-[#EEF2F8]">
+            {sections.map((section) => {
+              const active = section.resource === activeResource
+              return (
+                <button
+                  key={section.resource}
+                  type="button"
+                  onClick={() => setActiveResource(section.resource)}
+                  className={[
+                    'relative px-5 py-3 text-sm font-semibold transition-colors',
+                    active ? 'text-[#003DA5]' : 'text-slate-500 hover:text-slate-800',
+                  ].join(' ')}
+                >
+                  {section.title}
+                  {active && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-t-full bg-[#003DA5]" />}
+                </button>
+              )
+            })}
           </div>
 
-          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          {/* Sub-header */}
+          <div className="flex items-center justify-between gap-3 border-b border-[#EEF2F8] px-5 py-4">
             <div>
-              <h2 className="text-md font-semibold text-gray-900">{activeSection.title}</h2>
-              <p className="text-sm text-gray-500">{activeSection.description}</p>
+              <p className="text-sm font-semibold text-slate-800">{activeSection.title}</p>
+              <p className="mt-0.5 text-xs text-slate-500">{activeSection.description}</p>
             </div>
-            <Button onClick={openCreate}>Add {activeSection.title.slice(0, -1)}</Button>
+            <Button onClick={openCreate}>
+              Add {activeSection.title.replace(/s$/, '')}
+            </Button>
           </div>
 
+          {/* Table */}
           {loading ? (
-            <Spinner />
+            <div className="flex items-center justify-center py-14"><Spinner /></div>
           ) : (
             <Table
-              columns={columns.filter((column) => activeSection.needsOffice || column.key !== 'office')}
+              columns={columns.filter((c) => activeSection.needsOffice || c.key !== 'office')}
               rows={activeRecords}
               rowKey={(row) => row.id}
-              empty={<EmptyState title={`No ${activeSection.title.toLowerCase()} yet`} description="Add the first record to make this option available in forms." />}
+              empty={
+                <div className="py-14">
+                  <EmptyState
+                    title={`No ${activeSection.title.toLowerCase()} yet`}
+                    description="Add the first record to make this option available in forms."
+                  />
+                </div>
+              }
             />
           )}
         </Card>
 
-        <Card title="Admin Shortcuts" subtitle="Common setup tasks">
-          <div className="space-y-2">
-            <Button className="w-full" variant="secondary" onClick={() => navigate('/users')}>
-              Manage Users
-            </Button>
-            <Button className="w-full" variant="secondary" onClick={() => navigate('/roles')}>
-              Manage Roles
-            </Button>
-            <Button className="w-full" variant="secondary" onClick={() => navigate('/permissions')}>
-              Manage Permissions
-            </Button>
-            <Button className="w-full" variant="secondary" onClick={() => navigate('/assets')}>
-              Print Asset QR Labels
-            </Button>
-          </div>
-          <div className="mt-4 rounded-md bg-blue-50 p-3 text-xs text-blue-900">
-            Suggested next setting: make QR prefixes, receipt prefixes, default employee password, and reorder defaults database-backed.
-          </div>
-        </Card>
+        {/* Shortcuts sidebar */}
+        <div className="space-y-4">
+          <Card title="Admin Shortcuts" subtitle="Common setup tasks">
+            <div className="space-y-2">
+              {[
+                { label: 'Manage Users',       path: '/users' },
+                { label: 'Manage Roles',       path: '/roles' },
+                { label: 'Manage Permissions', path: '/permissions' },
+                { label: 'Print Asset QR Labels', path: '/assets' },
+              ].map((item) => (
+                <Button
+                  key={item.path}
+                  className="w-full justify-start"
+                  variant="secondary"
+                  onClick={() => navigate(item.path)}
+                >
+                  {item.label}
+                </Button>
+              ))}
+            </div>
+            <div className="mt-4 rounded-lg border border-[#C5D8FF] bg-[#EEF4FF] p-3 text-xs text-[#003DA5]">
+              Suggested: configure QR prefixes, receipt prefixes, default employee password, and reorder defaults.
+            </div>
+          </Card>
+        </div>
       </div>
 
+      {/* Add / Edit modal */}
       <Modal
         open={modalOpen}
         title={editingRecord ? `Edit ${activeSection.title}` : `Add ${activeSection.title}`}
         onClose={() => setModalOpen(false)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
             <Button onClick={() => void handleSave()} disabled={saving || !form.name.trim()}>
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? 'Saving…' : 'Save'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Input
-            label="Name"
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-          />
+          <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           {activeSection.resource !== 'manufacturers' && (
             <Input
               label={activeSection.codeLabel ?? 'Code'}
               value={form.code ?? ''}
-              onChange={(event) => setForm({ ...form, code: event.target.value })}
+              onChange={(e) => setForm({ ...form, code: e.target.value })}
             />
           )}
           {activeSection.needsOffice && (
@@ -288,19 +263,20 @@ export function SystemSetupPage() {
               placeholder="No office selected"
               options={officeOptions}
               value={form.office_id ? String(form.office_id) : ''}
-              onChange={(event) => setForm({ ...form, office_id: event.target.value ? Number(event.target.value) : null })}
+              onChange={(e) => setForm({ ...form, office_id: e.target.value ? Number(e.target.value) : null })}
             />
           )}
           <Input
             label="Description"
             value={form.description ?? ''}
-            onChange={(event) => setForm({ ...form, description: event.target.value })}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
               checked={form.is_active !== false}
-              onChange={(event) => setForm({ ...form, is_active: event.target.checked })}
+              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+              className="h-4 w-4 rounded accent-[#003DA5]"
             />
             Active
           </label>

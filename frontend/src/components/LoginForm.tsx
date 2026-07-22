@@ -82,7 +82,7 @@ export default function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="login-card-form-fields">
+    <form onSubmit={handleSubmit} className="auth-form">
       <Input
         id="email"
         name="email"
@@ -106,35 +106,36 @@ export default function LoginForm() {
         onChange={(e) => setPassword(e.target.value)}
         rightIcon={
           showPassword ? (
-            <EyeOff size={20} onClick={() => setShowPassword(false)} />
+            <EyeOff size={20} />
           ) : (
-            <Eye size={20} onClick={() => setShowPassword(true)} />
+            <Eye size={20} />
           )
         }
+        onRightIconClick={() => setShowPassword((visible) => !visible)}
       />
 
-      <div className="flex justify-end pt-[8px]">
+      <div className="auth-forgot-row">
         <button
           type="button"
           disabled={forgotLoading}
           onClick={handleForgotPassword}
-          className="text-[15px] font-medium leading-none text-[#003DA5] transition-colors duration-300 hover:text-[#0057D9] hover:underline"
+          className="auth-forgot-password"
         >
           {forgotLoading ? 'Sending reset link...' : 'Forgot Password?'}
         </button>
       </div>
 
       {errorMessage ? (
-        <p className="text-sm font-medium text-red-600">{errorMessage}</p>
+        <p className="auth-message auth-message--error">{errorMessage}</p>
       ) : null}
       {successMessage ? (
-        <p className="text-sm font-medium text-emerald-700">{successMessage}</p>
+        <p className="auth-message auth-message--success">{successMessage}</p>
       ) : null}
 
       <button
         type="submit"
         disabled={loading}
-        className="primary-button login-shadow sign-in-button h-[64px] w-full rounded-[18px] text-[16px] font-bold tracking-[5px] duration-300 disabled:cursor-not-allowed disabled:opacity-60"
+        className="auth-submit"
       >
         {loading ? 'SIGNING IN...' : 'SIGN IN'}
       </button>
