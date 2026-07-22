@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser'
 import { Alert, Badge, Button, Input, Modal, Spinner } from '@/components/ui'
 import { assetService } from '@/services/assetService'
-import { reservationService } from '@/services/reservationService'
-import type { Asset } from '@/types'
+import type { Asset, Borrowing } from '@/types'
+import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { assetStatusTone } from '@/utils/statusTone'
 
 interface AssetQrScannerProps {
@@ -25,6 +25,7 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
   const [scannedValue, setScannedValue] = useState('')
   const [manualValue, setManualValue] = useState('')
   const [asset, setAsset] = useState<Asset | null>(null)
+  const [borrowing, setBorrowing] = useState<Borrowing | null>(null)
 
   function isLocalhost() {
     return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
@@ -54,17 +55,25 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
     setScannedValue(identifier)
     setState('resolving')
     setAsset(null)
+    setBorrowing(null)
 
     try {
       if (mode === 'authorize') {
-        await reservationService.authorizeScan(identifier)
-        setMessage('Borrow request authorized successfully. The asset can now be released through the borrow scan.')
+        const borrowingResult = await assetService.scanTransaction(identifier)
+        setBorrowing(borrowingResult)
+
+        if (borrowingResult.asset_id) {
+          setAsset(await assetService.show(borrowingResult.asset_id))
+        }
+
+        setMessage('Borrowing authorized and marked as borrowed successfully.')
         setState('found')
         onCompleted?.()
         return
       }
 
       const borrowing = await assetService.scanTransaction(identifier)
+      setBorrowing(borrowing)
 
       if (borrowing.asset_id) {
         setAsset(await assetService.show(borrowing.asset_id))
@@ -140,7 +149,7 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
         },
       )
       setState('scanning')
-      setMessage(mode === 'authorize' ? 'Camera is active. Scan a borrow request receipt or PSA asset QR to authorize.' : 'Camera is active. Scan a PSA asset QR or valid transaction receipt.')
+      setMessage(mode === 'authorize' ? 'Camera is active. Scan a borrow request receipt QR to authorize and mark it borrowed.' : 'Camera is active. Scan a PSA asset QR or valid transaction receipt.')
     } catch (error: unknown) {
       stopCamera()
 
@@ -207,8 +216,8 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
           <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
             <Spinner />
             {state === 'starting' && 'Requesting camera permission...'}
-            {state === 'scanning' && (mode === 'authorize' ? 'Point the camera at a borrow request receipt or asset QR code.' : 'Point the camera at a PSA asset QR or transaction receipt.')}
-            {state === 'resolving' && (mode === 'authorize' ? 'Resolving and authorizing the borrow request...' : 'Resolving and completing the authorized QR workflow...')}
+            {state === 'scanning' && (mode === 'authorize' ? 'Point the camera at a borrow request receipt QR.' : 'Point the camera at a PSA asset QR or transaction receipt.')}
+            {state === 'resolving' && (mode === 'authorize' ? 'Resolving the receipt and marking the borrowing as borrowed...' : 'Resolving and completing the authorized QR workflow...')}
           </div>
         )}
 
@@ -248,6 +257,54 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
               <div>
                 <dt className="text-green-700">Location</dt>
                 <dd>{asset.location ?? 'Not set'}</dd>
+              </div>
+            </dl>
+          </div>
+        )}
+
+        {borrowing && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <div className="mb-2 text-sm font-semibold text-blue-900">Borrowing Transaction</div>
+            <dl className="grid gap-3 text-sm md:grid-cols-2">
+              <div>
+                <dt className="text-blue-700">Borrowing ID</dt>
+                <dd className="font-medium text-gray-900">#{borrowing.id}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Status</dt>
+                <dd className="font-medium text-gray-900">{borrowingStatusLabel(borrowing.status)}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Borrower</dt>
+                <dd className="font-medium text-gray-900">{borrowing.employee_name ?? `User #${borrowing.user_id}`}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Asset</dt>
+                <dd className="font-medium text-gray-900">{borrowing.asset_name ?? `Asset #${borrowing.asset_id}`}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Asset Identifier</dt>
+                <dd className="font-mono text-gray-900">{borrowing.asset_number ?? asset?.psa_qr_identifier ?? 'Not available'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Borrowed Date</dt>
+                <dd>{borrowing.borrow_date ?? borrowing.borrowed_at ?? 'Not available'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Due Date</dt>
+                <dd>{borrowing.due_date ?? borrowing.due_at ?? 'Not available'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Returned At</dt>
+                <dd>{borrowing.returned_at ?? 'Not returned'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Authorized By</dt>
+                <dd>{borrowing.authorized_by_name ?? `User #${borrowing.authorized_by ?? 'N/A'}`}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Authorized At</dt>
+                <dd>{borrowing.authorized_at ?? 'Not available'}</dd>
               </div>
             </dl>
           </div>

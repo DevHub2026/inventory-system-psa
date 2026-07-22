@@ -4,6 +4,7 @@ import { AlertTriangle, CalendarClock, ClipboardCheck, HandCoins } from 'lucide-
 import { Badge, Button, Card, EmptyState, Spinner, Table, Alert, Input, type Column } from '@/components/ui'
 import { DashboardStatCard } from '@/components/DashboardStatCard'
 import { AssetQrScanner } from '@/components/AssetQrScanner'
+import { assetService } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
 import type { Reservation, Borrowing } from '@/types'
@@ -70,28 +71,33 @@ export function StaffDashboard() {
       return
     }
 
-    const receiptCode = scannedValue.split('|')[0]
-
-    if (receiptCode.startsWith('PSA-RES-')) {
-      const reservationId = Number(receiptCode.replace('PSA-RES-', ''))
-
-      if (!Number.isNaN(reservationId)) {
-        await handleApproveReservation(reservationId)
+    try {
+      const borrowing = await assetService.scanTransaction(scannedValue)
+      setMessage({
+        type: 'success',
+        text: borrowing.status === 'RETURNED'
+          ? `Returned ${borrowing.asset_name ?? 'asset'} successfully.`
+          : `Borrowing authorized for ${borrowing.asset_name ?? 'asset'} and marked as borrowed.`,
+      })
+      setQrCode('')
+      await loadData()
+      return
+    } catch (transactionError: unknown) {
+      try {
+        const asset = await assetService.scan(scannedValue)
+        setMessage({
+          type: 'success',
+          text: `${asset.name} found. Status: ${asset.status}. Use Authorize or Borrow/Return scan when processing a transaction.`,
+        })
         setQrCode('')
-        return
+        setTimeout(() => navigate(`/assets?search=${encodeURIComponent(asset.psa_qr_identifier ?? asset.asset_number)}`), 500)
+      } catch {
+        setMessage({
+          type: 'error',
+          text: transactionError instanceof Error ? transactionError.message : 'No asset or transaction matched that QR code.',
+        })
       }
     }
-
-    if (receiptCode.startsWith('PSA-BOR-')) {
-      setMessage({ type: 'success', text: `Borrow receipt ${receiptCode} scanned. Opening borrowed items...` })
-      setQrCode('')
-      setTimeout(() => navigate('/borrowings'), 500)
-      return
-    }
-
-    setMessage({ type: 'success', text: `Scanned asset: ${scannedValue} - Opening asset details...` })
-    setQrCode('')
-    setTimeout(() => navigate(`/assets?search=${encodeURIComponent(scannedValue)}`), 500)
   }
 
   const reservationColumns: Column<Reservation>[] = [
@@ -195,7 +201,7 @@ export function StaffDashboard() {
               setScannerOpen(true)
             }}
           >
-            Scan QR to Authorize
+            Scan Receipt to Borrow
           </Button>
           <Button
             variant="secondary"

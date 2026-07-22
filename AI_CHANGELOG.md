@@ -35,6 +35,8 @@ Fixed QR borrowing authorization, receipt QR resolution, borrow/return state tra
 
 ### Files Modified
 
+- backend/app/Modules/Asset/Services/AssetService.php
+- backend/app/Modules/AssetIdentifier/Services/AssetIdentifierService.php
 - backend/app/Http/Controllers/BorrowController.php
 - backend/app/Modules/Borrowing/Services/BorrowingService.php
 - backend/app/Modules/Reservation/Controllers/ReservationController.php
@@ -55,6 +57,11 @@ Fixed QR borrowing authorization, receipt QR resolution, borrow/return state tra
 
 - Added `POST /api/v1/reservations/scan-authorize` for staff/admin authorization by receipt QR or asset QR.
 - Extended canonical borrowing scan logic to resolve permanent asset QR identifiers and receipt references (`PSA-RES-*`, `PSA-BOR-*`).
+- Updated receipt QR scanning so staff/admin scanning a pending `PSA-RES-*` receipt atomically authorizes the request, creates the borrowing, and marks the asset borrowed.
+- Added duplicate scan messages for already borrowed and already returned receipt QR transactions.
+- Added staff/admin scanner result details for the finalized borrowing transaction.
+- Centralized AssetIdentifier scan candidates so unpadded PSA asset QR text resolves to the stored permanent identifier.
+- Updated StaffDashboard manual scan to use backend transaction/asset resolution instead of frontend-only navigation.
 - Kept the permanent asset QR and canonical BorrowingService architecture intact.
 - Replaced fake receipt QR visuals with the existing generated QR component using backend-supported receipt payloads.
 - Added staff camera actions for authorization and borrow/return processing.
