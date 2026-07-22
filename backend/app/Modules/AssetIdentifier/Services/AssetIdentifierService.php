@@ -89,7 +89,37 @@ class AssetIdentifierService
     {
         return AssetIdentifier::query()
             ->with('asset')
-            ->where('identifier_value', $value)
+            ->whereIn('identifier_value', $this->candidateValues($value))
             ->first();
+    }
+
+    /**
+     * Accept the official stored PSA QR value and common unpadded scan input
+     * without changing the permanent identifier stored in the database.
+     */
+    public function candidateValues(string $value): array
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return [];
+        }
+
+        $candidates = [$value];
+        $reference = strtok($value, '|') ?: $value;
+
+        if ($reference !== $value) {
+            $candidates[] = $reference;
+        }
+
+        if (preg_match('/^PSA-ASSET-(\d+)$/i', $reference, $matches) === 1) {
+            $assetId = (int) $matches[1];
+
+            if ($assetId > 0) {
+                $candidates[] = 'PSA-ASSET-'.str_pad((string) $assetId, 6, '0', STR_PAD_LEFT);
+            }
+        }
+
+        return array_values(array_unique($candidates));
     }
 }

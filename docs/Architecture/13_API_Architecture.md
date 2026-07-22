@@ -209,6 +209,8 @@ Scanner clients send the decoded identifier value to `/assets/scan?value={identi
 The backend resolves the value through `asset_identifiers.identifier_value` and returns the matching asset resource.
 Scanning identifies an asset only; privileged actions still require authenticated API calls and backend authorization.
 
+Scanner clients may also send the decoded value to `POST /assets/scan` to complete an already authorized borrowing transaction or return an active borrowing. This endpoint accepts permanent asset QR identifiers and supported receipt references such as `PSA-RES-{reservation}` and `PSA-BOR-{borrowing}`. The backend remains authoritative for transaction state changes.
+
 Transfer
 
 /assets/{id}/transfer
@@ -241,6 +243,12 @@ Approve
 
 /reservations/{id}/approve
 
+Scan Authorize
+
+/reservations/scan-authorize
+
+Authorized staff may scan a pending borrow request receipt (`PSA-RES-{reservation}`) or a permanent asset QR linked to a pending request to authorize the request. Duplicate authorization attempts are rejected.
+
 Reject
 
 /reservations/{id}/reject
@@ -264,6 +272,10 @@ PUT
 Return
 
 /borrowings/{id}/return
+
+Scan Borrow / Return
+
+/assets/scan
 
 Receipt
 

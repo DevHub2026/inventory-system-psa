@@ -7,11 +7,16 @@ export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen bg-[#F0F4FA]">
+    /* bg-[#F5F7FA] matches --clr-bg token */
+    <div className="flex min-h-screen bg-[#F5F7FA]">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* ── Main column ── */}
       <div className="flex min-w-0 flex-1 flex-col">
         <TopNav onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+
+        {/* Page content — 24px padding on all sides, centred, max-width capped */}
+        <main className="flex-1 px-6 py-6">
           <div className="mx-auto w-full max-w-[1600px]">
             <Outlet />
           </div>

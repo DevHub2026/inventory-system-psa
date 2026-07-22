@@ -5,13 +5,15 @@ namespace App\Modules\Reservation\Services;
 use App\Enums\UserRole;
 use App\Models\User;
 use App\Modules\Asset\Enums\AssetStatus;
-use App\Modules\Borrowing\Models\Borrowing;
+use App\Modules\AssetIdentifier\Services\AssetIdentifierService;
 use App\Modules\Reservation\Models\Reservation;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class ReservationService
 {
+    public function __construct(private readonly AssetIdentifierService $assetIdentifierService) {}
+
     public function list(User $user, int $perPage = 20): LengthAwarePaginator
     {
         return Reservation::query()
@@ -42,25 +44,13 @@ class ReservationService
     public function approve(Reservation $reservation, User $authorizer): Reservation
     {
         return DB::transaction(function () use ($reservation, $authorizer) {
-            $reservation->load(['user', 'assets']);
+            $reservation = Reservation::query()
+                ->with(['user', 'assets'])
+                ->lockForUpdate()
+                ->findOrFail($reservation->id);
 
-            foreach ($reservation->assets as $asset) {
-                Borrowing::query()->updateOrCreate(
-                    [
-                        'user_id' => $reservation->user_id,
-                        'asset_id' => $asset->id,
-                        'status' => 'BORROWED',
-                    ],
-                    [
-                        'borrow_date' => now()->toDateString(),
-                        'due_date' => $reservation->end_date?->toDateString() ?? now()->addDays(7)->toDateString(),
-                        'remarks' => $reservation->remarks,
-                        'authorized_by' => $authorizer->id,
-                        'authorized_at' => now(),
-                    ],
-                );
-
-                $asset->update(['status' => AssetStatus::BORROWED->value]);
+            if ($reservation->status !== 'PENDING') {
+                throw new \InvalidArgumentException('Borrow request is already authorized or completed.');
             }
 
             $reservation->update([
@@ -69,8 +59,48 @@ class ReservationService
                 'authorized_at' => now(),
             ]);
 
+            // Approval authorizes a future transaction; it must not borrow the asset.
+            $reservation->assets()->update(['status' => AssetStatus::AVAILABLE->value]);
+
             return $reservation->fresh()->load(['user', 'assets', 'authorizer']);
         });
+    }
+
+    public function authorizeByScan(User $authorizer, string $value): Reservation
+    {
+        return DB::transaction(function () use ($authorizer, $value) {
+            $reservation = $this->reservationFromScanValue($value);
+
+            if (! $reservation) {
+                throw new \InvalidArgumentException('No pending borrow request found for this QR code.');
+            }
+
+            return $this->approve($reservation, $authorizer);
+        });
+    }
+
+    private function reservationFromScanValue(string $value): ?Reservation
+    {
+        $value = trim($value);
+        $reference = strtok($value, '|') ?: $value;
+
+        if (str_starts_with($reference, 'PSA-RES-')) {
+            $reservationId = (int) substr($reference, strlen('PSA-RES-'));
+
+            return $reservationId > 0 ? Reservation::query()->find($reservationId) : null;
+        }
+
+        $asset = $this->assetIdentifierService->findByValue($value)?->asset;
+
+        if (! $asset) {
+            return null;
+        }
+
+        return Reservation::query()
+            ->where('status', 'PENDING')
+            ->whereHas('assets', fn ($query) => $query->where('assets.id', $asset->id))
+            ->orderBy('created_at')
+            ->first();
     }
 
     private function canViewAllReservations(User $user): bool

@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { AlertCircle, CheckCircle, Info, X, AlertTriangle } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/utils/cn'
 
@@ -12,27 +12,58 @@ interface AlertProps {
   className?: string
 }
 
-const tones: Record<AlertTone, string> = {
-  info: 'border-blue-200 bg-blue-50 text-blue-900',
-  success: 'border-emerald-200 bg-emerald-50 text-emerald-900',
-  warning: 'border-amber-200 bg-amber-50 text-amber-900',
-  error: 'border-red-200 bg-red-50 text-red-900',
+const config: Record<AlertTone, { wrap: string; icon: ReactNode }> = {
+  info:    {
+    wrap: 'border-[#BFDBFE] bg-[#EFF6FF] text-[#1E40AF]',
+    icon: <Info className="h-4 w-4 shrink-0 text-[#2563EB]" />,
+  },
+  success: {
+    wrap: 'border-[#BBF7D0] bg-[#F0FDF4] text-[#166534]',
+    icon: <CheckCircle className="h-4 w-4 shrink-0 text-[#16A34A]" />,
+  },
+  warning: {
+    wrap: 'border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]',
+    icon: <AlertTriangle className="h-4 w-4 shrink-0 text-[#D97706]" />,
+  },
+  error:   {
+    wrap: 'border-[#FECACA] bg-[#FEF2F2] text-[#991B1B]',
+    icon: <AlertCircle className="h-4 w-4 shrink-0 text-[#DC2626]" />,
+  },
 }
 
 export function Alert({ tone = 'info', title, children, onClose, className }: AlertProps) {
+  const { wrap, icon } = config[tone]
+
   return (
-    <div className={cn('rounded-xl border px-4 py-3 text-sm shadow-sm', tones[tone], className)}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          {title && <p className="font-medium">{title}</p>}
-          <div className={title ? 'mt-0.5' : undefined}>{children}</div>
-        </div>
-        {onClose && (
-          <button type="button" onClick={onClose} className="text-current opacity-70" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
-        )}
+    <div
+      role="alert"
+      className={cn(
+        'flex items-start gap-3 rounded-xl border px-4 py-3.5 text-sm',
+        'shadow-[0_1px_3px_rgba(0,0,0,.06)]',
+        wrap,
+        className,
+      )}
+    >
+      {/* Icon */}
+      <span className="mt-0.5">{icon}</span>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        {title && <p className="mb-0.5 font-semibold">{title}</p>}
+        <div className="leading-relaxed">{children}</div>
       </div>
+
+      {/* Close */}
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Dismiss"
+          className="mt-0.5 shrink-0 rounded-md p-0.5 opacity-60 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-current"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
     </div>
   )
 }

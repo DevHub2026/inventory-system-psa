@@ -23,14 +23,20 @@ export function Table<T>({ columns, rows, rowKey, empty, className }: TableProps
 
   return (
     <div className={cn('overflow-x-auto', className)}>
-      <table className="min-w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-[#E2EAF3] bg-[#F4F7FC]">
+      <table className="min-w-full table-auto text-left text-sm">
+
+        {/* ── Sticky header ── */}
+        <thead className="sticky top-0 z-10">
+          <tr className="border-b border-[#E5E7EB] bg-[#F5F7FA]">
             {columns.map((col) => (
               <th
                 key={col.key}
+                scope="col"
                 className={cn(
-                  'px-4 py-3 text-[10px] font-bold uppercase tracking-[0.08em] text-[#64748B] whitespace-nowrap',
+                  // typography
+                  'px-4 py-3.5',
+                  'text-[13px] font-semibold uppercase tracking-[0.06em] text-[#6B7280]',
+                  'whitespace-nowrap',
                   col.className,
                 )}
               >
@@ -39,17 +45,20 @@ export function Table<T>({ columns, rows, rowKey, empty, className }: TableProps
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#EEF2F8]">
+
+        {/* ── Body ── */}
+        <tbody className="divide-y divide-[#F3F4F6]">
           {rows.map((row) => (
             <tr
               key={rowKey(row)}
-              className="bg-white transition-colors hover:bg-[#F8FAFD]"
+              className="bg-white transition-colors duration-150 hover:bg-[#F5F7FA]"
             >
               {columns.map((col) => (
                 <td
                   key={col.key}
                   className={cn(
-                    'px-4 py-3 align-middle text-sm text-slate-700',
+                    'px-4 py-3.5 align-middle',
+                    'text-[14px] text-[#1F2937]',
                     col.className,
                   )}
                 >

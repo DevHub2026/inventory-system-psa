@@ -84,6 +84,21 @@ class ReservationController extends Controller
         );
     }
 
+    public function scanAuthorize(Request $request): JsonResponse
+    {
+        abort_unless($this->canApproveReservations($request->user()), 403, 'Only authorized staff can approve reservations.');
+
+        $value = trim((string) $request->input('value', ''));
+        abort_if($value === '', 422, 'Identifier value is required.');
+
+        $reservation = $this->reservationService->authorizeByScan($request->user(), $value);
+
+        return $this->success(
+            $this->transform($reservation),
+            'Borrow request authorized successfully.',
+        );
+    }
+
     private function canApproveReservations($user): bool
     {
         return $user?->hasRole(UserRole::SUPER_ADMINISTRATOR->value) === true

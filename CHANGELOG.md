@@ -1,5 +1,52 @@
 # CHANGELOG
 
+## 2026-07-22
+
+### QR Borrowing Authorization and Receipt Flow Fix
+
+### Files Modified
+
+- `backend/app/Modules/Asset/Services/AssetService.php`
+- `backend/app/Modules/AssetIdentifier/Services/AssetIdentifierService.php`
+- `backend/app/Http/Controllers/BorrowController.php`
+- `backend/app/Modules/Borrowing/Services/BorrowingService.php`
+- `backend/app/Modules/Reservation/Controllers/ReservationController.php`
+- `backend/app/Modules/Reservation/Routes/api.php`
+- `backend/app/Modules/Reservation/Services/ReservationService.php`
+- `backend/tests/Feature/Borrowing/BorrowingManagementTest.php`
+- `frontend/src/components/AssetQrScanner.tsx`
+- `frontend/src/components/ReceiptModal.tsx`
+- `frontend/src/components/StaffDashboard.tsx`
+- `frontend/src/services/reservationService.ts`
+- `docs/Architecture/13_API_Architecture.md`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Receipt QR values were displayed as transaction references, but the scanner first treated every QR as a permanent asset identifier. That prevented receipt QR scans from reliably authorizing, borrowing, or returning the backend transaction.
+
+### Summary
+
+- Added scan-based reservation authorization through `POST /api/v1/reservations/scan-authorize`.
+- Extended the canonical `BorrowingService::scan()` path to resolve permanent asset QR identifiers, `PSA-RES-*` receipt references, and `PSA-BOR-*` receipt references.
+- Changed staff/admin receipt scanning so a pending borrow request receipt (`PSA-RES-*`) is authorized and marked `BORROWED` in the same backend transaction.
+- Added duplicate receipt scan protection for already borrowed or already returned transactions.
+- Added scanner success details for borrowing ID, borrower, asset, dates, return timestamp, authorizer, and current status.
+- Preserved the permanent asset QR system and existing borrowing service architecture.
+- Centralized AssetIdentifier scan lookup so stored `PSA-ASSET-000125` values can resolve common scanned `PSA-ASSET-125` input without changing the permanent QR value.
+- Updated the staff manual QR field to call backend scan endpoints instead of only navigating/searching locally.
+- Replaced fake receipt QR blocks with the existing standards-compliant `QrCode` component.
+- Added staff scanner modes for authorization and borrow/return processing.
+- Added tests for receipt QR authorization, duplicate authorization rejection, receipt QR borrow, receipt QR return, and history preservation.
+
+### Impact
+
+- Request -> Authorize -> Borrow -> Return is enforced by backend state transitions.
+- Employee receipt QR -> Staff/Admin scan now performs `PENDING` -> `BORROWED` and updates the asset to `BORROWED`.
+- Employee-facing manual borrow remains hidden from employees; staff/admin users complete authorized release.
+- Historical borrowing records remain queryable after return.
+
 ## 2026-07-21
 
 ### Inventory Reliability and Migration Stability Pass
