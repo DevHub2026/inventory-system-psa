@@ -26,6 +26,7 @@ import type { Asset, AssetStatus } from '@/types'
 import { assetStatusTone } from '@/utils/statusTone'
 import { isAdmin, isStaff } from '@/utils/roleHelpers'
 import { assetStatusLabel } from '@/utils/displayLabels'
+import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
 export function AssetPage() {
   const { user } = useAuth()
@@ -157,6 +158,14 @@ export function AssetPage() {
     void load(1, nextSearch)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
+
+  useEffect(() => onDataChanged((scope) => {
+    if (affectsScope(scope, 'assets') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
+      void load(page)
+      if (viewAsset) void openView(viewAsset.id)
+      if (qrAsset) void openQrLabel(qrAsset.id)
+    }
+  }), [page, search, status, viewAsset?.id, qrAsset?.id])
 
   const columns: Column<Asset>[] = useMemo(
     () => [
@@ -319,6 +328,7 @@ export function AssetPage() {
             setReturnId(null)
             setReturnNotes('')
             setMessage('Item returned successfully.')
+            notifyDataChanged('all')
             void load(page)
           })
         }}
@@ -381,6 +391,7 @@ export function AssetPage() {
               remarks: borrowing.remarks,
             })
             setMessage('Item borrowed successfully. Your receipt is ready.')
+            notifyDataChanged('all')
             void load(page)
           })
         }}
@@ -457,13 +468,14 @@ export function AssetPage() {
                 remarks: reservation.remarks,
               })
               setMessage('Borrow request sent successfully. Present the receipt QR/reference to staff for approval.')
+              notifyDataChanged('all')
               void load(page)
             })
         }}
       />
 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
-      <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} />
+      <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onCompleted={() => void load(page)} />
 
       <Modal open={viewAsset !== null} title="Asset details" onClose={() => setViewAsset(null)}>
         {viewAsset && (

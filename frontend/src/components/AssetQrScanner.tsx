@@ -5,6 +5,7 @@ import { assetService } from '@/services/assetService'
 import type { Asset, Borrowing } from '@/types'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { assetStatusTone } from '@/utils/statusTone'
+import { notifyDataChanged } from '@/utils/dataRefresh'
 
 interface AssetQrScannerProps {
   open: boolean
@@ -68,6 +69,7 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
 
         setMessage('Borrowing authorized and marked as borrowed successfully.')
         setState('found')
+        notifyDataChanged('all')
         onCompleted?.()
         return
       }
@@ -81,6 +83,7 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
 
       setMessage(borrowing.status === 'RETURNED' ? 'Asset successfully returned.' : 'Asset successfully borrowed.')
       setState('found')
+      notifyDataChanged('all')
       onCompleted?.()
     } catch (error: unknown) {
       try {

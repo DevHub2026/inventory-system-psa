@@ -33,6 +33,8 @@ Receipt QR values were displayed as transaction references, but the scanner firs
 - Changed staff/admin receipt scanning so a pending borrow request receipt (`PSA-RES-*`) is authorized and marked `BORROWED` in the same backend transaction.
 - Updated receipt rescans so a second scan of the same `PSA-RES-*` receipt returns the active borrowing instead of creating a duplicate transaction.
 - Preserved protection for receipt scans after the transaction has already been returned.
+- Added a shared frontend data-change event so asset lists, borrowed item lists, borrow request lists, and dashboards refresh after borrow/return scans.
+- Refreshed the Asset page after scanner completion so returned assets immediately show `AVAILABLE` there too.
 - Added scanner success details for borrowing ID, borrower, asset, dates, return timestamp, authorizer, and current status.
 - Preserved the permanent asset QR system and existing borrowing service architecture.
 - Centralized AssetIdentifier scan lookup so stored `PSA-ASSET-000125` values can resolve common scanned `PSA-ASSET-125` input without changing the permanent QR value.

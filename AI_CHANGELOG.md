@@ -60,6 +60,7 @@ Fixed QR borrowing authorization, receipt QR resolution, borrow/return state tra
 - Updated receipt QR scanning so staff/admin scanning a pending `PSA-RES-*` receipt atomically authorizes the request, creates the borrowing, and marks the asset borrowed.
 - Updated second scans of the same `PSA-RES-*` receipt to return the active borrowing without creating a duplicate transaction.
 - Preserved clear rejection after the receipt-backed borrowing has already been returned.
+- Added shared frontend refresh notifications so borrow/return scans update asset, borrowing, reservation, employee, staff, and admin views without manual reload.
 - Added staff/admin scanner result details for the finalized borrowing transaction.
 - Centralized AssetIdentifier scan candidates so unpadded PSA asset QR text resolves to the stored permanent identifier.
 - Updated StaffDashboard manual scan to use backend transaction/asset resolution instead of frontend-only navigation.

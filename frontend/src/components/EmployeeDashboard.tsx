@@ -8,6 +8,7 @@ import { borrowingService } from '@/services/borrowingService'
 import type { Reservation, Borrowing } from '@/types'
 import { reservationStatusTone, borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel, reservationStatusLabel } from '@/utils/displayLabels'
+import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
 export function EmployeeDashboard() {
   const navigate = useNavigate()
@@ -40,10 +41,17 @@ export function EmployeeDashboard() {
     void loadData()
   }, [])
 
+  useEffect(() => onDataChanged((scope) => {
+    if (affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
+      void loadData()
+    }
+  }), [])
+
   const handleReturnBorrowing = async (borrowingId: number) => {
     try {
       await borrowingService.returnAsset(borrowingId)
       setMessage({ type: 'success', text: 'Item returned successfully.' })
+      notifyDataChanged('all')
       await loadData()
     } catch (error: unknown) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to return item.' })

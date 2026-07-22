@@ -8,6 +8,7 @@ import type { Asset, Reservation } from '@/types'
 import { reservationStatusTone } from '@/utils/statusTone'
 import { isAdmin, isStaff } from '@/utils/roleHelpers'
 import { reservationStatusLabel } from '@/utils/displayLabels'
+import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
 export function ReservationPage() {
   const { user } = useAuth()
@@ -81,6 +82,7 @@ export function ReservationPage() {
       setCreateOpen(false)
       setForm({ assetIds: [], startDate: '', endDate: '', remarks: '' })
       setMessage({ type: 'success', text: 'Borrow request sent successfully.' })
+      notifyDataChanged('all')
       await loadReservations()
     } catch (error: unknown) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to send borrow request.' })
@@ -92,6 +94,12 @@ export function ReservationPage() {
   useEffect(() => {
     void loadReservations()
   }, [])
+
+  useEffect(() => onDataChanged((scope) => {
+    if (affectsScope(scope, 'reservations') || affectsScope(scope, 'borrowings')) {
+      void loadReservations()
+    }
+  }), [])
 
   const handleApprove = async (reservationId: number) => {
     try {
@@ -112,6 +120,7 @@ export function ReservationPage() {
         remarks: reservation.remarks,
       })
       setMessage({ type: 'success', text: 'Borrow request approved successfully.' })
+      notifyDataChanged('all')
       await loadReservations()
     } catch (error: unknown) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to approve borrow request.' })

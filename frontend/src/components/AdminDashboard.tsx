@@ -10,6 +10,7 @@ import { maintenanceService } from '@/services/maintenanceService'
 import type { DashboardStats, ActivityItem, Reservation, Borrowing, MaintenanceRequest } from '@/types'
 import { maintenanceStatusTone } from '@/utils/statusTone'
 import { maintenanceStatusLabel } from '@/utils/displayLabels'
+import { affectsScope, onDataChanged } from '@/utils/dataRefresh'
 
 export function AdminDashboard() {
   const navigate = useNavigate()
@@ -46,6 +47,12 @@ export function AdminDashboard() {
   useEffect(() => {
     void loadData()
   }, [])
+
+  useEffect(() => onDataChanged((scope) => {
+    if (affectsScope(scope, 'dashboard') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations') || affectsScope(scope, 'assets')) {
+      void loadData()
+    }
+  }), [])
 
   const handleApproveReservation = async (reservationId: number) => {
     try {

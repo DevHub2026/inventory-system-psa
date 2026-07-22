@@ -10,6 +10,7 @@ import { borrowingService } from '@/services/borrowingService'
 import type { Reservation, Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
+import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
 export function StaffDashboard() {
   const navigate = useNavigate()
@@ -42,6 +43,12 @@ export function StaffDashboard() {
   useEffect(() => {
     void loadData()
   }, [])
+
+  useEffect(() => onDataChanged((scope) => {
+    if (affectsScope(scope, 'dashboard') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
+      void loadData()
+    }
+  }), [])
 
   const handleApproveReservation = async (reservationId: number) => {
     try {
@@ -80,6 +87,7 @@ export function StaffDashboard() {
           : `Borrowing authorized for ${borrowing.asset_name ?? 'asset'} and marked as borrowed.`,
       })
       setQrCode('')
+      notifyDataChanged('all')
       await loadData()
       return
     } catch (transactionError: unknown) {
