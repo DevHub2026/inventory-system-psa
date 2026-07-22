@@ -370,7 +370,7 @@ class BorrowingManagementTest extends TestCase
         $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'BORROWED']);
     }
 
-    public function test_duplicate_receipt_scan_does_not_create_second_borrowing(): void
+    public function test_second_receipt_scan_returns_without_creating_second_borrowing(): void
     {
         $employee = User::factory()->create();
         $staff = $this->staffUser();
@@ -385,14 +385,18 @@ class BorrowingManagementTest extends TestCase
 
         $this->withToken($token)
             ->postJson('/api/v1/assets/scan', ['value' => $receiptPayload])
-            ->assertStatus(422)
+            ->assertOk()
             ->assertJson([
-                'success' => false,
-                'message' => 'Borrowing is already marked as borrowed.',
+                'success' => true,
+                'message' => 'Asset successfully returned.',
+                'data' => [
+                    'status' => 'RETURNED',
+                ],
             ]);
 
         $this->assertDatabaseCount('borrowings', 1);
-        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'BORROWED']);
+        $this->assertDatabaseHas('borrowings', ['reservation_id' => $reservation->id, 'status' => 'RETURNED']);
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'AVAILABLE']);
     }
 
     public function test_returned_receipt_scan_reports_completed_transaction(): void

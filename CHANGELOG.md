@@ -31,7 +31,8 @@ Receipt QR values were displayed as transaction references, but the scanner firs
 - Added scan-based reservation authorization through `POST /api/v1/reservations/scan-authorize`.
 - Extended the canonical `BorrowingService::scan()` path to resolve permanent asset QR identifiers, `PSA-RES-*` receipt references, and `PSA-BOR-*` receipt references.
 - Changed staff/admin receipt scanning so a pending borrow request receipt (`PSA-RES-*`) is authorized and marked `BORROWED` in the same backend transaction.
-- Added duplicate receipt scan protection for already borrowed or already returned transactions.
+- Updated receipt rescans so a second scan of the same `PSA-RES-*` receipt returns the active borrowing instead of creating a duplicate transaction.
+- Preserved protection for receipt scans after the transaction has already been returned.
 - Added scanner success details for borrowing ID, borrower, asset, dates, return timestamp, authorizer, and current status.
 - Preserved the permanent asset QR system and existing borrowing service architecture.
 - Centralized AssetIdentifier scan lookup so stored `PSA-ASSET-000125` values can resolve common scanned `PSA-ASSET-125` input without changing the permanent QR value.
@@ -43,7 +44,7 @@ Receipt QR values were displayed as transaction references, but the scanner firs
 ### Impact
 
 - Request -> Authorize -> Borrow -> Return is enforced by backend state transitions.
-- Employee receipt QR -> Staff/Admin scan now performs `PENDING` -> `BORROWED` and updates the asset to `BORROWED`.
+- Employee receipt QR -> Staff/Admin first scan performs `PENDING` -> `BORROWED`; second scan returns the same borrowing and updates the asset to `AVAILABLE`.
 - Employee-facing manual borrow remains hidden from employees; staff/admin users complete authorized release.
 - Historical borrowing records remain queryable after return.
 
