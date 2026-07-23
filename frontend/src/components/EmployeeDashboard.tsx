@@ -11,6 +11,7 @@ import { borrowingService } from '@/services/borrowingService'
 import type { Reservation, Borrowing } from '@/types'
 import { reservationStatusTone, borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel, reservationStatusLabel } from '@/utils/displayLabels'
+import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
 const SECTION_TITLE = 'text-[16px] font-semibold text-[#1F2937]'
 const SECTION_SUB   = 'mt-0.5 text-[13px] text-[#6B7280]'
@@ -42,12 +43,21 @@ export function EmployeeDashboard() {
     }
   }
 
+  /* Initial load */
   useEffect(() => { void loadData() }, [])
+
+  /* Cross-component data refresh subscription */
+  useEffect(() => onDataChanged((scope) => {
+    if (affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
+      void loadData()
+    }
+  }), [])
 
   const handleReturnBorrowing = async (id: number) => {
     try {
       await borrowingService.returnAsset(id)
       setMessage({ type: 'success', text: 'Item returned successfully.' })
+      notifyDataChanged('all')
       await loadData()
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to return item.' })
@@ -56,18 +66,18 @@ export function EmployeeDashboard() {
 
   /* ── Column definitions ── */
   const reservationColumns: Column<Reservation>[] = [
-    { key: 'id',      header: '#',        render: (r) => <span className="font-mono text-xs text-[#9CA3AF]">#{r.id}</span> },
-    { key: 'purpose', header: 'Purpose',  render: (r) => r.purpose },
+    { key: 'id',      header: '#',       render: (r) => <span className="font-mono text-xs text-[#9CA3AF]">#{r.id}</span> },
+    { key: 'purpose', header: 'Purpose', render: (r) => r.purpose },
     {
       key: 'status', header: 'Status',
       render: (r) => <Badge tone={reservationStatusTone(r.status)}>{reservationStatusLabel(r.status)}</Badge>,
     },
-    { key: 'dates', header: 'Schedule',   render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.reserved_from} → {r.reserved_until}</span> },
+    { key: 'dates', header: 'Schedule', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.reserved_from} → {r.reserved_until}</span> },
   ]
 
   const borrowingColumns: Column<Borrowing>[] = [
-    { key: 'id',         header: '#',       render: (r) => <span className="font-mono text-xs text-[#9CA3AF]">#{r.id}</span> },
-    { key: 'asset_name', header: 'Asset',   render: (r) => <span className="font-medium text-[#1F2937]">{r.asset_name}</span> },
+    { key: 'id',          header: '#',       render: (r) => <span className="font-mono text-xs text-[#9CA3AF]">#{r.id}</span> },
+    { key: 'asset_name',  header: 'Asset',   render: (r) => <span className="font-medium text-[#1F2937]">{r.asset_name}</span> },
     {
       key: 'status', header: 'Status',
       render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge>,
@@ -98,24 +108,19 @@ export function EmployeeDashboard() {
   const dueSoonCount = activeBorrowings.filter((b) => b.status !== 'OVERDUE').length
 
   const statCards = [
-    { label: 'My Borrow Requests', value: myReservations.length,   description: 'Requests you submitted',       icon: ClipboardList, tone: 'blue'  as const },
-    { label: 'My Borrowed Items',  value: activeBorrowings.length, description: 'Items currently borrowed',     icon: HandCoins,     tone: 'green' as const },
-    { label: 'Due Soon',           value: dueSoonCount,            description: 'Active items to monitor',      icon: CalendarDays,  tone: 'amber' as const },
-    { label: 'Overdue',            value: overdueCount,            description: 'Items needing return',         icon: AlertTriangle, tone: 'red'   as const },
+    { label: 'My Borrow Requests', value: myReservations.length,   description: 'Requests you submitted',   icon: ClipboardList, tone: 'blue'  as const },
+    { label: 'My Borrowed Items',  value: activeBorrowings.length, description: 'Items currently borrowed',  icon: HandCoins,     tone: 'green' as const },
+    { label: 'Due Soon',           value: dueSoonCount,            description: 'Active items to monitor',   icon: CalendarDays,  tone: 'amber' as const },
+    { label: 'Overdue',            value: overdueCount,            description: 'Items needing return',      icon: AlertTriangle, tone: 'red'   as const },
   ]
 
   return (
     <div className="space-y-6">
 
-      <PageHeader
-        title="Employee Dashboard"
-        subtitle="Welcome back. Here is your asset activity overview."
-      />
+      <PageHeader title="Employee Dashboard" subtitle="Welcome back. Here is your asset activity overview." />
 
       {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
+        <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>
       )}
 
       {/* Stats grid — 1 → 2 → 4 cols */}

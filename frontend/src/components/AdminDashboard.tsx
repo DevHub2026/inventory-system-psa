@@ -16,6 +16,7 @@ import { maintenanceService } from '@/services/maintenanceService'
 import type { DashboardStats, ActivityItem, Reservation, Borrowing, MaintenanceRequest } from '@/types'
 import { maintenanceStatusTone } from '@/utils/statusTone'
 import { maintenanceStatusLabel } from '@/utils/displayLabels'
+import { affectsScope, onDataChanged } from '@/utils/dataRefresh'
 
 /* ─── shared label styles ─────────────────────────────────────────── */
 const SECTION_TITLE = 'text-[16px] font-semibold text-[#1F2937]'
@@ -54,7 +55,20 @@ export function AdminDashboard() {
     }
   }
 
+  /* Initial load */
   useEffect(() => { void loadData() }, [])
+
+  /* Cross-component data refresh subscription */
+  useEffect(() => onDataChanged((scope) => {
+    if (
+      affectsScope(scope, 'dashboard') ||
+      affectsScope(scope, 'borrowings') ||
+      affectsScope(scope, 'reservations') ||
+      affectsScope(scope, 'assets')
+    ) {
+      void loadData()
+    }
+  }), [])
 
   const handleApproveReservation = async (id: number) => {
     try {
@@ -109,14 +123,14 @@ export function AdminDashboard() {
 
   /* ── Stat cards ── */
   const statCards = [
-    { label: 'Total Assets',        value: stats?.total_assets  || 0, description: 'All registered assets',        icon: Boxes,        tone: 'blue'   as const },
-    { label: 'Available',           value: stats?.available     || 0, description: 'Ready for use',                icon: BadgeCheck,   tone: 'green'  as const },
-    { label: 'Borrowed',            value: stats?.borrowed      || 0, description: 'Currently in use',             icon: Archive,      tone: 'amber'  as const },
-    { label: 'Reserved',            value: stats?.reserved      || 0, description: 'Pending collection',           icon: Clock3,       tone: 'violet' as const },
-    { label: 'Maintenance',         value: stats?.maintenance   || 0, description: 'Requires attention',           icon: Wrench,       tone: 'red'    as const },
-    { label: 'Borrow Requests',     value: pendingReservations.length,description: 'Waiting for approval',         icon: CalendarClock,tone: 'amber'  as const },
-    { label: 'Overdue Items',       value: overdueBorrowings.length,  description: 'Past due date',                icon: Activity,     tone: 'red'    as const },
-    { label: 'Pending Maintenance', value: pendingMaintenance.length, description: 'Scheduled repairs',            icon: Wrench,       tone: 'teal'   as const },
+    { label: 'Total Assets',        value: stats?.total_assets  || 0, description: 'All registered assets',     icon: Boxes,        tone: 'blue'   as const },
+    { label: 'Available',           value: stats?.available     || 0, description: 'Ready for use',             icon: BadgeCheck,   tone: 'green'  as const },
+    { label: 'Borrowed',            value: stats?.borrowed      || 0, description: 'Currently in use',          icon: Archive,      tone: 'amber'  as const },
+    { label: 'Reserved',            value: stats?.reserved      || 0, description: 'Pending collection',        icon: Clock3,       tone: 'violet' as const },
+    { label: 'Maintenance',         value: stats?.maintenance   || 0, description: 'Requires attention',        icon: Wrench,       tone: 'red'    as const },
+    { label: 'Borrow Requests',     value: pendingReservations.length, description: 'Waiting for approval',     icon: CalendarClock,tone: 'amber'  as const },
+    { label: 'Overdue Items',       value: overdueBorrowings.length,   description: 'Past due date',            icon: Activity,     tone: 'red'    as const },
+    { label: 'Pending Maintenance', value: pendingMaintenance.length,  description: 'Scheduled repairs',        icon: Wrench,       tone: 'teal'   as const },
   ]
 
   const utilizationRate = stats?.total_assets
@@ -125,10 +139,8 @@ export function AdminDashboard() {
   const isHealthy = overdueBorrowings.length === 0 && pendingReservations.length < 5
 
   return (
-    /* space-y-6 = 24px between every section */
     <div className="space-y-6">
 
-      {/* ── Page header ── */}
       <PageHeader
         title="Admin Dashboard"
         subtitle="Full system overview and management controls."
@@ -139,24 +151,21 @@ export function AdminDashboard() {
         }
       />
 
-      {/* ── Alert ── */}
       {message && (
         <Alert tone={message.type} onClose={() => setMessage(null)}>
           {message.text}
         </Alert>
       )}
 
-      {/* ── Stat grid: 2 cols → 4 cols → 4 cols ── */}
-      {/*  Desktop: 4 per row  |  Tablet: 2  |  Mobile: 1  */}
+      {/* Stat grid: 1 → 2 → 4 cols */}
       <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => (
           <DashboardStatCard key={card.label} {...card} />
         ))}
       </div>
 
-      {/* ── Utilization + Health ── */}
+      {/* Utilization + Health */}
       <div className="grid gap-5 lg:grid-cols-2">
-        {/* Asset utilization rate */}
         <Card>
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -177,19 +186,13 @@ export function AdminDashboard() {
           </div>
         </Card>
 
-        {/* System health */}
         <Card>
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className={SECTION_TITLE}>System Health</p>
               <p className={SECTION_SUB}>Based on overdue items and pending borrow requests</p>
             </div>
-            <span
-              className={[
-                'inline-flex items-center gap-1.5 text-[18px] font-bold',
-                isHealthy ? 'text-[#2E7D32]' : 'text-[#B45309]',
-              ].join(' ')}
-            >
+            <span className={['inline-flex items-center gap-1.5 text-[18px] font-bold', isHealthy ? 'text-[#2E7D32]' : 'text-[#B45309]'].join(' ')}>
               <ShieldCheck className="h-5 w-5" />
               {isHealthy ? 'Healthy' : 'Attention Needed'}
             </span>
@@ -197,7 +200,7 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* ── Activity + Pending Reservations ── */}
+      {/* Activity + Pending Reservations */}
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           <div className="mb-4">
@@ -222,7 +225,7 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* ── Overdue + Pending Maintenance ── */}
+      {/* Overdue + Pending Maintenance */}
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           <div className="mb-4">
@@ -247,7 +250,7 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* ── Quick Actions ── */}
+      {/* Quick Actions */}
       <Card>
         <div className="mb-4">
           <p className={SECTION_TITLE}>Quick Actions</p>

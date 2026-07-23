@@ -13,6 +13,7 @@ import { borrowingService } from '@/services/borrowingService'
 import type { Reservation, Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
+import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
 const SECTION_TITLE = 'text-[16px] font-semibold text-[#1F2937]'
 const SECTION_SUB   = 'mt-0.5 text-[13px] text-[#6B7280]'
@@ -45,12 +46,21 @@ export function StaffDashboard() {
     }
   }
 
+  /* Initial load */
   useEffect(() => { void loadData() }, [])
+
+  /* Cross-component data refresh subscription */
+  useEffect(() => onDataChanged((scope) => {
+    if (affectsScope(scope, 'dashboard') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
+      void loadData()
+    }
+  }), [])
 
   const handleApproveReservation = async (id: number) => {
     try {
       await reservationService.approve(id)
       setMessage({ type: 'success', text: 'Borrow request approved successfully.' })
+      notifyDataChanged('all')
       await loadData()
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Unable to approve borrow request.' })
@@ -61,6 +71,7 @@ export function StaffDashboard() {
     try {
       await borrowingService.returnAsset(id)
       setMessage({ type: 'success', text: 'Item returned successfully.' })
+      notifyDataChanged('all')
       await loadData()
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to return item.' })
@@ -79,6 +90,7 @@ export function StaffDashboard() {
           : `Borrowing authorized for ${borrowing.asset_name ?? 'asset'} and marked as borrowed.`,
       })
       setQrCode('')
+      notifyDataChanged('all')
       await loadData()
     } catch (transactionError: unknown) {
       try {
@@ -104,9 +116,7 @@ export function StaffDashboard() {
     {
       key: 'actions', header: 'Actions',
       render: (r) => (
-        <Button size="sm" variant="success" onClick={() => handleApproveReservation(r.id)}>
-          Approve
-        </Button>
+        <Button size="sm" variant="success" onClick={() => handleApproveReservation(r.id)}>Approve</Button>
       ),
     },
   ]
@@ -119,9 +129,7 @@ export function StaffDashboard() {
     {
       key: 'actions', header: 'Actions',
       render: (r) => (
-        <Button size="sm" variant="primary" onClick={() => handleReturnBorrowing(r.id)}>
-          Return
-        </Button>
+        <Button size="sm" variant="primary" onClick={() => handleReturnBorrowing(r.id)}>Return</Button>
       ),
     },
   ]
@@ -138,32 +146,25 @@ export function StaffDashboard() {
     {
       key: 'actions', header: 'Actions',
       render: (r) => (
-        <Button size="sm" variant="danger" onClick={() => handleReturnBorrowing(r.id)}>
-          Return
-        </Button>
+        <Button size="sm" variant="danger" onClick={() => handleReturnBorrowing(r.id)}>Return</Button>
       ),
     },
   ]
 
   const statCards = [
-    { label: 'Borrow Requests',  value: pendingReservations.length,                            description: 'Waiting for approval',             icon: CalendarClock, tone: 'blue'  as const },
-    { label: 'Borrowed Items',   value: activeBorrowings.length,                               description: 'Currently borrowed items',          icon: HandCoins,     tone: 'green' as const },
-    { label: 'Overdue Items',    value: overdueBorrowings.length,                              description: 'Need immediate follow-up',          icon: AlertTriangle, tone: 'red'   as const },
-    { label: 'Ready to Process', value: pendingReservations.length + activeBorrowings.length,  description: 'Operations requiring attention',    icon: ClipboardCheck,tone: 'amber' as const },
+    { label: 'Borrow Requests',  value: pendingReservations.length,                           description: 'Waiting for approval',          icon: CalendarClock, tone: 'blue'  as const },
+    { label: 'Borrowed Items',   value: activeBorrowings.length,                              description: 'Currently borrowed items',       icon: HandCoins,     tone: 'green' as const },
+    { label: 'Overdue Items',    value: overdueBorrowings.length,                             description: 'Need immediate follow-up',       icon: AlertTriangle, tone: 'red'   as const },
+    { label: 'Ready to Process', value: pendingReservations.length + activeBorrowings.length, description: 'Operations requiring attention', icon: ClipboardCheck,tone: 'amber' as const },
   ]
 
   return (
     <div className="space-y-6">
 
-      <PageHeader
-        title="Staff Dashboard"
-        subtitle="Manage operational requests and asset handovers."
-      />
+      <PageHeader title="Staff Dashboard" subtitle="Manage operational requests and asset handovers." />
 
       {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
+        <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>
       )}
 
       {/* Stats grid — 1 → 2 → 4 cols */}
@@ -173,7 +174,7 @@ export function StaffDashboard() {
         ))}
       </div>
 
-      {/* QR Scanner card */}
+      {/* QR Scanner */}
       <Card>
         <div className="mb-4">
           <p className={SECTION_TITLE}>Quick QR Scanner</p>

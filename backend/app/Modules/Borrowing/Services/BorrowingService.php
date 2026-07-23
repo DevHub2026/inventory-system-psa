@@ -190,7 +190,7 @@ class BorrowingService
                     ->first();
 
                 if ($existingBorrowing?->status === 'BORROWED') {
-                    throw new \InvalidArgumentException('Borrowing is already marked as borrowed.');
+                    return $this->return($actor, $existingBorrowing);
                 }
 
                 if ($existingBorrowing?->status === 'RETURNED') {

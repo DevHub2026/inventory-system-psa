@@ -9,6 +9,7 @@ import { reservationStatusTone } from '@/utils/statusTone'
 import { isAdmin, isStaff } from '@/utils/roleHelpers'
 import { reservationStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
+import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
 export function ReservationPage() {
   const { user } = useAuth()
@@ -53,6 +54,7 @@ export function ReservationPage() {
       setCreateOpen(false)
       setForm({ assetIds: [], startDate: '', endDate: '', remarks: '' })
       setMessage({ type: 'success', text: 'Borrow request sent successfully.' })
+      notifyDataChanged('all')
       await loadReservations()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to send borrow request.' })
@@ -61,11 +63,18 @@ export function ReservationPage() {
 
   useEffect(() => { void loadReservations() }, [])
 
+  useEffect(() => onDataChanged((scope) => {
+    if (affectsScope(scope, 'reservations') || affectsScope(scope, 'borrowings')) {
+      void loadReservations()
+    }
+  }), [])
+
   const handleApprove = async (id: number) => {
     try {
       const res = await reservationService.approve(id)
       setReceipt({ type: 'Reservation', code: res.receipt_code ?? `PSA-RES-${res.id}`, payload: res.receipt_payload ?? `PSA-RES-${res.id}|${res.asset_numbers?.join(',') ?? res.asset_ids?.join(',')}|${res.user_id}`, employee: res.employee_name, assetName: res.asset_names?.join(', '), assetNumber: res.asset_numbers?.join(', '), timestamp: res.created_at, startDate: res.start_date, endDate: res.end_date, status: res.status, authorizedBy: res.authorized_by_name, authorizedAt: res.authorized_at, remarks: res.remarks })
       setMessage({ type: 'success', text: 'Borrow request approved successfully.' })
+      notifyDataChanged('all')
       await loadReservations()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to approve borrow request.' })

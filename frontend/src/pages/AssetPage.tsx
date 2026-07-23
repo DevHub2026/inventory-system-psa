@@ -16,6 +16,8 @@ import type { Asset, AssetStatus } from '@/types'
 import { assetStatusTone } from '@/utils/statusTone'
 import { isAdmin, isStaff } from '@/utils/roleHelpers'
 import { assetStatusLabel } from '@/utils/displayLabels'
+import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
+
 
 /* ── shared select / textarea style ── */
 const SELECT_CLS =
@@ -116,6 +118,15 @@ export function AssetPage() {
     const q = searchParams.get('search') ?? ''
     setSearch(q); void load(1, q)
   }, [searchParams])
+
+  /* Cross-component data refresh subscription */
+  useEffect(() => onDataChanged((scope) => {
+    if (affectsScope(scope, 'assets') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
+      void load(page)
+      if (viewAsset) void openView(viewAsset.id)
+      if (qrAsset)   void openQrLabel(qrAsset.id)
+    }
+  }), [page, search, status, viewAsset?.id, qrAsset?.id])
 
   const columns: Column<Asset>[] = useMemo(() => [
     { key: 'asset_number', header: 'Asset No.',  render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number}</span> },
@@ -234,7 +245,13 @@ export function AssetPage() {
         onCancel={() => { setReturnId(null); setReturnNotes('') }}
         onConfirm={() => {
           if (returnId === null) return
-          void assetService.returnAsset(returnId, returnNotes).then(() => { setReturnId(null); setReturnNotes(''); setMessage('Item returned successfully.'); void load(page) })
+          void assetService.returnAsset(returnId, returnNotes).then(() => {
+            setReturnId(null)
+            setReturnNotes('')
+            setMessage('Item returned successfully.')
+            notifyDataChanged('all')
+            void load(page)
+          })
         }}
       />
 
@@ -261,6 +278,7 @@ export function AssetPage() {
             setBorrowId(null); setBorrowNotes(''); setBorrowDueDays(undefined)
             setReceipt({ type: 'Borrowing', code: b.receipt_code ?? `PSA-BOR-${b.id}`, payload: b.receipt_payload ?? `PSA-BOR-${b.id}|${b.asset_number ?? b.asset_id}|${b.user_id}`, employee: b.employee_name, assetName: b.asset_name, assetNumber: b.asset_number, timestamp: b.created_at, startDate: b.borrow_date, endDate: b.due_date, status: b.status, authorizedBy: b.authorized_by_name, authorizedAt: b.authorized_at, remarks: b.remarks })
             setMessage('Item borrowed successfully. Your receipt is ready.')
+            notifyDataChanged('all')
             void load(page)
           })
         }}
@@ -291,17 +309,40 @@ export function AssetPage() {
         onCancel={() => { setReserveId(null); setReserveRemarks('') }}
         onConfirm={() => {
           if (reserveId === null) return
-          void reservationService.create({ asset_ids: [reserveId], start_date: reserveStartDate, end_date: reserveEndDate, remarks: reserveRemarks || undefined }).then((res) => {
-            setReserveId(null); setReserveRemarks('')
-            setReceipt({ type: 'Reservation', code: res.receipt_code ?? `PSA-RES-${res.id}`, payload: res.receipt_payload ?? `PSA-RES-${res.id}|${res.asset_numbers?.join(',') ?? res.asset_ids?.join(',')}|${res.user_id}`, employee: res.employee_name, assetName: res.asset_names?.join(', '), assetNumber: res.asset_numbers?.join(', '), timestamp: res.created_at, startDate: res.start_date, endDate: res.end_date, status: res.status, authorizedBy: res.authorized_by_name, authorizedAt: res.authorized_at, remarks: res.remarks })
-            setMessage('Borrow request sent successfully.')
-            void load(page)
-          })
+          void reservationService
+            .create({
+              asset_ids: [reserveId],
+              start_date: reserveStartDate,
+              end_date: reserveEndDate,
+              remarks: reserveRemarks || undefined,
+            })
+            .then((res) => {
+              setReserveId(null)
+              setReserveRemarks('')
+              setReceipt({
+                type: 'Reservation',
+                code: res.receipt_code ?? `PSA-RES-${res.id}`,
+                payload: res.receipt_payload ?? `PSA-RES-${res.id}|${res.asset_numbers?.join(',') ?? res.asset_ids?.join(',')}|${res.user_id}`,
+                employee: res.employee_name,
+                assetName: res.asset_names?.join(', '),
+                assetNumber: res.asset_numbers?.join(', '),
+                timestamp: res.created_at,
+                startDate: res.start_date,
+                endDate: res.end_date,
+                status: res.status,
+                authorizedBy: res.authorized_by_name,
+                authorizedAt: res.authorized_at,
+                remarks: res.remarks,
+              })
+              setMessage('Borrow request sent successfully. Present the receipt QR/reference to staff for approval.')
+              notifyDataChanged('all')
+              void load(page)
+            })
         }}
       />
 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
-      <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} />
+      <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onCompleted={() => void load(page)} />
 
       {/* ── View Asset ── */}
       <Modal open={viewAsset !== null} title="Asset Details" onClose={() => setViewAsset(null)}>

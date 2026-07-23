@@ -6,6 +6,7 @@ import type { Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
+import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
 export function BorrowingPage() {
   const [rows,    setRows]    = useState<Borrowing[]>([])
@@ -25,11 +26,18 @@ export function BorrowingPage() {
 
   useEffect(() => { void loadBorrowings() }, [])
 
+  useEffect(() => onDataChanged((scope) => {
+    if (affectsScope(scope, 'borrowings')) {
+      void loadBorrowings()
+    }
+  }), [])
+
   const handleReturn = async (id: number) => {
     if (!confirm('Are you sure you want to return this item?')) return
     try {
       await borrowingService.returnAsset(id)
       setMessage({ type: 'success', text: 'Item returned successfully.' })
+      notifyDataChanged('all')
       await loadBorrowings()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to return item.' })
