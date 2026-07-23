@@ -17,6 +17,7 @@ class Borrowing extends Model
         'asset_id',
         'reservation_id',
         'borrow_date',
+        'borrowed_at',
         'due_date',
         'status',
         'remarks',
@@ -29,6 +30,7 @@ class Borrowing extends Model
     {
         return [
             'borrow_date' => 'date',
+            'borrowed_at' => 'datetime',
             'due_date' => 'date',
             'authorized_at' => 'datetime',
             'returned_at' => 'datetime',
