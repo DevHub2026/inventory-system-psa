@@ -11,62 +11,30 @@ interface DashboardStatCardProps {
   tone?: MetricTone
 }
 
-/* Per spec:
-   - Icon container: 48×48 px, border-radius 12px, centered icon
-   - Statistic number: 40px bold
-   - Card title: 14px medium
-   - Description: 15px regular
-   - Border-radius: 16px
-   - Padding: 20px
-   - Shadow: 0 4px 12px rgba(0,0,0,.08)
-   - Layout: title top-left · icon top-right · number middle · description bottom
-*/
-const toneConfig: Record<
-  MetricTone,
-  { border: string; iconWrap: string; iconColor: string; bar: string; numColor: string }
-> = {
-  blue: {
-    border:    'border-blue-100',
-    iconWrap:  'bg-[#EEF4FF]',
-    iconColor: 'text-[#0D47A1]',
-    bar:       'bg-[#0D47A1]',
-    numColor:  'text-[#0D47A1]',
-  },
-  green: {
-    border:    'border-emerald-100',
-    iconWrap:  'bg-[#F0FDF4]',
-    iconColor: 'text-[#2E7D32]',
-    bar:       'bg-[#2E7D32]',
-    numColor:  'text-[#2E7D32]',
-  },
-  amber: {
-    border:    'border-amber-100',
-    iconWrap:  'bg-[#FFFBEB]',
-    iconColor: 'text-[#B45309]',
-    bar:       'bg-[#F59E0B]',
-    numColor:  'text-[#B45309]',
-  },
-  red: {
-    border:    'border-red-100',
-    iconWrap:  'bg-[#FEF2F2]',
-    iconColor: 'text-[#D32F2F]',
-    bar:       'bg-[#D32F2F]',
-    numColor:  'text-[#D32F2F]',
-  },
-  violet: {
-    border:    'border-violet-100',
-    iconWrap:  'bg-[#F5F3FF]',
-    iconColor: 'text-[#7C3AED]',
-    bar:       'bg-[#7C3AED]',
-    numColor:  'text-[#7C3AED]',
-  },
-  teal: {
-    border:    'border-teal-100',
-    iconWrap:  'bg-[#F0FDFA]',
-    iconColor: 'text-[#0F766E]',
-    bar:       'bg-[#0F766E]',
-    numColor:  'text-[#0F766E]',
-  },
+/*
+ * Design decisions:
+ *   - Left accent border (4px) carries the tone colour — draws the eye
+ *     down the row of cards without overwhelming the card surface.
+ *   - Icon sits in a very light tinted square, top-right.
+ *   - Value: 32px bold — large enough to scan instantly, not so large it
+ *     breaks on smaller screens.
+ *   - Card is intentionally compact (min-h ~100px) — 8 cards in 4-col grid
+ *     should never feel oversized.
+ *   - No bottom-bar gradient — cleaner, more institutional.
+ */
+const cfg: Record<MetricTone, {
+  border: string
+  accent: string
+  iconBg: string
+  iconColor: string
+  valueColor: string
+}> = {
+  blue:   { border: 'border-slate-200', accent: 'bg-[#1565C0]',  iconBg: 'bg-blue-50',    iconColor: 'text-[#1565C0]',  valueColor: 'text-[#1565C0]' },
+  green:  { border: 'border-slate-200', accent: 'bg-[#2E7D32]',  iconBg: 'bg-emerald-50', iconColor: 'text-[#2E7D32]',  valueColor: 'text-[#2E7D32]' },
+  amber:  { border: 'border-slate-200', accent: 'bg-[#D97706]',  iconBg: 'bg-amber-50',   iconColor: 'text-[#D97706]',  valueColor: 'text-[#92400E]' },
+  red:    { border: 'border-slate-200', accent: 'bg-[#C62828]',  iconBg: 'bg-red-50',     iconColor: 'text-[#C62828]',  valueColor: 'text-[#C62828]' },
+  violet: { border: 'border-slate-200', accent: 'bg-[#6D28D9]',  iconBg: 'bg-violet-50',  iconColor: 'text-[#6D28D9]',  valueColor: 'text-[#6D28D9]' },
+  teal:   { border: 'border-slate-200', accent: 'bg-[#0F766E]',  iconBg: 'bg-teal-50',    iconColor: 'text-[#0F766E]',  valueColor: 'text-[#0F766E]' },
 }
 
 export function DashboardStatCard({
@@ -76,57 +44,47 @@ export function DashboardStatCard({
   icon: Icon,
   tone = 'blue',
 }: DashboardStatCardProps) {
-  const cfg = toneConfig[tone]
+  const c = cfg[tone]
 
   return (
     <article
       className={cn(
-        /* shape */
-        'dashboard-stat-card relative overflow-hidden rounded-2xl border bg-white',
-        /* spacing */
-        'p-5',
-        /* shadow */
-        'shadow-[0_4px_12px_rgba(0,0,0,.08)]',
-        /* hover lift */
-        'transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,0,0,.12)]',
-        cfg.border,
+        'relative flex flex-col justify-between overflow-hidden',
+        'rounded-xl border bg-white',
+        'px-4 py-4',
+        /* subtle shadow — institutional, not decorative */
+        'shadow-[0_1px_3px_rgba(0,0,0,.07),0_1px_2px_rgba(0,0,0,.05)]',
+        'transition-shadow duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,.09)]',
+        c.border,
       )}
     >
-      {/* ── Row 1: title + icon ── */}
-      <div className="flex items-start justify-between gap-3">
-        {/* Card title — 14px medium */}
-        <p className="text-[14px] font-medium leading-snug text-[#6B7280]">{label}</p>
+      {/* Left accent bar */}
+      <span
+        className={cn('absolute inset-y-0 left-0 w-[3px] rounded-r-full', c.accent)}
+        aria-hidden="true"
+      />
 
-        {/* Icon container — 48×48, radius 12 */}
+      {/* Top row: label + icon */}
+      <div className="flex items-start justify-between gap-2 pl-1">
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
         <span
           className={cn(
-            'grid h-12 w-12 shrink-0 place-items-center rounded-[12px]',
-            cfg.iconWrap,
+            'grid h-9 w-9 shrink-0 place-items-center rounded-lg',
+            c.iconBg,
           )}
           aria-hidden="true"
         >
-          <Icon className={cn('h-5 w-5', cfg.iconColor)} />
+          <Icon className={cn('h-4.5 w-4.5', c.iconColor)} strokeWidth={2} />
         </span>
       </div>
 
-      {/* ── Row 2: statistic number — 40px bold ── */}
-      <p
-        className={cn(
-          'mt-3 text-[40px] font-bold leading-none tracking-tight',
-          cfg.numColor,
-        )}
-      >
+      {/* Value */}
+      <p className={cn('mt-2 pl-1 text-[28px] font-bold leading-none tracking-tight', c.valueColor)}>
         {value}
       </p>
 
-      {/* ── Row 3: description — 15px regular ── */}
-      <p className="mt-2 text-[15px] leading-snug text-[#9CA3AF]">{description}</p>
-
-      {/* Bottom accent bar */}
-      <span
-        className={cn('absolute bottom-0 left-0 h-[3px] w-full', cfg.bar)}
-        aria-hidden="true"
-      />
+      {/* Description */}
+      <p className="mt-1.5 pl-1 text-[12px] leading-snug text-slate-400">{description}</p>
     </article>
   )
 }

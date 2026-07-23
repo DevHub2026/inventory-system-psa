@@ -100,10 +100,13 @@ export interface Reservation {
 export interface Borrowing {
   id: number
   user_id?: number
+  employee_id?: string | null
   asset_id?: number
   asset_name?: string
   asset_number?: string
+  asset_code?: string | null
   employee_name?: string
+  quantity?: number
   status: BorrowingStatus
   borrow_date?: string
   due_date?: string

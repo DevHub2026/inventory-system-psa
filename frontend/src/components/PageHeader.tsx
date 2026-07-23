@@ -4,44 +4,38 @@ import { cn } from '@/utils/cn'
 interface PageHeaderProps {
   title: string
   subtitle?: string
+  /** Optional breadcrumb / context line rendered above the title */
+  breadcrumb?: string
   actions?: ReactNode
   className?: string
 }
 
 /**
- * Consistent page-level header used by every page.
+ * Slim, institutional page header.
  *
- * Left:  PSA tri-colour vertical accent bar  +  title (32px bold)  +  subtitle (15px)
- * Right: action buttons, always right-aligned, vertically centered with the title block.
+ * Layout:
+ *   Left  — breadcrumb (small muted line) / title (semibold, not oversized) / subtitle
+ *   Right — action buttons
+ *
+ * Deliberately compact: the header should orient the user, not dominate the viewport.
  */
-export function PageHeader({ title, subtitle, actions, className }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, breadcrumb, actions, className }: PageHeaderProps) {
   return (
-    <div
-      className={cn(
-        'flex flex-wrap items-center justify-between gap-4',
-        className,
-      )}
-    >
-      {/* ── Left: accent + text ── */}
-      <div className="flex items-center gap-3">
-        {/* PSA tri-colour vertical accent */}
-        <div className="flex flex-col gap-[3px]" aria-hidden="true">
-          <span className="h-5 w-[3px] rounded-full bg-[#0D47A1]" />
-          <span className="h-2.5 w-[3px] rounded-full bg-[#FFD400]" />
-          <span className="h-1.5 w-[3px] rounded-full bg-[#E31C23]" />
-        </div>
+    <div className={cn('flex flex-wrap items-start justify-between gap-3', className)}>
 
-        <div>
-          {/* Page title — 32px bold per spec */}
-          <h1 className="text-[28px] font-bold leading-tight tracking-tight text-[#1F2937] sm:text-[32px]">
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="mt-0.5 text-[15px] leading-snug text-[#6B7280]">
-              {subtitle}
-            </p>
-          )}
-        </div>
+      {/* ── Left ── */}
+      <div>
+        {breadcrumb && (
+          <p className="mb-0.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+            {breadcrumb}
+          </p>
+        )}
+        <h1 className="text-[20px] font-bold leading-tight tracking-tight text-slate-800 sm:text-[22px]">
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="mt-0.5 text-[13px] text-slate-500">{subtitle}</p>
+        )}
       </div>
 
       {/* ── Right: actions ── */}

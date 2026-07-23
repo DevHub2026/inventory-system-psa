@@ -18,15 +18,22 @@ class BorrowingController extends Controller
 
     private function transform(Borrowing $borrowing): array
     {
+        $isReturned = $borrowing->status === 'RETURNED';
+        $receiptPrefix = $isReturned ? 'RT' : 'BR';
+        
         return [
             'id' => $borrowing->id,
             'user_id' => $borrowing->user_id,
             'employee_name' => $borrowing->user?->full_name ?: $borrowing->user?->email,
+            'employee_id' => $borrowing->user?->employee_number,
             'asset_id' => $borrowing->asset_id,
             'asset_name' => $borrowing->asset?->name,
             'asset_number' => $borrowing->asset?->asset_number,
+            'asset_code' => $borrowing->asset?->asset_number,
+            'quantity' => 1,
             'status' => $borrowing->status,
             'borrow_date' => $borrowing->borrow_date?->format('Y-m-d'),
+            'borrowed_at' => $borrowing->borrowed_at?->format('Y-m-d H:i:s'),
             'due_date' => $borrowing->due_date?->format('Y-m-d'),
             'returned_at' => $borrowing->returned_at?->format('Y-m-d H:i:s'),
             'remarks' => $borrowing->remarks,
@@ -34,8 +41,8 @@ class BorrowingController extends Controller
             'authorized_by' => $borrowing->authorized_by,
             'authorized_by_name' => $borrowing->authorizer?->full_name ?: $borrowing->authorizer?->email,
             'authorized_at' => $borrowing->authorized_at?->format('Y-m-d H:i:s'),
-            'receipt_code' => 'PSA-BOR-'.$borrowing->id,
-            'receipt_payload' => 'PSA-BOR-'.$borrowing->id.'|'.$borrowing->asset?->asset_number.'|'.$borrowing->user_id,
+            'receipt_code' => $receiptPrefix.'-'.str_pad((string) $borrowing->id, 5, '0', STR_PAD_LEFT),
+            'receipt_payload' => $receiptPrefix.'-'.str_pad((string) $borrowing->id, 5, '0', STR_PAD_LEFT).'|'.$borrowing->asset?->asset_number.'|'.$borrowing->user_id,
         ];
     }
 

@@ -61,6 +61,7 @@ class BorrowingService
                 'asset_id' => $asset->id,
                 'reservation_id' => $reservation->id,
                 'borrow_date' => $data['borrow_date'],
+                'borrowed_at' => now(),
                 'due_date' => $reservation->end_date?->toDateString() ?? $data['due_date'],
                 'status' => 'BORROWED',
                 'remarks' => $data['remarks'] ?? null,
@@ -152,6 +153,7 @@ class BorrowingService
         return $this->create($actor, [
             'asset_id' => $asset->id,
             'borrow_date' => now()->toDateString(),
+            'borrowed_at' => now(),
             'due_date' => now()->addDays(7)->toDateString(),
         ]);
     }
@@ -203,6 +205,7 @@ class BorrowingService
             return $this->create($actor, [
                 'asset_id' => $asset->id,
                 'borrow_date' => now()->toDateString(),
+                'borrowed_at' => now(),
                 'due_date' => $reservation->end_date?->toDateString() ?? now()->addDays(7)->toDateString(),
             ]);
         });
