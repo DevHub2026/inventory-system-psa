@@ -16,18 +16,30 @@ interface InputProps {
 }
 
 export default function Input({
-  id, name, type = 'text', placeholder, icon, rightIcon, value, autoComplete,
-  disabled = false, required = false, onChange, onRightIconClick,
+  id, name, type = 'text', placeholder, icon, rightIcon,
+  value, autoComplete, disabled = false, required = false,
+  onChange, onRightIconClick,
 }: InputProps) {
   return (
     <div className="auth-input-wrapper">
-      {icon ? <div className="auth-input-icon auth-input-icon--left">{icon}</div> : null}
+      {icon && (
+        <span className="auth-input-icon auth-input-icon--left" aria-hidden="true">
+          {icon}
+        </span>
+      )}
       <input
-        id={id} name={name} type={type} value={value} placeholder={placeholder}
-        autoComplete={autoComplete} disabled={disabled} required={required} onChange={onChange}
+        id={id}
+        name={name}
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        disabled={disabled}
+        required={required}
+        onChange={onChange}
         className="auth-input"
       />
-      {rightIcon ? (
+      {rightIcon && (
         <button
           type="button"
           aria-label={type === 'password' ? 'Show password' : 'Hide password'}
@@ -36,7 +48,7 @@ export default function Input({
         >
           {rightIcon}
         </button>
-      ) : null}
+      )}
     </div>
   )
 }

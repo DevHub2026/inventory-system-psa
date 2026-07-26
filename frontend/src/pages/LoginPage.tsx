@@ -1,11 +1,40 @@
 import logo from '../assets/logo.png'
 import LoginForm from '../components/LoginForm'
 
-function DotGrid({ className }: { className: string }) {
+/* ── Floating SVG particles for the brand panel ── */
+function Particles() {
+  const dots = [
+    { cx: '12%', cy: '18%', r: 2.5, op: 0.35, delay: '0s' },
+    { cx: '28%', cy: '72%', r: 1.8, op: 0.25, delay: '0.8s' },
+    { cx: '78%', cy: '14%', r: 3.2, op: 0.20, delay: '1.4s' },
+    { cx: '68%', cy: '80%', r: 2.0, op: 0.30, delay: '0.4s' },
+    { cx: '52%', cy: '50%', r: 1.4, op: 0.18, delay: '2s' },
+    { cx: '88%', cy: '44%', r: 2.8, op: 0.22, delay: '1.1s' },
+    { cx: '40%', cy: '28%', r: 1.6, op: 0.28, delay: '1.7s' },
+    { cx: '18%', cy: '58%', r: 2.2, op: 0.20, delay: '0.6s' },
+    { cx: '62%', cy: '36%', r: 1.2, op: 0.15, delay: '2.3s' },
+    { cx: '84%', cy: '68%', r: 2.4, op: 0.25, delay: '0.2s' },
+  ]
   return (
-    <div className={`auth-dot-grid ${className}`} aria-hidden="true">
-      {Array.from({ length: 20 }).map((_, i) => <span key={i} />)}
-    </div>
+    <svg
+      className="auth-particles"
+      aria-hidden="true"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      {dots.map((d, i) => (
+        <circle
+          key={i}
+          cx={d.cx}
+          cy={d.cy}
+          r={d.r}
+          fill="white"
+          opacity={d.op}
+          style={{ animationDelay: d.delay }}
+          className="auth-particle"
+        />
+      ))}
+    </svg>
   )
 }
 
@@ -13,67 +42,136 @@ export default function LoginPage() {
   return (
     <main className="auth-page">
 
-      {/* ── Left: PSA blue branding panel ───────────────── */}
+      {/* ══════════════════════════════════════
+          LEFT — PSA Branding Panel
+          ══════════════════════════════════════ */}
       <section className="auth-brand-panel" aria-label="Philippine Statistics Authority">
-        <DotGrid className="auth-dot-grid--brand" />
-        <div className="auth-brand-glow" aria-hidden="true" />
 
-        <div className="auth-brand-content">
-          <img
-            src={logo}
-            alt="Philippine Statistics Authority"
-            className="auth-brand-logo"
+        {/* Animated particle field */}
+        <Particles />
+
+        {/* Large background rings — removed for cleaner look */}
+
+        {/* Bottom wave */}
+        <svg
+          className="auth-wave"
+          aria-hidden="true"
+          viewBox="0 0 1440 120"
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M0,60 C360,120 1080,0 1440,60 L1440,120 L0,120 Z"
+            fill="rgba(255,255,255,0.04)"
           />
+          <path
+            d="M0,80 C480,20 960,100 1440,40 L1440,120 L0,120 Z"
+            fill="rgba(255,255,255,0.03)"
+          />
+        </svg>
+
+        {/* Brand content */}
+        <div className="auth-brand-content">
+
+          {/* Logo — clean, no bubble rings */}
+          <div className="auth-logo-stack">
+            <div className="auth-logo-ring">
+              <img src={logo} alt="PSA seal" className="auth-brand-logo" />
+            </div>
+          </div>
+
+          {/* Agency name */}
           <h1 className="auth-brand-title">
             <span>Philippine</span>
             <span>Statistics</span>
             <span>Authority</span>
           </h1>
-          <div className="auth-brand-bars" aria-hidden="true">
-            <span /><span /><span />
+
+          {/* Tri-colour rule */}
+          <div className="auth-tricolor" aria-hidden="true">
+            <span className="tc-blue" />
+            <span className="tc-yellow" />
+            <span className="tc-red" />
           </div>
+
           <p className="auth-brand-tagline">
-            Solid&nbsp;<b>•</b>&nbsp;Responsive&nbsp;<b>•</b>&nbsp;World-class
+            Solid&ensp;
+            <span className="tc-dot tc-dot--blue" aria-hidden="true">●</span>
+            &ensp;Responsive&ensp;
+            <span className="tc-dot tc-dot--yellow" aria-hidden="true">●</span>
+            &ensp;World-class
           </p>
+
+          {/* System label pill */}
+          <div className="auth-system-pill">
+            <span className="auth-system-pill-dot" aria-hidden="true" />
+            Inventory Management System
+          </div>
+
+          {/* Region badge */}
+          <div className="auth-region-badge">Region XII</div>
+
         </div>
       </section>
 
-      {/* ── Right: login panel ──────────────────────────── */}
+      {/* ══════════════════════════════════════
+          RIGHT — Login Panel
+          ══════════════════════════════════════ */}
       <section className="auth-login-panel" aria-labelledby="login-heading">
 
-        {/* Corner dot grids */}
-        <DotGrid className="auth-dot-grid--top" />
-        <DotGrid className="auth-dot-grid--bottom" />
+        {/* Background mesh */}
+        <div className="auth-mesh" aria-hidden="true" />
 
-        {/* PSA color accent — top-left corner strip */}
-        <div className="auth-corner-accent auth-corner-accent--tl" aria-hidden="true">
-          <span /><span /><span />
-        </div>
+        {/* Decorative blobs */}
+        <div className="auth-blob auth-blob--1" aria-hidden="true" />
+        <div className="auth-blob auth-blob--2" aria-hidden="true" />
 
-        {/* PSA color accent — bottom-right corner strip */}
-        <div className="auth-corner-accent auth-corner-accent--br" aria-hidden="true">
-          <span /><span /><span />
-        </div>
-
-        {/* Floating color orbs — subtle background depth */}
-        <div className="auth-orb auth-orb--blue"   aria-hidden="true" />
-        <div className="auth-orb auth-orb--yellow" aria-hidden="true" />
-
+        {/* Login card */}
         <div className="auth-card">
-          <img src={logo} alt="" className="auth-card-logo" aria-hidden="true" />
-          <div className="auth-card-header">
-            <h2 id="login-heading">Philippine Statistics Authority</h2>
-            <div className="auth-subtitle">
-              <span />
-              <p>Inventory&nbsp;Management&nbsp;System</p>
-              <span />
-            </div>
+
+          {/* PSA tri-colour top strip */}
+          <div className="auth-card-strip" aria-hidden="true">
+            <span /><span /><span />
           </div>
+
+          {/* Header */}
+          <div className="auth-card-header">
+            <img src={logo} alt="" className="auth-card-logo" aria-hidden="true" />
+            <h2 id="login-heading" className="auth-card-title">
+              Philippine Statistics Authority
+            </h2>
+            <p className="auth-card-sub">
+              Region XII · Inventory System
+            </p>
+          </div>
+          {/* Divider */}
+          <div className="auth-card-divider" aria-hidden="true">
+            <span />
+            <span className="auth-card-divider-label">Sign in to continue</span>
+            <span />
+          </div>
+
           <LoginForm />
+
+          {/* Security note */}
+          <p className="auth-card-security">
+            <svg
+              width="12" height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            Secure connection · PSA official portal
+          </p>
+
         </div>
 
         <footer className="auth-footer">
-          © 2028 Philippine Statistics Authority. All rights reserved.
+          © 2025 Philippine Statistics Authority. All rights reserved.
         </footer>
       </section>
 

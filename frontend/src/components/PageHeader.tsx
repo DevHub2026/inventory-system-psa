@@ -1,46 +1,35 @@
 import type { ReactNode } from 'react'
-import { cn } from '@/utils/cn'
 
 interface PageHeaderProps {
   title: string
   subtitle?: string
-  /** Optional breadcrumb / context line rendered above the title */
   breadcrumb?: string
   actions?: ReactNode
   className?: string
 }
 
-/**
- * Slim, institutional page header.
- *
- * Layout:
- *   Left  — breadcrumb (small muted line) / title (semibold, not oversized) / subtitle
- *   Right — action buttons
- *
- * Deliberately compact: the header should orient the user, not dominate the viewport.
- */
-export function PageHeader({ title, subtitle, breadcrumb, actions, className }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, breadcrumb, actions }: PageHeaderProps) {
   return (
-    <div className={cn('flex flex-wrap items-start justify-between gap-3', className)}>
-
-      {/* ── Left ── */}
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
       <div>
         {breadcrumb && (
-          <p className="mb-0.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: '#94a3b8', marginBottom: 4 }}>
             {breadcrumb}
-          </p>
+          </div>
         )}
-        <h1 className="text-[20px] font-bold leading-tight tracking-tight text-slate-800 sm:text-[22px]">
+        <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.02em', color: '#1e293b', margin: 0 }}>
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-0.5 text-[13px] text-slate-500">{subtitle}</p>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 6, lineHeight: 1.5 }}>
+            {subtitle}
+          </div>
         )}
       </div>
-
-      {/* ── Right: actions ── */}
       {actions && (
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, paddingTop: 2 }}>
+          {actions}
+        </div>
       )}
     </div>
   )

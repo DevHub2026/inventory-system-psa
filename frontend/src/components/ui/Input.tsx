@@ -12,51 +12,47 @@ export function Input({ label, error, helperText, className, id, ...props }: Inp
 
   return (
     <div className="w-full">
-      {/* Label */}
+      {/* Label — inline style beats any global p/label colour rule */}
       {label && (
         <label
           htmlFor={inputId}
-          className="mb-1.5 block text-[13px] font-medium text-[#1F2937]"
+          style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: '#334155', lineHeight: 1.4 }}
         >
           {label}
         </label>
       )}
 
-      {/* Input field — h-11 = 44px */}
+      {/* Input field */}
       <input
         id={inputId}
         className={cn(
-          // layout
           'block w-full h-11 px-3.5',
-          // shape
-          'rounded-[10px] border border-[#E5E7EB]',
-          // surface
-          'bg-white text-[14px] text-[#1F2937]',
-          // placeholder
-          'placeholder:text-[#9CA3AF]',
-          // shadow
-          'shadow-[0_1px_2px_rgba(0,0,0,.05)]',
-          // transitions
-          'transition-colors duration-200',
-          // focus
-          'focus:border-[#0D47A1] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/15',
-          // disabled
-          'disabled:cursor-not-allowed disabled:bg-[#F9FAFB] disabled:text-[#9CA3AF]',
-          // read-only
-          'read-only:bg-[#F9FAFB] read-only:text-[#6B7280]',
-          // error state
-          error && 'border-[#D32F2F] focus:ring-[#D32F2F]/15',
+          'rounded-[10px] border border-[#E2E8F0]',
+          'bg-white text-[14px] text-[#1e293b]',
+          'placeholder:text-[#94a3b8]',
+          'shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
+          'transition-colors duration-150',
+          'focus:border-[#0B3D91] focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/15',
+          'disabled:cursor-not-allowed disabled:bg-[#F8FAFC] disabled:text-[#94a3b8]',
+          'read-only:bg-[#F8FAFC] read-only:text-[#64748b]',
+          error && 'border-[#C62828] focus:ring-[#C62828]/15',
           className,
         )}
         {...props}
       />
 
-      {/* Helper / error text */}
+      {/* Helper text */}
       {helperText && !error && (
-        <p className="mt-1.5 text-[13px] text-[#6B7280]">{helperText}</p>
+        <div style={{ marginTop: 5, fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>
+          {helperText}
+        </div>
       )}
+
+      {/* Error text */}
       {error && (
-        <p className="mt-1.5 text-[13px] font-medium text-[#D32F2F]">{error}</p>
+        <div style={{ marginTop: 5, fontSize: 12, fontWeight: 500, color: '#C62828', lineHeight: 1.5 }}>
+          {error}
+        </div>
       )}
     </div>
   )

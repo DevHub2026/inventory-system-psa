@@ -177,53 +177,125 @@ export function InventoryPage() {
       </Card>
 
       {/* ── Add / Edit ── */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingItem ? 'Edit Item' : 'Add Item'}>
-        <div className="space-y-4">
-          <Input label="Item Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-          <Input label="Item Code" helperText="Use the existing stock keeping code if available." value={formData.sku || ''} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} />
-          <div className="grid gap-3 md:grid-cols-2">
-            <Input label="Available Quantity" type="number" value={formData.quantity.toString()} disabled={Boolean(editingItem)} helperText={editingItem ? 'Use Adjust to update stock and record a reason.' : undefined} onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })} />
-            <Input label="Unit" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} />
-          </div>
-          <Input label="Low Stock Alert" helperText="Show a warning when available quantity reaches this number." type="number" value={formData.reorder_level?.toString() || '0'} onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })} />
-          <label className="flex items-center gap-2 text-[14px] text-[#374151]">
-            <input type="checkbox" checked={Boolean(formData.track_as_asset)} disabled={Boolean(editingItem?.asset_id)} onChange={(e) => setFormData({ ...formData, track_as_asset: e.target.checked })} className="h-4 w-4 accent-[#0D47A1]" />
-            Also show this item in Assets
-          </label>
-          <div className="flex justify-end gap-2 pt-1">
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingItem ? 'Edit Item' : 'Add Item'}
+        footer={
+          <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={saving}>{saving ? 'Saving…' : editingItem ? 'Save Changes' : 'Add Item'}</Button>
+            <Button onClick={handleSubmit} disabled={saving}>
+              {saving ? 'Saving…' : editingItem ? 'Save Changes' : 'Add Item'}
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <Input
+            label="Item Name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="e.g. Bond Paper A4"
+          />
+          <Input
+            label="Item Code"
+            helperText="Use the existing stock keeping code if available."
+            value={formData.sku || ''}
+            onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+            placeholder="e.g. SKU-001"
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Input
+              label="Available Quantity"
+              type="number"
+              value={formData.quantity.toString()}
+              disabled={Boolean(editingItem)}
+              helperText={editingItem ? 'Use Adjust to update stock.' : undefined}
+              onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
+            />
+            <Input
+              label="Unit"
+              value={formData.unit}
+              onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+              placeholder="e.g. reams, pcs"
+            />
           </div>
+          <Input
+            label="Low Stock Alert"
+            helperText="Show a warning when available quantity reaches this number."
+            type="number"
+            value={formData.reorder_level?.toString() || '0'}
+            onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })}
+          />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={Boolean(formData.track_as_asset)}
+              disabled={Boolean(editingItem?.asset_id)}
+              onChange={(e) => setFormData({ ...formData, track_as_asset: e.target.checked })}
+              style={{ width: 16, height: 16, accentColor: '#0B3D91', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: 14, color: '#334155', lineHeight: 1.4 }}>
+              Also show this item in Assets
+            </span>
+          </label>
         </div>
       </Modal>
 
       {/* ── Stock In / Out ── */}
-      <Modal open={stockModalOpen} onClose={() => setStockModalOpen(false)} title={`${stockType === 'in' ? 'Add Stock' : 'Remove Stock'} — ${stockItem?.name}`}>
-        <div className="space-y-4">
+      <Modal
+        open={stockModalOpen}
+        onClose={() => setStockModalOpen(false)}
+        title={`${stockType === 'in' ? 'Add Stock' : 'Remove Stock'} — ${stockItem?.name}`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setStockModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleStockSubmit} disabled={saving}>
+              {saving ? 'Processing…' : stockType === 'in' ? 'Add Stock' : 'Remove Stock'}
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <Input label="Quantity" type="number" min={1} value={stockQty.toString()} onChange={(e) => setStockQty(parseInt(e.target.value) || 1)} />
           <Input label="Reason" value={stockReason} onChange={(e) => setStockReason(e.target.value)} placeholder={stockType === 'in' ? 'New supplies received' : 'Office use'} />
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="secondary" onClick={() => setStockModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleStockSubmit} disabled={saving}>{saving ? 'Processing…' : stockType === 'in' ? 'Add Stock' : 'Remove Stock'}</Button>
-          </div>
         </div>
       </Modal>
 
       {/* ── Adjust Quantity ── */}
-      <Modal open={adjustItem !== null} onClose={() => setAdjustItem(null)} title={`Correct Stock Quantity — ${adjustItem?.name}`}>
+      <Modal
+        open={adjustItem !== null}
+        onClose={() => setAdjustItem(null)}
+        title={`Correct Stock Quantity — ${adjustItem?.name}`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setAdjustItem(null)}>Cancel</Button>
+            <Button onClick={() => void handleAdjustSubmit()} disabled={saving}>
+              {saving ? 'Saving…' : 'Save Correction'}
+            </Button>
+          </>
+        }
+      >
         {adjustItem && (
-          <div className="space-y-4">
-            <div className="grid gap-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4 text-[14px] md:grid-cols-3">
-              <div><div className="text-[#6B7280]">Current</div><div className="font-semibold text-[#1F2937]">{adjustItem.quantity}</div></div>
-              <div><div className="text-[#6B7280]">New</div><div className="font-semibold text-[#1F2937]">{adjustQty}</div></div>
-              <div><div className="text-[#6B7280]">Difference</div><div className={`font-semibold ${adjustQty - adjustItem.quantity < 0 ? 'text-[#D32F2F]' : 'text-[#2E7D32]'}`}>{adjustQty - adjustItem.quantity > 0 ? '+' : ''}{adjustQty - adjustItem.quantity}</div></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', padding: '14px 16px' }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Current</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{adjustItem.quantity}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>New</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{adjustQty}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Difference</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: adjustQty - adjustItem.quantity < 0 ? '#C62828' : '#2E7D32' }}>
+                  {adjustQty - adjustItem.quantity > 0 ? '+' : ''}{adjustQty - adjustItem.quantity}
+                </div>
+              </div>
             </div>
             <Input label="Corrected Quantity" type="number" min={0} value={adjustQty.toString()} onChange={(e) => setAdjustQty(parseInt(e.target.value) || 0)} />
             <Input label="Reason" value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="Damaged, lost, expired, physical count correction…" />
-            <div className="flex justify-end gap-2 pt-1">
-              <Button variant="secondary" onClick={() => setAdjustItem(null)}>Cancel</Button>
-              <Button onClick={() => void handleAdjustSubmit()} disabled={saving}>{saving ? 'Saving…' : 'Save Correction'}</Button>
-            </div>
           </div>
         )}
       </Modal>

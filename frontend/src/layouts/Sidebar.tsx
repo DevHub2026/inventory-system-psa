@@ -14,22 +14,13 @@ import {
   Wrench,
   X,
 } from 'lucide-react'
-import { cn } from '@/utils/cn'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdmin, isStaff, isEmployee } from '@/utils/roleHelpers'
 import { displayName } from '@/types'
 import logo from '@/assets/logo.png'
 
-/*
- * Sidebar width:  240px on desktop (lg+)
- * On mobile:      fixed drawer that slides in over content
- * Active item:    white pill with primary-blue text — stands out on dark bg
- * Inactive item:  muted white/60, hover white/90 bg
- * Nav item height: 40px — compact but touchable
- */
-
 const allLinks = [
-  { to: '/dashboard',    label: 'Dashboard',          icon: LayoutDashboard,   roles: ['admin', 'staff', 'employee'] },
+  { to: '/dashboard',    label: 'Dashboard',           icon: LayoutDashboard,   roles: ['admin', 'staff', 'employee'] },
   { to: '/assets',       label: 'Assets',              icon: Boxes,             roles: ['admin', 'staff', 'employee'] },
   { to: '/reservations', label: 'Borrow Requests',     icon: ClipboardList,     roles: ['admin', 'staff', 'employee'] },
   { to: '/borrowings',   label: 'Borrowed Items',      icon: HandCoins,         roles: ['admin', 'staff', 'employee'] },
@@ -42,12 +33,21 @@ const allLinks = [
   { to: '/settings',     label: 'Settings',            icon: Settings,          roles: ['admin', 'staff', 'employee'] },
 ]
 
+const NAV_GROUPS = [
+  { label: 'Main Menu',  paths: ['/dashboard', '/assets', '/reservations', '/borrowings'] },
+  { label: 'Operations', paths: ['/inventory', '/maintenance', '/reports'] },
+  { label: 'Admin',      paths: ['/users', '/roles', '/system-setup'] },
+  { label: 'Account',    paths: ['/settings'] },
+]
+
 interface SidebarProps {
   open: boolean
+  /** True when viewport ≥ 768px — controls positioning mode */
+  isDesktop: boolean
   onClose: () => void
 }
 
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -59,134 +59,232 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   }
 
   const visibleLinks = getVisibleLinks()
-  const name     = displayName(user)
-  const initials = name.slice(0, 1).toUpperCase()
+  const visiblePaths = new Set(visibleLinks.map((l) => l.to))
+  const name         = displayName(user)
+  const initials     = name.slice(0, 1).toUpperCase()
+
+  /*
+   * POSITIONING LOGIC — 100% inline styles, zero CSS class dependency:
+   *
+   * Desktop (isDesktop = true):
+   *   position: relative  → stays in flex row, takes 260px, main fills rest.
+   *   transform: none     → always visible.
+   *
+   * Mobile (isDesktop = false):
+   *   position: fixed     → overlays content, doesn't push main column.
+   *   transform:          → translateX(-260px) when closed, 0 when open.
+   *   z-index: 40         → above backdrop.
+   */
+  const sidebarStyle: React.CSSProperties = isDesktop
+    ? {
+        position: 'relative',
+        width: 260,
+        flexShrink: 0,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#0B3D91',
+        transform: 'none',
+        zIndex: 'auto',
+        transition: 'none',
+      }
+    : {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        width: 260,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#0B3D91',
+        zIndex: 40,
+        transform: open ? 'translateX(0)' : 'translateX(-260px)',
+        transition: 'transform 0.22s ease-in-out',
+      }
 
   return (
     <>
-      {/* ── Mobile backdrop ── */}
-      {open && (
+      {/* Mobile backdrop — only shown when drawer is open on mobile */}
+      {!isDesktop && open && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
           aria-hidden="true"
           onClick={onClose}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            zIndex: 39,
+          }}
         />
       )}
 
-      {/*
-       * SIDEBAR ELEMENT
-       * Desktop: static (in flex flow), w-60 (240px), full height via parent h-screen
-       * Mobile:  fixed drawer, slides from left, z-40 above backdrop
-       */}
-      <aside
-        className={cn(
-          /* layout */
-          'flex h-full w-60 shrink-0 flex-col',
-          /* colour */
-          'bg-[#0B3D91]',
-          /* desktop: always visible and in flow */
-          'lg:static lg:translate-x-0',
-          /* mobile: fixed overlay */
-          'fixed inset-y-0 left-0 z-40',
-          'transition-transform duration-250 ease-in-out',
-          open ? 'translate-x-0' : '-translate-x-full',
-        )}
-      >
+      <aside style={sidebarStyle}>
+
         {/* ── Brand header ── */}
-        <div className="flex h-[60px] shrink-0 items-center gap-3 border-b border-white/10 px-4">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/15">
-            <img src={logo} alt="PSA" className="h-5 w-5 object-contain" />
+        <div style={{
+          display: 'flex', height: 64, flexShrink: 0,
+          alignItems: 'center', gap: 12,
+          borderBottom: '1px solid rgba(255,255,255,0.10)',
+          padding: '0 20px',
+          boxSizing: 'border-box',
+        }}>
+          <div style={{
+            display: 'grid', width: 36, height: 36, flexShrink: 0,
+            placeItems: 'center', borderRadius: 10,
+            background: 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.10)',
+          }}>
+            <img src={logo} alt="PSA" style={{ width: 20, height: 20, objectFit: 'contain' }} />
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-[13px] font-bold leading-tight text-white">
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#ffffff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               PSA Inventory
-            </p>
-            <p className="text-[10px] font-medium uppercase tracking-widest text-white/50">
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.15em', lineHeight: 1.3, marginTop: 2 }}>
               Region XII
-            </p>
+            </div>
           </div>
           {/* Mobile close button */}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close sidebar"
-            className="ml-auto rounded-md p-1 text-white/60 hover:bg-white/10 hover:text-white lg:hidden"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {!isDesktop && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close navigation"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 30, height: 30, flexShrink: 0,
+                borderRadius: 8, border: 'none', background: 'transparent',
+                color: 'rgba(255,255,255,0.55)', cursor: 'pointer',
+              }}
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
 
         {/* ── Navigation ── */}
-        <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Main navigation">
-          {/* Section label */}
-          <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
-            Menu
-          </p>
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }} aria-label="Main navigation">
+          {NAV_GROUPS.map((group) => {
+            const groupLinks = visibleLinks.filter((l) => group.paths.includes(l.to))
+            if (groupLinks.length === 0) return null
+            return (
+              <div key={group.label} style={{ marginBottom: 20 }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.14em',
+                  color: 'rgba(255,255,255,0.30)',
+                  padding: '0 12px', marginBottom: 4, lineHeight: 1,
+                }}>
+                  {group.label}
+                </div>
 
-          <ul className="space-y-px" role="list">
-            {visibleLinks.map((link) => {
-              const Icon = link.icon
-              return (
-                <li key={link.to}>
-                  <NavLink
-                    to={link.to}
-                    onClick={onClose}
-                    className={({ isActive }) =>
-                      cn(
-                        'group flex h-10 items-center gap-3 rounded-lg px-3',
-                        'text-[13px] font-medium',
-                        'transition-colors duration-150',
-                        isActive
-                          ? 'bg-white text-[#0B3D91] font-semibold'
-                          : 'text-white/70 hover:bg-white/10 hover:text-white',
-                      )
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <Icon
-                          className={cn(
-                            'h-[18px] w-[18px] shrink-0',
-                            isActive
-                              ? 'text-[#0B3D91]'
-                              : 'text-white/50 group-hover:text-white',
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }} role="list">
+                  {groupLinks.map((link) => {
+                    if (!visiblePaths.has(link.to)) return null
+                    const Icon = link.icon
+                    return (
+                      <li key={link.to} style={{ margin: 0, padding: 0 }}>
+                        <NavLink
+                          to={link.to}
+                          onClick={onClose}
+                          style={({ isActive }) => ({
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            height: 40,
+                            padding: '0 12px',
+                            borderRadius: 10,
+                            fontSize: 13,
+                            fontWeight: isActive ? 600 : 500,
+                            lineHeight: 1,
+                            textDecoration: 'none',
+                            color: isActive ? '#0B3D91' : 'rgba(255,255,255,0.70)',
+                            background: isActive ? '#ffffff' : 'transparent',
+                            boxShadow: isActive ? '0 1px 6px rgba(0,0,0,0.12)' : 'none',
+                            transition: 'background 0.15s, color 0.15s',
+                            boxSizing: 'border-box',
+                          })}
+                        >
+                          {({ isActive }) => (
+                            <>
+                              <Icon
+                                style={{
+                                  width: 17, height: 17, flexShrink: 0,
+                                  color: isActive ? '#0B3D91' : 'rgba(255,255,255,0.50)',
+                                  transition: 'color 0.15s',
+                                }}
+                                strokeWidth={isActive ? 2.25 : 1.75}
+                                aria-hidden="true"
+                              />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {link.label}
+                              </span>
+                            </>
                           )}
-                          aria-hidden="true"
-                        />
-                        <span className="truncate">{link.label}</span>
-                      </>
-                    )}
-                  </NavLink>
-                </li>
-              )
-            })}
-          </ul>
+                        </NavLink>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )
+          })}
         </nav>
 
         {/* ── User footer ── */}
-        <div className="shrink-0 border-t border-white/10 p-2">
-          {/* Profile row */}
+        <div style={{ flexShrink: 0, borderTop: '1px solid rgba(255,255,255,0.10)', padding: '12px' }}>
           <button
             type="button"
             onClick={() => { navigate('/settings'); onClose() }}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors duration-150 hover:bg-white/10"
+            style={{
+              display: 'flex', width: '100%', alignItems: 'center', gap: 10,
+              borderRadius: 10, padding: '8px 12px',
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              textAlign: 'left', boxSizing: 'border-box',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.10)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
           >
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#FFD400] text-[11px] font-black text-[#0B3D91]">
+            <span style={{
+              display: 'grid', width: 32, height: 32, flexShrink: 0,
+              placeItems: 'center', borderRadius: '50%',
+              background: '#FFD400', fontSize: 12, fontWeight: 900, color: '#0B3D91',
+              outline: '2px solid rgba(255,212,0,0.35)', outlineOffset: 1,
+            }}>
               {initials}
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[12px] font-semibold text-white">{name}</span>
-              <span className="block text-[10px] text-white/40">Account settings</span>
+            <span style={{ minWidth: 0, flex: 1 }}>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#ffffff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {name}
+              </span>
+              <span style={{ display: 'block', fontSize: 10, color: 'rgba(255,255,255,0.40)', lineHeight: 1.3, marginTop: 2 }}>
+                Account settings
+              </span>
             </span>
           </button>
 
-          {/* Sign out */}
           <button
             type="button"
             onClick={() => void logout()}
-            className="mt-0.5 flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-white/50 transition-colors duration-150 hover:bg-white/10 hover:text-white/80"
+            style={{
+              display: 'flex', width: '100%', alignItems: 'center', gap: 8,
+              borderRadius: 10, padding: '7px 12px', marginTop: 2,
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.45)',
+              boxSizing: 'border-box',
+            }}
+            onMouseEnter={(e) => {
+              const b = e.currentTarget as HTMLButtonElement
+              b.style.background = 'rgba(255,255,255,0.10)'
+              b.style.color = 'rgba(255,255,255,0.80)'
+            }}
+            onMouseLeave={(e) => {
+              const b = e.currentTarget as HTMLButtonElement
+              b.style.background = 'transparent'
+              b.style.color = 'rgba(255,255,255,0.45)'
+            }}
           >
-            <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <LogOut size={14} style={{ flexShrink: 0 }} aria-hidden="true" />
             Sign out
           </button>
         </div>

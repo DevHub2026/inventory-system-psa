@@ -1,44 +1,66 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from '@/layouts/Sidebar'
 import { TopNav } from '@/layouts/TopNav'
 
+/**
+ * AppLayout — guaranteed two-column shell using 100% inline styles.
+ *
+ * The outer div is a flex row. On desktop the sidebar is a normal
+ * flex child (260px, shrink-0). On mobile it is rendered as a fixed
+ * overlay via a portal-like pattern: the sidebar is REMOVED from the
+ * flex row and inserted as a fixed element only when the drawer is open.
+ *
+ * We detect desktop by watching window.innerWidth >= 768px.
+ * Everything is inline — no CSS class can interfere.
+ */
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isDesktop,   setIsDesktop]   = useState(() => window.innerWidth >= 768)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const handler = (e: MediaQueryListEvent) => {
+      setIsDesktop(e.matches)
+      if (e.matches) setSidebarOpen(false) // close drawer when switching to desktop
+    }
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   return (
-    /*
-     * Root shell:
-     *   - Full viewport height, no horizontal overflow.
-     *   - On desktop (lg+): sidebar is STATIC in the flex row — it takes
-     *     its own space so main content is never hidden behind it.
-     *   - On mobile: sidebar is FIXED/drawer — overlay appears, content
-     *     is not shifted.
-     *
-     * Key decisions:
-     *   - `overflow-hidden` on root prevents any sidebar-caused x-scroll.
-     *   - Sidebar uses `shrink-0` so it never gets squeezed by flex.
-     *   - Main column uses `min-w-0` + `flex-1` to fill remaining space.
-     *   - `overflow-y-auto` on main allows page-level scrolling.
-     */
-    <div className="flex h-screen overflow-hidden bg-[#F4F6F9]">
+    <div style={{
+      display: 'flex',
+      height: '100vh',
+      width: '100vw',
+      overflow: 'hidden',
+      background: '#F2F4F8',
+      position: 'relative',
+    }}>
 
-      {/* ── Sidebar (static on desktop, fixed drawer on mobile) ── */}
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* ── Sidebar ── */}
+      <Sidebar
+        open={sidebarOpen}
+        isDesktop={isDesktop}
+        onClose={() => setSidebarOpen(false)}
+      />
 
-      {/* ── Main column — never overlaps sidebar on desktop ── */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-
-        {/* Sticky top nav */}
+      {/* ── Main column — always fills the space not taken by sidebar ── */}
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}>
         <TopNav onMenuClick={() => setSidebarOpen(true)} />
-
-        {/* Scrollable page content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[1440px] px-5 py-6 sm:px-6 lg:px-8">
+        <main style={{ flex: 1, overflowY: 'auto' }}>
+          <div style={{ maxWidth: 1440, margin: '0 auto', padding: '24px 32px' }}>
             <Outlet />
           </div>
         </main>
       </div>
+
     </div>
   )
 }

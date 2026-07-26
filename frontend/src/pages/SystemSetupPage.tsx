@@ -142,7 +142,7 @@ export function SystemSetupPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <PageHeader
         title="System Setup"
         subtitle="Admin tools for maintaining setup data without touching code."
@@ -153,10 +153,11 @@ export function SystemSetupPage() {
       )}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_260px]">
-        {/* Main panel */}
-        <Card noPadding>
+        {/* ── Main panel ── */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+
           {/* Tab bar */}
-          <div className="flex flex-wrap gap-0 border-b border-[#EEF2F8]">
+          <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid #f1f5f9', padding: '0 4px' }}>
             {sections.map((section) => {
               const active = section.resource === activeResource
               return (
@@ -164,26 +165,48 @@ export function SystemSetupPage() {
                   key={section.resource}
                   type="button"
                   onClick={() => setActiveResource(section.resource)}
-                  className={[
-                    'relative px-5 py-3 text-sm font-semibold transition-colors',
-                    active ? 'text-[#003DA5]' : 'text-slate-500 hover:text-slate-800',
-                  ].join(' ')}
+                  style={{
+                    position: 'relative',
+                    padding: '14px 18px',
+                    fontSize: 13,
+                    fontWeight: active ? 700 : 500,
+                    color: active ? '#0B3D91' : '#64748b',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'color 0.15s',
+                    whiteSpace: 'nowrap',
+                    lineHeight: 1,
+                    outline: 'none',
+                  }}
+                  onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = '#1e293b' }}
+                  onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = '#64748b' }}
                 >
                   {section.title}
-                  {active && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-t-full bg-[#003DA5]" />}
+                  {/* Active underline */}
+                  {active && (
+                    <span style={{
+                      position: 'absolute',
+                      bottom: 0, left: 8, right: 8,
+                      height: 2,
+                      borderRadius: '2px 2px 0 0',
+                      background: '#0B3D91',
+                      display: 'block',
+                    }} />
+                  )}
                 </button>
               )
             })}
           </div>
 
           {/* Sub-header */}
-          <div className="flex items-center justify-between gap-3 border-b border-[#EEF2F8] px-5 py-4">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottom: '1px solid #f1f5f9', padding: '14px 20px' }}>
             <div>
-              <p className="text-sm font-semibold text-slate-800">{activeSection.title}</p>
-              <p className="mt-0.5 text-xs text-slate-500">{activeSection.description}</p>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', lineHeight: 1.3 }}>{activeSection.title}</div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3, lineHeight: 1.4 }}>{activeSection.description}</div>
             </div>
             <Button onClick={openCreate}>
-              Add {activeSection.title.replace(/s$/, '')}
+              Add {activeSection.title}
             </Button>
           </div>
 
@@ -205,16 +228,16 @@ export function SystemSetupPage() {
               }
             />
           )}
-        </Card>
+        </div>
 
         {/* Shortcuts sidebar */}
         <div className="space-y-4">
           <Card title="Admin Shortcuts" subtitle="Common setup tasks">
             <div className="space-y-2">
               {[
-                { label: 'Manage Users',       path: '/users' },
-                { label: 'Manage Roles',       path: '/roles' },
-                { label: 'Manage Permissions', path: '/permissions' },
+                { label: 'Manage Users',          path: '/users' },
+                { label: 'Manage Roles',          path: '/roles' },
+                { label: 'Manage Permissions',    path: '/permissions' },
                 { label: 'Print Asset QR Labels', path: '/assets' },
               ].map((item) => (
                 <Button
@@ -248,7 +271,7 @@ export function SystemSetupPage() {
           </>
         }
       >
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           {activeSection.resource !== 'manufacturers' && (
             <Input
@@ -271,14 +294,14 @@ export function SystemSetupPage() {
             value={form.description ?? ''}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <input
               type="checkbox"
               checked={form.is_active !== false}
               onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-              className="h-4 w-4 rounded accent-[#003DA5]"
+              style={{ width: 16, height: 16, accentColor: '#0B3D91', cursor: 'pointer' }}
             />
-            Active
+            <span style={{ fontSize: 14, color: '#334155' }}>Active</span>
           </label>
         </div>
       </Modal>

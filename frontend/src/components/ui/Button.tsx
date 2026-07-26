@@ -1,5 +1,4 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
-import { cn } from '@/utils/cn'
 
 export type Variant = 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'ghost'
 export type Size = 'sm' | 'md' | 'lg'
@@ -10,66 +9,151 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode
 }
 
-const variants: Record<Variant, string> = {
-  primary:
-    'bg-[#0D47A1] text-white border border-[#0D47A1] shadow-sm ' +
-    'hover:bg-[#1565C0] hover:border-[#1565C0] ' +
-    'focus-visible:ring-2 focus-visible:ring-[#0D47A1]/40',
-  secondary:
-    'bg-white text-[#1F2937] border border-[#E5E7EB] shadow-sm ' +
-    'hover:bg-[#F3F4F6] hover:border-[#D1D5DB]',
-  outline:
-    'bg-transparent text-[#0D47A1] border border-[#0D47A1]/40 ' +
-    'hover:bg-[#EEF4FF] hover:border-[#0D47A1]/70',
-  danger:
-    'bg-[#D32F2F] text-white border border-[#D32F2F] shadow-sm ' +
-    'hover:bg-[#B71C1C] hover:border-[#B71C1C]',
-  success:
-    'bg-[#2E7D32] text-white border border-[#2E7D32] shadow-sm ' +
-    'hover:bg-[#1B5E20] hover:border-[#1B5E20]',
-  ghost:
-    'bg-transparent text-[#6B7280] border border-transparent ' +
-    'hover:bg-[#F3F4F6] hover:text-[#1F2937]',
+/* All colours as plain objects — immune to the global CSS cascade */
+const VARIANTS: Record<Variant, {
+  background: string
+  color: string
+  border: string
+  hoverBackground: string
+  hoverBorder: string
+  hoverColor: string
+}> = {
+  primary: {
+    background:   '#0B3D91',
+    color:        '#ffffff',
+    border:       '1px solid #0B3D91',
+    hoverBackground: '#1565C0',
+    hoverBorder:  '1px solid #1565C0',
+    hoverColor:   '#ffffff',
+  },
+  secondary: {
+    background:   '#ffffff',
+    color:        '#1e293b',
+    border:       '1px solid #e2e8f0',
+    hoverBackground: '#f1f5f9',
+    hoverBorder:  '1px solid #cbd5e1',
+    hoverColor:   '#0f172a',
+  },
+  outline: {
+    background:   'transparent',
+    color:        '#0B3D91',
+    border:       '1px solid rgba(11,61,145,0.35)',
+    hoverBackground: '#eef4ff',
+    hoverBorder:  '1px solid rgba(11,61,145,0.65)',
+    hoverColor:   '#0B3D91',
+  },
+  danger: {
+    background:   '#C62828',
+    color:        '#ffffff',
+    border:       '1px solid #C62828',
+    hoverBackground: '#b71c1c',
+    hoverBorder:  '1px solid #b71c1c',
+    hoverColor:   '#ffffff',
+  },
+  success: {
+    background:   '#2E7D32',
+    color:        '#ffffff',
+    border:       '1px solid #2E7D32',
+    hoverBackground: '#1b5e20',
+    hoverBorder:  '1px solid #1b5e20',
+    hoverColor:   '#ffffff',
+  },
+  ghost: {
+    background:   'transparent',
+    color:        '#64748b',
+    border:       '1px solid transparent',
+    hoverBackground: '#f1f5f9',
+    hoverBorder:  '1px solid transparent',
+    hoverColor:   '#1e293b',
+  },
 }
 
-/*
- * All sizes maintain the same proportions:
- *   md  → h-10 (40px) · px-5 (20px) · py-2.5 (10px) · text-sm (14px)
- *   sm  → h-8  (32px) · px-3 (12px) · text-xs (12px)   — table actions
- *   lg  → h-11 (44px) · px-6 (24px) · text-sm (14px)   — prominent CTAs
- */
-const sizes: Record<Size, string> = {
-  sm: 'h-8  px-3   text-xs  gap-1.5',
-  md: 'h-10 px-5   text-sm  gap-2',
-  lg: 'h-11 px-6   text-sm  gap-2',
+const SIZES: Record<Size, { height: number; paddingInline: number; fontSize: number; gap: number }> = {
+  sm: { height: 32, paddingInline: 12, fontSize: 12, gap: 6  },
+  md: { height: 38, paddingInline: 16, fontSize: 14, gap: 8  },
+  lg: { height: 42, paddingInline: 20, fontSize: 14, gap: 8  },
 }
 
 export function Button({
   variant = 'primary',
-  size = 'md',
-  className,
+  size    = 'md',
+  style,
   children,
   type = 'button',
+  disabled,
+  className,
+  onMouseEnter,
+  onMouseLeave,
   ...props
 }: ButtonProps) {
+  const v = VARIANTS[variant]
+  const s = SIZES[size]
+
+  const baseStyle: React.CSSProperties = {
+    display:        'inline-flex',
+    alignItems:     'center',
+    justifyContent: 'center',
+    gap:            s.gap,
+    height:         s.height,
+    paddingInline:  s.paddingInline,
+    fontSize:       s.fontSize,
+    fontWeight:     600,
+    lineHeight:     1,
+    whiteSpace:     'nowrap',
+    borderRadius:   10,
+    cursor:         disabled ? 'not-allowed' : 'pointer',
+    opacity:        disabled ? 0.5 : 1,
+    background:     v.background,
+    color:          v.color,
+    border:         v.border,
+    boxShadow:      variant === 'primary' || variant === 'danger' || variant === 'success'
+                      ? '0 1px 3px rgba(0,0,0,0.12)'
+                      : 'none',
+    transition:     'background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s, transform 0.1s',
+    userSelect:     'none',
+    boxSizing:      'border-box',
+    fontFamily:     'inherit',
+    ...style,
+  }
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!disabled) {
+      const btn = e.currentTarget
+      btn.style.background = v.hoverBackground
+      btn.style.border     = v.hoverBorder
+      btn.style.color      = v.hoverColor
+    }
+    onMouseEnter?.(e)
+  }
+
+  const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!disabled) {
+      const btn = e.currentTarget
+      btn.style.background = v.background
+      btn.style.border     = v.border
+      btn.style.color      = v.color
+    }
+    onMouseLeave?.(e)
+  }
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!disabled) e.currentTarget.style.transform = 'scale(0.97)'
+  }
+
+  const handleMouseUp = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!disabled) e.currentTarget.style.transform = 'scale(1)'
+  }
+
   return (
     <button
       type={type}
-      className={cn(
-        // base
-        'inline-flex items-center justify-center whitespace-nowrap',
-        'rounded-[10px] font-medium leading-none',
-        'transition-all duration-200 ease-in-out',
-        // disabled state
-        'disabled:cursor-not-allowed disabled:opacity-50',
-        // active press micro-interaction
-        'enabled:active:scale-[0.97]',
-        // focus ring
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
-        variants[variant],
-        sizes[size],
-        className,
-      )}
+      disabled={disabled}
+      style={baseStyle}
+      className={className}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
       {...props}
     >
       {children}

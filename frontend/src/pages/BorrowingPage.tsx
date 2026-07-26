@@ -51,50 +51,29 @@ export function BorrowingPage() {
     { key: 'borrowed_at',   header: 'Borrowed', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.borrowed_at}</span> },
     { key: 'due_at',        header: 'Due',      render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.due_at}</span> },
     {
-<<<<<<< HEAD
       key: 'actions', header: 'Actions',
       render: (r) => (
         <div className="flex flex-wrap items-center gap-1.5">
-          <Button size="sm" variant="ghost" onClick={() => setReceipt({ type: 'Borrowing', code: r.receipt_code ?? `PSA-BOR-${r.id}`, payload: r.receipt_payload ?? `PSA-BOR-${r.id}|${r.asset_number ?? r.asset_id}|${r.user_id}`, employee: r.employee_name, assetName: r.asset_name, assetNumber: r.asset_number, timestamp: r.created_at, startDate: r.borrow_date, endDate: r.due_date, status: r.status, authorizedBy: r.authorized_by_name, authorizedAt: r.authorized_at, remarks: r.remarks })}>
-=======
-      key: 'status',
-      header: 'Status',
-      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{borrowingStatusLabel(row.status)}</Badge>,
-    },
-    { key: 'borrowed_at', header: 'Borrowed', render: (row) => row.borrowed_at },
-    { key: 'due_at', header: 'Due', render: (row) => row.due_at },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <div className="flex flex-wrap gap-1">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              setReceipt({
-                type: 'Borrowing',
-                code: row.receipt_code ?? `PSA-BOR-${row.id}`,
-                payload: row.receipt_payload ?? `PSA-BOR-${row.id}|${row.asset_number ?? row.asset_id}|${row.user_id}`,
-                employee: row.employee_name,
-                employeeId: row.employee_id,
-                assetName: row.asset_name,
-                assetNumber: row.asset_number,
-                assetCode: row.asset_code,
-                quantity: row.quantity,
-                timestamp: row.created_at,
-                borrowedAt: row.borrowed_at,
-                returnedAt: row.returned_at,
-                startDate: row.borrow_date,
-                endDate: row.due_date,
-                status: row.status,
-                authorizedBy: row.authorized_by_name,
-                authorizedAt: row.authorized_at,
-                remarks: row.remarks,
-              })
-            }
-          >
->>>>>>> a69680815236e40107004c079711cb91414466cd
+          <Button size="sm" variant="ghost" onClick={() => setReceipt({
+            type: 'Borrowing',
+            code: r.receipt_code ?? `PSA-BOR-${r.id}`,
+            payload: r.receipt_payload ?? `PSA-BOR-${r.id}|${r.asset_number ?? r.asset_id}|${r.user_id}`,
+            employee: r.employee_name,
+            employeeId: r.employee_id,
+            assetName: r.asset_name,
+            assetNumber: r.asset_number,
+            assetCode: r.asset_code,
+            quantity: r.quantity,
+            timestamp: r.created_at,
+            borrowedAt: r.borrowed_at,
+            returnedAt: r.returned_at,
+            startDate: r.borrow_date,
+            endDate: r.due_date,
+            status: r.status,
+            authorizedBy: r.authorized_by_name,
+            authorizedAt: r.authorized_at,
+            remarks: r.remarks,
+          })}>
             Receipt
           </Button>
           {(r.status === 'BORROWED' || r.status === 'ACTIVE' || r.status === 'OVERDUE') ? (

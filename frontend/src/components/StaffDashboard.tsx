@@ -14,9 +14,63 @@ import type { Reservation, Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
+import { cn } from '@/utils/cn'
 
-const SECTION_TITLE = 'text-[16px] font-semibold text-[#1F2937]'
-const SECTION_SUB   = 'mt-0.5 text-[13px] text-[#6B7280]'
+function Panel({
+  title, subtitle, count, countTone, onViewAll, loading, urgent, children,
+}: {
+  title: string
+  subtitle: string
+  count?: number
+  countTone?: 'amber' | 'red'
+  onViewAll?: () => void
+  loading: boolean
+  urgent?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <section className={cn(
+      'flex flex-col overflow-hidden rounded-2xl border bg-white shadow-[0_1px_4px_rgba(0,0,0,.06)]',
+      urgent ? 'border-red-200' : 'border-slate-200',
+    )}>
+      <div className={cn(
+        'flex shrink-0 items-center justify-between gap-4 border-b px-5 py-4',
+        urgent ? 'border-red-100 bg-red-50' : 'border-slate-100',
+      )}>
+        <div className="min-w-0">
+          <h3 className={cn('flex items-center text-[14px] font-semibold', urgent ? 'text-red-700' : 'text-slate-800')}>
+            {title}
+            {count !== undefined && count > 0 && countTone && (
+              <span className={cn('ml-2 inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-px text-[10px] font-bold leading-none',
+                countTone === 'red' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700',
+              )}>
+                {count}
+              </span>
+            )}
+          </h3>
+          <p className={cn('mt-0.5 text-[12px]', urgent ? 'text-red-400' : 'text-slate-400')}>{subtitle}</p>
+        </div>
+        {onViewAll && (
+          <button
+            type="button"
+            onClick={onViewAll}
+            className={cn('shrink-0 whitespace-nowrap text-[12px] font-medium transition-colors',
+              urgent ? 'text-red-600 hover:text-red-700' : 'text-[#1565C0] hover:text-[#0D47A1]',
+            )}
+          >
+            View all
+          </button>
+        )}
+      </div>
+      <div className="flex-1 overflow-hidden">
+        {loading
+          ? <div className="flex items-center justify-center py-12"><Spinner /></div>
+          : children
+        }
+      </div>
+    </section>
+  )
+}
 
 export function StaffDashboard() {
   const navigate = useNavigate()
@@ -46,10 +100,7 @@ export function StaffDashboard() {
     }
   }
 
-  /* Initial load */
   useEffect(() => { void loadData() }, [])
-
-  /* Cross-component data refresh subscription */
   useEffect(() => onDataChanged((scope) => {
     if (affectsScope(scope, 'dashboard') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
       void loadData()
@@ -107,80 +158,57 @@ export function StaffDashboard() {
     }
   }
 
-  /* ── Column definitions ── */
   const reservationColumns: Column<Reservation>[] = [
-    { key: 'id',            header: '#',         render: (r) => <span className="font-mono text-xs text-[#9CA3AF]">#{r.id}</span> },
-    { key: 'employee_name', header: 'Employee',  render: (r) => <span className="font-medium text-[#1F2937]">{r.employee_name}</span> },
-    { key: 'purpose',       header: 'Purpose',   render: (r) => r.purpose },
-    { key: 'dates',         header: 'Schedule',  render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.reserved_from} → {r.reserved_until}</span> },
-    {
-      key: 'actions', header: 'Actions',
-      render: (r) => (
-        <Button size="sm" variant="success" onClick={() => handleApproveReservation(r.id)}>Approve</Button>
-      ),
-    },
+    { key: 'id',            header: '#',        render: (r) => <span className="font-mono text-[12px] text-slate-400">#{r.id}</span> },
+    { key: 'employee_name', header: 'Employee', render: (r) => <span className="text-[13px] font-medium text-slate-800">{r.employee_name}</span> },
+    { key: 'purpose',       header: 'Purpose',  render: (r) => <span className="block max-w-[140px] truncate text-[13px] text-slate-500">{r.purpose}</span> },
+    { key: 'dates',         header: 'Schedule', render: (r) => <span className="whitespace-nowrap font-mono text-[12px] text-slate-400">{r.reserved_from} → {r.reserved_until}</span> },
+    { key: 'actions',       header: '',         render: (r) => <Button size="sm" variant="success" onClick={() => handleApproveReservation(r.id)}>Approve</Button> },
   ]
 
   const borrowingColumns: Column<Borrowing>[] = [
-    { key: 'id',            header: '#',        render: (r) => <span className="font-mono text-xs text-[#9CA3AF]">#{r.id}</span> },
-    { key: 'asset_name',    header: 'Asset',    render: (r) => <span className="font-medium text-[#1F2937]">{r.asset_name}</span> },
-    { key: 'employee_name', header: 'Employee', render: (r) => r.employee_name },
-    { key: 'due_at',        header: 'Due',      render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.due_at}</span> },
-    {
-      key: 'actions', header: 'Actions',
-      render: (r) => (
-        <Button size="sm" variant="primary" onClick={() => handleReturnBorrowing(r.id)}>Return</Button>
-      ),
-    },
+    { key: 'id',            header: '#',        render: (r) => <span className="font-mono text-[12px] text-slate-400">#{r.id}</span> },
+    { key: 'asset_name',    header: 'Asset',    render: (r) => <span className="text-[13px] font-medium text-slate-800">{r.asset_name}</span> },
+    { key: 'employee_name', header: 'Employee', render: (r) => <span className="text-[13px] text-slate-500">{r.employee_name}</span> },
+    { key: 'due_at',        header: 'Due',      render: (r) => <span className="whitespace-nowrap font-mono text-[12px] text-slate-400">{r.due_at}</span> },
+    { key: 'actions',       header: '',         render: (r) => <Button size="sm" variant="primary" onClick={() => handleReturnBorrowing(r.id)}>Return</Button> },
   ]
 
   const overdueColumns: Column<Borrowing>[] = [
-    { key: 'id',            header: '#',        render: (r) => <span className="font-mono text-xs text-[#9CA3AF]">#{r.id}</span> },
-    { key: 'asset_name',    header: 'Asset',    render: (r) => <span className="font-medium text-[#1F2937]">{r.asset_name}</span> },
-    { key: 'employee_name', header: 'Employee', render: (r) => r.employee_name },
-    {
-      key: 'status', header: 'Status',
-      render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge>,
-    },
-    { key: 'due_at', header: 'Due', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.due_at}</span> },
-    {
-      key: 'actions', header: 'Actions',
-      render: (r) => (
-        <Button size="sm" variant="danger" onClick={() => handleReturnBorrowing(r.id)}>Return</Button>
-      ),
-    },
+    { key: 'id',            header: '#',        render: (r) => <span className="font-mono text-[12px] text-slate-400">#{r.id}</span> },
+    { key: 'asset_name',    header: 'Asset',    render: (r) => <span className="text-[13px] font-medium text-slate-800">{r.asset_name}</span> },
+    { key: 'employee_name', header: 'Employee', render: (r) => <span className="text-[13px] text-slate-500">{r.employee_name}</span> },
+    { key: 'status',        header: 'Status',   render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> },
+    { key: 'due_at',        header: 'Due',      render: (r) => <span className="whitespace-nowrap font-mono text-[12px] text-red-500">{r.due_at}</span> },
+    { key: 'actions',       header: '',         render: (r) => <Button size="sm" variant="danger" onClick={() => handleReturnBorrowing(r.id)}>Return</Button> },
   ]
 
   const statCards = [
-    { label: 'Borrow Requests',  value: pendingReservations.length,                           description: 'Waiting for approval',          icon: CalendarClock, tone: 'blue'  as const },
-    { label: 'Borrowed Items',   value: activeBorrowings.length,                              description: 'Currently borrowed items',       icon: HandCoins,     tone: 'green' as const },
-    { label: 'Overdue Items',    value: overdueBorrowings.length,                             description: 'Need immediate follow-up',       icon: AlertTriangle, tone: 'red'   as const },
-    { label: 'Ready to Process', value: pendingReservations.length + activeBorrowings.length, description: 'Operations requiring attention', icon: ClipboardCheck,tone: 'amber' as const },
+    { label: 'Borrow Requests',  value: pendingReservations.length,                           description: 'Waiting for approval',          icon: CalendarClock,  tone: 'blue'  as const },
+    { label: 'Borrowed Items',   value: activeBorrowings.length,                              description: 'Currently borrowed items',       icon: HandCoins,      tone: 'green' as const },
+    { label: 'Overdue Items',    value: overdueBorrowings.length,                             description: 'Need immediate follow-up',       icon: AlertTriangle,  tone: 'red'   as const },
+    { label: 'Ready to Process', value: pendingReservations.length + activeBorrowings.length, description: 'Operations requiring attention', icon: ClipboardCheck, tone: 'amber' as const },
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
 
       <PageHeader title="Staff Dashboard" subtitle="Manage operational requests and asset handovers." />
 
-      {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>
-      )}
+      {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
-      {/* Stats grid — 1 → 2 → 4 cols */}
-      <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-        {statCards.map((card) => (
-          <DashboardStatCard key={card.label} {...card} />
-        ))}
+      {/* Stats */}
+      <div className="stat-grid">
+        {statCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
       </div>
 
       {/* QR Scanner */}
       <Card>
         <div className="mb-4">
-          <p className={SECTION_TITLE}>Quick QR Scanner</p>
-          <p className={SECTION_SUB}>Scan asset QR code to quickly access item details for processing</p>
+          <p className="text-[14px] font-semibold text-slate-800">Quick QR Scanner</p>
+          <p className="mt-1 text-[12px] text-slate-400">Scan an asset QR code to quickly process a borrow or return</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3">
           <div className="flex-1 min-w-[200px]">
             <Input
               placeholder="Enter QR code or asset ID…"
@@ -191,10 +219,10 @@ export function StaffDashboard() {
           </div>
           <Button onClick={() => void handleScanQR()}>Scan</Button>
           <Button variant="secondary" onClick={() => { setScannerMode('authorize'); setScannerOpen(true) }}>
-            Scan Receipt to Borrow
+            Scan to Borrow
           </Button>
           <Button variant="secondary" onClick={() => { setScannerMode('transaction'); setScannerOpen(true) }}>
-            Scan QR to Borrow/Return
+            Scan to Borrow/Return
           </Button>
         </div>
       </Card>
@@ -203,55 +231,48 @@ export function StaffDashboard() {
 
       {/* Pending + Active */}
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card>
-          <div className="mb-4">
-            <p className={SECTION_TITLE}>Borrow Requests Waiting for Approval</p>
-            <p className={SECTION_SUB}>Approve requests before releasing assets for pickup.</p>
-          </div>
-          {loading ? <Spinner /> : pendingReservations.length === 0
+        <Panel
+          title="Borrow Requests"
+          subtitle="Approve before releasing assets for pickup"
+          count={pendingReservations.length}
+          countTone="amber"
+          onViewAll={() => navigate('/reservations')}
+          loading={loading}
+        >
+          {pendingReservations.length === 0
             ? <EmptyState title="No pending requests" description="All borrow requests have been processed." />
             : <Table columns={reservationColumns} rows={pendingReservations} rowKey={(r) => r.id} empty={<EmptyState title="No pending requests" />} />
           }
-        </Card>
+        </Panel>
 
-        <Card>
-          <div className="mb-4">
-            <p className={SECTION_TITLE}>Currently Borrowed Items</p>
-            <p className={SECTION_SUB}>Process returns for currently borrowed items</p>
-          </div>
-          {loading ? <Spinner /> : activeBorrowings.length === 0
+        <Panel
+          title="Currently Borrowed Items"
+          subtitle="Process returns for currently borrowed items"
+          onViewAll={() => navigate('/borrowings')}
+          loading={loading}
+        >
+          {activeBorrowings.length === 0
             ? <EmptyState title="No borrowed items" description="No items are currently borrowed." />
             : <Table columns={borrowingColumns} rows={activeBorrowings} rowKey={(r) => r.id} empty={<EmptyState title="No borrowed items" />} />
           }
-        </Card>
+        </Panel>
       </div>
 
-      {/* Overdue — conditional */}
+      {/* Overdue — only shown when there are overdue items */}
       {overdueBorrowings.length > 0 && (
-        <Card>
-          <div className="mb-4">
-            <p className={SECTION_TITLE}>Overdue Items — Priority</p>
-            <p className={SECTION_SUB}>Items past due date requiring immediate attention</p>
-          </div>
+        <Panel
+          title="Overdue Items"
+          subtitle="These items are past their return date"
+          count={overdueBorrowings.length}
+          countTone="red"
+          onViewAll={() => navigate('/borrowings')}
+          loading={loading}
+          urgent
+        >
           <Table columns={overdueColumns} rows={overdueBorrowings} rowKey={(r) => r.id} empty={<EmptyState title="No overdue items" />} />
-        </Card>
+        </Panel>
       )}
 
-      {/* Quick access */}
-      <Card>
-        <div className="mb-4">
-          <p className={SECTION_TITLE}>Operations Quick Access</p>
-          <p className={SECTION_SUB}>Access operational modules for daily tasks</p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Button onClick={() => navigate('/reservations')}>All Borrow Requests</Button>
-          <Button variant="secondary" onClick={() => navigate('/borrowings')}>All Borrowed Items</Button>
-          <Button variant="secondary" onClick={() => navigate('/inventory')}>Inventory Management</Button>
-          <Button variant="secondary" onClick={() => navigate('/assets')}>Asset Catalog</Button>
-          <Button variant="secondary" onClick={() => navigate('/maintenance')}>Maintenance Requests</Button>
-          <Button variant="secondary" onClick={() => navigate('/reports')}>Operation Reports</Button>
-        </div>
-      </Card>
     </div>
   )
 }

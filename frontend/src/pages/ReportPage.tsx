@@ -60,14 +60,15 @@ export function ReportPage() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <PageHeader title="Reports" subtitle="View asset, borrowing, and overdue item reports." />
 
       {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
-      <Card noPadding>
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+
         {/* ── Tab bar ── */}
-        <div className="flex items-center border-b border-[#E5E7EB]">
+        <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', padding: '0 4px' }}>
           {TABS.map((tab) => {
             const active = reportType === tab.key
             return (
@@ -75,18 +76,44 @@ export function ReportPage() {
                 key={tab.key}
                 type="button"
                 onClick={() => setReportType(tab.key)}
-                className={[
-                  'relative px-5 py-3.5 text-[14px] font-semibold transition-colors duration-200',
-                  active ? 'text-[#0D47A1]' : 'text-[#6B7280] hover:text-[#1F2937]',
-                ].join(' ')}
+                style={{
+                  position: 'relative',
+                  padding: '14px 20px',
+                  fontSize: 13,
+                  fontWeight: active ? 700 : 500,
+                  color: active ? '#0B3D91' : '#64748b',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'color 0.15s',
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1,
+                  outline: 'none',
+                }}
+                onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = '#1e293b' }}
+                onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = '#64748b' }}
               >
                 {tab.label}
                 {active && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-t-full bg-[#0D47A1]" />
+                  <span style={{
+                    position: 'absolute',
+                    bottom: 0, left: 8, right: 8,
+                    height: 2,
+                    borderRadius: '2px 2px 0 0',
+                    background: '#0B3D91',
+                    display: 'block',
+                  }} />
                 )}
               </button>
             )
           })}
+
+          {/* Export button pushed to the right */}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', paddingRight: 12 }}>
+            <Button size="sm" variant="secondary" onClick={() => window.print()}>
+              Export / Print
+            </Button>
+          </div>
         </div>
 
         {/* ── Content ── */}
@@ -97,13 +124,13 @@ export function ReportPage() {
             <EmptyState title="No report data found" description="No matching records are available for this report yet." />
           </div>
         ) : reportType === 'assets' ? (
-          <Table columns={assetColumns}    rows={data as AssetReportItem[]}    rowKey={(r) => r.id} />
+          <Table columns={assetColumns}     rows={data as AssetReportItem[]}    rowKey={(r) => r.id} />
         ) : reportType === 'borrowings' ? (
           <Table columns={borrowingColumns} rows={data as BorrowingReportItem[]} rowKey={(r) => r.id} />
         ) : (
-          <Table columns={overdueColumns}  rows={data as OverdueReportItem[]}  rowKey={(r) => r.id} />
+          <Table columns={overdueColumns}   rows={data as OverdueReportItem[]}  rowKey={(r) => r.id} />
         )}
-      </Card>
+      </div>
     </div>
   )
 }
