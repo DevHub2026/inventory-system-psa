@@ -232,35 +232,42 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
         </nav>
 
         {/* ── User footer ── */}
-        <div style={{ flexShrink: 0, borderTop: '1px solid rgba(255,255,255,0.10)', padding: '12px' }}>
+        <div style={{
+          flexShrink: 0,
+          borderTop: '1px solid rgba(255,255,255,0.12)',
+          padding: '10px 12px 12px',
+        }}>
           <button
             type="button"
             onClick={() => { navigate('/settings'); onClose() }}
             style={{
               display: 'flex', width: '100%', alignItems: 'center', gap: 10,
-              borderRadius: 10, padding: '8px 12px',
+              borderRadius: 10, padding: '8px 10px',
               background: 'transparent', border: 'none', cursor: 'pointer',
               textAlign: 'left', boxSizing: 'border-box',
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.10)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)' }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
           >
-            <span style={{
-              display: 'grid', width: 32, height: 32, flexShrink: 0,
+            {/* Avatar */}
+            <div style={{
+              display: 'grid', width: 36, height: 36, flexShrink: 0,
               placeItems: 'center', borderRadius: '50%',
-              background: '#FFD400', fontSize: 12, fontWeight: 900, color: '#0B3D91',
-              outline: '2px solid rgba(255,212,0,0.35)', outlineOffset: 1,
+              background: '#FFD400',
+              fontSize: 13, fontWeight: 900, color: '#0B3D91',
+              boxShadow: '0 0 0 2px rgba(255,212,0,0.40)',
             }}>
               {initials}
-            </span>
-            <span style={{ minWidth: 0, flex: 1 }}>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#ffffff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            </div>
+            {/* Text */}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#ffffff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {name}
-              </span>
-              <span style={{ display: 'block', fontSize: 10, color: 'rgba(255,255,255,0.40)', lineHeight: 1.3, marginTop: 2 }}>
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.3, marginTop: 2 }}>
                 Account settings
-              </span>
-            </span>
+              </div>
+            </div>
           </button>
 
           <button
@@ -268,24 +275,21 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
             onClick={() => void logout()}
             style={{
               display: 'flex', width: '100%', alignItems: 'center', gap: 8,
-              borderRadius: 10, padding: '7px 12px', marginTop: 2,
+              borderRadius: 10, padding: '7px 12px', marginTop: 4,
               background: 'transparent', border: 'none', cursor: 'pointer',
-              fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.45)',
               boxSizing: 'border-box',
             }}
             onMouseEnter={(e) => {
               const b = e.currentTarget as HTMLButtonElement
               b.style.background = 'rgba(255,255,255,0.10)'
-              b.style.color = 'rgba(255,255,255,0.80)'
             }}
             onMouseLeave={(e) => {
               const b = e.currentTarget as HTMLButtonElement
               b.style.background = 'transparent'
-              b.style.color = 'rgba(255,255,255,0.45)'
             }}
           >
-            <LogOut size={14} style={{ flexShrink: 0 }} aria-hidden="true" />
-            Sign out
+            <LogOut size={14} style={{ flexShrink: 0, color: 'rgba(255,255,255,0.60)' }} aria-hidden="true" />
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.60)' }}>Sign out</div>
           </button>
         </div>
       </aside>

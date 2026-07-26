@@ -137,23 +137,31 @@ export function AssetPage() {
     {
       key: 'actions', header: 'Actions',
       render: (r) => (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Button size="sm" variant="ghost"      onClick={() => void openView(r.id)}>View</Button>
-          <Button size="sm" variant="ghost"      onClick={() => void openQrLabel(r.id)}>QR Label</Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+          {/* Info actions */}
+          <Button size="sm" variant="ghost" onClick={() => void openView(r.id)}>View</Button>
+          <Button size="sm" variant="ghost" onClick={() => void openQrLabel(r.id)}>QR Label</Button>
+
+          {/* Divider */}
+          <span style={{ width: 1, height: 20, background: '#e2e8f0', flexShrink: 0 }} />
+
+          {/* Edit */}
           {canManageAssets && (
             <Button size="sm" variant="secondary" onClick={() => void openEdit(r.id)}>Edit</Button>
           )}
+
+          {/* Status-based primary action */}
+          {r.status === 'AVAILABLE' && canCompleteBorrowing && (
+            <Button size="sm" variant="primary" onClick={() => setBorrowId(r.id)}>Borrow</Button>
+          )}
           {r.status === 'AVAILABLE' && (
-            <>
-              {canCompleteBorrowing && (
-                <Button size="sm" variant="primary" onClick={() => setBorrowId(r.id)}>Borrow</Button>
-              )}
-              <Button size="sm" variant="outline" onClick={() => setReserveId(r.id)}>Request</Button>
-            </>
+            <Button size="sm" variant="outline" onClick={() => setReserveId(r.id)}>Request</Button>
           )}
           {r.status === 'BORROWED' && canCompleteBorrowing && (
             <Button size="sm" variant="success" onClick={() => setReturnId(r.id)}>Return</Button>
           )}
+
+          {/* Danger */}
           {canManageAssets && (
             <Button size="sm" variant="danger" onClick={() => setDeleteId(r.id)}>Delete</Button>
           )}
@@ -163,7 +171,7 @@ export function AssetPage() {
   ], [canManageAssets, canCompleteBorrowing])
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <PageHeader
         title="Assets"
         subtitle="Search, scan, borrow, and view PSA-tracked assets."
@@ -177,22 +185,22 @@ export function AssetPage() {
 
       {message && <Alert tone="info" onClose={() => setMessage(null)}>{message}</Alert>}
 
-      <Card noPadding>
-        {/* ── Toolbar ── */}
-        <div className="flex flex-col gap-3 border-b border-[#E5E7EB] px-5 py-4 md:flex-row md:items-center md:justify-between">
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        {/* Toolbar */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottom: '1px solid #f1f5f9', padding: '14px 20px' }}>
           <SearchBar
             placeholder="Search assets…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void load(1) }}
           />
-          <div className="flex shrink-0 items-center gap-2">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <Dropdown
               options={[
-                { label: 'Available',    value: 'AVAILABLE' },
-                { label: 'Borrowed',     value: 'BORROWED' },
-                { label: 'Reserved',     value: 'RESERVED' },
-                { label: 'Maintenance',  value: 'MAINTENANCE' },
+                { label: 'Available',   value: 'AVAILABLE' },
+                { label: 'Borrowed',    value: 'BORROWED' },
+                { label: 'Reserved',    value: 'RESERVED' },
+                { label: 'Maintenance', value: 'MAINTENANCE' },
               ]}
               placeholder="All statuses"
               value={status}
@@ -202,7 +210,7 @@ export function AssetPage() {
           </div>
         </div>
 
-        {/* ── Table ── */}
+        {/* Table */}
         {loading ? (
           <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : (
@@ -211,12 +219,12 @@ export function AssetPage() {
               columns={columns} rows={rows} rowKey={(r) => r.id}
               empty={<div className="py-16"><EmptyState title="No assets found" description="Try another search term or clear the status filter." /></div>}
             />
-            <div className="border-t border-[#E5E7EB] px-5 py-3">
+            <div style={{ borderTop: '1px solid #f1f5f9', padding: '10px 20px' }}>
               <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void load(p)} />
             </div>
           </>
         )}
-      </Card>
+      </div>
 
       {/* ── Dialogs ── */}
       <ConfirmDialog
