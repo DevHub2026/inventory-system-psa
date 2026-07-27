@@ -2,105 +2,135 @@ import { useEffect, useState } from 'react'
 import { Button, Card, EmptyState, Spinner, Table, Alert, type Column } from '@/components/ui'
 import { reportService, type AssetReportItem, type BorrowingReportItem, type OverdueReportItem } from '@/services/reportService'
 import { borrowingStatusLabel, inventoryStatusLabel } from '@/utils/displayLabels'
+import { PageHeader } from '@/components/PageHeader'
 
 type ReportType = 'assets' | 'borrowings' | 'overdue'
 type ReportData = AssetReportItem[] | BorrowingReportItem[] | OverdueReportItem[]
 
+const TABS: { key: ReportType; label: string }[] = [
+  { key: 'assets',     label: 'Assets' },
+  { key: 'borrowings', label: 'Borrowed Items' },
+  { key: 'overdue',    label: 'Overdue' },
+]
+
 export function ReportPage() {
   const [reportType, setReportType] = useState<ReportType>('assets')
-  const [data, setData] = useState<ReportData>([])
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [data,       setData]       = useState<ReportData>([])
+  const [loading,    setLoading]    = useState(false)
+  const [message,    setMessage]    = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const loadReport = async () => {
-    setLoading(true)
-    setMessage(null)
+    setLoading(true); setMessage(null)
     try {
       let result: ReportData = []
       switch (reportType) {
-        case 'assets':
-          result = await reportService.getAssets()
-          break
-        case 'borrowings':
-          result = await reportService.getBorrowings()
-          break
-        case 'overdue':
-          result = await reportService.getOverdue()
-          break
+        case 'assets':     result = await reportService.getAssets();    break
+        case 'borrowings': result = await reportService.getBorrowings(); break
+        case 'overdue':    result = await reportService.getOverdue();    break
       }
       setData(result)
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to load report.' })
-    } finally {
-      setLoading(false)
-    }
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to load report.' })
+    } finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    void loadReport()
-  }, [reportType])
+  useEffect(() => { void loadReport() }, [reportType])
 
   const assetColumns: Column<AssetReportItem>[] = [
-    { key: 'asset_number', header: 'Asset Number', render: (row) => row.asset_number },
-    { key: 'name', header: 'Name', render: (row) => row.name },
-    { key: 'category', header: 'Category', render: (row) => row.category },
-    { key: 'status', header: 'Status', render: (row) => inventoryStatusLabel(row.status) },
-    { key: 'location', header: 'Location', render: (row) => row.location },
+    { key: 'asset_number', header: 'Asset No.',  render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number}</span> },
+    { key: 'name',         header: 'Name',       render: (r) => <span className="font-medium text-[#1F2937]">{r.name}</span> },
+    { key: 'category',     header: 'Category',   render: (r) => r.category },
+    { key: 'status',       header: 'Status',     render: (r) => inventoryStatusLabel(r.status) },
+    { key: 'location',     header: 'Location',   render: (r) => r.location },
   ]
 
   const borrowingColumns: Column<BorrowingReportItem>[] = [
-    { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
-    { key: 'borrower', header: 'Borrower', render: (row) => row.borrower },
-    { key: 'borrow_date', header: 'Borrow Date', render: (row) => row.borrow_date },
-    { key: 'due_date', header: 'Due Date', render: (row) => row.due_date },
-    { key: 'status', header: 'Status', render: (row) => borrowingStatusLabel(row.status) },
+    { key: 'asset_name',  header: 'Asset',       render: (r) => <span className="font-medium text-[#1F2937]">{r.asset_name}</span> },
+    { key: 'borrower',    header: 'Borrower',    render: (r) => r.borrower },
+    { key: 'borrow_date', header: 'Borrow Date', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.borrow_date}</span> },
+    { key: 'due_date',    header: 'Due Date',    render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.due_date}</span> },
+    { key: 'status',      header: 'Status',      render: (r) => borrowingStatusLabel(r.status) },
   ]
 
   const overdueColumns: Column<OverdueReportItem>[] = [
-    { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
-    { key: 'borrower', header: 'Borrower', render: (row) => row.borrower },
-    { key: 'due_date', header: 'Due Date', render: (row) => row.due_date },
-    { key: 'days_overdue', header: 'Days Overdue', render: (row) => row.days_overdue },
+    { key: 'asset_name',   header: 'Asset',        render: (r) => <span className="font-medium text-[#1F2937]">{r.asset_name}</span> },
+    { key: 'borrower',     header: 'Borrower',     render: (r) => r.borrower },
+    { key: 'due_date',     header: 'Due Date',     render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.due_date}</span> },
+    { key: 'days_overdue', header: 'Days Overdue', render: (r) => <span className="font-semibold text-[#D32F2F]">{r.days_overdue}</span> },
   ]
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">Reports</h1>
-        <p className="text-sm text-gray-500">View asset, borrowing, and overdue item reports.</p>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <PageHeader title="Reports" subtitle="View asset, borrowing, and overdue item reports." />
 
-      <div className="flex gap-2">
-        <Button variant={reportType === 'assets' ? 'primary' : 'secondary'} onClick={() => setReportType('assets')}>
-          Assets
-        </Button>
-        <Button variant={reportType === 'borrowings' ? 'primary' : 'secondary'} onClick={() => setReportType('borrowings')}>
-          Borrowed Items
-        </Button>
-        <Button variant={reportType === 'overdue' ? 'primary' : 'secondary'} onClick={() => setReportType('overdue')}>
-          Overdue
-        </Button>
-      </div>
+      {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
-      {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
-      )}
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
 
-      <Card>
+        {/* ── Tab bar ── */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #f1f5f9', padding: '0 4px' }}>
+          {TABS.map((tab) => {
+            const active = reportType === tab.key
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setReportType(tab.key)}
+                style={{
+                  position: 'relative',
+                  padding: '14px 20px',
+                  fontSize: 13,
+                  fontWeight: active ? 700 : 500,
+                  color: active ? '#0B3D91' : '#64748b',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'color 0.15s',
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1,
+                  outline: 'none',
+                }}
+                onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = '#1e293b' }}
+                onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = '#64748b' }}
+              >
+                {tab.label}
+                {active && (
+                  <span style={{
+                    position: 'absolute',
+                    bottom: 0, left: 8, right: 8,
+                    height: 2,
+                    borderRadius: '2px 2px 0 0',
+                    background: '#0B3D91',
+                    display: 'block',
+                  }} />
+                )}
+              </button>
+            )
+          })}
+
+          {/* Export button pushed to the right */}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', paddingRight: 12 }}>
+            <Button size="sm" variant="secondary" onClick={() => window.print()}>
+              Export / Print
+            </Button>
+          </div>
+        </div>
+
+        {/* ── Content ── */}
         {loading ? (
-          <Spinner />
+          <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : data.length === 0 ? (
-          <EmptyState title="No report data found" description="No matching records are available for this report yet." />
+          <div className="py-16">
+            <EmptyState title="No report data found" description="No matching records are available for this report yet." />
+          </div>
         ) : reportType === 'assets' ? (
-          <Table columns={assetColumns} rows={data as AssetReportItem[]} rowKey={(row) => row.id} />
+          <Table columns={assetColumns}     rows={data as AssetReportItem[]}    rowKey={(r) => r.id} />
         ) : reportType === 'borrowings' ? (
-          <Table columns={borrowingColumns} rows={data as BorrowingReportItem[]} rowKey={(row) => row.id} />
+          <Table columns={borrowingColumns} rows={data as BorrowingReportItem[]} rowKey={(r) => r.id} />
         ) : (
-          <Table columns={overdueColumns} rows={data as OverdueReportItem[]} rowKey={(row) => row.id} />
+          <Table columns={overdueColumns}   rows={data as OverdueReportItem[]}  rowKey={(r) => r.id} />
         )}
-      </Card>
+      </div>
     </div>
   )
 }

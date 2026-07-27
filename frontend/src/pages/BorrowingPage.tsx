@@ -5,11 +5,12 @@ import { borrowingService } from '@/services/borrowingService'
 import type { Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
+import { PageHeader } from '@/components/PageHeader'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 import { formatDate, formatTime } from '@/utils/dateFormat'
 
 export function BorrowingPage() {
-  const [rows, setRows] = useState<Borrowing[]>([])
+  const [rows,    setRows]    = useState<Borrowing[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [receipt, setReceipt] = useState<ReceiptRecord | null>(null)
@@ -19,16 +20,12 @@ export function BorrowingPage() {
     try {
       const result = await borrowingService.list()
       setRows(result.items)
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load borrowed items.' })
-    } finally {
-      setLoading(false)
-    }
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load borrowed items.' })
+    } finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    void loadBorrowings()
-  }, [])
+  useEffect(() => { void loadBorrowings() }, [])
 
   // Real-time polling - refresh every 30 seconds
   useEffect(() => {
@@ -45,20 +42,20 @@ export function BorrowingPage() {
     }
   }), [])
 
-  const handleReturn = async (borrowingId: number) => {
+  const handleReturn = async (id: number) => {
     if (!confirm('Are you sure you want to return this item?')) return
-
     try {
-      await borrowingService.returnAsset(borrowingId)
+      await borrowingService.returnAsset(id)
       setMessage({ type: 'success', text: 'Item returned successfully.' })
       notifyDataChanged('all')
       await loadBorrowings()
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to return item.' })
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to return item.' })
     }
   }
 
   const columns: Column<Borrowing>[] = [
+<<<<<<< HEAD
     { key: 'id', header: 'Borrowing ID', render: (row) => `#${row.id}` },
     { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
     { key: 'asset_number', header: 'Asset Identifier', render: (row) => row.asset_number ?? 'N/A' },
@@ -106,14 +103,43 @@ export function BorrowingPage() {
               })
             }
           >
+=======
+    { key: 'asset_name',    header: 'Asset',    render: (r) => <span className="font-medium text-[#1F2937]">{r.asset_name}</span> },
+    { key: 'employee_name', header: 'Borrower', render: (r) => r.employee_name },
+    { key: 'status',        header: 'Status',   render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> },
+    { key: 'borrowed_at',   header: 'Borrowed', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.borrowed_at}</span> },
+    { key: 'due_at',        header: 'Due',      render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.due_at}</span> },
+    {
+      key: 'actions', header: 'Actions',
+      render: (r) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button size="sm" variant="ghost" onClick={() => setReceipt({
+            type: 'Borrowing',
+            code: r.receipt_code ?? `PSA-BOR-${r.id}`,
+            payload: r.receipt_payload ?? `PSA-BOR-${r.id}|${r.asset_number ?? r.asset_id}|${r.user_id}`,
+            employee: r.employee_name,
+            employeeId: r.employee_id,
+            assetName: r.asset_name,
+            assetNumber: r.asset_number,
+            assetCode: r.asset_code,
+            quantity: r.quantity,
+            timestamp: r.created_at,
+            borrowedAt: r.borrowed_at,
+            returnedAt: r.returned_at,
+            startDate: r.borrow_date,
+            endDate: r.due_date,
+            status: r.status,
+            authorizedBy: r.authorized_by_name,
+            authorizedAt: r.authorized_at,
+            remarks: r.remarks,
+          })}>
+>>>>>>> 51d547c43ed3764a6641672d91815b8a9eed0607
             Receipt
           </Button>
-          {row.status === 'BORROWED' || row.status === 'ACTIVE' || row.status === 'OVERDUE' ? (
-            <Button size="sm" variant="secondary" onClick={() => handleReturn(row.id)}>
-              Return Item
-            </Button>
+          {(r.status === 'BORROWED' || r.status === 'ACTIVE' || r.status === 'OVERDUE') ? (
+            <Button size="sm" variant="success" onClick={() => handleReturn(r.id)}>Return</Button>
           ) : (
-            <span className="text-sm text-gray-400">No actions</span>
+            <span className="text-[12px] text-[#9CA3AF]">—</span>
           )}
         </div>
       ),
@@ -121,28 +147,22 @@ export function BorrowingPage() {
   ]
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">Borrowed Items</h1>
-        <p className="text-sm text-gray-500">View borrowed assets and process returns.</p>
-      </div>
-      {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
-      )}
-      <Card>
+    <div className="space-y-6">
+      <PageHeader title="Borrowed Items" subtitle="View borrowed assets and process returns." />
+
+      {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
+
+      <Card noPadding>
         {loading ? (
-          <Spinner />
+          <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : (
           <Table
-            columns={columns}
-            rows={rows}
-            rowKey={(row) => row.id}
-            empty={<EmptyState title="No borrowed items found" description="Borrowed assets will appear here after a request is approved or an item is borrowed." />}
+            columns={columns} rows={rows} rowKey={(r) => r.id}
+            empty={<div className="py-16"><EmptyState title="No borrowed items found" description="Borrowed assets will appear here after a request is approved or an item is borrowed." /></div>}
           />
         )}
       </Card>
+
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
     </div>
   )

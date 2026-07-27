@@ -1,504 +1,333 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Alert, Badge, Button, Card, Dropdown, EmptyState, Input, Modal, Pagination, SearchBar, Spinner, Table, type Column } from '@/components/ui'
+import {
+  Alert, Badge, Button, Card, Dropdown, EmptyState, Input,
+  Modal, Pagination, SearchBar, Spinner, Table, type Column,
+} from '@/components/ui'
 import { inventoryService, type CreateInventoryItemPayload, type UpdateInventoryItemPayload } from '@/services/inventoryService'
 import type { InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
+import { PageHeader } from '@/components/PageHeader'
+
+const LABEL_CLS = 'mb-1.5 block text-[13px] font-medium text-[#1F2937]'
 
 function movementTypeLabel(type: string) {
-  const labels: Record<string, string> = {
-    stock_in: 'Stock Added',
-    stock_out: 'Stock Removed',
-    adjustment: 'Quantity Corrected',
-  }
-
-  return labels[type] ?? type
+  return ({ stock_in: 'Stock Added', stock_out: 'Stock Removed', adjustment: 'Quantity Corrected' })[type] ?? type
 }
 
 export function InventoryPage() {
   const navigate = useNavigate()
-  const [rows, setRows] = useState<InventoryItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const [lastPage, setLastPage] = useState(1)
-  const [total, setTotal] = useState(0)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [stockModalOpen, setStockModalOpen] = useState(false)
-  const [stockItem, setStockItem] = useState<InventoryItem | null>(null)
-  const [stockQuantity, setStockQuantity] = useState(1)
-  const [stockReason, setStockReason] = useState('')
-  const [stockType, setStockType] = useState<'in' | 'out'>('in')
-  const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null)
-  const [adjustQuantity, setAdjustQuantity] = useState(0)
-  const [adjustReason, setAdjustReason] = useState('')
-  const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null)
-  const [historyRows, setHistoryRows] = useState<StockMovement[]>([])
-  const [historyLoading, setHistoryLoading] = useState(false)
+  const [rows,          setRows]          = useState<InventoryItem[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [page,          setPage]          = useState(1)
+  const [lastPage,      setLastPage]      = useState(1)
+  const [total,         setTotal]         = useState(0)
+  const [search,        setSearch]        = useState('')
+  const [statusFilter,  setStatusFilter]  = useState('')
+  const [modalOpen,     setModalOpen]     = useState(false)
+  const [editingItem,   setEditingItem]   = useState<InventoryItem | null>(null)
+  const [saving,        setSaving]        = useState(false)
+  const [message,       setMessage]       = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [stockModalOpen,setStockModalOpen]= useState(false)
+  const [stockItem,     setStockItem]     = useState<InventoryItem | null>(null)
+  const [stockQty,      setStockQty]      = useState(1)
+  const [stockReason,   setStockReason]   = useState('')
+  const [stockType,     setStockType]     = useState<'in' | 'out'>('in')
+  const [adjustItem,    setAdjustItem]    = useState<InventoryItem | null>(null)
+  const [adjustQty,     setAdjustQty]     = useState(0)
+  const [adjustReason,  setAdjustReason]  = useState('')
+  const [historyItem,   setHistoryItem]   = useState<InventoryItem | null>(null)
+  const [historyRows,   setHistoryRows]   = useState<StockMovement[]>([])
+  const [historyLoading,setHistoryLoading]= useState(false)
 
   const [formData, setFormData] = useState<CreateInventoryItemPayload>({
-    name: '',
-    sku: '',
-    quantity: 0,
-    unit: '',
-    reorder_level: 0,
-    track_as_asset: true,
+    name: '', sku: '', quantity: 0, unit: '', reorder_level: 0, track_as_asset: true,
   })
 
   const loadInventory = async (nextPage = page) => {
     setLoading(true)
     try {
-      const result = await inventoryService.list({
-        page: nextPage,
-        per_page: 10,
-        search: search || undefined,
-        status: statusFilter || undefined,
-      })
-      setRows(result.items)
-      setPage(result.meta.current_page)
-      setLastPage(result.meta.last_page)
-      setTotal(result.meta.total)
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load inventory items.' })
-    } finally {
-      setLoading(false)
-    }
+      const result = await inventoryService.list({ page: nextPage, per_page: 10, search: search || undefined, status: statusFilter || undefined })
+      setRows(result.items); setPage(result.meta.current_page)
+      setLastPage(result.meta.last_page); setTotal(result.meta.total)
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load inventory items.' })
+    } finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    const run = async () => {
-      await loadInventory(1)
-    }
-
-    void run()
-  }, [])
+  useEffect(() => { void loadInventory(1) }, [])
 
   const handleCreate = () => {
     setEditingItem(null)
-    setFormData({
-      name: '',
-      sku: '',
-      quantity: 0,
-      unit: '',
-      reorder_level: 0,
-      track_as_asset: true,
-    })
+    setFormData({ name: '', sku: '', quantity: 0, unit: '', reorder_level: 0, track_as_asset: true })
     setModalOpen(true)
   }
 
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item)
-    setFormData({
-      name: item.name,
-      sku: (item as unknown as { sku?: string }).sku ?? '',
-      quantity: item.quantity,
-      unit: item.unit,
-      reorder_level: item.reorder_level || 0,
-      track_as_asset: Boolean(item.asset_id),
-    })
+    setFormData({ name: item.name, sku: (item as unknown as { sku?: string }).sku ?? '', quantity: item.quantity, unit: item.unit, reorder_level: item.reorder_level || 0, track_as_asset: Boolean(item.asset_id) })
     setModalOpen(true)
   }
 
   const handleDelete = async (item: InventoryItem) => {
-    if (!confirm(`Are you sure you want to delete ${item.name}?`)) return
-
+    if (!confirm(`Delete ${item.name}?`)) return
     try {
       await inventoryService.delete(item.id)
       setMessage({ type: 'success', text: 'Item deleted successfully.' })
       await loadInventory()
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to delete item.' })
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to delete item.' })
     }
   }
 
   const handleSubmit = async () => {
-    setSaving(true)
-    setMessage(null)
-
+    setSaving(true); setMessage(null)
     try {
-      if (editingItem) {
-        await inventoryService.update(editingItem.id, formData as UpdateInventoryItemPayload)
-        setMessage({ type: 'success', text: 'Item updated successfully.' })
-      } else {
-        await inventoryService.create(formData)
-        setMessage({ type: 'success', text: 'Item created successfully.' })
-      }
-      setModalOpen(false)
-      await loadInventory()
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save item.' })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleStockIn = (item: InventoryItem) => {
-    setStockItem(item)
-    setStockType('in')
-    setStockQuantity(1)
-    setStockReason('')
-    setStockModalOpen(true)
-  }
-
-  const handleStockOut = (item: InventoryItem) => {
-    setStockItem(item)
-    setStockType('out')
-    setStockQuantity(1)
-    setStockReason('')
-    setStockModalOpen(true)
-  }
-
-  const handleAdjust = (item: InventoryItem) => {
-    setAdjustItem(item)
-    setAdjustQuantity(item.quantity)
-    setAdjustReason('')
-  }
-
-  const loadHistory = async (item: InventoryItem) => {
-    setHistoryItem(item)
-    setHistoryLoading(true)
-    try {
-      const result = await inventoryService.history(item.id)
-      setHistoryRows(result.items)
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load stock movement history.' })
-    } finally {
-      setHistoryLoading(false)
-    }
+      if (editingItem) { await inventoryService.update(editingItem.id, formData as UpdateInventoryItemPayload); setMessage({ type: 'success', text: 'Item updated successfully.' }) }
+      else             { await inventoryService.create(formData);                                                setMessage({ type: 'success', text: 'Item created successfully.' }) }
+      setModalOpen(false); await loadInventory()
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to save item.' })
+    } finally { setSaving(false) }
   }
 
   const handleStockSubmit = async () => {
     if (!stockItem) return
-
     setSaving(true)
     try {
-      if (stockType === 'in') {
-        await inventoryService.stockIn(stockItem.id, { quantity: stockQuantity, reason: stockReason || undefined })
-        setMessage({ type: 'success', text: 'Stock added successfully.' })
-      } else {
-        await inventoryService.stockOut(stockItem.id, { quantity: stockQuantity, reason: stockReason || undefined })
-        setMessage({ type: 'success', text: 'Stock removed successfully.' })
-      }
-      setStockModalOpen(false)
-      await loadInventory(page)
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to update the item quantity.' })
-    } finally {
-      setSaving(false)
-    }
+      if (stockType === 'in') { await inventoryService.stockIn(stockItem.id,  { quantity: stockQty, reason: stockReason || undefined }); setMessage({ type: 'success', text: 'Stock added successfully.' }) }
+      else                    { await inventoryService.stockOut(stockItem.id, { quantity: stockQty, reason: stockReason || undefined }); setMessage({ type: 'success', text: 'Stock removed successfully.' }) }
+      setStockModalOpen(false); await loadInventory(page)
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to update the item quantity.' })
+    } finally { setSaving(false) }
   }
 
   const handleAdjustSubmit = async () => {
     if (!adjustItem) return
-
-    if (!adjustReason.trim()) {
-      setMessage({ type: 'error', text: 'Please provide a reason for correcting the quantity.' })
-      return
-    }
-
+    if (!adjustReason.trim()) { setMessage({ type: 'error', text: 'Please provide a reason for correcting the quantity.' }); return }
     setSaving(true)
     try {
-      await inventoryService.adjust(adjustItem.id, {
-        quantity: adjustQuantity,
-        reason: adjustReason.trim(),
-      })
+      await inventoryService.adjust(adjustItem.id, { quantity: adjustQty, reason: adjustReason.trim() })
       setAdjustItem(null)
       setMessage({ type: 'success', text: 'Stock quantity corrected successfully.' })
       await loadInventory(page)
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to correct stock quantity.' })
-    } finally {
-      setSaving(false)
-    }
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to correct stock quantity.' })
+    } finally { setSaving(false) }
+  }
+
+  const loadHistory = async (item: InventoryItem) => {
+    setHistoryItem(item); setHistoryLoading(true)
+    try { const r = await inventoryService.history(item.id); setHistoryRows(r.items) }
+    catch (e: unknown) { setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load history.' }) }
+    finally { setHistoryLoading(false) }
   }
 
   const columns: Column<InventoryItem>[] = [
-    { key: 'name', header: 'Item', render: (row) => row.name },
-    { key: 'asset_number', header: 'Asset Number', render: (row) => row.asset_number ?? 'Not linked' },
-    { key: 'quantity', header: 'Available Quantity', render: (row) => row.quantity },
-    { key: 'unit', header: 'Unit', render: (row) => row.unit },
+    { key: 'name',         header: 'Item',              render: (r) => <span className="font-medium text-[#1F2937]">{r.name}</span> },
+    { key: 'asset_number', header: 'Asset No.',         render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number ?? 'Not linked'}</span> },
+    { key: 'quantity',     header: 'Available Qty',     render: (r) => <span className="font-semibold">{r.quantity}</span> },
+    { key: 'unit',         header: 'Unit',              render: (r) => r.unit },
+    { key: 'status',       header: 'Status',            render: (r) => <Badge tone={r.status === 'OUT_OF_STOCK' ? 'red' : r.status === 'LOW_STOCK' ? 'yellow' : 'green'}>{inventoryStatusLabel(r.status)}</Badge> },
     {
-      key: 'status',
-      header: 'Status',
-      render: (row) => (
-        <Badge
-          tone={
-            row.status === 'OUT_OF_STOCK' ? 'red' : row.status === 'LOW_STOCK' ? 'yellow' : 'green'
-          }
-        >
-          {inventoryStatusLabel(row.status)}
-        </Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <div className="flex gap-2">
-          <Button size="sm" variant="success" onClick={() => handleStockIn(row)}>
-            Add Stock
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => handleStockOut(row)}>
-            Remove Stock
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => handleAdjust(row)}>
-            Correct Quantity
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => void loadHistory(row)}>
-            History
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => handleEdit(row)}>
-            Edit
-          </Button>
-          {row.asset_number && (
-            <Button size="sm" variant="ghost" onClick={() => navigate(`/assets?search=${encodeURIComponent(row.asset_number ?? '')}`)}>
-              View Asset
-            </Button>
+      key: 'actions', header: 'Actions',
+      render: (r) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button size="sm" variant="primary"   onClick={() => { setStockItem(r); setStockType('in');  setStockQty(1); setStockReason(''); setStockModalOpen(true) }}>+ Stock</Button>
+          <Button size="sm" variant="secondary" onClick={() => { setStockItem(r); setStockType('out'); setStockQty(1); setStockReason(''); setStockModalOpen(true) }}>− Stock</Button>
+          <Button size="sm" variant="ghost"     onClick={() => { setAdjustItem(r); setAdjustQty(r.quantity); setAdjustReason('') }}>Adjust</Button>
+          <Button size="sm" variant="ghost"     onClick={() => void loadHistory(r)}>History</Button>
+          <Button size="sm" variant="secondary" onClick={() => handleEdit(r)}>Edit</Button>
+          {r.asset_number && (
+            <Button size="sm" variant="ghost" onClick={() => navigate(`/assets?search=${encodeURIComponent(r.asset_number ?? '')}`)}>Asset</Button>
           )}
-          <Button size="sm" variant="danger" onClick={() => handleDelete(row)}>
-            Delete
-          </Button>
+          <Button size="sm" variant="danger" onClick={() => handleDelete(r)}>Delete</Button>
         </div>
       ),
     },
   ]
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Inventory</h1>
-          <p className="text-sm text-gray-500">Manage consumable items and available quantities.</p>
-        </div>
-        <Button onClick={handleCreate}>Add Item</Button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Inventory" subtitle="Manage consumable items and available quantities." actions={<Button onClick={handleCreate}>Add Item</Button>} />
 
-      {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
-      )}
+      {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
-      <Card>
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <SearchBar
-            placeholder="Search item name, code, or unit..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') void loadInventory(1)
-            }}
-          />
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Dropdown
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              placeholder="All stock statuses"
-              options={[
-                { label: 'In Stock', value: 'IN_STOCK' },
-                { label: 'Low Stock', value: 'LOW_STOCK' },
-                { label: 'Out of Stock', value: 'OUT_OF_STOCK' },
-              ]}
+      <Card noPadding>
+        <div className="flex flex-col gap-3 border-b border-[#E5E7EB] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+          <SearchBar placeholder="Search item name, code, or unit…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void loadInventory(1) }} />
+          <div className="flex shrink-0 items-center gap-2">
+            <Dropdown value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} placeholder="All stock statuses"
+              options={[{ label: 'In Stock', value: 'IN_STOCK' }, { label: 'Low Stock', value: 'LOW_STOCK' }, { label: 'Out of Stock', value: 'OUT_OF_STOCK' }]}
             />
-            <Button variant="secondary" onClick={() => void loadInventory(1)}>
-              Apply Filters
-            </Button>
+            <Button variant="secondary" onClick={() => void loadInventory(1)}>Filter</Button>
           </div>
         </div>
         {loading ? (
-          <Spinner />
+          <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : (
           <>
-            <Table
-              columns={columns}
-              rows={rows}
-              rowKey={(row) => row.id}
-              empty={<EmptyState title="No inventory items found" description="Add your first item to begin tracking stock." />}
-            />
-            <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(nextPage) => void loadInventory(nextPage)} />
+            <Table columns={columns} rows={rows} rowKey={(r) => r.id} empty={<div className="py-16"><EmptyState title="No inventory items found" description="Add your first item to begin tracking stock." /></div>} />
+            <div className="border-t border-[#E5E7EB] px-5 py-3">
+              <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void loadInventory(p)} />
+            </div>
           </>
         )}
       </Card>
 
+      {/* ── Add / Edit ── */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editingItem ? 'Edit Item' : 'Add Item'}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={saving}>
+              {saving ? 'Saving…' : editingItem ? 'Save Changes' : 'Add Item'}
+            </Button>
+          </>
+        }
       >
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <Input
             label="Item Name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="e.g. Bond Paper A4"
           />
           <Input
             label="Item Code"
-            helperText="Use the existing item code or stock keeping code if available."
+            helperText="Use the existing stock keeping code if available."
             value={formData.sku || ''}
             onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+            placeholder="e.g. SKU-001"
           />
-          <div className="grid gap-3 md:grid-cols-2">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Input
               label="Available Quantity"
               type="number"
               value={formData.quantity.toString()}
               disabled={Boolean(editingItem)}
-              helperText={editingItem ? 'Use Correct Quantity to update stock and record a reason.' : undefined}
+              helperText={editingItem ? 'Use Adjust to update stock.' : undefined}
               onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
             />
             <Input
               label="Unit"
               value={formData.unit}
               onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+              placeholder="e.g. reams, pcs"
             />
           </div>
           <Input
             label="Low Stock Alert"
-            helperText="Show a warning when the available quantity reaches this number."
+            helperText="Show a warning when available quantity reaches this number."
             type="number"
             value={formData.reorder_level?.toString() || '0'}
             onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })}
           />
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
             <input
               type="checkbox"
               checked={Boolean(formData.track_as_asset)}
-              onChange={(e) => setFormData({ ...formData, track_as_asset: e.target.checked })}
               disabled={Boolean(editingItem?.asset_id)}
-              className="h-4 w-4 accent-brand-600"
+              onChange={(e) => setFormData({ ...formData, track_as_asset: e.target.checked })}
+              style={{ width: 16, height: 16, accentColor: '#0B3D91', cursor: 'pointer' }}
             />
-            Also show this item in Assets
+            <span style={{ fontSize: 14, color: '#334155', lineHeight: 1.4 }}>
+              Also show this item in Assets
+            </span>
           </label>
-          <div className="flex gap-2 justify-end">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={saving}>
-              {saving ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Item'}
-            </Button>
-          </div>
         </div>
       </Modal>
 
+      {/* ── Stock In / Out ── */}
       <Modal
         open={stockModalOpen}
         onClose={() => setStockModalOpen(false)}
-        title={`${stockType === 'in' ? 'Add Stock' : 'Remove Stock'} - ${stockItem?.name}`}
-      >
-        <div className="space-y-4">
-          <Input
-            label="Quantity"
-            type="number"
-            value={stockQuantity.toString()}
-            onChange={(e) => setStockQuantity(parseInt(e.target.value) || 1)}
-            min={1}
-          />
-          <Input
-            label="Reason"
-            value={stockReason}
-            onChange={(e) => setStockReason(e.target.value)}
-            placeholder={stockType === 'in' ? 'New supplies received' : 'Office use'}
-          />
-          <div className="flex gap-2 justify-end">
-            <Button variant="secondary" onClick={() => setStockModalOpen(false)}>
-              Cancel
-            </Button>
+        title={`${stockType === 'in' ? 'Add Stock' : 'Remove Stock'} — ${stockItem?.name}`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setStockModalOpen(false)}>Cancel</Button>
             <Button onClick={handleStockSubmit} disabled={saving}>
-              {saving ? 'Processing...' : stockType === 'in' ? 'Add Stock' : 'Remove Stock'}
+              {saving ? 'Processing…' : stockType === 'in' ? 'Add Stock' : 'Remove Stock'}
             </Button>
-          </div>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <Input label="Quantity" type="number" min={1} value={stockQty.toString()} onChange={(e) => setStockQty(parseInt(e.target.value) || 1)} />
+          <Input label="Reason" value={stockReason} onChange={(e) => setStockReason(e.target.value)} placeholder={stockType === 'in' ? 'New supplies received' : 'Office use'} />
         </div>
       </Modal>
 
+      {/* ── Adjust Quantity ── */}
       <Modal
         open={adjustItem !== null}
         onClose={() => setAdjustItem(null)}
-        title={`Correct Stock Quantity - ${adjustItem?.name}`}
+        title={`Correct Stock Quantity — ${adjustItem?.name}`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setAdjustItem(null)}>Cancel</Button>
+            <Button onClick={() => void handleAdjustSubmit()} disabled={saving}>
+              {saving ? 'Saving…' : 'Save Correction'}
+            </Button>
+          </>
+        }
       >
         {adjustItem && (
-          <div className="space-y-4">
-            <div className="grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm md:grid-cols-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', padding: '14px 16px' }}>
               <div>
-                <div className="text-gray-500">Current Quantity</div>
-                <div className="font-semibold text-gray-900">{adjustItem.quantity}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Current</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{adjustItem.quantity}</div>
               </div>
               <div>
-                <div className="text-gray-500">New Quantity</div>
-                <div className="font-semibold text-gray-900">{adjustQuantity}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>New</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{adjustQty}</div>
               </div>
               <div>
-                <div className="text-gray-500">Difference</div>
-                <div className={adjustQuantity - adjustItem.quantity < 0 ? 'font-semibold text-red-700' : 'font-semibold text-green-700'}>
-                  {adjustQuantity - adjustItem.quantity > 0 ? '+' : ''}
-                  {adjustQuantity - adjustItem.quantity}
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Difference</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: adjustQty - adjustItem.quantity < 0 ? '#C62828' : '#2E7D32' }}>
+                  {adjustQty - adjustItem.quantity > 0 ? '+' : ''}{adjustQty - adjustItem.quantity}
                 </div>
               </div>
             </div>
-            <Input
-              label="Corrected Quantity"
-              type="number"
-              min={0}
-              value={adjustQuantity.toString()}
-              onChange={(event) => setAdjustQuantity(parseInt(event.target.value) || 0)}
-            />
-            <Input
-              label="Reason"
-              value={adjustReason}
-              onChange={(event) => setAdjustReason(event.target.value)}
-              placeholder="Damaged, lost, expired, physical count correction, or data entry error"
-            />
-            <div className="flex gap-2 justify-end">
-              <Button variant="secondary" onClick={() => setAdjustItem(null)}>
-                Cancel
-              </Button>
-              <Button onClick={() => void handleAdjustSubmit()} disabled={saving}>
-                {saving ? 'Saving...' : 'Save Correction'}
-              </Button>
-            </div>
+            <Input label="Corrected Quantity" type="number" min={0} value={adjustQty.toString()} onChange={(e) => setAdjustQty(parseInt(e.target.value) || 0)} />
+            <Input label="Reason" value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="Damaged, lost, expired, physical count correction…" />
           </div>
         )}
       </Modal>
 
-      <Modal
-        open={historyItem !== null}
-        onClose={() => {
-          setHistoryItem(null)
-          setHistoryRows([])
-        }}
-        title={`Stock Movement History - ${historyItem?.name}`}
-      >
-        {historyLoading ? (
-          <Spinner />
-        ) : historyRows.length === 0 ? (
-          <EmptyState title="No stock movement history" description="Stock changes will appear here after quantities are added, removed, or corrected." />
-        ) : (
-          <div className="space-y-3">
-            {historyRows.map((movement) => (
-              <div key={movement.id} className="rounded-lg border border-gray-200 bg-white p-3 text-sm">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <div className="font-semibold text-gray-900">{movementTypeLabel(movement.type)}</div>
-                    <div className="text-xs text-gray-500">{movement.created_at ?? 'Date not available'}</div>
+      {/* ── Stock History ── */}
+      <Modal open={historyItem !== null} onClose={() => { setHistoryItem(null); setHistoryRows([]) }} title={`Stock Movement History — ${historyItem?.name}`}>
+        {historyLoading ? <Spinner /> : historyRows.length === 0
+          ? <EmptyState title="No stock movement history" description="Stock changes will appear here after quantities are added, removed, or corrected." />
+          : (
+            <div className="space-y-3">
+              {historyRows.map((m) => (
+                <div key={m.id} className="rounded-xl border border-[#E5E7EB] bg-white p-4 text-[14px]">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <div className="font-semibold text-[#1F2937]">{movementTypeLabel(m.type)}</div>
+                      <div className="text-[12px] text-[#9CA3AF]">{m.created_at ?? 'Date not available'}</div>
+                    </div>
+                    <div className={`font-mono font-semibold ${m.quantity < 0 ? 'text-[#D32F2F]' : 'text-[#2E7D32]'}`}>
+                      {m.quantity > 0 ? '+' : ''}{m.quantity}
+                    </div>
                   </div>
-                  <div className={movement.quantity < 0 ? 'font-mono font-semibold text-red-700' : 'font-mono font-semibold text-green-700'}>
-                    {movement.quantity > 0 ? '+' : ''}
-                    {movement.quantity}
-                  </div>
+                  <dl className="mt-3 grid gap-2 text-[12px] text-[#6B7280] sm:grid-cols-2">
+                    <div>Previous: <span className="font-medium text-[#1F2937]">{m.quantity_before}</span></div>
+                    <div>New: <span className="font-medium text-[#1F2937]">{m.quantity_after}</span></div>
+                    <div>Reason: <span className="font-medium text-[#1F2937]">{m.reason ?? 'Not provided'}</span></div>
+                    <div>By: <span className="font-medium text-[#1F2937]">{m.performed_by ?? 'System'}</span></div>
+                  </dl>
                 </div>
-                <dl className="mt-3 grid gap-2 text-xs text-gray-600 sm:grid-cols-2">
-                  <div>Previous Quantity: <span className="font-medium text-gray-900">{movement.quantity_before}</span></div>
-                  <div>New Quantity: <span className="font-medium text-gray-900">{movement.quantity_after}</span></div>
-                  <div>Reason: <span className="font-medium text-gray-900">{movement.reason ?? 'Not provided'}</span></div>
-                  <div>Performed by: <span className="font-medium text-gray-900">{movement.performed_by ?? 'System'}</span></div>
-                </dl>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )
+        }
       </Modal>
     </div>
   )

@@ -8,22 +8,18 @@ import type { Asset, Reservation } from '@/types'
 import { reservationStatusTone } from '@/utils/statusTone'
 import { isAdmin, isStaff } from '@/utils/roleHelpers'
 import { reservationStatusLabel } from '@/utils/displayLabels'
+import { PageHeader } from '@/components/PageHeader'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
 export function ReservationPage() {
   const { user } = useAuth()
-  const canApproveReservations = isAdmin(user) || isStaff(user)
-  const [rows, setRows] = useState<Reservation[]>([])
-  const [assets, setAssets] = useState<Asset[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [form, setForm] = useState({
-    assetIds: [] as number[],
-    startDate: '',
-    endDate: '',
-    remarks: '',
-  })
+  const canApprove = isAdmin(user) || isStaff(user)
+  const [rows,        setRows]       = useState<Reservation[]>([])
+  const [assets,      setAssets]     = useState<Asset[]>([])
+  const [loading,     setLoading]    = useState(true)
+  const [saving,      setSaving]     = useState(false)
+  const [createOpen,  setCreateOpen] = useState(false)
+  const [form, setForm] = useState({ assetIds: [] as number[], startDate: '', endDate: '', remarks: '' })
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [receipt, setReceipt] = useState<ReceiptRecord | null>(null)
 
@@ -32,68 +28,40 @@ export function ReservationPage() {
     try {
       const result = await reservationService.list()
       setRows(result.items)
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load borrow requests.' })
-    } finally {
-      setLoading(false)
-    }
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load borrow requests.' })
+    } finally { setLoading(false) }
   }
 
   const openCreate = async () => {
-    setCreateOpen(true)
-    setMessage(null)
+    setCreateOpen(true); setMessage(null)
     try {
       const result = await assetService.list({ status: 'AVAILABLE', per_page: 100 })
       setAssets(result.items)
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to load available assets.' })
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to load available assets.' })
     }
   }
 
   const handleCreate = async () => {
     if (!form.assetIds.length || !form.startDate || !form.endDate) {
-      setMessage({ type: 'error', text: 'Select at least one asset and provide the borrowing dates.' })
-      return
+      setMessage({ type: 'error', text: 'Select at least one asset and provide the borrowing dates.' }); return
     }
-
     setSaving(true)
     try {
-      const reservation = await reservationService.create({
-        asset_ids: form.assetIds,
-        start_date: form.startDate,
-        end_date: form.endDate,
-        remarks: form.remarks || undefined,
-      })
-      setReceipt({
-        type: 'Reservation',
-        code: reservation.receipt_code ?? `PSA-RES-${reservation.id}`,
-        payload: reservation.receipt_payload ?? `PSA-RES-${reservation.id}|${reservation.asset_numbers?.join(',') ?? reservation.asset_ids?.join(',')}|${reservation.user_id}`,
-        employee: reservation.employee_name,
-        assetName: reservation.asset_names?.join(', '),
-        assetNumber: reservation.asset_numbers?.join(', '),
-        timestamp: reservation.created_at,
-        startDate: reservation.start_date,
-        endDate: reservation.end_date,
-        status: reservation.status,
-        authorizedBy: reservation.authorized_by_name,
-        authorizedAt: reservation.authorized_at,
-        remarks: reservation.remarks,
-      })
+      const res = await reservationService.create({ asset_ids: form.assetIds, start_date: form.startDate, end_date: form.endDate, remarks: form.remarks || undefined })
+      setReceipt({ type: 'Reservation', code: res.receipt_code ?? `PSA-RES-${res.id}`, payload: res.receipt_payload ?? `PSA-RES-${res.id}|${res.asset_numbers?.join(',') ?? res.asset_ids?.join(',')}|${res.user_id}`, employee: res.employee_name, assetName: res.asset_names?.join(', '), assetNumber: res.asset_numbers?.join(', '), timestamp: res.created_at, startDate: res.start_date, endDate: res.end_date, status: res.status, authorizedBy: res.authorized_by_name, authorizedAt: res.authorized_at, remarks: res.remarks })
       setCreateOpen(false)
       setForm({ assetIds: [], startDate: '', endDate: '', remarks: '' })
       setMessage({ type: 'success', text: 'Borrow request sent successfully.' })
       notifyDataChanged('all')
       await loadReservations()
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to send borrow request.' })
-    } finally {
-      setSaving(false)
-    }
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to send borrow request.' })
+    } finally { setSaving(false) }
   }
 
-  useEffect(() => {
-    void loadReservations()
-  }, [])
+  useEffect(() => { void loadReservations() }, [])
 
   useEffect(() => onDataChanged((scope) => {
     if (affectsScope(scope, 'reservations') || affectsScope(scope, 'borrowings')) {
@@ -101,78 +69,33 @@ export function ReservationPage() {
     }
   }), [])
 
-  const handleApprove = async (reservationId: number) => {
+  const handleApprove = async (id: number) => {
     try {
-      const reservation = await reservationService.approve(reservationId)
-      setReceipt({
-        type: 'Reservation',
-        code: reservation.receipt_code ?? `PSA-RES-${reservation.id}`,
-        payload: reservation.receipt_payload ?? `PSA-RES-${reservation.id}|${reservation.asset_numbers?.join(',') ?? reservation.asset_ids?.join(',')}|${reservation.user_id}`,
-        employee: reservation.employee_name,
-        assetName: reservation.asset_names?.join(', '),
-        assetNumber: reservation.asset_numbers?.join(', '),
-        timestamp: reservation.created_at,
-        startDate: reservation.start_date,
-        endDate: reservation.end_date,
-        status: reservation.status,
-        authorizedBy: reservation.authorized_by_name,
-        authorizedAt: reservation.authorized_at,
-        remarks: reservation.remarks,
-      })
+      const res = await reservationService.approve(id)
+      setReceipt({ type: 'Reservation', code: res.receipt_code ?? `PSA-RES-${res.id}`, payload: res.receipt_payload ?? `PSA-RES-${res.id}|${res.asset_numbers?.join(',') ?? res.asset_ids?.join(',')}|${res.user_id}`, employee: res.employee_name, assetName: res.asset_names?.join(', '), assetNumber: res.asset_numbers?.join(', '), timestamp: res.created_at, startDate: res.start_date, endDate: res.end_date, status: res.status, authorizedBy: res.authorized_by_name, authorizedAt: res.authorized_at, remarks: res.remarks })
       setMessage({ type: 'success', text: 'Borrow request approved successfully.' })
       notifyDataChanged('all')
       await loadReservations()
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to approve borrow request.' })
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to approve borrow request.' })
     }
   }
 
   const columns: Column<Reservation>[] = [
-    { key: 'id', header: 'ID', render: (row) => row.id },
-    { key: 'employee_name', header: 'Employee', render: (row) => row.employee_name },
-    { key: 'purpose', header: 'Purpose', render: (row) => row.purpose },
+    { key: 'id',            header: '#',         render: (r) => <span className="font-mono text-xs text-[#9CA3AF]">#{r.id}</span> },
+    { key: 'employee_name', header: 'Employee',  render: (r) => <span className="font-medium text-[#1F2937]">{r.employee_name}</span> },
+    { key: 'purpose',       header: 'Purpose',   render: (r) => r.purpose },
+    { key: 'status',        header: 'Status',    render: (r) => <Badge tone={reservationStatusTone(r.status)}>{reservationStatusLabel(r.status)}</Badge> },
+    { key: 'dates',         header: 'Schedule',  render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.reserved_from} → {r.reserved_until}</span> },
     {
-      key: 'status',
-      header: 'Status',
-      render: (row) => <Badge tone={reservationStatusTone(row.status)}>{reservationStatusLabel(row.status)}</Badge>,
-    },
-    {
-      key: 'dates',
-      header: 'Schedule',
-      render: (row) => `${row.reserved_from} → ${row.reserved_until}`,
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <div className="flex flex-wrap gap-1">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() =>
-              setReceipt({
-                type: 'Reservation',
-                code: row.receipt_code ?? `PSA-RES-${row.id}`,
-                payload: row.receipt_payload ?? `PSA-RES-${row.id}|${row.asset_numbers?.join(',') ?? row.asset_ids?.join(',')}|${row.user_id}`,
-                employee: row.employee_name,
-                assetName: row.asset_names?.join(', '),
-                assetNumber: row.asset_numbers?.join(', '),
-                timestamp: row.created_at,
-                startDate: row.start_date,
-                endDate: row.end_date,
-                status: row.status,
-                authorizedBy: row.authorized_by_name,
-                authorizedAt: row.authorized_at,
-                remarks: row.remarks,
-              })
-            }
-          >
+      key: 'actions', header: 'Actions',
+      render: (r) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button size="sm" variant="ghost" onClick={() => setReceipt({ type: 'Reservation', code: r.receipt_code ?? `PSA-RES-${r.id}`, payload: r.receipt_payload ?? `PSA-RES-${r.id}|${r.asset_numbers?.join(',') ?? r.asset_ids?.join(',')}|${r.user_id}`, employee: r.employee_name, assetName: r.asset_names?.join(', '), assetNumber: r.asset_numbers?.join(', '), timestamp: r.created_at, startDate: r.start_date, endDate: r.end_date, status: r.status, authorizedBy: r.authorized_by_name, authorizedAt: r.authorized_at, remarks: r.remarks })}>
             Receipt
           </Button>
-          {canApproveReservations && row.status === 'PENDING' && (
-            <Button size="sm" variant="success" onClick={() => handleApprove(row.id)}>
-              Approve Request
-            </Button>
+          {canApprove && r.status === 'PENDING' && (
+            <Button size="sm" variant="success" onClick={() => handleApprove(r.id)}>Approve</Button>
           )}
         </div>
       ),
@@ -180,94 +103,57 @@ export function ReservationPage() {
   ]
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Borrow Requests</h1>
-          <p className="text-sm text-gray-500">Send and manage requests to borrow assets.</p>
-        </div>
-        <Button onClick={openCreate}>New Borrow Request</Button>
-      </div>
-      {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
-      )}
-      <Card>
+    <div className="space-y-6">
+      <PageHeader
+        title="Borrow Requests"
+        subtitle="Send and manage requests to borrow assets."
+        actions={<Button onClick={openCreate}>New Borrow Request</Button>}
+      />
+
+      {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
+
+      <Card noPadding>
         {loading ? (
-          <Spinner />
+          <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : (
           <Table
-            columns={columns}
-            rows={rows}
-            rowKey={(row) => row.id}
-            empty={<EmptyState title="No borrow requests found" description="Create a borrow request when you need an available asset." />}
+            columns={columns} rows={rows} rowKey={(r) => r.id}
+            empty={<div className="py-16"><EmptyState title="No borrow requests found" description="Create a borrow request when you need an available asset." /></div>}
           />
         )}
       </Card>
 
+      {/* ── New Borrow Request modal ── */}
       <Modal
-        open={createOpen}
-        title="New Borrow Request"
-        onClose={() => setCreateOpen(false)}
+        open={createOpen} title="New Borrow Request" onClose={() => setCreateOpen(false)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={saving}>
-              {saving ? 'Saving...' : 'Send Borrow Request'}
-            </Button>
+            <Button variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={saving}>{saving ? 'Saving…' : 'Send Borrow Request'}</Button>
           </>
         }
       >
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
-            <label htmlFor="reservation-assets" className="mb-1 block text-sm font-medium text-gray-700">
-              Available Assets
-            </label>
+            <label htmlFor="reservation-assets" className="mb-1.5 block text-[13px] font-medium text-[#1F2937]">Available Assets</label>
             <select
-              id="reservation-assets"
-              multiple
+              id="reservation-assets" multiple
               value={form.assetIds.map(String)}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  assetIds: Array.from(event.target.selectedOptions, (option) => Number(option.value)),
-                }))
-              }
-              className="h-32 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-brand-500"
+              onChange={(e) => setForm((c) => ({ ...c, assetIds: Array.from(e.target.selectedOptions, (o) => Number(o.value)) }))}
+              className="h-32 w-full rounded-[10px] border border-[#E5E7EB] bg-white px-3 py-2 text-[14px] text-[#1F2937] focus:border-[#0D47A1] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/15"
             >
-              {assets.map((asset) => (
-                <option key={asset.id} value={asset.id}>
-                  {asset.asset_number} - {asset.name}
-                </option>
-              ))}
+              {assets.map((a) => <option key={a.id} value={a.id}>{a.asset_number} — {a.name}</option>)}
             </select>
-            <p className="mt-1 text-xs text-gray-500">Hold Ctrl or Shift to select multiple assets for the same request.</p>
+            <p className="mt-1.5 text-[13px] text-[#6B7280]">Hold Ctrl or Shift to select multiple assets.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input
-              label="Start Date"
-              type="date"
-              value={form.startDate}
-              onChange={(event) => setForm((current) => ({ ...current, startDate: event.target.value }))}
-            />
-            <Input
-              label="End Date"
-              type="date"
-              value={form.endDate}
-              onChange={(event) => setForm((current) => ({ ...current, endDate: event.target.value }))}
-            />
+            <Input label="Start Date" type="date" value={form.startDate} onChange={(e) => setForm((c) => ({ ...c, startDate: e.target.value }))} />
+            <Input label="End Date"   type="date" value={form.endDate}   onChange={(e) => setForm((c) => ({ ...c, endDate:   e.target.value }))} />
           </div>
-          <Input
-            label="Remarks"
-            value={form.remarks}
-            onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
-            placeholder="Purpose or notes for this borrow request"
-          />
+          <Input label="Remarks" value={form.remarks} onChange={(e) => setForm((c) => ({ ...c, remarks: e.target.value }))} placeholder="Purpose or notes for this borrow request" />
         </div>
       </Modal>
+
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
     </div>
   )

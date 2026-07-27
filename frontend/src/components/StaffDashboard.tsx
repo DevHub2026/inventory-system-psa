@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, CalendarClock, ClipboardCheck, HandCoins } from 'lucide-react'
-import { Badge, Button, Card, EmptyState, Spinner, Table, Alert, Input, type Column } from '@/components/ui'
+import {
+  Badge, Button, Card, EmptyState, Spinner, Table, Alert, Input, type Column,
+} from '@/components/ui'
 import { DashboardStatCard } from '@/components/DashboardStatCard'
+import { PageHeader } from '@/components/PageHeader'
 import { AssetQrScanner } from '@/components/AssetQrScanner'
 import { assetService } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
@@ -11,75 +14,126 @@ import type { Reservation, Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
+import { cn } from '@/utils/cn'
+
+function Panel({
+  title, subtitle, count, countTone, onViewAll, loading, urgent, children,
+}: {
+  title: string
+  subtitle: string
+  count?: number
+  countTone?: 'amber' | 'red'
+  onViewAll?: () => void
+  loading: boolean
+  urgent?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <section className={cn(
+      'flex flex-col overflow-hidden rounded-2xl border bg-white shadow-[0_1px_4px_rgba(0,0,0,.06)]',
+      urgent ? 'border-red-200' : 'border-slate-200',
+    )}>
+      <div className={cn(
+        'flex shrink-0 items-center justify-between gap-4 border-b px-5 py-4',
+        urgent ? 'border-red-100 bg-red-50' : 'border-slate-100',
+      )}>
+        <div className="min-w-0">
+          <h3 className={cn('flex items-center text-[14px] font-semibold', urgent ? 'text-red-700' : 'text-slate-800')}>
+            {title}
+            {count !== undefined && count > 0 && countTone && (
+              <span className={cn('ml-2 inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-px text-[10px] font-bold leading-none',
+                countTone === 'red' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700',
+              )}>
+                {count}
+              </span>
+            )}
+          </h3>
+          <p className={cn('mt-0.5 text-[12px]', urgent ? 'text-red-400' : 'text-slate-400')}>{subtitle}</p>
+        </div>
+        {onViewAll && (
+          <button
+            type="button"
+            onClick={onViewAll}
+            className={cn('shrink-0 whitespace-nowrap text-[12px] font-medium transition-colors',
+              urgent ? 'text-red-600 hover:text-red-700' : 'text-[#1565C0] hover:text-[#0D47A1]',
+            )}
+          >
+            View all
+          </button>
+        )}
+      </div>
+      <div className="flex-1 overflow-hidden">
+        {loading
+          ? <div className="flex items-center justify-center py-12"><Spinner /></div>
+          : children
+        }
+      </div>
+    </section>
+  )
+}
 
 export function StaffDashboard() {
   const navigate = useNavigate()
   const [pendingReservations, setPendingReservations] = useState<Reservation[]>([])
-  const [activeBorrowings, setActiveBorrowings] = useState<Borrowing[]>([])
-  const [overdueBorrowings, setOverdueBorrowings] = useState<Borrowing[]>([])
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [qrCode, setQrCode] = useState('')
-  const [scannerOpen, setScannerOpen] = useState(false)
-  const [scannerMode, setScannerMode] = useState<'transaction' | 'authorize'>('transaction')
+  const [activeBorrowings,    setActiveBorrowings]    = useState<Borrowing[]>([])
+  const [overdueBorrowings,   setOverdueBorrowings]   = useState<Borrowing[]>([])
+  const [loading,             setLoading]             = useState(true)
+  const [message,             setMessage]             = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [qrCode,              setQrCode]              = useState('')
+  const [scannerOpen,         setScannerOpen]         = useState(false)
+  const [scannerMode,         setScannerMode]         = useState<'transaction' | 'authorize'>('transaction')
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [reservationsResult, borrowingsResult] = await Promise.all([
+      const [reservationsRes, borrowingsRes] = await Promise.all([
         reservationService.list(),
         borrowingService.list(),
       ])
-      setPendingReservations(reservationsResult.items.filter((r) => r.status === 'PENDING'))
-      setActiveBorrowings(borrowingsResult.items.filter((b) => b.status === 'BORROWED' || b.status === 'ACTIVE'))
-      setOverdueBorrowings(borrowingsResult.items.filter((b) => b.status === 'OVERDUE'))
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to load dashboard data.' })
+      setPendingReservations(reservationsRes.items.filter((r) => r.status === 'PENDING'))
+      setActiveBorrowings(borrowingsRes.items.filter((b) => b.status === 'BORROWED' || b.status === 'ACTIVE'))
+      setOverdueBorrowings(borrowingsRes.items.filter((b) => b.status === 'OVERDUE'))
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load dashboard data.' })
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    void loadData()
-  }, [])
-
+  useEffect(() => { void loadData() }, [])
   useEffect(() => onDataChanged((scope) => {
     if (affectsScope(scope, 'dashboard') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
       void loadData()
     }
   }), [])
 
-  const handleApproveReservation = async (reservationId: number) => {
+  const handleApproveReservation = async (id: number) => {
     try {
-      await reservationService.approve(reservationId)
+      await reservationService.approve(id)
       setMessage({ type: 'success', text: 'Borrow request approved successfully.' })
+      notifyDataChanged('all')
       await loadData()
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to approve borrow request.' })
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Unable to approve borrow request.' })
     }
   }
 
-  const handleReturnBorrowing = async (borrowingId: number) => {
+  const handleReturnBorrowing = async (id: number) => {
     try {
-      await borrowingService.returnAsset(borrowingId)
+      await borrowingService.returnAsset(id)
       setMessage({ type: 'success', text: 'Item returned successfully.' })
+      notifyDataChanged('all')
       await loadData()
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to return item.' })
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to return item.' })
     }
   }
 
   const handleScanQR = async () => {
-    const scannedValue = qrCode.trim()
-
-    if (!scannedValue) {
-      setMessage({ type: 'error', text: 'Please enter a QR code or asset ID.' })
-      return
-    }
-
+    const val = qrCode.trim()
+    if (!val) { setMessage({ type: 'error', text: 'Please enter a QR code or asset ID.' }); return }
     try {
-      const borrowing = await assetService.scanTransaction(scannedValue)
+      const borrowing = await assetService.scanTransaction(val)
       setMessage({
         type: 'success',
         text: borrowing.status === 'RETURNED'
@@ -89,14 +143,10 @@ export function StaffDashboard() {
       setQrCode('')
       notifyDataChanged('all')
       await loadData()
-      return
     } catch (transactionError: unknown) {
       try {
-        const asset = await assetService.scan(scannedValue)
-        setMessage({
-          type: 'success',
-          text: `${asset.name} found. Status: ${asset.status}. Use Authorize or Borrow/Return scan when processing a transaction.`,
-        })
+        const asset = await assetService.scan(val)
+        setMessage({ type: 'success', text: `${asset.name} found. Status: ${asset.status}.` })
         setQrCode('')
         setTimeout(() => navigate(`/assets?search=${encodeURIComponent(asset.psa_qr_identifier ?? asset.asset_number)}`), 500)
       } catch {
@@ -109,201 +159,120 @@ export function StaffDashboard() {
   }
 
   const reservationColumns: Column<Reservation>[] = [
-    { key: 'id', header: 'ID', render: (row) => row.id },
-    { key: 'employee_name', header: 'Employee', render: (row) => row.employee_name },
-    { key: 'purpose', header: 'Purpose', render: (row) => row.purpose },
-    { key: 'dates', header: 'Schedule', render: (row) => `${row.reserved_from} → ${row.reserved_until}` },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <Button size="sm" variant="success" onClick={() => handleApproveReservation(row.id)}>
-          Approve Request
-        </Button>
-      ),
-    },
+    { key: 'id',            header: '#',        render: (r) => <span className="font-mono text-[12px] text-slate-400">#{r.id}</span> },
+    { key: 'employee_name', header: 'Employee', render: (r) => <span className="text-[13px] font-medium text-slate-800">{r.employee_name}</span> },
+    { key: 'purpose',       header: 'Purpose',  render: (r) => <span className="block max-w-[140px] truncate text-[13px] text-slate-500">{r.purpose}</span> },
+    { key: 'dates',         header: 'Schedule', render: (r) => <span className="whitespace-nowrap font-mono text-[12px] text-slate-400">{r.reserved_from} → {r.reserved_until}</span> },
+    { key: 'actions',       header: '',         render: (r) => <Button size="sm" variant="success" onClick={() => handleApproveReservation(r.id)}>Approve</Button> },
   ]
 
   const borrowingColumns: Column<Borrowing>[] = [
-    { key: 'id', header: 'ID', render: (row) => row.id },
-    { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
-    { key: 'employee_name', header: 'Employee', render: (row) => row.employee_name },
-    { key: 'due_at', header: 'Due', render: (row) => row.due_at },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <Button size="sm" variant="primary" onClick={() => handleReturnBorrowing(row.id)}>
-          Return Item
-        </Button>
-      ),
-    },
+    { key: 'id',            header: '#',        render: (r) => <span className="font-mono text-[12px] text-slate-400">#{r.id}</span> },
+    { key: 'asset_name',    header: 'Asset',    render: (r) => <span className="text-[13px] font-medium text-slate-800">{r.asset_name}</span> },
+    { key: 'employee_name', header: 'Employee', render: (r) => <span className="text-[13px] text-slate-500">{r.employee_name}</span> },
+    { key: 'due_at',        header: 'Due',      render: (r) => <span className="whitespace-nowrap font-mono text-[12px] text-slate-400">{r.due_at}</span> },
+    { key: 'actions',       header: '',         render: (r) => <Button size="sm" variant="primary" onClick={() => handleReturnBorrowing(r.id)}>Return</Button> },
   ]
 
   const overdueColumns: Column<Borrowing>[] = [
-    { key: 'id', header: 'ID', render: (row) => row.id },
-    { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
-    { key: 'employee_name', header: 'Employee', render: (row) => row.employee_name },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{borrowingStatusLabel(row.status)}</Badge>,
-    },
-    { key: 'due_at', header: 'Due', render: (row) => row.due_at },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <Button size="sm" variant="danger" onClick={() => handleReturnBorrowing(row.id)}>
-          Return Item
-        </Button>
-      ),
-    },
+    { key: 'id',            header: '#',        render: (r) => <span className="font-mono text-[12px] text-slate-400">#{r.id}</span> },
+    { key: 'asset_name',    header: 'Asset',    render: (r) => <span className="text-[13px] font-medium text-slate-800">{r.asset_name}</span> },
+    { key: 'employee_name', header: 'Employee', render: (r) => <span className="text-[13px] text-slate-500">{r.employee_name}</span> },
+    { key: 'status',        header: 'Status',   render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> },
+    { key: 'due_at',        header: 'Due',      render: (r) => <span className="whitespace-nowrap font-mono text-[12px] text-red-500">{r.due_at}</span> },
+    { key: 'actions',       header: '',         render: (r) => <Button size="sm" variant="danger" onClick={() => handleReturnBorrowing(r.id)}>Return</Button> },
   ]
 
   const statCards = [
-    { label: 'Borrow Requests', value: pendingReservations.length, description: 'Waiting for approval', icon: CalendarClock, tone: 'blue' as const },
-    { label: 'Borrowed Items', value: activeBorrowings.length, description: 'Currently borrowed items', icon: HandCoins, tone: 'green' as const },
-    { label: 'Overdue Items', value: overdueBorrowings.length, description: 'Need immediate follow-up', icon: AlertTriangle, tone: 'red' as const },
+    { label: 'Borrow Requests',  value: pendingReservations.length,                           description: 'Waiting for approval',          icon: CalendarClock,  tone: 'blue'  as const },
+    { label: 'Borrowed Items',   value: activeBorrowings.length,                              description: 'Currently borrowed items',       icon: HandCoins,      tone: 'green' as const },
+    { label: 'Overdue Items',    value: overdueBorrowings.length,                             description: 'Need immediate follow-up',       icon: AlertTriangle,  tone: 'red'   as const },
     { label: 'Ready to Process', value: pendingReservations.length + activeBorrowings.length, description: 'Operations requiring attention', icon: ClipboardCheck, tone: 'amber' as const },
   ]
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1>Staff Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-500">Manage operational requests and asset handovers.</p>
+    <div className="space-y-7">
+
+      <PageHeader title="Staff Dashboard" subtitle="Manage operational requests and asset handovers." />
+
+      {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
+
+      {/* Stats */}
+      <div className="stat-grid">
+        {statCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
       </div>
 
-      {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
-      )}
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {statCards.map((card) => (
-          <DashboardStatCard key={card.label} {...card} />
-        ))}
-      </div>
-
+      {/* QR Scanner */}
       <Card>
         <div className="mb-4">
-          <h2 className="text-md font-semibold text-gray-900">Quick QR Scanner</h2>
-          <p className="text-sm text-gray-500">Scan asset QR code to quickly access item details for processing</p>
+          <p className="text-[14px] font-semibold text-slate-800">Quick QR Scanner</p>
+          <p className="mt-1 text-[12px] text-slate-400">Scan an asset QR code to quickly process a borrow or return</p>
         </div>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Enter QR code or asset ID..."
-            value={qrCode}
-            onChange={(e) => setQrCode(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void handleScanQR()
-            }}
-          />
+        <div className="flex flex-wrap gap-3">
+          <div className="flex-1 min-w-[200px]">
+            <Input
+              placeholder="Enter QR code or asset ID…"
+              value={qrCode}
+              onChange={(e) => setQrCode(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void handleScanQR() }}
+            />
+          </div>
           <Button onClick={() => void handleScanQR()}>Scan</Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setScannerMode('authorize')
-              setScannerOpen(true)
-            }}
-          >
-            Scan Receipt to Borrow
+          <Button variant="secondary" onClick={() => { setScannerMode('authorize'); setScannerOpen(true) }}>
+            Scan to Borrow
           </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setScannerMode('transaction')
-              setScannerOpen(true)
-            }}
-          >
-            Scan QR to Borrow/Return
+          <Button variant="secondary" onClick={() => { setScannerMode('transaction'); setScannerOpen(true) }}>
+            Scan to Borrow/Return
           </Button>
         </div>
       </Card>
 
       <AssetQrScanner open={scannerOpen} mode={scannerMode} onClose={() => setScannerOpen(false)} onCompleted={loadData} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">Borrow Requests Waiting for Approval</h2>
-            <p className="text-sm text-gray-500">Approve requests before releasing assets for pickup.</p>
-          </div>
-          {loading ? (
-            <Spinner />
-          ) : pendingReservations.length === 0 ? (
-            <EmptyState title="No borrow requests waiting" description="All borrow requests have been processed." />
-          ) : (
-            <Table
-              columns={reservationColumns}
-              rows={pendingReservations}
-              rowKey={(row) => row.id}
-              empty={<EmptyState title="No borrow requests waiting" />}
-            />
-          )}
-        </Card>
+      {/* Pending + Active */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Panel
+          title="Borrow Requests"
+          subtitle="Approve before releasing assets for pickup"
+          count={pendingReservations.length}
+          countTone="amber"
+          onViewAll={() => navigate('/reservations')}
+          loading={loading}
+        >
+          {pendingReservations.length === 0
+            ? <EmptyState title="No pending requests" description="All borrow requests have been processed." />
+            : <Table columns={reservationColumns} rows={pendingReservations} rowKey={(r) => r.id} empty={<EmptyState title="No pending requests" />} />
+          }
+        </Panel>
 
-        <Card>
-          <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">Currently Borrowed Items</h2>
-            <p className="text-sm text-gray-500">Process returns for currently borrowed items</p>
-          </div>
-          {loading ? (
-            <Spinner />
-          ) : activeBorrowings.length === 0 ? (
-            <EmptyState title="No borrowed items" description="No items are currently borrowed." />
-          ) : (
-            <Table
-              columns={borrowingColumns}
-              rows={activeBorrowings}
-              rowKey={(row) => row.id}
-              empty={<EmptyState title="No borrowed items" />}
-            />
-          )}
-        </Card>
+        <Panel
+          title="Currently Borrowed Items"
+          subtitle="Process returns for currently borrowed items"
+          onViewAll={() => navigate('/borrowings')}
+          loading={loading}
+        >
+          {activeBorrowings.length === 0
+            ? <EmptyState title="No borrowed items" description="No items are currently borrowed." />
+            : <Table columns={borrowingColumns} rows={activeBorrowings} rowKey={(r) => r.id} empty={<EmptyState title="No borrowed items" />} />
+          }
+        </Panel>
       </div>
 
+      {/* Overdue — only shown when there are overdue items */}
       {overdueBorrowings.length > 0 && (
-        <Card>
-          <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">Overdue Items - Priority</h2>
-            <p className="text-sm text-gray-500">Items past due date requiring immediate attention</p>
-          </div>
-          <Table
-            columns={overdueColumns}
-            rows={overdueBorrowings}
-            rowKey={(row) => row.id}
-            empty={<EmptyState title="No overdue items" />}
-          />
-        </Card>
+        <Panel
+          title="Overdue Items"
+          subtitle="These items are past their return date"
+          count={overdueBorrowings.length}
+          countTone="red"
+          onViewAll={() => navigate('/borrowings')}
+          loading={loading}
+          urgent
+        >
+          <Table columns={overdueColumns} rows={overdueBorrowings} rowKey={(r) => r.id} empty={<EmptyState title="No overdue items" />} />
+        </Panel>
       )}
 
-      <Card>
-        <div className="mb-4">
-          <h2 className="text-md font-semibold text-gray-900">Operations Quick Access</h2>
-          <p className="text-sm text-gray-500">Access operational modules for daily tasks</p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          <Button onClick={() => navigate('/reservations')}>All Borrow Requests</Button>
-          <Button variant="secondary" onClick={() => navigate('/borrowings')}>
-            All Borrowed Items
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/inventory')}>
-            Inventory Management
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/assets')}>
-            Asset Catalog
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/maintenance')}>
-            Maintenance Requests
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/reports')}>
-            Operation Reports
-          </Button>
-        </div>
-      </Card>
     </div>
   )
 }

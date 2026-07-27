@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Card, Button, Input, Table, Modal, Alert, Spinner, SearchBar, Pagination } from '@/components/ui'
 import { roleService, type RoleFilters, type CreateRolePayload, type UpdateRolePayload, type Role } from '@/services/roleService'
 import type { Column } from '@/components/ui'
+import { PageHeader } from '@/components/PageHeader'
 
 export function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([])
@@ -13,11 +14,7 @@ export function RolesPage() {
   const [filters, setFilters] = useState<RoleFilters>({ per_page: 15, page: 1 })
   const [pagination, setPagination] = useState({ current_page: 1, per_page: 15, total: 0, last_page: 1 })
 
-  const [formData, setFormData] = useState<CreateRolePayload>({
-    name: '',
-    description: '',
-    permissions: [],
-  })
+  const [formData, setFormData] = useState<CreateRolePayload>({ name: '', description: '', permissions: [] })
 
   const loadRoles = async () => {
     setLoading(true)
@@ -32,44 +29,28 @@ export function RolesPage() {
     }
   }
 
-  useEffect(() => {
-    void loadRoles()
-  }, [filters])
+  useEffect(() => { void loadRoles() }, [filters])
 
-  const handleSearch = (search: string) => {
-    setFilters({ ...filters, search, page: 1 })
-  }
-
-  const handlePageChange = (page: number) => {
-    setFilters({ ...filters, page })
-  }
+  const handleSearch  = (search: string) => setFilters({ ...filters, search, page: 1 })
+  const handlePageChange = (page: number) => setFilters({ ...filters, page })
 
   const handleCreate = () => {
     setEditingRole(null)
-    setFormData({
-      name: '',
-      description: '',
-      permissions: [],
-    })
+    setFormData({ name: '', description: '', permissions: [] })
     setModalOpen(true)
   }
 
   const handleEdit = (role: Role) => {
     setEditingRole(role)
-    setFormData({
-      name: role.name,
-      description: role.description || '',
-      permissions: [],
-    })
+    setFormData({ name: role.name, description: role.description || '', permissions: [] })
     setModalOpen(true)
   }
 
   const handleDelete = async (role: Role) => {
-    if (!confirm(`Are you sure you want to delete ${role.name}?`)) return
-
+    if (!confirm(`Delete role "${role.name}"?`)) return
     try {
       await roleService.deleteRole(role.id)
-      setMessage({ type: 'success', text: 'Role deleted successfully.' })
+      setMessage({ type: 'success', text: 'Role deleted.' })
       await loadRoles()
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Failed to delete role.' })
@@ -79,14 +60,13 @@ export function RolesPage() {
   const handleSubmit = async () => {
     setSaving(true)
     setMessage(null)
-
     try {
       if (editingRole) {
         await roleService.updateRole(editingRole.id, formData as UpdateRolePayload)
-        setMessage({ type: 'success', text: 'Role updated successfully.' })
+        setMessage({ type: 'success', text: 'Role updated.' })
       } else {
         await roleService.createRole(formData)
-        setMessage({ type: 'success', text: 'Role created successfully.' })
+        setMessage({ type: 'success', text: 'Role created.' })
       }
       setModalOpen(false)
       await loadRoles()
@@ -98,55 +78,45 @@ export function RolesPage() {
   }
 
   const columns: Column<Role>[] = [
-    { key: 'name', header: 'Name', render: (r) => r.name },
-    { key: 'description', header: 'Description', render: (r) => r.description || '-' },
+    { key: 'name',        header: 'Name',        render: (r) => <span className="font-medium text-slate-800">{r.name}</span> },
+    { key: 'description', header: 'Description', render: (r) => <span className="text-slate-600">{r.description || '—'}</span> },
     {
       key: 'actions',
       header: 'Actions',
       render: (r) => (
-        <div className="flex gap-2">
-          <Button size="sm" variant="secondary" onClick={() => handleEdit(r)}>
-            Edit
-          </Button>
-          <Button size="sm" variant="danger" onClick={() => handleDelete(r)}>
-            Delete
-          </Button>
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="secondary" onClick={() => handleEdit(r)}>Edit</Button>
+          <Button size="sm" variant="danger"    onClick={() => handleDelete(r)}>Delete</Button>
         </div>
       ),
     },
   ]
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Roles & Permissions</h1>
-          <p className="text-sm text-gray-500">Manage what each type of user can access.</p>
-        </div>
-        <Button onClick={handleCreate}>Add Role</Button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Roles & Permissions"
+        subtitle="Manage what each type of user can access."
+        actions={<Button onClick={handleCreate}>Add Role</Button>}
+      />
 
       {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
+        <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>
       )}
 
-      <Card>
-        <div className="mb-4">
-          <SearchBar onSearch={handleSearch} placeholder="Search roles..." />
+      <Card noPadding>
+        <div className="border-b border-[#EEF2F8] px-5 py-4">
+          <SearchBar onSearch={handleSearch} placeholder="Search roles…" />
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <Spinner />
-          </div>
+          <div className="flex items-center justify-center py-14"><Spinner /></div>
         ) : roles.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No roles found. Add a role to control user access.</div>
+          <div className="py-14 text-center text-sm text-slate-500">No roles found. Add a role to control user access.</div>
         ) : (
           <>
             <Table columns={columns} rows={roles} rowKey={(r) => r.id} />
-            <div className="mt-4">
+            <div className="border-t border-[#EEF2F8] px-5 py-3">
               <Pagination
                 page={pagination.current_page}
                 lastPage={pagination.last_page}
@@ -162,6 +132,14 @@ export function RolesPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editingRole ? 'Edit Role' : 'Add Role'}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={saving}>
+              {saving ? 'Saving…' : editingRole ? 'Save Changes' : 'Add Role'}
+            </Button>
+          </>
+        }
       >
         <div className="space-y-4">
           <Input
@@ -174,14 +152,6 @@ export function RolesPage() {
             value={formData.description || ''}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           />
-          <div className="flex gap-2 justify-end">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={saving}>
-              {saving ? 'Saving...' : editingRole ? 'Save Changes' : 'Add Role'}
-            </Button>
-          </div>
         </div>
       </Modal>
     </div>

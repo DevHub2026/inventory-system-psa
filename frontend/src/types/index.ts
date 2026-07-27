@@ -199,5 +199,9 @@ export interface ApiResponse<T> {
 
 export function displayName(user: User | null | undefined): string {
   if (!user) return 'User'
-  return user.full_name || user.name || [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email
+  if (user.full_name?.trim()) return user.full_name.trim()
+  if (user.name?.trim()) return user.name.trim()
+  const parts = [user.first_name, user.last_name].map((p) => p?.trim()).filter(Boolean)
+  if (parts.length > 0) return parts.join(' ')
+  return user.email
 }

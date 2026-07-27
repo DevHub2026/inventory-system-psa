@@ -1,21 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { ScanLine } from 'lucide-react'
 import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  ConfirmDialog,
-  Dropdown,
-  EmptyState,
-  Input,
-  Modal,
-  Pagination,
-  SearchBar,
-  Spinner,
-  Table,
-  type Column,
+  Alert, Badge, Button, Card, ConfirmDialog, Dropdown, EmptyState,
+  Input, Modal, Pagination, SearchBar, Spinner, Table, type Column,
 } from '@/components/ui'
+import { PageHeader } from '@/components/PageHeader'
 import { assetService, type UpdateAssetPayload } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
 import { useAuth } from '@/hooks/useAuth'
@@ -28,52 +18,58 @@ import { isAdmin, isStaff } from '@/utils/roleHelpers'
 import { assetStatusLabel } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
+
+/* ── shared select / textarea style ── */
+const SELECT_CLS =
+  'w-full h-11 rounded-[10px] border border-[#E5E7EB] bg-white px-3.5 text-[14px] text-[#1F2937] ' +
+  'shadow-[0_1px_2px_rgba(0,0,0,.05)] transition-colors duration-200 ' +
+  'focus:border-[#0D47A1] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/15'
+
+const TEXTAREA_CLS =
+  'block w-full rounded-[10px] border border-[#E5E7EB] bg-white px-3.5 py-2.5 text-[14px] text-[#1F2937] ' +
+  'placeholder:text-[#9CA3AF] shadow-[0_1px_2px_rgba(0,0,0,.05)] transition-colors duration-200 ' +
+  'focus:border-[#0D47A1] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/15'
+
+const LABEL_CLS = 'mb-1.5 block text-[13px] font-medium text-[#1F2937]'
+
 export function AssetPage() {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
-  const canManageAssets = isAdmin(user)
+  const canManageAssets     = isAdmin(user)
   const canCompleteBorrowing = isAdmin(user) || isStaff(user)
-  const [rows, setRows] = useState<Asset[]>([])
-  const [page, setPage] = useState(1)
-  const [lastPage, setLastPage] = useState(1)
-  const [total, setTotal] = useState(0)
-  const [search, setSearch] = useState(searchParams.get('search') ?? '')
-  const [status, setStatus] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState<string | null>(null)
-  const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [borrowId, setBorrowId] = useState<number | null>(null)
+
+  const [rows,      setRows]      = useState<Asset[]>([])
+  const [page,      setPage]      = useState(1)
+  const [lastPage,  setLastPage]  = useState(1)
+  const [total,     setTotal]     = useState(0)
+  const [search,    setSearch]    = useState(searchParams.get('search') ?? '')
+  const [status,    setStatus]    = useState('')
+  const [loading,   setLoading]   = useState(true)
+  const [message,   setMessage]   = useState<string | null>(null)
+  const [deleteId,  setDeleteId]  = useState<number | null>(null)
+  const [borrowId,  setBorrowId]  = useState<number | null>(null)
   const [reserveId, setReserveId] = useState<number | null>(null)
-  const [returnId, setReturnId] = useState<number | null>(null)
-  const [returnNotes, setReturnNotes] = useState('')
-  const [borrowNotes, setBorrowNotes] = useState('')
-  const [borrowDueDays, setBorrowDueDays] = useState<number | undefined>(undefined)
+  const [returnId,  setReturnId]  = useState<number | null>(null)
+  const [returnNotes,    setReturnNotes]    = useState('')
+  const [borrowNotes,    setBorrowNotes]    = useState('')
+  const [borrowDueDays,  setBorrowDueDays]  = useState<number | undefined>(undefined)
   const [reserveStartDate, setReserveStartDate] = useState(new Date().toISOString().slice(0, 10))
-  const [reserveEndDate, setReserveEndDate] = useState(new Date().toISOString().slice(0, 10))
-  const [reserveRemarks, setReserveRemarks] = useState('')
-  const [receipt, setReceipt] = useState<ReceiptRecord | null>(null)
-  const [viewAsset, setViewAsset] = useState<Asset | null>(null)
-  const [qrAsset, setQrAsset] = useState<Asset | null>(null)
-  const [scannerOpen, setScannerOpen] = useState(false)
-  const [editAsset, setEditAsset] = useState<Asset | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [editForm, setEditForm] = useState<UpdateAssetPayload>({
-    name: '',
-    description: '',
-    model: '',
-    status: 'AVAILABLE',
-    condition_status: '',
-    remarks: '',
+  const [reserveEndDate,   setReserveEndDate]   = useState(new Date().toISOString().slice(0, 10))
+  const [reserveRemarks,   setReserveRemarks]   = useState('')
+  const [receipt,    setReceipt]    = useState<ReceiptRecord | null>(null)
+  const [viewAsset,  setViewAsset]  = useState<Asset | null>(null)
+  const [qrAsset,    setQrAsset]    = useState<Asset | null>(null)
+  const [scannerOpen,setScannerOpen]= useState(false)
+  const [editAsset,  setEditAsset]  = useState<Asset | null>(null)
+  const [saving,     setSaving]     = useState(false)
+  const [editForm,   setEditForm]   = useState<UpdateAssetPayload>({
+    name: '', description: '', model: '', status: 'AVAILABLE', condition_status: '', remarks: '',
   })
 
   async function load(nextPage = page, nextSearch = search) {
     setLoading(true)
     try {
-      const result = await assetService.list({
-        page: nextPage,
-        search: nextSearch || undefined,
-        status: status || undefined,
-      })
+      const result = await assetService.list({ page: nextPage, search: nextSearch || undefined, status: status || undefined })
       setRows(result.items)
       setPage(result.meta.current_page)
       setLastPage(result.meta.last_page)
@@ -83,245 +79,178 @@ export function AssetPage() {
     }
   }
 
-  async function openView(assetId: number) {
+  async function openView(id: number) {
     setMessage(null)
-    try {
-      setViewAsset(await assetService.show(assetId))
-    } catch (error: unknown) {
-      setMessage(error instanceof Error ? error.message : 'Unable to load asset details.')
-    }
+    try { setViewAsset(await assetService.show(id)) }
+    catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to load asset details.') }
   }
 
-  async function openEdit(assetId: number) {
-    if (!canManageAssets) {
-      setMessage('Only administrators can edit asset records.')
-      return
-    }
-
+  async function openEdit(id: number) {
+    if (!canManageAssets) { setMessage('Only administrators can edit asset records.'); return }
     setMessage(null)
     try {
-      const asset = await assetService.show(assetId)
-      setEditAsset(asset)
-      setEditForm({
-        name: asset.name,
-        description: asset.description ?? '',
-        model: asset.model ?? '',
-        status: asset.status,
-        condition_status: asset.condition_status ?? '',
-        remarks: asset.remarks ?? '',
-      })
-    } catch (error: unknown) {
-      setMessage(error instanceof Error ? error.message : 'Unable to load asset for editing.')
-    }
+      const a = await assetService.show(id)
+      setEditAsset(a)
+      setEditForm({ name: a.name, description: a.description ?? '', model: a.model ?? '', status: a.status, condition_status: a.condition_status ?? '', remarks: a.remarks ?? '' })
+    } catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to load asset for editing.') }
   }
 
-  async function openQrLabel(assetId: number) {
+  async function openQrLabel(id: number) {
     setMessage(null)
-    try {
-      setQrAsset(await assetService.show(assetId))
-    } catch (error: unknown) {
-      setMessage(error instanceof Error ? error.message : 'Unable to load PSA QR label.')
-    }
+    try { setQrAsset(await assetService.show(id)) }
+    catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to load PSA QR label.') }
   }
 
   async function submitEdit() {
     if (!editAsset) return
-
-    setSaving(true)
-    setMessage(null)
+    setSaving(true); setMessage(null)
     try {
-      await assetService.update(editAsset.id, {
-        ...editForm,
-        description: editForm.description || null,
-        model: editForm.model || null,
-        condition_status: editForm.condition_status || null,
-        remarks: editForm.remarks || null,
-      })
+      await assetService.update(editAsset.id, { ...editForm, description: editForm.description || null, model: editForm.model || null, condition_status: editForm.condition_status || null, remarks: editForm.remarks || null })
       setEditAsset(null)
       setMessage('Asset updated successfully.')
       await load(page)
-    } catch (error: unknown) {
-      setMessage(error instanceof Error ? error.message : 'Unable to update asset.')
-    } finally {
-      setSaving(false)
-    }
+    } catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to update asset.') }
+    finally { setSaving(false) }
   }
 
+  useEffect(() => { void load(1) }, [status])
   useEffect(() => {
-    void load(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status])
-
-  useEffect(() => {
-    const nextSearch = searchParams.get('search') ?? ''
-    setSearch(nextSearch)
-    void load(1, nextSearch)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const q = searchParams.get('search') ?? ''
+    setSearch(q); void load(1, q)
   }, [searchParams])
 
+  /* Cross-component data refresh subscription */
   useEffect(() => onDataChanged((scope) => {
     if (affectsScope(scope, 'assets') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
       void load(page)
       if (viewAsset) void openView(viewAsset.id)
-      if (qrAsset) void openQrLabel(qrAsset.id)
+      if (qrAsset)   void openQrLabel(qrAsset.id)
     }
   }), [page, search, status, viewAsset?.id, qrAsset?.id])
 
-  const columns: Column<Asset>[] = useMemo(
-    () => [
-      { key: 'asset_number', header: 'Asset Number', render: (row) => row.asset_number },
-      { key: 'name', header: 'Name', render: (row) => row.name },
-      { key: 'category', header: 'Category', render: (row) => row.category ?? '—' },
-      {
-        key: 'status',
-        header: 'Status',
-        render: (row) => <Badge tone={assetStatusTone(row.status)}>{assetStatusLabel(row.status)}</Badge>,
-      },
-      { key: 'location', header: 'Location', render: (row) => row.location ?? '—' },
-      {
-        key: 'actions',
-        header: 'Actions',
-        render: (row) => (
-          <div className="flex flex-wrap gap-1">
-            <Button size="sm" variant="secondary" onClick={() => void openView(row.id)}>
-              View
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => void openQrLabel(row.id)}>
-              PSA QR
-            </Button>
-            {canManageAssets && (
-              <Button size="sm" variant="secondary" onClick={() => void openEdit(row.id)}>
-                Edit
-              </Button>
-            )}
-            {row.status === 'AVAILABLE' && (
-              <>
-                {canCompleteBorrowing && (
-                  <Button size="sm" variant="primary" onClick={() => setBorrowId(row.id)}>
-                    Complete Borrow
-                  </Button>
-                )}
-                <Button size="sm" variant="secondary" onClick={() => setReserveId(row.id)}>
-                  Request Borrow
-                </Button>
-              </>
-            )}
-            {row.status === 'BORROWED' && canCompleteBorrowing && (
-              <Button size="sm" variant="success" onClick={() => setReturnId(row.id)}>
-                  Return Item
-              </Button>
-            )}
-            {canManageAssets && (
-              <Button size="sm" variant="danger" onClick={() => setDeleteId(row.id)}>
-                Delete
-              </Button>
-            )}
-          </div>
-        ),
-      },
-    ],
-    [canManageAssets, canCompleteBorrowing],
-  )
+  const columns: Column<Asset>[] = useMemo(() => [
+    { key: 'asset_number', header: 'Asset No.',  render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number}</span> },
+    { key: 'name',         header: 'Name',       render: (r) => <span className="font-medium text-[#1F2937]">{r.name}</span> },
+    { key: 'category',     header: 'Category',   render: (r) => r.category ?? '—' },
+    { key: 'status',       header: 'Status',     render: (r) => <Badge tone={assetStatusTone(r.status)}>{assetStatusLabel(r.status)}</Badge> },
+    { key: 'location',     header: 'Location',   render: (r) => r.location ?? '—' },
+    {
+      key: 'actions', header: 'Actions',
+      render: (r) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+          {/* Info actions */}
+          <Button size="sm" variant="ghost" onClick={() => void openView(r.id)}>View</Button>
+          <Button size="sm" variant="ghost" onClick={() => void openQrLabel(r.id)}>QR Label</Button>
+
+          {/* Divider */}
+          <span style={{ width: 1, height: 20, background: '#e2e8f0', flexShrink: 0 }} />
+
+          {/* Edit */}
+          {canManageAssets && (
+            <Button size="sm" variant="secondary" onClick={() => void openEdit(r.id)}>Edit</Button>
+          )}
+
+          {/* Status-based primary action */}
+          {r.status === 'AVAILABLE' && canCompleteBorrowing && (
+            <Button size="sm" variant="primary" onClick={() => setBorrowId(r.id)}>Borrow</Button>
+          )}
+          {r.status === 'AVAILABLE' && (
+            <Button size="sm" variant="outline" onClick={() => setReserveId(r.id)}>Request</Button>
+          )}
+          {r.status === 'BORROWED' && canCompleteBorrowing && (
+            <Button size="sm" variant="success" onClick={() => setReturnId(r.id)}>Return</Button>
+          )}
+
+          {/* Danger */}
+          {canManageAssets && (
+            <Button size="sm" variant="danger" onClick={() => setDeleteId(r.id)}>Delete</Button>
+          )}
+        </div>
+      ),
+    },
+  ], [canManageAssets, canCompleteBorrowing])
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Assets</h1>
-          <p className="text-sm text-gray-500">Search, request, scan, and view PSA-tracked assets.</p>
-        </div>
-        <Button onClick={() => setScannerOpen(true)}>Scan Asset QR</Button>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <PageHeader
+        title="Assets"
+        subtitle="Search, scan, borrow, and view PSA-tracked assets."
+        actions={
+          <Button onClick={() => setScannerOpen(true)}>
+            <ScanLine className="h-4 w-4" />
+            Scan Asset QR
+          </Button>
+        }
+      />
 
-      {message && (
-        <Alert tone="info" onClose={() => setMessage(null)}>
-          {message}
-        </Alert>
-      )}
+      {message && <Alert tone="info" onClose={() => setMessage(null)}>{message}</Alert>}
 
-      <Card>
-        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        {/* Toolbar */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottom: '1px solid #f1f5f9', padding: '14px 20px' }}>
           <SearchBar
-            placeholder="Search assets..."
+            placeholder="Search assets…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void load(1)
-            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') void load(1) }}
           />
-          <div className="flex w-full max-w-xs gap-2">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <Dropdown
               options={[
-                { label: 'Available', value: 'AVAILABLE' },
-                { label: 'Borrowed', value: 'BORROWED' },
-                { label: 'Reserved', value: 'RESERVED' },
+                { label: 'Available',   value: 'AVAILABLE' },
+                { label: 'Borrowed',    value: 'BORROWED' },
+                { label: 'Reserved',    value: 'RESERVED' },
                 { label: 'Maintenance', value: 'MAINTENANCE' },
               ]}
               placeholder="All statuses"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             />
-            <Button variant="secondary" onClick={() => void load(1)}>
-              Search
-            </Button>
+            <Button variant="secondary" onClick={() => void load(1)}>Search</Button>
           </div>
         </div>
 
+        {/* Table */}
         {loading ? (
-          <Spinner />
+          <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : (
           <>
             <Table
-              columns={columns}
-              rows={rows}
-              rowKey={(row) => row.id}
-              empty={<EmptyState title="No assets found" description="Try another search term or clear the status filter." />}
+              columns={columns} rows={rows} rowKey={(r) => r.id}
+              empty={<div className="py-16"><EmptyState title="No assets found" description="Try another search term or clear the status filter." /></div>}
             />
-            <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void load(p)} />
+            <div style={{ borderTop: '1px solid #f1f5f9', padding: '10px 20px' }}>
+              <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void load(p)} />
+            </div>
           </>
         )}
-      </Card>
+      </div>
 
+      {/* ── Dialogs ── */}
       <ConfirmDialog
-        open={deleteId !== null}
-        title="Archive asset"
+        open={deleteId !== null} title="Archive Asset"
         message="Are you sure you want to archive this asset? It will no longer appear as an active item."
         confirmLabel="Archive Item"
         onCancel={() => setDeleteId(null)}
         onConfirm={() => {
           if (deleteId === null) return
-          void assetService.remove(deleteId).then(() => {
-            setDeleteId(null)
-            setMessage('Asset archive requested.')
-            void load(page)
-          })
+          void assetService.remove(deleteId).then(() => { setDeleteId(null); setMessage('Asset archived.'); void load(page) })
         }}
       />
 
       <ConfirmDialog
-        open={returnId !== null}
-        title="Return Item"
+        open={returnId !== null} title="Return Item"
         message={
           <div className="space-y-3">
-            <p>Return this borrowed item and mark it available again?</p>
+            <p className="text-[14px] text-[#374151]">Return this borrowed item and mark it available again?</p>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Return Notes</label>
-              <textarea
-                value={returnNotes}
-                onChange={(e) => setReturnNotes(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                rows={2}
-                placeholder="Optional return notes"
-              />
+              <label className={LABEL_CLS}>Return Notes</label>
+              <textarea className={TEXTAREA_CLS} rows={2} placeholder="Optional return notes" value={returnNotes} onChange={(e) => setReturnNotes(e.target.value)} />
             </div>
           </div>
         }
-        confirmLabel="Return Item"
-        tone="primary"
-        onCancel={() => {
-          setReturnId(null)
-          setReturnNotes('')
-        }}
+        confirmLabel="Return Item" tone="primary"
+        onCancel={() => { setReturnId(null); setReturnNotes('') }}
         onConfirm={() => {
           if (returnId === null) return
           void assetService.returnAsset(returnId, returnNotes).then(() => {
@@ -335,61 +264,27 @@ export function AssetPage() {
       />
 
       <ConfirmDialog
-        open={borrowId !== null}
-        title="Borrow Item"
+        open={borrowId !== null} title="Borrow Item"
         message={
           <div className="space-y-3">
-            <p>Complete an authorized borrow request for this item. A receipt will be generated for the transaction.</p>
+            <p className="text-[14px] text-[#374151]">Borrow this item now? A receipt will be generated for the transaction.</p>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Due Date (days)</label>
-              <input
-                type="number"
-                min="1"
-                value={borrowDueDays ?? ''}
-                onChange={(e) => setBorrowDueDays(e.target.value ? Number(e.target.value) : undefined)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                placeholder="Optional"
-              />
+              <label className={LABEL_CLS}>Due Date (days)</label>
+              <input type="number" min="1" className={SELECT_CLS} placeholder="Optional" value={borrowDueDays ?? ''} onChange={(e) => setBorrowDueDays(e.target.value ? Number(e.target.value) : undefined)} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Notes</label>
-              <textarea
-                value={borrowNotes}
-                onChange={(e) => setBorrowNotes(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                rows={2}
-                placeholder="Optional notes"
-              />
+              <label className={LABEL_CLS}>Notes</label>
+              <textarea className={TEXTAREA_CLS} rows={2} placeholder="Optional notes" value={borrowNotes} onChange={(e) => setBorrowNotes(e.target.value)} />
             </div>
           </div>
         }
         confirmLabel="Borrow Item"
-        onCancel={() => {
-          setBorrowId(null)
-          setBorrowNotes('')
-          setBorrowDueDays(undefined)
-        }}
+        onCancel={() => { setBorrowId(null); setBorrowNotes(''); setBorrowDueDays(undefined) }}
         onConfirm={() => {
           if (borrowId === null) return
-          void assetService.borrow(borrowId, borrowDueDays, borrowNotes).then((borrowing) => {
-            setBorrowId(null)
-            setBorrowNotes('')
-            setBorrowDueDays(undefined)
-            setReceipt({
-              type: 'Borrowing',
-              code: borrowing.receipt_code ?? `PSA-BOR-${borrowing.id}`,
-              payload: borrowing.receipt_payload ?? `PSA-BOR-${borrowing.id}|${borrowing.asset_number ?? borrowing.asset_id}|${borrowing.user_id}`,
-              employee: borrowing.employee_name,
-              assetName: borrowing.asset_name,
-              assetNumber: borrowing.asset_number,
-              timestamp: borrowing.created_at,
-              startDate: borrowing.borrow_date,
-              endDate: borrowing.due_date,
-              status: borrowing.status,
-              authorizedBy: borrowing.authorized_by_name,
-              authorizedAt: borrowing.authorized_at,
-              remarks: borrowing.remarks,
-            })
+          void assetService.borrow(borrowId, borrowDueDays, borrowNotes).then((b) => {
+            setBorrowId(null); setBorrowNotes(''); setBorrowDueDays(undefined)
+            setReceipt({ type: 'Borrowing', code: b.receipt_code ?? `PSA-BOR-${b.id}`, payload: b.receipt_payload ?? `PSA-BOR-${b.id}|${b.asset_number ?? b.asset_id}|${b.user_id}`, employee: b.employee_name, assetName: b.asset_name, assetNumber: b.asset_number, timestamp: b.created_at, startDate: b.borrow_date, endDate: b.due_date, status: b.status, authorizedBy: b.authorized_by_name, authorizedAt: b.authorized_at, remarks: b.remarks })
             setMessage('Item borrowed successfully. Your receipt is ready.')
             notifyDataChanged('all')
             void load(page)
@@ -398,48 +293,28 @@ export function AssetPage() {
       />
 
       <ConfirmDialog
-        open={reserveId !== null}
-        title="Send Borrow Request"
+        open={reserveId !== null} title="Send Borrow Request"
         message={
           <div className="space-y-3">
-            <p>Send a request to borrow this asset later. Staff will approve it before release.</p>
+            <p className="text-[14px] text-[#374151]">Send a request to borrow this asset later. Staff will approve it before release.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Start Date</label>
-                <input
-                  type="date"
-                  value={reserveStartDate}
-                  onChange={(e) => setReserveStartDate(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
+                <label className={LABEL_CLS}>Start Date</label>
+                <input type="date" className={SELECT_CLS} value={reserveStartDate} onChange={(e) => setReserveStartDate(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">End Date</label>
-                <input
-                  type="date"
-                  value={reserveEndDate}
-                  onChange={(e) => setReserveEndDate(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
+                <label className={LABEL_CLS}>End Date</label>
+                <input type="date" className={SELECT_CLS} value={reserveEndDate} onChange={(e) => setReserveEndDate(e.target.value)} />
               </div>
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700">Purpose / Notes</label>
-              <textarea
-                value={reserveRemarks}
-                onChange={(e) => setReserveRemarks(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                rows={2}
-                placeholder="Optional borrow request purpose"
-              />
+              <label className={LABEL_CLS}>Purpose / Notes</label>
+              <textarea className={TEXTAREA_CLS} rows={2} placeholder="Optional borrow request purpose" value={reserveRemarks} onChange={(e) => setReserveRemarks(e.target.value)} />
             </div>
           </div>
         }
         confirmLabel="Send Request"
-        onCancel={() => {
-          setReserveId(null)
-          setReserveRemarks('')
-        }}
+        onCancel={() => { setReserveId(null); setReserveRemarks('') }}
         onConfirm={() => {
           if (reserveId === null) return
           void reservationService
@@ -449,23 +324,23 @@ export function AssetPage() {
               end_date: reserveEndDate,
               remarks: reserveRemarks || undefined,
             })
-            .then((reservation) => {
+            .then((res) => {
               setReserveId(null)
               setReserveRemarks('')
               setReceipt({
                 type: 'Reservation',
-                code: reservation.receipt_code ?? `PSA-RES-${reservation.id}`,
-                payload: reservation.receipt_payload ?? `PSA-RES-${reservation.id}|${reservation.asset_numbers?.join(',') ?? reservation.asset_ids?.join(',')}|${reservation.user_id}`,
-                employee: reservation.employee_name,
-                assetName: reservation.asset_names?.join(', '),
-                assetNumber: reservation.asset_numbers?.join(', '),
-                timestamp: reservation.created_at,
-                startDate: reservation.start_date,
-                endDate: reservation.end_date,
-                status: reservation.status,
-                authorizedBy: reservation.authorized_by_name,
-                authorizedAt: reservation.authorized_at,
-                remarks: reservation.remarks,
+                code: res.receipt_code ?? `PSA-RES-${res.id}`,
+                payload: res.receipt_payload ?? `PSA-RES-${res.id}|${res.asset_numbers?.join(',') ?? res.asset_ids?.join(',')}|${res.user_id}`,
+                employee: res.employee_name,
+                assetName: res.asset_names?.join(', '),
+                assetNumber: res.asset_numbers?.join(', '),
+                timestamp: res.created_at,
+                startDate: res.start_date,
+                endDate: res.end_date,
+                status: res.status,
+                authorizedBy: res.authorized_by_name,
+                authorizedAt: res.authorized_at,
+                remarks: res.remarks,
               })
               setMessage('Borrow request sent successfully. Present the receipt QR/reference to staff for approval.')
               notifyDataChanged('all')
@@ -477,92 +352,58 @@ export function AssetPage() {
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
       <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onCompleted={() => void load(page)} />
 
-      <Modal open={viewAsset !== null} title="Asset details" onClose={() => setViewAsset(null)}>
+      {/* ── View Asset ── */}
+      <Modal open={viewAsset !== null} title="Asset Details" onClose={() => setViewAsset(null)}>
         {viewAsset && (
-          <dl className="grid gap-3 text-sm md:grid-cols-2">
-            <div>
-              <dt className="text-gray-500">Asset Number</dt>
-              <dd className="font-medium text-gray-900">{viewAsset.asset_number}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Status</dt>
-              <dd>
-                <Badge tone={assetStatusTone(viewAsset.status)}>{assetStatusLabel(viewAsset.status)}</Badge>
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Name</dt>
-              <dd className="font-medium text-gray-900">{viewAsset.name}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Category</dt>
-              <dd>{viewAsset.category ?? 'Not set'}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Office</dt>
-              <dd>{viewAsset.office ?? 'Not set'}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Location</dt>
-              <dd>{viewAsset.location ?? 'Not set'}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Model</dt>
-              <dd>{viewAsset.model ?? 'Not set'}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Condition</dt>
-              <dd>{viewAsset.condition_status ?? 'Not set'}</dd>
-            </div>
-            <div className="md:col-span-2">
-              <dt className="text-gray-500">Description</dt>
-              <dd>{viewAsset.description ?? 'No description'}</dd>
-            </div>
-            <div className="md:col-span-2">
-              <dt className="text-gray-500">Remarks</dt>
-              <dd>{viewAsset.remarks ?? 'No remarks'}</dd>
-            </div>
+          <dl className="grid gap-4 text-sm sm:grid-cols-2">
+            {[
+              { label: 'Asset Number', value: viewAsset.asset_number, mono: true },
+              { label: 'Status',       value: <Badge tone={assetStatusTone(viewAsset.status)}>{assetStatusLabel(viewAsset.status)}</Badge> },
+              { label: 'Name',         value: viewAsset.name },
+              { label: 'Category',     value: viewAsset.category ?? '—' },
+              { label: 'Office',       value: viewAsset.office ?? '—' },
+              { label: 'Location',     value: viewAsset.location ?? '—' },
+              { label: 'Model',        value: viewAsset.model ?? '—' },
+              { label: 'Condition',    value: viewAsset.condition_status ?? '—' },
+              { label: 'Description',  value: viewAsset.description ?? '—', full: true },
+              { label: 'Remarks',      value: viewAsset.remarks ?? '—',     full: true },
+            ].map((item) => (
+              <div key={item.label} className={item.full ? 'sm:col-span-2' : ''}>
+                <dt className="text-[11px] font-bold uppercase tracking-wide text-[#9CA3AF]">{item.label}</dt>
+                <dd className={`mt-0.5 font-medium text-[#1F2937] ${item.mono ? 'font-mono text-xs' : 'text-[14px]'}`}>{item.value}</dd>
+              </div>
+            ))}
           </dl>
         )}
       </Modal>
 
+      {/* ── QR Label ── */}
       <Modal
-        open={qrAsset !== null}
-        title="PSA Asset QR Label"
-        onClose={() => setQrAsset(null)}
+        open={qrAsset !== null} title="PSA Asset QR Label" onClose={() => setQrAsset(null)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setQrAsset(null)}>
-              Close
-            </Button>
+            <Button variant="secondary" onClick={() => setQrAsset(null)}>Close</Button>
             <Button onClick={() => window.print()}>Print QR Label</Button>
           </>
         }
       >
         {qrAsset && (
-          <div className="asset-qr-print-area flex flex-col items-center gap-4 rounded-md border border-gray-200 bg-white p-6 text-center">
+          <div className="asset-qr-print-area flex flex-col items-center gap-4 rounded-xl border border-[#E5E7EB] bg-white p-6 text-center">
             <div>
-              <div className="text-xs font-bold uppercase tracking-[0.24em] text-brand-700">PSA Inventory</div>
-              <h3 className="mt-1 text-xl font-semibold text-gray-900">{qrAsset.name}</h3>
-              <p className="text-sm text-gray-500">Permanent organization-owned asset identifier</p>
+              <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#0D47A1]">PSA Inventory</div>
+              <h3 className="mt-1 text-[18px] font-semibold text-[#1F2937]">{qrAsset.name}</h3>
+              <p className="text-[13px] text-[#6B7280]">Permanent organization-owned asset identifier</p>
             </div>
-            <QrCode
-              value={qrAsset.psa_qr_payload ?? qrAsset.psa_qr_identifier ?? qrAsset.asset_number}
-              className="rounded border border-gray-300 bg-white p-2 text-gray-950"
-            />
+            <QrCode value={qrAsset.psa_qr_payload ?? qrAsset.psa_qr_identifier ?? qrAsset.asset_number} className="rounded border border-[#E5E7EB] bg-white p-2 text-[#1F2937]" />
             <div>
-              <div className="text-lg font-bold tracking-wide text-gray-900">
-                {qrAsset.psa_qr_identifier ?? 'PSA QR not generated'}
-              </div>
-              <div className="text-sm text-gray-600">Asset No: {qrAsset.asset_number}</div>
+              <div className="text-[16px] font-bold tracking-wide text-[#1F2937]">{qrAsset.psa_qr_identifier ?? 'PSA QR not generated'}</div>
+              <div className="text-[13px] text-[#6B7280]">Asset No: {qrAsset.asset_number}</div>
             </div>
-            <div className="w-full rounded bg-gray-50 p-3 text-left text-xs text-gray-600">
-              <div className="font-semibold text-gray-700">Supported scan identifiers remain separate:</div>
+            <div className="w-full rounded-lg bg-[#F9FAFB] p-3 text-left text-[12px] text-[#6B7280]">
+              <div className="font-semibold text-[#1F2937]">Supported scan identifiers:</div>
               <ul className="mt-1 list-inside list-disc">
-                {(qrAsset.identifiers ?? []).map((identifier) => (
-                  <li key={identifier.id}>
-                    {identifier.identifier_type}: {identifier.identifier_value}
-                  </li>
+                {(qrAsset.identifiers ?? []).map((id) => (
+                  <li key={id.id}>{id.identifier_type}: {id.identifier_value}</li>
                 ))}
               </ul>
             </div>
@@ -570,39 +411,22 @@ export function AssetPage() {
         )}
       </Modal>
 
+      {/* ── Edit Asset ── */}
       <Modal
-        open={editAsset !== null}
-        title="Edit asset"
-        onClose={() => setEditAsset(null)}
+        open={editAsset !== null} title="Edit Asset" onClose={() => setEditAsset(null)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setEditAsset(null)}>
-              Cancel
-            </Button>
-            <Button onClick={() => void submitEdit()} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
+            <Button variant="secondary" onClick={() => setEditAsset(null)}>Cancel</Button>
+            <Button onClick={() => void submitEdit()} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Input
-            label="Asset Name"
-            value={editForm.name ?? ''}
-            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-          />
-          <Input
-            label="Model"
-            value={editForm.model ?? ''}
-            onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
-          />
+          <Input label="Asset Name"  value={editForm.name ?? ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+          <Input label="Model"       value={editForm.model ?? ''} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} />
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
-            <select
-              value={editForm.status ?? 'AVAILABLE'}
-              onChange={(e) => setEditForm({ ...editForm, status: e.target.value as AssetStatus })}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            >
+            <label className={LABEL_CLS}>Status</label>
+            <select className={SELECT_CLS} value={editForm.status ?? 'AVAILABLE'} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as AssetStatus })}>
               <option value="AVAILABLE">Available</option>
               <option value="RESERVED">Reserved</option>
               <option value="BORROWED">Borrowed</option>
@@ -612,22 +436,9 @@ export function AssetPage() {
               <option value="DISPOSED">Disposed</option>
             </select>
           </div>
-          <Input
-            label="Condition"
-            value={editForm.condition_status ?? ''}
-            onChange={(e) => setEditForm({ ...editForm, condition_status: e.target.value })}
-            placeholder="GOOD, FAIR, DAMAGED, LOST, UNDER_REPAIR"
-          />
-          <Input
-            label="Description"
-            value={editForm.description ?? ''}
-            onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-          />
-          <Input
-            label="Remarks"
-            value={editForm.remarks ?? ''}
-            onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })}
-          />
+          <Input label="Condition"   value={editForm.condition_status ?? ''} onChange={(e) => setEditForm({ ...editForm, condition_status: e.target.value })} placeholder="GOOD, FAIR, DAMAGED, LOST, UNDER_REPAIR" />
+          <Input label="Description" value={editForm.description ?? ''} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+          <Input label="Remarks"     value={editForm.remarks ?? ''} onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })} />
         </div>
       </Modal>
     </div>

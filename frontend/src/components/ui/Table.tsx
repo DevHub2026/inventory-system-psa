@@ -22,23 +22,54 @@ export function Table<T>({ columns, rows, rowKey, empty, className }: TableProps
   }
 
   return (
-    <div className={cn('overflow-x-auto rounded-lg border border-slate-100', className)}>
-      <table className="min-w-full text-left text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] uppercase tracking-[0.055em] text-slate-500">
-          <tr>
-            {columns.map((column) => (
-              <th key={column.key} className={cn('px-4 py-3 font-semibold', column.className)}>
-                {column.header}
+    <div className={cn('overflow-x-auto', className)}>
+      <table style={{ width: '100%', tableLayout: 'auto', borderCollapse: 'collapse', textAlign: 'left' }}>
+
+        {/* Header */}
+        <thead>
+          <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                scope="col"
+                className={col.className}
+                style={{
+                  padding: '10px 16px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.07em',
+                  color: '#94a3b8',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {col.header}
               </th>
             ))}
           </tr>
         </thead>
+
+        {/* Body */}
         <tbody>
           {rows.map((row) => (
-            <tr key={rowKey(row)} className="border-b border-slate-100 last:border-0 hover:bg-brand-50/35">
-              {columns.map((column) => (
-                <td key={column.key} className={cn('px-4 py-3.5 align-middle text-slate-700', column.className)}>
-                  {column.render(row)}
+            <tr
+              key={rowKey(row)}
+              style={{ borderBottom: '1px solid #f1f5f9', background: '#ffffff' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#f8fafc' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#ffffff' }}
+            >
+              {columns.map((col) => (
+                <td
+                  key={col.key}
+                  className={col.className}
+                  style={{
+                    padding: '14px 16px',
+                    verticalAlign: 'middle',
+                    fontSize: 13,
+                    color: '#334155',
+                  }}
+                >
+                  {col.render(row)}
                 </td>
               ))}
             </tr>

@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, CalendarDays, ClipboardList, HandCoins } from 'lucide-react'
-import { Badge, Button, Card, EmptyState, Spinner, Table, Alert, type Column } from '@/components/ui'
+import {
+  Badge, Button, EmptyState, Spinner, Table, Alert, type Column,
+} from '@/components/ui'
 import { DashboardStatCard } from '@/components/DashboardStatCard'
+import { PageHeader } from '@/components/PageHeader'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
 import type { Reservation, Borrowing } from '@/types'
@@ -10,202 +13,227 @@ import { reservationStatusTone, borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel, reservationStatusLabel } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
+/* ─────────────────────────────────────────────────────────
+   Panel — white section card with consistent header.
+   All text uses inline styles to beat the global cascade.
+   ───────────────────────────────────────────────────────── */
+function Panel({
+  title, subtitle, onViewAll, loading, children,
+}: {
+  title: string
+  subtitle: string
+  onViewAll?: () => void
+  loading: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <section style={{
+      display: 'flex', flexDirection: 'column',
+      background: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: 16,
+      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+      overflow: 'hidden',
+      boxSizing: 'border-box',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 16, padding: '14px 20px',
+        borderBottom: '1px solid #f1f5f9',
+        flexShrink: 0,
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', lineHeight: 1.3 }}>
+            {title}
+          </div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, lineHeight: 1.4 }}>
+            {subtitle}
+          </div>
+        </div>
+        {onViewAll && (
+          <button
+            type="button"
+            onClick={onViewAll}
+            style={{
+              flexShrink: 0, whiteSpace: 'nowrap',
+              fontSize: 12, fontWeight: 500, color: '#1d4ed8',
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+            }}
+          >
+            View all
+          </button>
+        )}
+      </div>
+
+      {/* Body */}
+      <div style={{ flex: 1, overflowX: 'auto' }}>
+        {loading
+          ? <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '48px 0' }}><Spinner /></div>
+          : children
+        }
+      </div>
+    </section>
+  )
+}
+
 export function EmployeeDashboard() {
   const navigate = useNavigate()
-  const [myReservations, setMyReservations] = useState<Reservation[]>([])
-  const [myBorrowings, setMyBorrowings] = useState<Borrowing[]>([])
+  const [myReservations,   setMyReservations]   = useState<Reservation[]>([])
+  const [myBorrowings,     setMyBorrowings]     = useState<Borrowing[]>([])
   const [activeBorrowings, setActiveBorrowings] = useState<Borrowing[]>([])
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [loading,          setLoading]          = useState(true)
+  const [message,          setMessage]          = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [reservationsResult, borrowingsResult] = await Promise.all([
+      const [reservationsRes, borrowingsRes] = await Promise.all([
         reservationService.list(),
         borrowingService.list(),
       ])
-      setMyReservations(reservationsResult.items)
-      setMyBorrowings(borrowingsResult.items)
+      setMyReservations(reservationsRes.items)
+      setMyBorrowings(borrowingsRes.items)
       setActiveBorrowings(
-        borrowingsResult.items.filter((b) => b.status === 'BORROWED' || b.status === 'ACTIVE' || b.status === 'OVERDUE'),
+        borrowingsRes.items.filter((b) => b.status === 'BORROWED' || b.status === 'ACTIVE' || b.status === 'OVERDUE'),
       )
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to load your data.' })
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load your data.' })
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    void loadData()
-  }, [])
-
+  useEffect(() => { void loadData() }, [])
   useEffect(() => onDataChanged((scope) => {
-    if (affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
-      void loadData()
-    }
+    if (affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) void loadData()
   }), [])
 
-  const handleReturnBorrowing = async (borrowingId: number) => {
+  const handleReturnBorrowing = async (id: number) => {
     try {
-      await borrowingService.returnAsset(borrowingId)
+      await borrowingService.returnAsset(id)
       setMessage({ type: 'success', text: 'Item returned successfully.' })
       notifyDataChanged('all')
       await loadData()
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to return item.' })
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to return item.' })
     }
   }
 
+  /* ── Column definitions — all text via inline style ── */
   const reservationColumns: Column<Reservation>[] = [
-    { key: 'id', header: 'ID', render: (row) => row.id },
-    { key: 'purpose', header: 'Purpose', render: (row) => row.purpose },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row) => <Badge tone={reservationStatusTone(row.status)}>{reservationStatusLabel(row.status)}</Badge>,
-    },
-    { key: 'dates', header: 'Schedule', render: (row) => `${row.reserved_from} → ${row.reserved_until}` },
+    { key: 'id',      header: '#',        render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8' }}>#{r.id}</span> },
+    { key: 'purpose', header: 'Purpose',  render: (r) => <span style={{ fontSize: 13, color: '#334155', display: 'block', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.purpose}</span> },
+    { key: 'status',  header: 'Status',   render: (r) => <Badge tone={reservationStatusTone(r.status)}>{reservationStatusLabel(r.status)}</Badge> },
+    { key: 'dates',   header: 'Schedule', render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>{r.reserved_from} → {r.reserved_until}</span> },
   ]
 
   const borrowingColumns: Column<Borrowing>[] = [
-    { key: 'id', header: 'ID', render: (row) => row.id },
-    { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{borrowingStatusLabel(row.status)}</Badge>,
-    },
-    { key: 'borrowed_at', header: 'Borrowed', render: (row) => row.borrowed_at },
-    { key: 'due_at', header: 'Due', render: (row) => row.due_at },
+    { key: 'id',          header: '#',        render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8' }}>#{r.id}</span> },
+    { key: 'asset_name',  header: 'Asset',    render: (r) => <span style={{ fontSize: 13, fontWeight: 500, color: '#1e293b' }}>{r.asset_name}</span> },
+    { key: 'status',      header: 'Status',   render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> },
+    { key: 'borrowed_at', header: 'Borrowed', render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>{r.borrowed_at}</span> },
+    { key: 'due_at',      header: 'Due',      render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>{r.due_at}</span> },
   ]
 
   const activeColumns: Column<Borrowing>[] = [
-    { key: 'id', header: 'ID', render: (row) => row.id },
-    { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
+    { key: 'id',         header: '#',      render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8' }}>#{r.id}</span> },
+    { key: 'asset_name', header: 'Asset',  render: (r) => <span style={{ fontSize: 13, fontWeight: 500, color: '#1e293b' }}>{r.asset_name}</span> },
+    { key: 'status',     header: 'Status', render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> },
+    { key: 'due_at',     header: 'Due',    render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>{r.due_at}</span> },
     {
-      key: 'status',
-      header: 'Status',
-      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{borrowingStatusLabel(row.status)}</Badge>,
-    },
-    { key: 'due_at', header: 'Due', render: (row) => row.due_at },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <Button size="sm" variant="primary" onClick={() => handleReturnBorrowing(row.id)}>
+      key: 'actions', header: '',
+      render: (r) => (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => handleReturnBorrowing(r.id)}
+        >
           Return Item
         </Button>
       ),
     },
   ]
 
-  const overdueItems = activeBorrowings.filter((borrowing) => borrowing.status === 'OVERDUE').length
-  const dueSoonItems = activeBorrowings.filter((borrowing) => borrowing.status !== 'OVERDUE').length
+  const overdueCount = activeBorrowings.filter((b) => b.status === 'OVERDUE').length
+  const dueSoonCount = activeBorrowings.filter((b) => b.status !== 'OVERDUE').length
+
   const statCards = [
-    { label: 'My Borrow Requests', value: myReservations.length, description: 'Requests you submitted', icon: ClipboardList, tone: 'blue' as const },
-    { label: 'My Borrowed Items', value: activeBorrowings.length, description: 'Items currently borrowed', icon: HandCoins, tone: 'green' as const },
-    { label: 'Due Soon', value: dueSoonItems, description: 'Active items to monitor', icon: CalendarDays, tone: 'amber' as const },
-    { label: 'Overdue', value: overdueItems, description: 'Items needing return', icon: AlertTriangle, tone: 'red' as const },
+    { label: 'My Borrow Requests', value: myReservations.length,   description: 'Requests you submitted',  icon: ClipboardList, tone: 'blue'  as const },
+    { label: 'My Borrowed Items',  value: activeBorrowings.length, description: 'Items currently borrowed', icon: HandCoins,     tone: 'green' as const },
+    { label: 'Due Soon',           value: dueSoonCount,            description: 'Active items to monitor',  icon: CalendarDays,  tone: 'amber' as const },
+    { label: 'Overdue',            value: overdueCount,            description: 'Items needing return',     icon: AlertTriangle, tone: 'red'   as const },
   ]
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1>Employee Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-500">Welcome back. Here is your asset activity overview.</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      <PageHeader title="Employee Dashboard" subtitle="Welcome back. Here is your asset activity overview." />
+
+      {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
+
+      {/* Stat cards */}
+      <div className="stat-grid">
+        {statCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
       </div>
 
-      {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
-      )}
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {statCards.map((card) => (
-          <DashboardStatCard key={card.label} {...card} />
-        ))}
-      </div>
-
+      {/* Active borrowed items — only shown when there are active items */}
       {activeBorrowings.length > 0 && (
-        <Card>
-          <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">Items Currently Borrowed</h2>
-            <p className="text-sm text-gray-500">Return items when you're done using them</p>
-          </div>
-          {loading ? (
-            <Spinner />
-          ) : (
-            <Table
-              columns={activeColumns}
-              rows={activeBorrowings}
-              rowKey={(row) => row.id}
-              empty={<EmptyState title="No borrowed items" />}
-            />
-          )}
-        </Card>
+        <Panel
+          title="Items Currently Borrowed"
+          subtitle="Return items when you're done using them"
+          onViewAll={() => navigate('/borrowings')}
+          loading={loading}
+        >
+          <Table
+            columns={activeColumns}
+            rows={activeBorrowings}
+            rowKey={(r) => r.id}
+            empty={<EmptyState title="No borrowed items" />}
+          />
+        </Panel>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">My Borrow Requests</h2>
-            <p className="text-sm text-gray-500">Track requests you sent for asset borrowing.</p>
-          </div>
-          {loading ? (
-            <Spinner />
-          ) : myReservations.length === 0 ? (
-            <EmptyState title="No borrow requests yet" description="Send a borrow request when you need an available asset." />
-          ) : (
-            <Table
-              columns={reservationColumns}
-              rows={myReservations}
-              rowKey={(row) => row.id}
-              empty={<EmptyState title="No borrow requests yet" />}
-            />
-          )}
-        </Card>
+      {/* My requests + history — 2 col on lg */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 20 }} className="lg:!grid-cols-2">
+        <Panel
+          title="My Borrow Requests"
+          subtitle="Track requests you sent for asset borrowing"
+          onViewAll={() => navigate('/reservations')}
+          loading={loading}
+        >
+          {myReservations.length === 0
+            ? <EmptyState title="No borrow requests yet" description="Send a borrow request when you need an available asset." />
+            : <Table columns={reservationColumns} rows={myReservations} rowKey={(r) => r.id} empty={<EmptyState title="No borrow requests yet" />} />
+          }
+        </Panel>
 
-        <Card>
-          <div className="mb-4">
-            <h2 className="text-md font-semibold text-gray-900">Borrowed Item History</h2>
-            <p className="text-sm text-gray-500">View your past and current borrowed items.</p>
-          </div>
-          {loading ? (
-            <Spinner />
-          ) : myBorrowings.length === 0 ? (
-            <EmptyState title="No borrowed items yet" description="Items you borrow will appear here." />
-          ) : (
-            <Table
-              columns={borrowingColumns}
-              rows={myBorrowings}
-              rowKey={(row) => row.id}
-              empty={<EmptyState title="No borrowed items yet" />}
-            />
-          )}
-        </Card>
+        <Panel
+          title="Borrowed Item History"
+          subtitle="View your past and current borrowed items"
+          onViewAll={() => navigate('/borrowings')}
+          loading={loading}
+        >
+          {myBorrowings.length === 0
+            ? <EmptyState title="No borrowed items yet" description="Items you borrow will appear here." />
+            : <Table columns={borrowingColumns} rows={myBorrowings} rowKey={(r) => r.id} empty={<EmptyState title="No borrowed items yet" />} />
+          }
+        </Panel>
       </div>
 
-      <Card>
-        <div className="mb-4">
-          <h2 className="text-md font-semibold text-gray-900">Quick Actions</h2>
-          <p className="text-sm text-gray-500">Common tasks for asset management</p>
+      {/* Quick actions */}
+      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: '#94a3b8', marginBottom: 14 }}>
+          Quick Actions
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <Button onClick={() => navigate('/assets')}>Browse Available Assets</Button>
-          <Button variant="secondary" onClick={() => navigate('/reservations')}>
-            Send Borrow Request
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/borrowings')}>
-            View My Borrowed Items
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/settings')}>
-            My Profile Settings
-          </Button>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 10 }} className="sm:!grid-cols-2">
+          <Button variant="secondary" onClick={() => navigate('/assets')}>Browse Available Assets</Button>
+          <Button variant="secondary" onClick={() => navigate('/reservations')}>Send Borrow Request</Button>
+          <Button variant="secondary" onClick={() => navigate('/borrowings')}>View My Borrowed Items</Button>
+          <Button variant="secondary" onClick={() => navigate('/settings')}>My Profile Settings</Button>
         </div>
-      </Card>
+      </div>
+
     </div>
   )
 }

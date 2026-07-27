@@ -1,6 +1,6 @@
+import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import type { ReactNode } from 'react'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -33,13 +33,18 @@ export function ConfirmDialog({
           <Button variant="secondary" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button variant={tone === 'danger' ? 'danger' : 'primary'} onClick={onConfirm}>
+          <Button
+            variant={tone === 'danger' ? 'danger' : 'primary'}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </Button>
         </>
       }
     >
-      <div className="text-sm text-gray-700">{typeof message === 'string' ? <p>{message}</p> : message}</div>
+      <div className="text-[14px] leading-relaxed text-[#374151]">
+        {typeof message === 'string' ? <p>{message}</p> : message}
+      </div>
     </Modal>
   )
 }
