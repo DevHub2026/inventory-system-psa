@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { Card, Button, Input, Table, Modal, Alert, Spinner, SearchBar, Pagination, Dropdown } from '@/components/ui'
 import { permissionService, type PermissionFilters, type CreatePermissionPayload, type UpdatePermissionPayload, type Permission } from '@/services/permissionService'
 import type { Column } from '@/components/ui'
@@ -27,8 +27,8 @@ export function PermissionsPage() {
       const result = await permissionService.getPermissions(filters)
       setPermissions(result.items)
       setPagination(result.meta)
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Failed to load permissions.' })
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: (error instanceof Error ? error.message : '') || 'Failed to load permissions.' })
     } finally {
       setLoading(false)
     }
@@ -77,8 +77,8 @@ export function PermissionsPage() {
       await permissionService.deletePermission(permission.id)
       setMessage({ type: 'success', text: 'Permission deleted successfully.' })
       await loadPermissions()
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Failed to delete permission.' })
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: (error instanceof Error ? error.message : '') || 'Failed to delete permission.' })
     }
   }
 
@@ -96,8 +96,8 @@ export function PermissionsPage() {
       }
       setModalOpen(false)
       await loadPermissions()
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Failed to save permission.' })
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: (error instanceof Error ? error.message : '') || 'Failed to save permission.' })
     } finally {
       setSaving(false)
     }
@@ -208,3 +208,4 @@ export function PermissionsPage() {
     </div>
   )
 }
+

@@ -7,7 +7,6 @@ import type { Asset, Borrowing } from '@/types'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { assetStatusTone } from '@/utils/statusTone'
 import { notifyDataChanged } from '@/utils/dataRefresh'
-import { formatDate, formatTime } from '@/utils/dateFormat'
 
 interface AssetQrScannerProps {
   open: boolean

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Monitor, Package, ArrowRight, LayoutGrid } from 'lucide-react'
+import { Package, ArrowRight, LayoutGrid } from 'lucide-react'
 
 /* ─────────────────────────────────────────────
    Non-Expendable illustration

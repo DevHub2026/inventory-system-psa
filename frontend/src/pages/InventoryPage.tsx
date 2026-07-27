@@ -223,19 +223,17 @@ export function InventoryPage() {
     track_as_asset: true, type: 'non_expendable',
   })
 
-  // Build API filters from current UI state
-  const buildFilters = useCallback((pg: number) => ({
-    page: pg, per_page: perPage,
-    search: search || undefined,
-    status: statusFilter || undefined,
-    type: activeTab === 'all' ? undefined : activeTab as 'non_expendable' | 'expendable',
-  }), [perPage, search, statusFilter, activeTab])
-
-  // Load table rows
+  // Load table rows — accepts explicit params to avoid stale closure issues
   const loadInventory = useCallback(async (pg = 1) => {
     setLoading(true)
     try {
-      const result = await inventoryService.list(buildFilters(pg))
+      const result = await inventoryService.list({
+        page: pg,
+        per_page: perPage,
+        search: search || undefined,
+        status: statusFilter || undefined,
+        type: activeTab === 'all' ? undefined : activeTab as 'non_expendable' | 'expendable',
+      })
       setRows(result.items)
       setPage(result.meta.current_page)
       setLastPage(result.meta.last_page)
@@ -243,18 +241,16 @@ export function InventoryPage() {
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load inventory items.' })
     } finally { setLoading(false) }
-  }, [buildFilters])
+  }, [perPage, search, statusFilter, activeTab])
 
-  // Load summary counts (two parallel requests, large per_page to get totals)
+  // Load summary counts — fires once and on explicit refresh only
   const loadSummary = useCallback(async () => {
     try {
-      const [ne, ex] = await Promise.all([
+      const [ne, ex, neAll, exAll] = await Promise.all([
         inventoryService.list({ type: 'non_expendable', per_page: 1 }),
         inventoryService.list({ type: 'expendable',    per_page: 1 }),
-      ])
-      const [neAll, exAll] = await Promise.all([
-        inventoryService.list({ type: 'non_expendable', per_page: 9999 }),
-        inventoryService.list({ type: 'expendable',    per_page: 9999 }),
+        inventoryService.list({ type: 'non_expendable', per_page: 100 }),
+        inventoryService.list({ type: 'expendable',    per_page: 100 }),
       ])
       const count = (arr: InventoryItem[], s: string) => arr.filter((i) => i.status === s).length
       setSummary({
@@ -274,10 +270,15 @@ export function InventoryPage() {
     } catch { /* summary is best-effort */ }
   }, [])
 
+  // Trigger on tab / filter / perPage changes — loadInventory is stable per these deps
   useEffect(() => {
-    const id = setTimeout(() => { void loadInventory(1); void loadSummary() }, 0)
-    return () => clearTimeout(id)
-  }, [activeTab, statusFilter, perPage, loadInventory, loadSummary])
+    void loadInventory(1)
+  }, [activeTab, statusFilter, perPage]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Summary loads once on mount
+  useEffect(() => {
+    void loadSummary()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTabChange = (t: TabKey) => { setActiveTab(t); setPage(1) }
   const handleFilter    = () => { void loadInventory(1) }

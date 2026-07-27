@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 import { useState, useEffect } from 'react'
 import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination, EmptyState } from '@/components/ui'
-=======
-﻿import { useCallback, useEffect, useState } from 'react'
-import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination } from '@/components/ui'
->>>>>>> d3bea4edd8ed0a210cbfa4c0133e6c86ab94acb2
 import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload, type ImportUsersResult } from '@/services/userService'
 import { roleService, type Role } from '@/services/roleService'
 import { displayName } from '@/types'
@@ -114,16 +109,11 @@ export function UsersPage() {
   }
 
   const downloadTemplate = (type: 'csv' | 'json') => {
-<<<<<<< HEAD
     const headers = ['first_name', 'middle_name', 'last_name', 'id_number', 'email', 'role', 'department']
     const samples = [
       { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '2026-0001', email: 'juan.marquez@psa.gov.ph', role: 'Employee', department: 'Administration' },
       { first_name: 'Maria', middle_name: 'Santos', last_name: 'Reyes', id_number: '2026-0002', email: 'maria.reyes@psa.gov.ph', role: 'Employee', department: 'Statistical Operations' },
     ]
-=======
-    const headers = ['first_name', 'middle_name', 'last_name', 'id_number', 'email', 'role']
-    const sample  = { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '1234-5678', email: 'juan.marquez@example.com', role: 'Employee' }
->>>>>>> d3bea4edd8ed0a210cbfa4c0133e6c86ab94acb2
     const content = type === 'csv'
       ? `${headers.join(',')}\n${samples.map((s) => headers.map((h) => s[h as keyof typeof s]).join(',')).join('\n')}\n`
       : `${JSON.stringify(samples, null, 2)}\n`
@@ -243,7 +233,6 @@ export function UsersPage() {
         open={importModalOpen} onClose={() => { setImportModalOpen(false); setImportFile(null); setImportResult(null) }} title="Import Employees"
         footer={
           <>
-<<<<<<< HEAD
             <Button variant="secondary" onClick={() => { setImportModalOpen(false); setImportFile(null); setImportResult(null) }}>Cancel</Button>
             <Button onClick={handleImport} disabled={importing || !importFile}>{importing ? 'Importing…' : 'Import'}</Button>
           </>
@@ -262,16 +251,6 @@ export function UsersPage() {
               Default password is{' '}
               <code className="rounded bg-[#DBEAFE] px-1.5 py-0.5 font-mono text-[12px] font-bold text-[#1E40AF]">psasarangani2026</code>.
             </div>
-=======
-            <Button variant="secondary" onClick={() => setImportModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleImport} disabled={importing || !importFile}>{importing ? 'Importingâ€¦' : 'Import'}</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4 text-[14px] text-[#1E40AF]">
-            Upload employee records as CSV, JSON, or XLSX. Required columns are <strong>first_name</strong>, <strong>last_name</strong>, <strong>id_number</strong>, and <strong>email</strong>. Optional columns are <strong>middle_name</strong> and <strong>role</strong>. If role is empty, the existing default role is Employee. Department is not required for imports. Imported users receive the default password <strong>psagens9500</strong>.
->>>>>>> d3bea4edd8ed0a210cbfa4c0133e6c86ab94acb2
           </div>
 
           {/* ── Template downloads ── */}
@@ -372,17 +351,4 @@ export function UsersPage() {
   )
 }
 
-<<<<<<< HEAD
 /* EmptyState is imported from @/components/ui above */
-=======
-/* â”€â”€ EmptyState local usage â”€â”€ */
-function EmptyState({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-      <p className="text-[14px] font-semibold text-[#1F2937]">{title}</p>
-      <p className="max-w-xs text-[13px] text-[#6B7280]">{description}</p>
-    </div>
-  )
-}
-
->>>>>>> d3bea4edd8ed0a210cbfa4c0133e6c86ab94acb2

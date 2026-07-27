@@ -138,13 +138,6 @@ export function SettingsPage() {
 
   const name     = displayName(user)
   const initials = name.slice(0, 1).toUpperCase()
-<<<<<<< HEAD
-  // Bug fix: user has roles[] not role — get the first role name safely
-  const roleLabel = user?.roles?.[0]?.name
-    ? user.roles[0].name[0].toUpperCase() + user.roles[0].name.slice(1).toLowerCase()
-    : 'Account'
-=======
->>>>>>> d3bea4edd8ed0a210cbfa4c0133e6c86ab94acb2
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>

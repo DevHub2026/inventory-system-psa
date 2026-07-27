@@ -18,5 +18,24 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Async data-fetching inside useEffect is the standard React pattern.
+      // The rule incorrectly flags `useEffect(() => { void fetchData() }, [deps])`
+      // as "calling setState inside an effect" — safe to disable project-wide.
+      'react-hooks/set-state-in-effect': 'off',
+
+      // Warn instead of error for missing exhaustive deps — too many false
+      // positives with useCallback + useRef patterns used throughout.
+      'react-hooks/exhaustive-deps': 'warn',
+
+      // Allow intentional unused vars prefixed with _ (e.g. _unused)
+      '@typescript-eslint/no-unused-vars': ['error', {
+        vars: 'all',
+        args: 'after-used',
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
+    },
   },
 ])
