@@ -360,110 +360,124 @@ export function InventorySelectionPage() {
   const navigate = useNavigate()
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, minHeight: '100%' }}>
+    /* outer shell — fills the scroll container, centres content */
+    <div
+      style={{
+        minHeight: 'calc(100vh - 120px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '32px 0',
+        boxSizing: 'border-box',
+      }}
+    >
+      {/* inner content column — max width keeps it readable */}
+      <div style={{ width: '100%', maxWidth: 960, display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-      {/* ── Page header ── */}
-      <div style={{ marginBottom: 32 }}>
-        {/* breadcrumb */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <LayoutGrid size={13} style={{ color: '#94A3B8' }} aria-hidden="true" />
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
-            Operations
-          </span>
-          <span style={{ fontSize: 11, color: '#CBD5E1' }}>/</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
-            Inventory
+        {/* ── Page header ── */}
+        <div style={{ marginBottom: 36, textAlign: 'center' }}>
+          {/* breadcrumb */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 12 }}>
+            <LayoutGrid size={13} style={{ color: '#94A3B8' }} aria-hidden="true" />
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+              Operations
+            </span>
+            <span style={{ fontSize: 11, color: '#CBD5E1' }}>/</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+              Inventory
+            </span>
+          </div>
+
+          <h1
+            style={{
+              margin: '0 0 8px',
+              fontSize: 28,
+              fontWeight: 800,
+              color: '#0F172A',
+              letterSpacing: '-0.03em',
+              lineHeight: 1.2,
+            }}
+          >
+            Inventory Management
+          </h1>
+          <p style={{ margin: 0, fontSize: 14, color: '#64748B', lineHeight: 1.6, maxWidth: 520, marginInline: 'auto' }}>
+            Select an inventory category below to manage items, track stock levels, and record movements.
+          </p>
+        </div>
+
+        {/* ── Category cards ── */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 24,
+            alignItems: 'stretch',
+            justifyContent: 'center',
+          }}
+        >
+          <InventoryCard
+            accent="blue"
+            badge="Non-Expendable"
+            illustration={<NonExpendableIllustration />}
+            title="Non-Expendable Inventory"
+            description="Track durable government assets with long service life — equipment, devices, and physical property that are recorded, maintained, and not consumed during normal use."
+            features={[
+              'Computers, laptops, monitors, printers',
+              'Furniture, office equipment, power devices',
+              'Items linked to PSA asset records',
+            ]}
+            buttonLabel="View Non-Expendable"
+            onClick={() => navigate('/inventory/non-expendable')}
+          />
+
+          <InventoryCard
+            accent="green"
+            badge="Expendable"
+            illustration={<ExpendableIllustration />}
+            title="Expendable Inventory"
+            description="Manage consumable supplies and materials used up during day-to-day office operations — stock levels, reorder alerts, and movement history are tracked here."
+            features={[
+              'Bond paper, printer toner, ink cartridges',
+              'Pens, folders, envelopes, office supplies',
+              'Items consumed and replenished regularly',
+            ]}
+            buttonLabel="View Expendable"
+            onClick={() => navigate('/inventory/expendable')}
+          />
+        </div>
+
+        {/* ── Info strip ── */}
+        <div
+          style={{
+            marginTop: 28,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '12px 18px',
+            borderRadius: 12,
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+          }}
+        >
+          <Package size={15} style={{ color: '#94A3B8', flexShrink: 0 }} aria-hidden="true" />
+          <span style={{ fontSize: 12.5, color: '#64748B', lineHeight: 1.5 }}>
+            Items added from each category are automatically tagged and separated — non-expendable items are also linked to the Assets module for full lifecycle tracking.
           </span>
         </div>
 
-        <h1
+        {/* ── Footer ── */}
+        <div
           style={{
-            margin: '0 0 6px',
-            fontSize: 26,
-            fontWeight: 800,
-            color: '#0F172A',
-            letterSpacing: '-0.03em',
-            lineHeight: 1.2,
+            paddingTop: 32,
+            textAlign: 'center',
+            fontSize: 12,
+            color: '#CBD5E1',
+            letterSpacing: '0.02em',
           }}
         >
-          Inventory Management
-        </h1>
-        <p style={{ margin: 0, fontSize: 14, color: '#64748B', lineHeight: 1.6 }}>
-          Select an inventory category below to manage items, track stock levels, and record movements.
-        </p>
-      </div>
+          &copy; {new Date().getFullYear()} Philippine Statistics Authority &mdash; Region XII. All rights reserved.
+        </div>
 
-      {/* ── Category cards ── */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 24,
-          alignItems: 'stretch',
-        }}
-      >
-        <InventoryCard
-          accent="blue"
-          badge="Non-Expendable"
-          illustration={<NonExpendableIllustration />}
-          title="Non-Expendable Inventory"
-          description="Track durable government assets with long service life — equipment, devices, and physical property that are recorded, maintained, and not consumed during normal use."
-          features={[
-            'Computers, laptops, monitors, printers',
-            'Furniture, office equipment, power devices',
-            'Items linked to PSA asset records',
-          ]}
-          buttonLabel="View Non-Expendable"
-          onClick={() => navigate('/inventory/non-expendable')}
-        />
-
-        <InventoryCard
-          accent="green"
-          badge="Expendable"
-          illustration={<ExpendableIllustration />}
-          title="Expendable Inventory"
-          description="Manage consumable supplies and materials used up during day-to-day office operations — stock levels, reorder alerts, and movement history are tracked here."
-          features={[
-            'Bond paper, printer toner, ink cartridges',
-            'Pens, folders, envelopes, office supplies',
-            'Items consumed and replenished regularly',
-          ]}
-          buttonLabel="View Expendable"
-          onClick={() => navigate('/inventory/expendable')}
-        />
-      </div>
-
-      {/* ── Info strip ── */}
-      <div
-        style={{
-          marginTop: 32,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '12px 18px',
-          borderRadius: 12,
-          background: '#F8FAFC',
-          border: '1px solid #E2E8F0',
-        }}
-      >
-        <Package size={15} style={{ color: '#94A3B8', flexShrink: 0 }} aria-hidden="true" />
-        <span style={{ fontSize: 12.5, color: '#64748B', lineHeight: 1.5 }}>
-          Items added from each category are automatically tagged and separated — non-expendable items are also linked to the Assets module for full lifecycle tracking.
-        </span>
-      </div>
-
-      {/* ── Footer ── */}
-      <div
-        style={{
-          marginTop: 'auto',
-          paddingTop: 40,
-          textAlign: 'center',
-          fontSize: 12,
-          color: '#CBD5E1',
-          letterSpacing: '0.02em',
-        }}
-      >
-        &copy; {new Date().getFullYear()} Philippine Statistics Authority &mdash; Region XII. All rights reserved.
       </div>
     </div>
   )
