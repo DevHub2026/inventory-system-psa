@@ -2,6 +2,118 @@
 
 ## 2026-07-27
 
+### Department-Free User Import Default Password Update
+
+### Files Modified
+
+- `backend/app/Modules/Auth/Services/UserImportService.php`
+- `backend/app/Modules/Import/Handlers/UserImportHandler.php`
+- `backend/tests/Feature/Auth/UserManagementTest.php`
+- `frontend/src/pages/UsersPage.tsx`
+- `docs/Business/02_Functional_Requirements.md`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Employee import accepted department columns but treated unknown department values as row failures even though `users.department_id` is nullable, creating unnecessary import failures.
+
+### Summary
+
+- Removed department resolution and department validation from legacy employee import.
+- Removed department from reusable system-wide user import field mapping.
+- Updated imported-user default password to `psagens9500`.
+- Updated frontend templates and import instructions so Department is no longer included.
+- Added endpoint tests for department-free imports, ignored unknown department columns, secure hashed default passwords, default role assignment, duplicate email handling, and invalid role errors.
+
+### Impact
+
+- Newly imported users are created without a department unless later edited by an admin.
+- Existing users, passwords, roles, and department records are not modified.
+- Imported users keep the existing role behavior: provided valid role if present, otherwise the default Employee role.
+
+## 2026-07-27
+
+### User Role Visibility and Assignment
+
+### Files Modified
+
+- `backend/app/Modules/Auth/Controllers/AuthController.php`
+- `backend/app/Modules/Auth/Controllers/UserController.php`
+- `backend/app/Modules/Auth/Resources/UserResource.php`
+- `frontend/src/components/RoleBadges.tsx`
+- `frontend/src/components/ui/Badge.tsx`
+- `frontend/src/components/ui/index.ts`
+- `frontend/src/pages/UsersPage.tsx`
+- `frontend/src/pages/SettingsPage.tsx`
+- `frontend/src/services/userService.ts`
+- `frontend/src/services/roleService.ts`
+- `frontend/src/types/index.ts`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Administrators could not immediately identify assigned user roles from the Users list, and the user form did not expose the existing role assignment payload even though the backend supported it.
+
+### Summary
+
+- Loaded real `roles` and `department` relationships in user list, profile, login, and profile update responses.
+- Added reusable role badges with distinct colors, uppercase labels, and `+N more` overflow behavior.
+- Added Roles and Department columns to the Users table.
+- Added role assignment checkboxes to the Add/Edit User modal using the existing Roles API and existing `roles: number[]` payload.
+- Displayed status, employee ID, department, and role badges in Profile Settings.
+
+### Impact
+
+- Admin users can quickly identify and manage each user's assigned roles without guessing.
+- Role visibility is backed by the roles database and stays compatible with custom/new roles.
+
+## 2026-07-27
+
+### System-Wide Import Framework
+
+### Files Modified
+
+- `backend/app/Modules/Import/Contracts/ImportHandlerInterface.php`
+- `backend/app/Modules/Import/Controllers/ImportWizardController.php`
+- `backend/app/Modules/Import/Handlers/*`
+- `backend/app/Modules/Import/Services/ImportRegistry.php`
+- `backend/app/Modules/Import/Services/ImportWizardService.php`
+- `backend/app/Modules/Import/Routes/api.php`
+- `backend/app/Modules/Import/Providers/ImportServiceProvider.php`
+- `backend/app/Modules/Inventory/Controllers/InventoryImportWizardController.php`
+- `backend/app/Models/InventoryImport.php`
+- `backend/bootstrap/providers.php`
+- `backend/database/migrations/2026_07_27_000003_add_import_type_to_inventory_imports_table.php`
+- `frontend/src/components/InventoryImportWizard.tsx`
+- `frontend/src/services/importService.ts`
+- `frontend/src/services/inventoryService.ts`
+- `docs/Architecture/13_API_Architecture.md`
+- `docs/Business/02_Functional_Requirements.md`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+The existing import wizard was inventory-only, which forced future user/category/location/department imports toward duplicated wizard implementations instead of a reusable system-wide import flow.
+
+### Summary
+
+- Added a generic import module with shared upload, preview, mapping, validation, execution, history, and import type discovery endpoints.
+- Added entity-specific handlers for inventory items, users, asset categories, locations, and departments using actual backend schemas and duplicate checks.
+- Preserved the existing inventory import routes by delegating them to the new reusable import service.
+- Added typed frontend import service methods and converted the wizard into a reusable component while keeping `InventoryImportWizard` as the inventory page wrapper.
+- Documented the new import API and functional import framework behavior.
+
+### Impact
+
+- Inventory imports continue to work from the Inventory page.
+- The same wizard/service flow can now support users, categories, locations, departments, and future import types without cloning the wizard.
+- Import history is now type-aware through the `import_type` field.
+
+## 2026-07-27
+
 ### Inventory Page Effect Lint Fix
 
 ### Files Modified

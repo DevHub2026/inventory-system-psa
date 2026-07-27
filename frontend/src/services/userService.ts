@@ -1,6 +1,11 @@
 import { api, unwrapData } from '@/services/api'
 import type { ApiResponse, Paginated, User } from '@/types'
 
+interface PaginatedApiResponse<T> {
+  data?: T[]
+  meta?: Paginated<T>['meta']
+}
+
 export interface UserFilters {
   search?: string
   status?: string
@@ -68,7 +73,7 @@ export const userService = {
     const queryString = params.toString()
     const url = queryString ? `/users?${queryString}` : '/users'
 
-    const { data } = await api.get<any>(url)
+    const { data } = await api.get<PaginatedApiResponse<User>>(url)
     
     return {
       items: data.data || [],

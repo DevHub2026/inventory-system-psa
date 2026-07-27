@@ -1,4 +1,5 @@
 import { api, unwrapData, unwrapPaginated } from '@/services/api'
+import { importService, type ImportColumnMapping, type ImportHistoryItem, type ImportMappingValidationResult, type ImportUploadResult, type ImportValidationResult } from '@/services/importService'
 
 import type { ApiResponse, ImportResult, InventoryItem, Paginated, StockMovement } from '@/types'
 
@@ -144,41 +145,23 @@ export const inventoryService = {
   },
 
   // Import Wizard methods
-  async importWizardUpload(file: File): Promise<any> {
-    const formData = new FormData()
-    formData.append('file', file)
-    const { data } = await api.post<ApiResponse<any>>('/inventory/import-wizard/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    return unwrapData(data)
+  async importWizardUpload(file: File): Promise<ImportUploadResult> {
+    return importService.upload('inventory', file)
   },
 
-  async importWizardValidateMapping(importId: number, columnMapping: any[]): Promise<any> {
-    const { data } = await api.post<ApiResponse<any>>('/inventory/import-wizard/validate-mapping', {
-      import_id: importId,
-      column_mapping: columnMapping,
-    })
-    return unwrapData(data)
+  async importWizardValidateMapping(importId: number, columnMapping: ImportColumnMapping[]): Promise<ImportMappingValidationResult> {
+    return importService.validateMapping('inventory', importId, columnMapping)
   },
 
-  async importWizardValidateData(importId: number, columnMapping: any[]): Promise<any> {
-    const { data } = await api.post<ApiResponse<any>>('/inventory/import-wizard/validate-data', {
-      import_id: importId,
-      column_mapping: columnMapping,
-    })
-    return unwrapData(data)
+  async importWizardValidateData(importId: number, columnMapping: ImportColumnMapping[]): Promise<ImportValidationResult> {
+    return importService.validateData('inventory', importId, columnMapping)
   },
 
-  async importWizardExecute(importId: number, columnMapping: any[]): Promise<ImportResult> {
-    const { data } = await api.post<ApiResponse<ImportResult>>('/inventory/import-wizard/execute', {
-      import_id: importId,
-      column_mapping: columnMapping,
-    })
-    return unwrapData(data)
+  async importWizardExecute(importId: number, columnMapping: ImportColumnMapping[]): Promise<ImportResult> {
+    return importService.execute('inventory', importId, columnMapping)
   },
 
-  async importWizardHistory(): Promise<any[]> {
-    const { data } = await api.get<ApiResponse<any[]>>('/inventory/import-wizard/history')
-    return unwrapData(data)
+  async importWizardHistory(): Promise<ImportHistoryItem[]> {
+    return importService.history('inventory')
   },
 }

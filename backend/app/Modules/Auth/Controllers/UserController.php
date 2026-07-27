@@ -22,7 +22,7 @@ class UserController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = User::query();
+        $query = User::query()->with(['department', 'roles']);
 
         if ($request->has('search')) {
             $search = $request->input('search');
@@ -59,7 +59,7 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $user = $this->userService->create($request->validated());
+        $user = $this->userService->create($request->validated())->load(['department', 'roles']);
 
         return response()->json([
             'success' => true,
@@ -92,13 +92,13 @@ class UserController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'User retrieved successfully.',
-            'data' => new UserResource($user),
+            'data' => new UserResource($user->load(['department', 'roles'])),
         ]);
     }
 
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
-        $user = $this->userService->update($user, $request->validated());
+        $user = $this->userService->update($user, $request->validated())->load(['department', 'roles']);
 
         return response()->json([
             'success' => true,

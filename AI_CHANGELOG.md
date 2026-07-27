@@ -18,6 +18,168 @@ Always append new entries.
 
 ---
 
+## 2026-07-27 00:04
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Removed the department dependency from user imports and updated the imported-user default password.
+
+---
+
+### Files Modified
+
+- backend/app/Modules/Auth/Services/UserImportService.php
+- backend/app/Modules/Import/Handlers/UserImportHandler.php
+- backend/tests/Feature/Auth/UserManagementTest.php
+- frontend/src/pages/UsersPage.tsx
+- docs/Business/02_Functional_Requirements.md
+- CHANGELOG.md
+- AI_CHANGELOG.md
+
+---
+
+### Summary
+
+- Removed department validation/resolution from the employee import service.
+- Removed department from reusable user import system fields and aliases.
+- Set imported users' default password to `psagens9500`; the existing `User` password cast hashes it securely.
+- Removed Department from CSV/JSON templates and updated frontend import guidance.
+- Added feature tests for department-free import, ignored unknown department columns, secure password hashing, default role assignment, duplicate email handling, invalid role handling, and existing-user password safety.
+
+---
+
+### Validation
+
+- `php -l backend/app/Modules/Auth/Services/UserImportService.php backend/app/Modules/Import/Handlers/UserImportHandler.php backend/tests/Feature/Auth/UserManagementTest.php` passed.
+- `php artisan test tests/Feature/Auth/UserManagementTest.php` passed: 12 tests, 54 assertions.
+- `php artisan test` passed: 118 tests, 428 assertions.
+- `npx.cmd eslint src/pages/UsersPage.tsx` passed.
+- `npm.cmd run build` passed with existing CSS selector and chunk-size warnings.
+
+---
+
+## 2026-07-27 00:03
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Improved user role visibility and assignment with database-backed role badges in the Users list and Profile Settings.
+
+---
+
+### Files Modified
+
+- backend/app/Modules/Auth/Controllers/AuthController.php
+- backend/app/Modules/Auth/Controllers/UserController.php
+- backend/app/Modules/Auth/Resources/UserResource.php
+- frontend/src/components/RoleBadges.tsx
+- frontend/src/components/ui/Badge.tsx
+- frontend/src/components/ui/index.ts
+- frontend/src/pages/UsersPage.tsx
+- frontend/src/pages/SettingsPage.tsx
+- frontend/src/services/userService.ts
+- frontend/src/services/roleService.ts
+- frontend/src/types/index.ts
+- CHANGELOG.md
+- AI_CHANGELOG.md
+
+---
+
+### Summary
+
+- Eager-loaded user roles and department data for user listing, detail, login, `/me`, and profile update responses.
+- Added a reusable `RoleBadges` component with distinct badge tones and `+N more` overflow display.
+- Added Roles and Department columns to the Users table.
+- Added role assignment checkboxes to the Add/Edit User modal using real roles from the Roles API.
+- Added profile role/status/department display in Settings.
+
+---
+
+### Validation
+
+- `php -l backend/app/Modules/Auth/Controllers/AuthController.php backend/app/Modules/Auth/Controllers/UserController.php backend/app/Modules/Auth/Resources/UserResource.php` passed.
+- `php artisan test` passed: 115 tests, 410 assertions.
+- `npx.cmd eslint src/pages/UsersPage.tsx src/pages/SettingsPage.tsx src/components/RoleBadges.tsx src/components/ui/Badge.tsx src/services/userService.ts src/services/roleService.ts` passed.
+- `npm.cmd run build` passed with existing CSS selector and chunk-size warnings.
+
+---
+
+## 2026-07-27 00:02
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Refactored the inventory import wizard into a reusable system-wide import framework while preserving the existing inventory import entry point.
+
+---
+
+### Files Modified
+
+- backend/app/Modules/Import/Contracts/ImportHandlerInterface.php
+- backend/app/Modules/Import/Controllers/ImportWizardController.php
+- backend/app/Modules/Import/Handlers/Concerns/NormalizesImportValues.php
+- backend/app/Modules/Import/Handlers/InventoryImportHandler.php
+- backend/app/Modules/Import/Handlers/UserImportHandler.php
+- backend/app/Modules/Import/Handlers/AssetCategoryImportHandler.php
+- backend/app/Modules/Import/Handlers/LocationImportHandler.php
+- backend/app/Modules/Import/Handlers/DepartmentImportHandler.php
+- backend/app/Modules/Import/Services/ImportRegistry.php
+- backend/app/Modules/Import/Services/ImportWizardService.php
+- backend/app/Modules/Import/Routes/api.php
+- backend/app/Modules/Import/Providers/ImportServiceProvider.php
+- backend/app/Modules/Inventory/Controllers/InventoryImportWizardController.php
+- backend/app/Models/InventoryImport.php
+- backend/bootstrap/providers.php
+- backend/database/migrations/2026_07_27_000003_add_import_type_to_inventory_imports_table.php
+- frontend/src/components/InventoryImportWizard.tsx
+- frontend/src/services/importService.ts
+- frontend/src/services/inventoryService.ts
+- docs/Architecture/13_API_Architecture.md
+- docs/Business/02_Functional_Requirements.md
+- CHANGELOG.md
+- AI_CHANGELOG.md
+
+---
+
+### Summary
+
+- Added generic import endpoints for type discovery, upload, mapping validation, data validation, execution, and history.
+- Added entity handlers for inventory items, users/employees, asset categories, locations, and departments.
+- Updated the existing inventory import controller/service calls to delegate to the canonical import framework.
+- Added a typed frontend import service and made the wizard reusable through `ImportWizard` while preserving `InventoryImportWizard`.
+
+---
+
+### Validation
+
+- `php -l` passed for modified backend import/controller/provider/migration files.
+- `php artisan route:list --path=api/v1/imports` passed and showed 7 import routes.
+- `php artisan test` passed: 115 tests, 410 assertions.
+- `npx.cmd eslint src/components/InventoryImportWizard.tsx src/services/importService.ts src/services/inventoryService.ts` passed.
+- `npm.cmd run build` passed with existing CSS selector and chunk-size warnings.
+- `npm.cmd run lint` still fails on pre-existing unrelated React hook/`any` issues outside the import framework files.
+
+---
+
 ## 2026-07-27 00:01
 
 ### AI

@@ -26,6 +26,32 @@ The API follows RESTful principles and returns JSON responses.
 
 ---
 
+# 1.1 System-Wide Import API
+
+The import API provides a reusable wizard backend for supported administrative imports.
+
+Current import types:
+
+- `inventory`
+- `users`
+- `asset_categories`
+- `locations`
+- `departments`
+
+Endpoints:
+
+- `GET /api/v1/imports/types`
+- `GET /api/v1/imports/{type}/configuration`
+- `POST /api/v1/imports/upload`
+- `POST /api/v1/imports/validate-mapping`
+- `POST /api/v1/imports/validate-data`
+- `POST /api/v1/imports/execute`
+- `GET /api/v1/imports/history`
+
+Legacy inventory wizard routes remain available and delegate to the same import service for backward compatibility.
+
+---
+
 # 2. API Standards
 
 The API shall:

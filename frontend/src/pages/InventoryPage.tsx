@@ -390,9 +390,12 @@ export function InventoryPage() {
         const headers = ['id', 'name', 'type', 'sku', 'asset_number', 'quantity', 'unit', 'status', 'reorder_level', 'remarks']
         const lines   = [headers.join(',')]
         for (const item of result.items) {
+          const itemMap = item as unknown as Record<string, unknown>
           const row = headers.map((h) => {
-            const val = String((item as Record<string, unknown>)[h] ?? '')
-            return val.includes(',') || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val
+            const raw = itemMap[h] ?? ''
+            const val = String(raw)
+            const needsQuote = val.includes(',') || val.includes('"') || val.includes('\n')
+            return needsQuote ? ('"' + val.replace(/"/g, '""') + '"') : val
           })
           lines.push(row.join(','))
         }

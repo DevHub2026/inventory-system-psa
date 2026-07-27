@@ -1,10 +1,17 @@
+<<<<<<< HEAD
 import { useState, useEffect } from 'react'
 import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination, EmptyState } from '@/components/ui'
+=======
+﻿import { useCallback, useEffect, useState } from 'react'
+import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination } from '@/components/ui'
+>>>>>>> d3bea4edd8ed0a210cbfa4c0133e6c86ab94acb2
 import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload, type ImportUsersResult } from '@/services/userService'
+import { roleService, type Role } from '@/services/roleService'
 import { displayName } from '@/types'
 import type { Column } from '@/components/ui'
 import type { User } from '@/types'
 import { PageHeader } from '@/components/PageHeader'
+import { RoleBadges } from '@/components/RoleBadges'
 
 export function UsersPage() {
   const [users,           setUsers]           = useState<User[]>([])
@@ -19,13 +26,14 @@ export function UsersPage() {
   const [message,         setMessage]         = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [filters,         setFilters]         = useState<UserFilters>({ per_page: 15, page: 1 })
   const [pagination, setPagination] = useState({ current_page: 1, per_page: 15, total: 0, last_page: 1 })
+  const [roles, setRoles] = useState<Role[]>([])
 
   const [formData, setFormData] = useState<CreateUserPayload>({
     employee_number: '', first_name: '', middle_name: '', last_name: '',
     email: '', password: '', department_id: null, status: 'active', roles: [],
   })
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     setLoading(true)
     try {
       const result = await userService.getUsers(filters)
@@ -33,9 +41,30 @@ export function UsersPage() {
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to load users.' })
     } finally { setLoading(false) }
-  }
+  }, [filters])
 
-  useEffect(() => { void loadUsers() }, [filters])
+  const loadRoles = useCallback(async () => {
+    try {
+      const result = await roleService.getRoles({ per_page: 100 })
+      setRoles(result.items)
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to load roles.' })
+    }
+  }, [])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadUsers()
+    }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [loadUsers])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadRoles()
+    }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [loadRoles])
 
   const handleCreate = () => {
     setEditingUser(null)
@@ -45,7 +74,7 @@ export function UsersPage() {
 
   const handleEdit = (u: User) => {
     setEditingUser(u)
-    setFormData({ employee_number: u.employee_number || '', first_name: u.first_name || '', middle_name: u.middle_name || '', last_name: u.last_name || '', email: u.email, password: '', department_id: u.department_id || null, status: u.status || 'active', roles: [] })
+    setFormData({ employee_number: u.employee_number || '', first_name: u.first_name || '', middle_name: u.middle_name || '', last_name: u.last_name || '', email: u.email, password: '', department_id: u.department_id || null, status: u.status || 'active', roles: u.roles?.map((role) => role.id) ?? [] })
     setModalOpen(true)
   }
 
@@ -85,11 +114,16 @@ export function UsersPage() {
   }
 
   const downloadTemplate = (type: 'csv' | 'json') => {
+<<<<<<< HEAD
     const headers = ['first_name', 'middle_name', 'last_name', 'id_number', 'email', 'role', 'department']
     const samples = [
       { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '2026-0001', email: 'juan.marquez@psa.gov.ph', role: 'Employee', department: 'Administration' },
       { first_name: 'Maria', middle_name: 'Santos', last_name: 'Reyes', id_number: '2026-0002', email: 'maria.reyes@psa.gov.ph', role: 'Employee', department: 'Statistical Operations' },
     ]
+=======
+    const headers = ['first_name', 'middle_name', 'last_name', 'id_number', 'email', 'role']
+    const sample  = { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '1234-5678', email: 'juan.marquez@example.com', role: 'Employee' }
+>>>>>>> d3bea4edd8ed0a210cbfa4c0133e6c86ab94acb2
     const content = type === 'csv'
       ? `${headers.join(',')}\n${samples.map((s) => headers.map((h) => s[h as keyof typeof s]).join(',')).join('\n')}\n`
       : `${JSON.stringify(samples, null, 2)}\n`
@@ -101,9 +135,10 @@ export function UsersPage() {
   }
 
   const columns: Column<User>[] = [
-    { key: 'employee_number', header: 'Employee No.', render: (u) => <span className="font-mono text-xs text-[#6B7280]">{u.employee_number || '—'}</span> },
     { key: 'name',   header: 'Name',   render: (u) => <span className="font-medium text-[#1F2937]">{displayName(u)}</span> },
-    { key: 'email',  header: 'Email',  render: (u) => <span className="text-[#6B7280]">{u.email}</span> },
+    { key: 'employee_number', header: 'Employee ID', render: (u) => <span className="font-mono text-xs text-[#6B7280]">{u.employee_number || '—'}</span> },
+    { key: 'department', header: 'Department', render: (u) => <span className="text-[#6B7280]">{u.department?.name || '—'}</span> },
+    { key: 'roles', header: 'Roles', render: (u) => <RoleBadges roles={u.roles ?? []} /> },
     { key: 'status', header: 'Status', render: (u) => <Badge tone={u.status === 'active' ? 'green' : 'yellow'}>{u.status || 'unknown'}</Badge> },
     {
       key: 'actions', header: 'Actions',
@@ -133,7 +168,7 @@ export function UsersPage() {
 
       <Card noPadding>
         <div className="border-b border-[#E5E7EB] px-5 py-4">
-          <SearchBar onSearch={(s) => setFilters({ ...filters, search: s, page: 1 })} placeholder="Search users…" />
+          <SearchBar onSearch={(s) => setFilters({ ...filters, search: s, page: 1 })} placeholder="Search usersâ€¦" />
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-16"><Spinner /></div>
@@ -149,13 +184,13 @@ export function UsersPage() {
         )}
       </Card>
 
-      {/* ── Add / Edit User ── */}
+      {/* â”€â”€ Add / Edit User â”€â”€ */}
       <Modal
         open={modalOpen} onClose={() => setModalOpen(false)} title={editingUser ? 'Edit User' : 'Add User'}
         footer={
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={saving}>{saving ? 'Saving…' : editingUser ? 'Save Changes' : 'Create User'}</Button>
+            <Button onClick={handleSubmit} disabled={saving}>{saving ? 'Savingâ€¦' : editingUser ? 'Save Changes' : 'Create User'}</Button>
           </>
         }
       >
@@ -170,14 +205,45 @@ export function UsersPage() {
           {!editingUser && (
             <Input label="Password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
           )}
+          <div>
+            <p className="mb-2 text-[12px] font-semibold text-[#475569]">Roles</p>
+            {roles.length === 0 ? (
+              <div className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3 text-[13px] text-[#64748B]">
+                No roles available. Add roles first in Roles & Permissions.
+              </div>
+            ) : (
+              <div className="grid gap-2 rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3 md:grid-cols-2">
+                {roles.map((role) => {
+                  const checked = formData.roles?.includes(role.id) ?? false
+                  return (
+                    <label key={role.id} className="flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-2 text-[13px] font-medium text-[#1F2937] ring-1 ring-[#E5E7EB]">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => {
+                          const currentRoles = formData.roles ?? []
+                          const nextRoles = event.target.checked
+                            ? [...currentRoles, role.id]
+                            : currentRoles.filter((roleId) => roleId !== role.id)
+                          setFormData({ ...formData, roles: nextRoles })
+                        }}
+                      />
+                      <RoleBadges roles={[role]} maxVisible={1} />
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </Modal>
 
-      {/* ── Import Employees ── */}
+      {/* â”€â”€ Import Employees â”€â”€ */}
       <Modal
         open={importModalOpen} onClose={() => { setImportModalOpen(false); setImportFile(null); setImportResult(null) }} title="Import Employees"
         footer={
           <>
+<<<<<<< HEAD
             <Button variant="secondary" onClick={() => { setImportModalOpen(false); setImportFile(null); setImportResult(null) }}>Cancel</Button>
             <Button onClick={handleImport} disabled={importing || !importFile}>{importing ? 'Importing…' : 'Import'}</Button>
           </>
@@ -196,6 +262,16 @@ export function UsersPage() {
               Default password is{' '}
               <code className="rounded bg-[#DBEAFE] px-1.5 py-0.5 font-mono text-[12px] font-bold text-[#1E40AF]">psasarangani2026</code>.
             </div>
+=======
+            <Button variant="secondary" onClick={() => setImportModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleImport} disabled={importing || !importFile}>{importing ? 'Importingâ€¦' : 'Import'}</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4 text-[14px] text-[#1E40AF]">
+            Upload employee records as CSV, JSON, or XLSX. Required columns are <strong>first_name</strong>, <strong>last_name</strong>, <strong>id_number</strong>, and <strong>email</strong>. Optional columns are <strong>middle_name</strong> and <strong>role</strong>. If role is empty, the existing default role is Employee. Department is not required for imports. Imported users receive the default password <strong>psagens9500</strong>.
+>>>>>>> d3bea4edd8ed0a210cbfa4c0133e6c86ab94acb2
           </div>
 
           {/* ── Template downloads ── */}
@@ -296,4 +372,17 @@ export function UsersPage() {
   )
 }
 
+<<<<<<< HEAD
 /* EmptyState is imported from @/components/ui above */
+=======
+/* â”€â”€ EmptyState local usage â”€â”€ */
+function EmptyState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+      <p className="text-[14px] font-semibold text-[#1F2937]">{title}</p>
+      <p className="max-w-xs text-[13px] text-[#6B7280]">{description}</p>
+    </div>
+  )
+}
+
+>>>>>>> d3bea4edd8ed0a210cbfa4c0133e6c86ab94acb2

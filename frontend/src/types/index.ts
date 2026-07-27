@@ -38,6 +38,10 @@ export interface User {
   name?: string
   email: string
   department_id?: number | null
+  department?: {
+    id: number
+    name: string
+  } | null
   status?: string
   roles?: Array<{
     id: number

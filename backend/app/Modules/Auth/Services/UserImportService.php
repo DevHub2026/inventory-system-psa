@@ -4,7 +4,6 @@ namespace App\Modules\Auth\Services;
 
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
-use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -15,7 +14,7 @@ use ZipArchive;
 
 class UserImportService
 {
-    public const INITIAL_PASSWORD = 'psasarangani2026';
+    public const INITIAL_PASSWORD = 'psagens9500';
 
     /**
      * @return array<string, mixed>
@@ -89,14 +88,7 @@ class UserImportService
                 continue;
             }
 
-            $departmentId = $this->resolveDepartmentId($normalizedRow);
-            if ($departmentId === false) {
-                $failed++;
-                $results[] = $this->result($rowNumber, 'failed', $normalizedRow, 'Department was not found.', $username);
-                continue;
-            }
-
-            DB::transaction(function () use ($normalizedRow, $email, $username, $departmentId, $role): void {
+            DB::transaction(function () use ($normalizedRow, $email, $username, $role): void {
                 $user = User::query()->create([
                     'employee_number' => $username,
                     'first_name' => trim((string) $normalizedRow['first_name']),
@@ -104,7 +96,7 @@ class UserImportService
                     'last_name' => trim((string) $normalizedRow['last_name']),
                     'email' => $email,
                     'password' => self::INITIAL_PASSWORD,
-                    'department_id' => $departmentId,
+                    'department_id' => null,
                     'status' => UserStatus::ACTIVE->value,
                 ]);
 
@@ -322,8 +314,6 @@ class UserImportService
             'last_name' => ['required', 'string', 'max:255'],
             'id_number' => ['required', 'string', 'max:50'],
             'email' => ['required', 'string', 'email', 'max:255'],
-            'department_id' => ['nullable', 'integer'],
-            'department' => ['nullable', 'string', 'max:255'],
             'role_id' => ['nullable', 'integer'],
             'role' => ['nullable', 'string', 'max:255'],
         ]);
@@ -354,27 +344,6 @@ class UserImportService
         $roleName = $this->nullableString($row['role'] ?? null) ?? UserRole::EMPLOYEE->value;
 
         return Role::query()->whereRaw('LOWER(name) = ?', [strtolower($roleName)])->first();
-    }
-
-    /**
-     * @param array<string, mixed> $row
-     */
-    private function resolveDepartmentId(array $row): int|false|null
-    {
-        if (! empty($row['department_id'])) {
-            return Department::query()->whereKey((int) $row['department_id'])->exists()
-                ? (int) $row['department_id']
-                : false;
-        }
-
-        $departmentName = $this->nullableString($row['department'] ?? null);
-        if ($departmentName === null) {
-            return null;
-        }
-
-        return Department::query()
-            ->whereRaw('LOWER(name) = ?', [strtolower($departmentName)])
-            ->value('id') ?? false;
     }
 
     /**
