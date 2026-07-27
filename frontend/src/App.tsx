@@ -5,7 +5,9 @@ import { AppLayout } from '@/layouts/AppLayout'
 import { AssetPage } from '@/pages/AssetPage'
 import { BorrowingPage } from '@/pages/BorrowingPage'
 import { DashboardPage } from '@/pages/DashboardPage'
-import { InventoryPage } from '@/pages/InventoryPage'
+import { InventorySelectionPage } from '@/pages/InventorySelectionPage'
+import { NonExpendableInventoryPage } from '@/pages/NonExpendableInventoryPage'
+import { ExpendableInventoryPage } from '@/pages/ExpendableInventoryPage'
 import { MaintenancePage } from '@/pages/MaintenancePage'
 import { PermissionsPage } from '@/pages/PermissionsPage'
 import { ReportPage } from '@/pages/ReportPage'
@@ -39,7 +41,9 @@ function App() {
             <Route path="/assets" element={<AssetPage />} />
             <Route path="/reservations" element={<ReservationPage />} />
             <Route path="/borrowings" element={<BorrowingPage />} />
-            <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/inventory" element={<InventorySelectionPage />} />
+            <Route path="/inventory/non-expendable" element={<NonExpendableInventoryPage />} />
+            <Route path="/inventory/expendable" element={<ExpendableInventoryPage />} />
             <Route path="/maintenance" element={<MaintenancePage />} />
             <Route path="/reports" element={<ReportPage />} />
             <Route path="/users" element={<UsersPage />} />

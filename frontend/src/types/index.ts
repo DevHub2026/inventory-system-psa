@@ -199,6 +199,7 @@ export interface ApiResponse<T> {
 
 export function displayName(user: User | null | undefined): string {
   if (!user) return 'User'
+  // Prefer the most specific/complete name available, trimmed
   if (user.full_name?.trim()) return user.full_name.trim()
   if (user.name?.trim()) return user.name.trim()
   const parts = [user.first_name, user.last_name].map((p) => p?.trim()).filter(Boolean)

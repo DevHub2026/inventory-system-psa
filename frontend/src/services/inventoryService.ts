@@ -7,6 +7,7 @@ import type { ApiResponse, InventoryItem, Paginated, StockMovement } from '@/typ
 export interface CreateInventoryItemPayload {
   name: string
   sku?: string
+  type?: 'non_expendable' | 'expendable'
   quantity: number
   unit: string
   reorder_level?: number
@@ -17,6 +18,7 @@ export interface CreateInventoryItemPayload {
 export interface UpdateInventoryItemPayload {
   name?: string
   sku?: string
+  type?: 'non_expendable' | 'expendable'
   quantity?: number
   unit?: string
   reorder_level?: number
@@ -29,6 +31,7 @@ export interface InventoryFilters {
   per_page?: number
   search?: string
   status?: string
+  type?: 'non_expendable' | 'expendable'
   low_stock?: boolean
 }
 

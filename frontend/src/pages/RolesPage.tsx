@@ -22,8 +22,8 @@ export function RolesPage() {
       const result = await roleService.getRoles(filters)
       setRoles(result.items)
       setPagination(result.meta)
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Failed to load roles.' })
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to load roles.' })
     } finally {
       setLoading(false)
     }
@@ -52,8 +52,8 @@ export function RolesPage() {
       await roleService.deleteRole(role.id)
       setMessage({ type: 'success', text: 'Role deleted.' })
       await loadRoles()
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Failed to delete role.' })
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to delete role.' })
     }
   }
 
@@ -70,8 +70,8 @@ export function RolesPage() {
       }
       setModalOpen(false)
       await loadRoles()
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Failed to save role.' })
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to save role.' })
     } finally {
       setSaving(false)
     }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { KeyRound, User, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { Input, Button, Alert } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
@@ -78,15 +78,43 @@ export function SettingsPage() {
     email: user?.email || '',
   })
 
+  /*
+   * Bug fix: sync profileForm when user context changes from outside
+   * (e.g. after a successful save, user is updated via setUser).
+   * Only update when NOT actively editing to avoid overwriting in-progress edits.
+   */
+  useEffect(() => {
+    if (!isEditing) {
+      setProfileForm({
+        name:  displayName(user),
+        email: user?.email || '',
+      })
+    }
+  }, [user?.id, user?.name, user?.full_name, user?.first_name, user?.last_name, user?.email, isEditing])
+
   const [passwordForm, setPasswordForm] = useState<ChangePasswordPayload>({
     current_password: '', password: '', password_confirmation: '',
   })
 
   const handleProfileUpdate = async () => {
+    if (!profileForm.name?.trim()) {
+      setMessage({ type: 'error', text: 'Full name cannot be empty.' })
+      return
+    }
     setIsSaving(true); setMessage(null)
     try {
       const updated = await authService.updateProfile(profileForm)
-      setUser(updated); setIsEditing(false)
+      /*
+       * Bug fix: after server confirms the update, explicitly sync
+       * profileForm to the returned user so the form shows the saved value,
+       * not a stale local state value.
+       */
+      setUser(updated)
+      setProfileForm({
+        name:  displayName(updated),
+        email: updated.email || '',
+      })
+      setIsEditing(false)
       setMessage({ type: 'success', text: 'Profile updated successfully.' })
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to update profile.' })
@@ -109,8 +137,10 @@ export function SettingsPage() {
 
   const name     = displayName(user)
   const initials = name.slice(0, 1).toUpperCase()
-  const role     = (user as { role?: string })?.role ?? 'Account'
-  const roleLabel = role ? role[0].toUpperCase() + role.slice(1).toLowerCase() : 'Account'
+  // Bug fix: user has roles[] not role — get the first role name safely
+  const roleLabel = user?.roles?.[0]?.name
+    ? user.roles[0].name[0].toUpperCase() + user.roles[0].name.slice(1).toLowerCase()
+    : 'Account'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>

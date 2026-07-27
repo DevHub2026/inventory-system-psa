@@ -17,7 +17,9 @@ export function BorrowingPage() {
   const loadBorrowings = async () => {
     setLoading(true)
     try {
-      const result = await borrowingService.list()
+      // Bug fix: request a large page size so all records are visible
+      // A proper pagination UI can be added when needed
+      const result = await borrowingService.list({ per_page: 100 })
       setRows(result.items)
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load borrowed items.' })

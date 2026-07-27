@@ -25,9 +25,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    /*
+     * On mount: immediately load the cached user from localStorage so the
+     * UI is not blank, then refresh from the server to get the latest data.
+     */
+    const cached = localStorage.getItem('prototype_user')
+    if (cached) {
+      try { setUser(JSON.parse(cached) as User) } catch { /* ignore malformed cache */ }
+    }
     void authService
       .me()
-      .then(setUser)
+      .then((fresh) => {
+        // Server response always wins over the cached version
+        if (fresh) setUser(fresh)
+      })
       .finally(() => setLoading(false))
   }, [])
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination } from '@/components/ui'
+import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination, EmptyState } from '@/components/ui'
 import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload, type ImportUsersResult } from '@/services/userService'
 import { displayName } from '@/types'
 import type { Column } from '@/components/ui'
@@ -172,50 +172,125 @@ export function UsersPage() {
 
       {/* ── Import Employees ── */}
       <Modal
-        open={importModalOpen} onClose={() => setImportModalOpen(false)} title="Import Employees"
+        open={importModalOpen} onClose={() => { setImportModalOpen(false); setImportFile(null); setImportResult(null) }} title="Import Employees"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setImportModalOpen(false)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => { setImportModalOpen(false); setImportFile(null); setImportResult(null) }}>Cancel</Button>
             <Button onClick={handleImport} disabled={importing || !importFile}>{importing ? 'Importing…' : 'Import'}</Button>
           </>
         }
       >
-        <div className="space-y-4">
-          <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4 text-[14px] text-[#1E40AF]">
-            Upload employee records as CSV, JSON, or XLSX. Usernames are generated as lowercase last name + ID number. Default password is <strong>psasarangani2026</strong>.
+        <div className="space-y-5">
+
+          {/* ── Info banner ── */}
+          <div className="flex gap-3 rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
+            <svg className="mt-0.5 h-4 w-4 shrink-0 text-[#3B82F6]" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+            </svg>
+            <div className="text-[13px] leading-relaxed text-[#1E40AF]">
+              Upload employee records as <span className="font-semibold">CSV</span>, <span className="font-semibold">JSON</span>, or <span className="font-semibold">XLSX</span>.
+              Usernames are generated as lowercase last name + ID number.{' '}
+              Default password is{' '}
+              <code className="rounded bg-[#DBEAFE] px-1.5 py-0.5 font-mono text-[12px] font-bold text-[#1E40AF]">psasarangani2026</code>.
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="secondary" onClick={() => downloadTemplate('csv')}>CSV Template</Button>
-            <Button size="sm" variant="secondary" onClick={() => downloadTemplate('json')}>JSON Template</Button>
+
+          {/* ── Template downloads ── */}
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Download Template</p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" onClick={() => downloadTemplate('csv')}>
+                <svg className="mr-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                CSV Template
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => downloadTemplate('json')}>
+                <svg className="mr-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                JSON Template
+              </Button>
+            </div>
           </div>
-          <Input label="Employee Import File" type="file" accept=".csv,.json,.xlsx" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
+
+          {/* ── File upload area ── */}
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Employee Import File</p>
+            <label
+              htmlFor="employee-import-file"
+              className={[
+                'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors duration-150',
+                importFile
+                  ? 'border-[#0B3D91] bg-[#EFF6FF]'
+                  : 'border-[#CBD5E1] bg-[#F8FAFC] hover:border-[#0B3D91] hover:bg-[#F0F4FF]',
+              ].join(' ')}
+            >
+              {importFile ? (
+                <>
+                  <svg className="h-8 w-8 text-[#0B3D91]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-[14px] font-semibold text-[#0B3D91]">{importFile.name}</p>
+                    <p className="text-[12px] text-[#64748B]">{(importFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="mt-1 text-[12px] text-[#64748B] underline hover:text-[#C62828]"
+                    onClick={(e) => { e.preventDefault(); setImportFile(null) }}
+                  >
+                    Remove file
+                  </button>
+                </>
+              ) : (
+                <>
+                  <svg className="h-8 w-8 text-[#94A3B8]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                  <div>
+                    <p className="text-[14px] font-medium text-[#334155]">
+                      Click to upload{' '}
+                      <span className="text-[#0B3D91]">or drag and drop</span>
+                    </p>
+                    <p className="text-[12px] text-[#94A3B8]">CSV, JSON, or XLSX files</p>
+                  </div>
+                </>
+              )}
+              <input
+                id="employee-import-file"
+                type="file"
+                accept=".csv,.json,.xlsx"
+                className="sr-only"
+                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          </div>
+
+          {/* ── Import result summary ── */}
           {importResult && (
-            <div className="grid grid-cols-4 gap-2 text-[14px]">
-              {[
-                { label: 'Total',    value: importResult.total_rows, color: 'text-[#1F2937]' },
-                { label: 'Imported', value: importResult.imported,   color: 'text-[#2E7D32]' },
-                { label: 'Skipped',  value: importResult.skipped,    color: 'text-[#B45309]' },
-                { label: 'Failed',   value: importResult.failed,     color: 'text-[#D32F2F]' },
-              ].map((s) => (
-                <div key={s.label} className="rounded-xl border border-[#E5E7EB] p-3 text-center">
-                  <p className="text-[12px] text-[#6B7280]">{s.label}</p>
-                  <p className={`mt-0.5 text-[18px] font-bold ${s.color}`}>{s.value}</p>
-                </div>
-              ))}
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Import Summary</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: 'Total',    value: importResult.total_rows, bg: 'bg-[#F8FAFC]',  border: 'border-[#E2E8F0]', color: 'text-[#1F2937]' },
+                  { label: 'Imported', value: importResult.imported,   bg: 'bg-[#F0FDF4]',  border: 'border-[#BBF7D0]', color: 'text-[#15803D]' },
+                  { label: 'Skipped',  value: importResult.skipped,    bg: 'bg-[#FFFBEB]',  border: 'border-[#FDE68A]', color: 'text-[#B45309]' },
+                  { label: 'Failed',   value: importResult.failed,     bg: 'bg-[#FEF2F2]',  border: 'border-[#FECACA]', color: 'text-[#D32F2F]' },
+                ].map((s) => (
+                  <div key={s.label} className={`rounded-xl border ${s.border} ${s.bg} p-3 text-center`}>
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-[#6B7280]">{s.label}</p>
+                    <p className={`mt-1 text-[20px] font-bold ${s.color}`}>{s.value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
+
         </div>
       </Modal>
     </div>
   )
 }
 
-/* ── EmptyState local usage ── */
-function EmptyState({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-      <p className="text-[14px] font-semibold text-[#1F2937]">{title}</p>
-      <p className="max-w-xs text-[13px] text-[#6B7280]">{description}</p>
-    </div>
-  )
-}
+/* EmptyState is imported from @/components/ui above */

@@ -57,6 +57,9 @@ export function InventoryPage() {
 
   useEffect(() => { void loadInventory(1) }, [])
 
+  // Bug fix: reload when statusFilter changes
+  useEffect(() => { if (statusFilter !== undefined) void loadInventory(1) }, [statusFilter])
+
   const handleCreate = () => {
     setEditingItem(null)
     setFormData({ name: '', sku: '', quantity: 0, unit: '', reorder_level: 0, track_as_asset: true })

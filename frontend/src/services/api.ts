@@ -33,6 +33,13 @@ api.interceptors.response.use(
     }
 
     if (status === 401) {
+      // Clear stale session data so the user is forced back to login
+      localStorage.removeItem('prototype_token')
+      localStorage.removeItem('prototype_user')
+      // Redirect to login if not already there
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
       return Promise.reject(new Error('Your session has expired. Please sign in again.'))
     }
 

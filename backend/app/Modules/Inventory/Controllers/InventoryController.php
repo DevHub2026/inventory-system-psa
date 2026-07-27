@@ -29,6 +29,7 @@ class InventoryController extends Controller
             'id' => $item->id,
             'asset_id' => $item->asset_id,
             'asset_number' => $item->asset?->asset_number,
+            'type' => $item->type,
             'name' => $item->name,
             'sku' => $item->sku,
             'quantity' => $item->quantity,

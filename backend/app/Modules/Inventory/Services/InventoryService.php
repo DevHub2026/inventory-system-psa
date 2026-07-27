@@ -21,6 +21,11 @@ class InventoryService
     {
         $query = InventoryItem::query()->with('asset');
 
+        // Filter by inventory type (non_expendable / expendable)
+        if (! empty($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+
         if (! empty($filters['search'])) {
             $search = $filters['search'];
             $query->where(function ($query) use ($search): void {
@@ -53,6 +58,12 @@ class InventoryService
         return DB::transaction(function () use ($data, $user) {
             $trackAsAsset = (bool) ($data['track_as_asset'] ?? true);
             unset($data['track_as_asset']);
+
+            // Default type based on track_as_asset if not explicitly provided:
+            // items linked to assets are non_expendable; pure consumables are expendable.
+            if (empty($data['type'])) {
+                $data['type'] = $trackAsAsset ? 'non_expendable' : 'expendable';
+            }
 
             $item = InventoryItem::create($data);
 

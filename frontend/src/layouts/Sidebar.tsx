@@ -186,6 +186,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                       <li key={link.to} style={{ margin: 0, padding: 0 }}>
                         <NavLink
                           to={link.to}
+                          end={link.to !== '/inventory'}
                           onClick={onClose}
                           style={({ isActive }) => ({
                             display: 'flex',
