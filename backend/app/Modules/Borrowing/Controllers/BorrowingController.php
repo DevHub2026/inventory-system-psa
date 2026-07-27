@@ -103,4 +103,22 @@ class BorrowingController extends Controller
                 : 'Borrowing marked as borrowed successfully.',
         );
     }
+
+    /**
+     * Employee scans an available asset QR to create a borrow request.
+     * This does NOT borrow the asset - it creates a PENDING reservation.
+     */
+    public function requestBorrow(Request $request): JsonResponse
+    {
+        $value = trim((string) $request->input('value', ''));
+        abort_if($value === '', 422, 'Identifier value is required.');
+
+        try {
+            $result = $this->borrowingService->requestBorrow($request->user(), $value);
+
+            return $this->success($result, $result['message']);
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), null, 422);
+        }
+    }
 }

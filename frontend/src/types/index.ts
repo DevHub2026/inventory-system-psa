@@ -135,6 +135,24 @@ export interface InventoryItem {
   remarks?: string | null
 }
 
+export interface BorrowRequestResult {
+  id: number
+  status: string
+  asset_id: number
+  asset_name: string
+  asset_number: string
+  employee_name: string
+  created_at: string
+  message: string
+}
+
+export interface ImportResult {
+  imported: number
+  skipped: number
+  failed: number
+  errors: string[]
+}
+
 export interface StockMovement {
   id: number
   inventory_item_id: number

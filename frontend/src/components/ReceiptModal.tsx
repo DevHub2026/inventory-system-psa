@@ -29,7 +29,7 @@ interface ReceiptModalProps {
   onClose: () => void
 }
 
-function receiptTypeLabel(type: ReceiptRecord['type'], status?: string) {
+function receiptTypeLabel(type: ReceiptRecord['type'], status?: string | null) {
   if (type === 'Reservation') return 'Borrow Request'
   return status === 'RETURNED' ? 'Return Receipt' : 'Borrow Receipt'
 }

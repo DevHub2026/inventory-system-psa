@@ -8,4 +8,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('borrowings', [BorrowingController::class, 'store']);
     Route::post('assets/scan', [BorrowingController::class, 'scan']);
     Route::post('borrowings/{borrowing}/return', [BorrowingController::class, 'return']);
+
+    // Employee QR scan to create a borrow request (PENDING reservation)
+    Route::post('assets/request-borrow', [BorrowingController::class, 'requestBorrow']);
 });

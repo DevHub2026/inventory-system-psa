@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ScanLine } from 'lucide-react'
 import {
-  Alert, Badge, Button, Card, ConfirmDialog, Dropdown, EmptyState,
+  Alert, Badge, Button, ConfirmDialog, Dropdown, EmptyState,
   Input, Modal, Pagination, SearchBar, Spinner, Table, type Column,
 } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'

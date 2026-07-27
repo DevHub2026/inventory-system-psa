@@ -11,7 +11,7 @@ import { notifyDataChanged } from '@/utils/dataRefresh'
 interface AssetQrScannerProps {
   open: boolean
   onClose: () => void
-  mode?: 'transaction' | 'authorize'
+  mode?: 'transaction' | 'authorize' | 'request'
   onCompleted?: () => void
 }
 
@@ -76,6 +76,17 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
         setState('found')
         notifyDataChanged('all')
         onCompleted?.()
+        stopCamera()
+        return
+      }
+
+      if (mode === 'request') {
+        const result = await assetService.requestBorrow(identifier)
+        setMessage(result.message)
+        setState('found')
+        notifyDataChanged('all')
+        onCompleted?.()
+        stopCamera()
         return
       }
 
@@ -96,8 +107,8 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
         setState('transaction_failed')
         setMessage(
           error instanceof Error
-            ? `Asset found, but the transaction was not completed: ${error.message}`
-            : 'Asset found, but the borrowing transaction failed.',
+            ? error.message
+            : 'Asset found, but the transaction was not completed.',
         )
       } catch {
         setState('not_found')

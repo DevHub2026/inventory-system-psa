@@ -10,6 +10,8 @@ use App\Modules\Inventory\Services\InventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InventoryController extends Controller
 {
@@ -170,5 +172,46 @@ class InventoryController extends Controller
                 'next' => $transactions->nextPageUrl(),
             ],
         ], 'Stock movement history retrieved successfully.');
+    }
+
+    public function import(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+        ]);
+
+        $path = $request->file('file')->store('imports');
+
+        try {
+            $result = $this->inventoryService->importFromExcel(Storage::path($path));
+            Storage::delete($path);
+
+            return $this->success($result, 'Import completed.');
+        } catch (\Exception $e) {
+            Storage::delete($path);
+            return $this->error($e->getMessage(), null, 422);
+        }
+    }
+
+    public function export(Request $request): JsonResponse
+    {
+        try {
+            $path = $this->inventoryService->export($request->all());
+
+            return $this->success([
+                'path' => $path,
+                'url' => url('storage/'.$path),
+                'filename' => basename($path),
+            ], 'Export generated successfully.');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), null, 500);
+        }
+    }
+
+    public function downloadExport(Request $request): StreamedResponse
+    {
+        $path = $this->inventoryService->export($request->all());
+
+        return Storage::download($path, basename($path));
     }
 }

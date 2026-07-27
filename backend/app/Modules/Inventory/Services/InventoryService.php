@@ -2,21 +2,205 @@
 
 namespace App\Modules\Inventory\Services;
 
+use App\Enums\UserRole;
+use App\Models\InventoryCategory;
+use App\Models\User;
 use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\Asset\Enums\ConditionStatus;
 use App\Modules\Asset\Enums\IdentifierType;
 use App\Modules\Asset\Models\Asset;
+use App\Modules\Asset\Models\Location;
 use App\Modules\Asset\Models\Office;
 use App\Modules\AssetCategory\Models\AssetCategory;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
 use App\Modules\Inventory\Models\InventoryItem;
 use App\Modules\Inventory\Models\StockTransaction;
-use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class InventoryService
 {
+    public function export(array $filters = []): string
+    {
+        $items = InventoryItem::query()->with('asset', 'category', 'unit', 'supplier')
+            ->when(! empty($filters['search']), function ($query) use ($filters) {
+                $search = $filters['search'];
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('sku', 'like', '%'.$search.'%')
+                        ->orWhere('unit', 'like', '%'.$search.'%');
+                });
+            })
+            ->when(! empty($filters['status']), function ($query) use ($filters) {
+                match ($filters['status']) {
+                    'OUT_OF_STOCK' => $query->where('quantity', '<=', 0),
+                    'LOW_STOCK' => $query->where('quantity', '>', 0)->whereColumn('quantity', '<=', 'reorder_level'),
+                    'IN_STOCK' => $query->where('quantity', '>', 0)->where(function ($q) {
+                        $q->whereNull('reorder_level')->orWhere('reorder_level', '<=', 0)->orWhereColumn('quantity', '>', 'reorder_level');
+                    }),
+                    default => null,
+                };
+            })
+            ->orderByDesc('created_at')
+            ->get();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Inventory Export');
+
+        // Headers
+        $headers = [
+            'ID', 'Item Name', 'SKU/Code', 'Category', 'Unit', 'Quantity',
+            'Reorder Level', 'Status', 'Linked Asset No.', 'Supplier',
+            'Remarks', 'Created At', 'Updated At',
+        ];
+        foreach (array_values($headers) as $i => $header) {
+            $sheet->setCellValue(chr(65 + $i).'1', $header);
+            $sheet->getStyle(chr(65 + $i).'1')->getFont()->setBold(true);
+        }
+
+        // Data rows
+        $row = 2;
+        foreach ($items as $item) {
+            $status = match (true) {
+                $item->quantity <= 0 => 'Out of Stock',
+                $item->reorder_level !== null && $item->quantity <= $item->reorder_level => 'Low Stock',
+                default => 'In Stock',
+            };
+
+            $sheet->setCellValue('A'.$row, $item->id);
+            $sheet->setCellValue('B'.$row, $item->name);
+            $sheet->setCellValue('C'.$row, $item->sku ?? '');
+            $sheet->setCellValue('D'.$row, $item->category?->name ?? '');
+            $sheet->setCellValue('E'.$row, $item->unit ?? '');
+            $sheet->setCellValue('F'.$row, $item->quantity);
+            $sheet->setCellValue('G'.$row, $item->reorder_level ?? '');
+            $sheet->setCellValue('H'.$row, $status);
+            $sheet->setCellValue('I'.$row, $item->asset?->asset_number ?? '');
+            $sheet->setCellValue('J'.$row, $item->supplier?->name ?? '');
+            $sheet->setCellValue('K'.$row, $item->remarks ?? '');
+            $sheet->setCellValue('L'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
+            $sheet->setCellValue('M'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');
+            $row++;
+        }
+
+        foreach (range('A', 'M') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'inventory-export-'.now()->format('Y-m-d-His').'.xlsx';
+        $path = 'exports/'.$filename;
+        Storage::makeDirectory('exports');
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save(Storage::path($path));
+
+        return $path;
+    }
+
+    /**
+     * Import inventory items from an Excel file.
+     * Validates entire file first, then imports in a single transaction.
+     *
+     * @return array{imported: int, skipped: int, errors: array}
+     */
+    public function importFromExcel(string $filePath): array
+    {
+        $spreadsheet = IOFactory::load($filePath);
+        $sheet = $spreadsheet->getActiveSheet();
+        $rows = $sheet->toArray();
+
+        if (count($rows) < 2) {
+            throw new \InvalidArgumentException('The Excel file is empty or has no data rows.');
+        }
+
+        $headers = array_map('trim', $rows[0]);
+        $expectedHeaders = ['name', 'sku', 'category_name', 'unit', 'quantity', 'reorder_level', 'remarks'];
+
+        // Validate headers
+        $headerMap = [];
+        foreach ($expectedHeaders as $expected) {
+            $index = array_search($expected, $headers, true);
+            if ($index === false) {
+                throw new \InvalidArgumentException("Missing required column: '{$expected}'. Found columns: ".implode(', ', $headers));
+            }
+            $headerMap[$expected] = $index;
+        }
+
+        // Parse and validate all rows first
+        $validRows = [];
+        $errors = [];
+        $rowNum = 1; // 1-indexed, header is row 1
+
+        foreach (array_slice($rows, 1) as $row) {
+            $rowNum++;
+            $row = array_map('trim', $row);
+            $name = $row[$headerMap['name']] ?? '';
+
+            if (empty($name)) {
+                $errors[] = "Row {$rowNum}: Item name is required.";
+                continue;
+            }
+
+            $sku = $row[$headerMap['sku']] ?? '';
+            $categoryName = $row[$headerMap['category_name']] ?? '';
+            $unit = $row[$headerMap['unit']] ?? '';
+            $quantity = (int) ($row[$headerMap['quantity']] ?? 0);
+            $reorderLevel = $row[$headerMap['reorder_level']] ?? null;
+            $remarks = $row[$headerMap['remarks']] ?? '';
+
+            // Validate category exists
+            if (! empty($categoryName)) {
+                $category = InventoryCategory::query()->where('name', $categoryName)->first();
+                if (! $category) {
+                    $errors[] = "Row {$rowNum}: Category '{$categoryName}' not found.";
+                    continue;
+                }
+            } else {
+                $category = null;
+            }
+
+            // Check for duplicate SKU
+            if (! empty($sku) && InventoryItem::query()->where('sku', $sku)->exists()) {
+                $errors[] = "Row {$rowNum}: Item with SKU '{$sku}' already exists.";
+                continue;
+            }
+
+            $validRows[] = [
+                'name' => $name,
+                'sku' => $sku,
+                'inventory_category_id' => $category?->id,
+                'unit' => $unit,
+                'quantity' => $quantity,
+                'reorder_level' => $reorderLevel !== '' ? (int) $reorderLevel : null,
+                'remarks' => $remarks,
+            ];
+        }
+
+        // If there are errors, return them without importing
+        if (! empty($errors)) {
+            return ['imported' => 0, 'skipped' => 0, 'errors' => $errors];
+        }
+
+        // Import valid rows in a transaction
+        $imported = 0;
+        DB::transaction(function () use ($validRows, &$imported) {
+            foreach ($validRows as $row) {
+                InventoryItem::create($row);
+                $imported++;
+            }
+        });
+
+        return [
+            'imported' => $imported,
+            'skipped' => 0,
+            'errors' => [],
+        ];
+    }
     public function list(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
         $query = InventoryItem::query()->with('asset');
