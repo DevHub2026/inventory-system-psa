@@ -22,6 +22,10 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'email_verified_at' => $this->email_verified_at,
             'department_id' => $this->department_id,
+            'department' => $this->whenLoaded('department', fn () => [
+                'id' => $this->department?->id,
+                'name' => $this->department?->name,
+            ]),
             'status' => $this->status,
             'roles' => $this->whenLoaded('roles', function () {
                 return $this->roles->map(fn ($role) => [

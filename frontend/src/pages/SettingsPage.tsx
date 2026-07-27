@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { KeyRound, User, Mail, Lock, Eye, EyeOff } from 'lucide-react'
-import { Input, Button, Alert } from '@/components/ui'
+import { Input, Button, Alert, Badge } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
 import { authService, type UpdateProfilePayload, type ChangePasswordPayload } from '@/services/authService'
 import { displayName } from '@/types'
 import { PageHeader } from '@/components/PageHeader'
+import { RoleBadges } from '@/components/RoleBadges'
 
 /* ── Design tokens ── */
 const T = {
@@ -109,8 +110,6 @@ export function SettingsPage() {
 
   const name     = displayName(user)
   const initials = name.slice(0, 1).toUpperCase()
-  const role     = (user as { role?: string })?.role ?? 'Account'
-  const roleLabel = role ? role[0].toUpperCase() + role.slice(1).toLowerCase() : 'Account'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -154,17 +153,20 @@ export function SettingsPage() {
               {user?.email}
             </div>
           </div>
-          {/* Role badge */}
-          <div style={{
-            flexShrink: 0,
-            padding: '4px 12px',
-            borderRadius: 999,
-            background: T.accentBg,
-            border: `1px solid rgba(11,61,145,0.15)`,
-            fontSize: 11, fontWeight: 700, color: T.accent,
-            textTransform: 'uppercase', letterSpacing: '0.06em',
-          }}>
-            {roleLabel}
+          <RoleBadges roles={user?.roles ?? []} maxVisible={3} />
+        </div>
+
+        <div className="mb-6 grid gap-3 rounded-xl border border-[#E5E7EB] bg-white p-4 text-[13px] md:grid-cols-2">
+          <InfoItem label="Name" value={name} />
+          <InfoItem label="Employee ID" value={user?.employee_number || '—'} />
+          <InfoItem label="Department" value={user?.department?.name || '—'} />
+          <div>
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Status</p>
+            <Badge tone={user?.status === 'active' ? 'green' : 'yellow'}>{(user?.status || 'unknown').toUpperCase()}</Badge>
+          </div>
+          <div className="md:col-span-2">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Roles</p>
+            <RoleBadges roles={user?.roles ?? []} maxVisible={6} />
           </div>
         </div>
 
@@ -321,6 +323,15 @@ export function SettingsPage() {
           </div>
         </div>
       </Section>
+    </div>
+  )
+}
+
+function InfoItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">{label}</p>
+      <p className="font-medium text-[#1E293B]">{value}</p>
     </div>
   )
 }

@@ -1,6 +1,11 @@
 import { api, unwrapData } from '@/services/api'
 import type { ApiResponse, Paginated } from '@/types'
 
+interface PaginatedApiResponse<T> {
+  data?: T[]
+  meta?: Paginated<T>['meta']
+}
+
 export interface Role {
   id: number
   name: string
@@ -42,7 +47,7 @@ export const roleService = {
     const queryString = params.toString()
     const url = queryString ? `/roles?${queryString}` : '/roles'
 
-    const { data } = await api.get<any>(url)
+    const { data } = await api.get<PaginatedApiResponse<Role>>(url)
     
     return {
       items: data.data || [],
