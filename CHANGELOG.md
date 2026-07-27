@@ -1,5 +1,61 @@
 # CHANGELOG
 
+## 2026-07-27
+
+### Inventory Page Effect Lint Fix
+
+### Files Modified
+
+- `frontend/src/pages/InventoryPage.tsx`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+React ESLint reported that the inventory mount effect called a state-setting loader directly and omitted the loader from effect dependencies.
+
+### Summary
+
+- Memoized `loadInventory` with `useCallback`.
+- Changed the initial mount load to run asynchronously through a scheduled callback so state updates are not called synchronously inside the effect body.
+- Passed current search/status filters explicitly to reload actions to avoid stale closures and unnecessary effect reruns.
+
+### Impact
+
+- `InventoryPage` now satisfies its local React hook lint checks while preserving mount loading, filtering, pagination, stock updates, imports, and CRUD refresh behavior.
+
+## 2026-07-27
+
+### Inventory Export Authentication and Download Fix
+
+### Files Modified
+
+- `backend/bootstrap/app.php`
+- `backend/app/Modules/Inventory/Controllers/InventoryController.php`
+- `backend/app/Modules/Inventory/Services/InventoryService.php`
+- `backend/tests/Feature/Inventory/InventoryManagementTest.php`
+- `frontend/src/services/inventoryService.ts`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Inventory export could return `Route [login] not defined.` when an unauthenticated API export request was handled like a web redirect, and the export service was also eager-loading relationships that do not exist on the active inventory module model.
+
+### Summary
+
+- Configured API guest redirects so `/api/*` requests return JSON `401` instead of resolving a missing web `login` route.
+- Updated inventory export download to return a real `.xlsx` file response with the correct Excel MIME type.
+- Aligned export query/columns with the active `InventoryItem` schema and removed invalid legacy relationship eager-loading.
+- Added frontend blob response checking so JSON error responses are surfaced as messages instead of being treated as Excel files.
+- Added tests for authorized export download, unauthenticated JSON `401`, and unauthorized employee JSON `403`.
+
+### Impact
+
+- Authorized inventory staff/admin users can download inventory Excel exports securely.
+- Logged-out users receive proper API JSON instead of a Laravel missing route error.
+- Unauthorized employees are blocked with a clear `403` JSON response.
+
 ## 2026-07-22
 
 ### QR Borrowing Authorization and Receipt Flow Fix

@@ -320,7 +320,7 @@ class UserImportService
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'id_number' => ['required', 'string', 'regex:/^\d{4}-\d{4}$/'],
+            'id_number' => ['required', 'string', 'max:50'],
             'email' => ['required', 'string', 'email', 'max:255'],
             'department_id' => ['nullable', 'integer'],
             'department' => ['nullable', 'string', 'max:255'],

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search } from 'lucide-react'
 import {
-  Alert, Badge, Button, Dropdown, EmptyState, Input,
+  Alert, Button, Dropdown, EmptyState, Input,
   Modal, Spinner,
 } from '@/components/ui'
 import {
@@ -252,7 +252,6 @@ export function InventoryPage() {
         inventoryService.list({ type: 'non_expendable', per_page: 1 }),
         inventoryService.list({ type: 'expendable',    per_page: 1 }),
       ])
-      // For the breakdown we need per-status counts; fetch with per_page=9999 to get all ids then count client-side
       const [neAll, exAll] = await Promise.all([
         inventoryService.list({ type: 'non_expendable', per_page: 9999 }),
         inventoryService.list({ type: 'expendable',    per_page: 9999 }),
@@ -275,7 +274,10 @@ export function InventoryPage() {
     } catch { /* summary is best-effort */ }
   }, [])
 
-  useEffect(() => { void loadInventory(1); void loadSummary() }, [activeTab, statusFilter, perPage])
+  useEffect(() => {
+    const id = setTimeout(() => { void loadInventory(1); void loadSummary() }, 0)
+    return () => clearTimeout(id)
+  }, [activeTab, statusFilter, perPage, loadInventory, loadSummary])
 
   const handleTabChange = (t: TabKey) => { setActiveTab(t); setPage(1) }
   const handleFilter    = () => { void loadInventory(1) }
@@ -524,11 +526,13 @@ export function InventoryPage() {
                     <td style={td}><StatusBadge status={r.status} /></td>
                     <td style={{ ...td, textAlign: 'right' as const }}>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        <Button size="sm" variant="ghost" onClick={() => { setAdjustItem(r); setAdjustQty(r.quantity); setAdjustReason('') }}>Adjust</Button>
-                        <Button size="sm" variant="ghost" onClick={() => void loadHistory(r)}>History</Button>
+                        <Button size="sm" variant="primary"   onClick={() => { setStockItem(r); setStockType('in');  setStockQty(1); setStockReason(''); setStockModalOpen(true) }}>+ Stock</Button>
+                        <Button size="sm" variant="secondary" onClick={() => { setStockItem(r); setStockType('out'); setStockQty(1); setStockReason(''); setStockModalOpen(true) }}>− Stock</Button>
+                        <Button size="sm" variant="ghost"     onClick={() => { setAdjustItem(r); setAdjustQty(r.quantity); setAdjustReason('') }}>Adjust</Button>
+                        <Button size="sm" variant="ghost"     onClick={() => void loadHistory(r)}>History</Button>
                         <Button size="sm" variant="secondary" onClick={() => handleEdit(r)}>Edit</Button>
                         {r.asset_number && <Button size="sm" variant="ghost" onClick={() => navigate(`/assets?search=${encodeURIComponent(r.asset_number ?? '')}`)}>Asset</Button>}
-                        <Button size="sm" variant="danger" onClick={() => handleDelete(r)}>Delete</Button>
+                        <Button size="sm" variant="danger"    onClick={() => handleDelete(r)}>Delete</Button>
                       </div>
                     </td>
                   </tr>

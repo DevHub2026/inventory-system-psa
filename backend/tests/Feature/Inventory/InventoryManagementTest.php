@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Inventory;
 
+use App\Enums\UserRole;
+use App\Models\Role;
 use App\Models\User;
+use App\Modules\Inventory\Models\InventoryItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -323,5 +326,65 @@ class InventoryManagementTest extends TestCase
             ]);
 
         $this->assertGreaterThanOrEqual(1, count($response->json('data.items')));
+    }
+
+    public function test_authorized_user_can_download_inventory_export(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('auth')->plainTextToken;
+
+        InventoryItem::query()->create([
+            'name' => 'Printer Paper',
+            'sku' => 'PP-EXPORT',
+            'quantity' => 25,
+            'unit' => 'ream',
+            'reorder_level' => 5,
+        ]);
+
+        $response = $this->withToken($token)
+            ->get('/api/v1/inventory/export/download');
+
+        $response->assertOk();
+        $this->assertSame(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            $response->headers->get('content-type'),
+        );
+        $this->assertStringContainsString(
+            'attachment; filename=inventory-export-',
+            $response->headers->get('content-disposition'),
+        );
+    }
+
+    public function test_inventory_export_guest_receives_json_401_without_login_route_redirect(): void
+    {
+        $response = $this->get('/api/v1/inventory/export/download');
+
+        $response->assertStatus(401)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+                'errors' => [],
+            ]);
+    }
+
+    public function test_employee_cannot_download_inventory_export(): void
+    {
+        $user = User::factory()->create();
+        $employeeRole = Role::query()->firstOrCreate(
+            ['name' => UserRole::EMPLOYEE->value],
+            ['description' => UserRole::EMPLOYEE->name],
+        );
+        $user->roles()->sync([$employeeRole->id]);
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->getJson('/api/v1/inventory/export/download');
+
+        $response->assertStatus(403)
+            ->assertJson([
+                'success' => false,
+                'message' => 'This action is not authorized for your role.',
+                'errors' => [],
+            ]);
     }
 }

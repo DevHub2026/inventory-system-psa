@@ -86,10 +86,13 @@ export function UsersPage() {
 
   const downloadTemplate = (type: 'csv' | 'json') => {
     const headers = ['first_name', 'middle_name', 'last_name', 'id_number', 'email', 'role', 'department']
-    const sample  = { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '1234-5678', email: 'juan.marquez@example.com', role: 'Employee', department: 'Administration' }
+    const samples = [
+      { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '2026-0001', email: 'juan.marquez@psa.gov.ph', role: 'Employee', department: 'Administration' },
+      { first_name: 'Maria', middle_name: 'Santos', last_name: 'Reyes', id_number: '2026-0002', email: 'maria.reyes@psa.gov.ph', role: 'Employee', department: 'Statistical Operations' },
+    ]
     const content = type === 'csv'
-      ? `${headers.join(',')}\n${headers.map((h) => sample[h as keyof typeof sample]).join(',')}\n`
-      : `${JSON.stringify([sample], null, 2)}\n`
+      ? `${headers.join(',')}\n${samples.map((s) => headers.map((h) => s[h as keyof typeof s]).join(',')).join('\n')}\n`
+      : `${JSON.stringify(samples, null, 2)}\n`
     const blob = new Blob([content], { type: type === 'csv' ? 'text/csv' : 'application/json' })
     const url  = URL.createObjectURL(blob)
     const link = document.createElement('a')

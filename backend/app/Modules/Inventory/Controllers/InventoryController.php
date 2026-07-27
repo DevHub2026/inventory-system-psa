@@ -11,7 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class InventoryController extends Controller
 {
@@ -209,10 +209,18 @@ class InventoryController extends Controller
         }
     }
 
-    public function downloadExport(Request $request): StreamedResponse
+    public function downloadExport(Request $request): BinaryFileResponse|JsonResponse
     {
-        $path = $this->inventoryService->export($request->all());
+        try {
+            $path = $this->inventoryService->export($request->all());
 
-        return Storage::download($path, basename($path));
+            return response()->download(
+                Storage::path($path),
+                basename($path),
+                ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+            )->deleteFileAfterSend(true);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), null, 500);
+        }
     }
 }
