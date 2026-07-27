@@ -37,9 +37,15 @@ interface LoginResponse {
 }
 
 function persistUser(user: User, token?: string): User {
+  /*
+   * Build the normalized name AFTER spreading user so user.name takes
+   * priority from the server response when present, falling back to
+   * displayName() for derived computation from first/last fields.
+   */
   const normalized: User = {
     ...user,
-    name: displayName(user),
+    // Prefer the server-returned name/full_name; only derive if missing
+    name: user.name?.trim() || user.full_name?.trim() || displayName(user),
   }
   localStorage.setItem('prototype_user', JSON.stringify(normalized))
   if (token) {

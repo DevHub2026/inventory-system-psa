@@ -359,9 +359,9 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
             )}
             <div className="rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFD] p-8 text-center">
               <Upload className="mx-auto h-10 w-10 text-slate-400" />
-              <p className="mt-3 text-sm font-medium text-slate-600">Upload an Excel file (.xlsx, .xls, .csv)</p>
+              <p className="mt-3 text-sm font-medium text-slate-600">Upload an Excel file (.xlsx, .xls, .csv, .json)</p>
               <p className="mt-1 text-xs text-slate-400">Maximum file size: 10 MB</p>
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv,.json" className="hidden"
                 onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)} />
               <Button variant="secondary" className="mt-4" onClick={() => fileInputRef.current?.click()}>
                 {uploadFile ? uploadFile.name : 'Choose File'}

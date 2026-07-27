@@ -14,9 +14,13 @@ export interface CreateBorrowingPayload {
 interface BackendBorrowing {
   id: number
   user_id: number
+  employee_id?: string | null
   asset_id: number
+  asset_code?: string | null
+  quantity?: number
   status: Borrowing['status']
   borrow_date: string
+  borrowed_at?: string | null
   due_date: string
   returned_at?: string | null
   remarks: string | null
@@ -35,11 +39,14 @@ function mapBorrowing(borrowing: BackendBorrowing): Borrowing {
   return {
     id: borrowing.id,
     user_id: borrowing.user_id,
+    employee_id: borrowing.employee_id,
     asset_id: borrowing.asset_id,
+    asset_code: borrowing.asset_code,
+    quantity: borrowing.quantity,
     status: borrowing.status,
     borrow_date: borrowing.borrow_date,
     due_date: borrowing.due_date,
-    borrowed_at: borrowing.borrow_date,
+    borrowed_at: borrowing.borrowed_at,
     due_at: borrowing.due_date,
     returned_at: borrowing.returned_at,
     remarks: borrowing.remarks,

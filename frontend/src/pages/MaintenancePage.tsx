@@ -133,7 +133,17 @@ export function MaintenancePage() {
         )}
       </Card>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingRequest ? 'Edit Maintenance' : 'Report a Problem'}>
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingRequest ? 'Edit Maintenance' : 'Report a Problem'}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={saving}>{saving ? 'Saving…' : editingRequest ? 'Save Changes' : 'Create Request'}</Button>
+          </>
+        }
+      >
         <div className="space-y-4">
           <Input label="Asset ID / Identifier" helperText="Enter the asset ID used to identify the item needing maintenance." type="number" value={formData.asset_id.toString()} onChange={(e) => setFormData({ ...formData, asset_id: parseInt(e.target.value) || 0 })} />
           <div className="grid gap-3 md:grid-cols-2">
@@ -156,10 +166,6 @@ export function MaintenancePage() {
           </div>
           <Input label="Scheduled Date" type="date" value={formData.scheduled_date} onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })} />
           <Input label="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={saving}>{saving ? 'Saving…' : editingRequest ? 'Save Changes' : 'Create Request'}</Button>
-          </div>
         </div>
       </Modal>
     </div>

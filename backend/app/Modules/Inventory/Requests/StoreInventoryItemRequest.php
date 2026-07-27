@@ -24,6 +24,7 @@ class StoreInventoryItemRequest extends FormRequest
                 'max:100',
                 Rule::unique('inventory_items', 'sku')->ignore($item?->id),
             ],
+            'type' => ['nullable', 'string', Rule::in(['non_expendable', 'expendable'])],
             'quantity' => ['required', 'integer', 'min:0'],
             'unit' => ['nullable', 'string', 'max:50'],
             'reorder_level' => ['nullable', 'integer', 'min:0'],

@@ -47,6 +47,9 @@ export function ReservationPage() {
     if (!form.assetIds.length || !form.startDate || !form.endDate) {
       setMessage({ type: 'error', text: 'Select at least one asset and provide the borrowing dates.' }); return
     }
+    if (form.endDate < form.startDate) {
+      setMessage({ type: 'error', text: 'End date cannot be before start date.' }); return
+    }
     setSaving(true)
     try {
       const res = await reservationService.create({ asset_ids: form.assetIds, start_date: form.startDate, end_date: form.endDate, remarks: form.remarks || undefined })
