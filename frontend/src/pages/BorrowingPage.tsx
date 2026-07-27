@@ -7,6 +7,7 @@ import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
+import { formatDate, formatTime } from '@/utils/dateFormat'
 
 export function BorrowingPage() {
   const [rows,    setRows]    = useState<Borrowing[]>([])
@@ -48,8 +49,9 @@ export function BorrowingPage() {
     { key: 'asset_name',    header: 'Asset',    render: (r) => <span className="font-medium text-[#1F2937]">{r.asset_name}</span> },
     { key: 'employee_name', header: 'Borrower', render: (r) => r.employee_name },
     { key: 'status',        header: 'Status',   render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> },
-    { key: 'borrowed_at',   header: 'Borrowed', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.borrowed_at}</span> },
-    { key: 'due_at',        header: 'Due',      render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.due_at}</span> },
+    { key: 'borrowed_at',   header: 'Borrowed', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.borrowed_at ? formatTime(r.borrowed_at) : 'N/A'}</span> },
+    { key: 'due_at',        header: 'Due',      render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.due_at ? formatDate(r.due_at) : 'N/A'}</span> },
+    { key: 'returned_at',   header: 'Returned', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.returned_at ? formatTime(r.returned_at) : 'Not Returned'}</span> },
     {
       key: 'actions', header: 'Actions',
       render: (r) => (
