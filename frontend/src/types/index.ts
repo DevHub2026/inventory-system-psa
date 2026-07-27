@@ -126,6 +126,7 @@ export interface InventoryItem {
   id: number
   asset_id?: number | null
   asset_number?: string | null
+  type?: 'non_expendable' | 'expendable' | string | null
   name: string
   sku?: string
   quantity: number
