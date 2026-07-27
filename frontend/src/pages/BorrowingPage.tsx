@@ -7,6 +7,7 @@ import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
+import { formatDate, formatTime } from '@/utils/dateFormat'
 
 export function BorrowingPage() {
   const [rows,    setRows]    = useState<Borrowing[]>([])
@@ -28,6 +29,15 @@ export function BorrowingPage() {
 
   useEffect(() => { void loadBorrowings() }, [])
 
+  // Real-time polling - refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadBorrowings()
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
   useEffect(() => onDataChanged((scope) => {
     if (affectsScope(scope, 'borrowings')) {
       void loadBorrowings()
@@ -47,6 +57,55 @@ export function BorrowingPage() {
   }
 
   const columns: Column<Borrowing>[] = [
+<<<<<<< HEAD
+    { key: 'id', header: 'Borrowing ID', render: (row) => `#${row.id}` },
+    { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
+    { key: 'asset_number', header: 'Asset Identifier', render: (row) => row.asset_number ?? 'N/A' },
+    { key: 'employee_name', header: 'Borrower', render: (row) => row.employee_name },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{borrowingStatusLabel(row.status)}</Badge>,
+    },
+    { key: 'borrowed_at', header: 'Borrowed Date', render: (row) => row.borrowed_at ? formatDate(row.borrowed_at) : 'N/A' },
+    { key: 'borrowed_time', header: 'Borrowed Time', render: (row) => row.borrowed_at ? formatTime(row.borrowed_at) : 'N/A' },
+    { key: 'due_date', header: 'Due Date', render: (row) => row.due_date ? formatDate(row.due_date) : 'N/A' },
+    { key: 'returned_at', header: 'Returned Date', render: (row) => row.returned_at ? formatDate(row.returned_at) : 'Not returned' },
+    { key: 'returned_time', header: 'Returned Time', render: (row) => row.returned_at ? formatTime(row.returned_at) : 'Not returned' },
+    { key: 'authorized_by_name', header: 'Authorized By', render: (row) => row.authorized_by_name ?? 'N/A' },
+    { key: 'authorized_at', header: 'Authorized At', render: (row) => row.authorized_at ? formatDate(row.authorized_at) : 'N/A' },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => (
+        <div className="flex flex-wrap gap-1">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() =>
+              setReceipt({
+                type: 'Borrowing',
+                code: row.receipt_code ?? `PSA-BOR-${row.id}`,
+                payload: row.receipt_payload ?? `PSA-BOR-${row.id}|${row.asset_number ?? row.asset_id}|${row.user_id}`,
+                employee: row.employee_name,
+                employeeId: row.employee_id,
+                assetName: row.asset_name,
+                assetNumber: row.asset_number,
+                assetCode: row.asset_code,
+                quantity: row.quantity,
+                timestamp: row.created_at,
+                borrowedAt: row.borrowed_at,
+                returnedAt: row.returned_at,
+                startDate: row.borrow_date,
+                endDate: row.due_date,
+                status: row.status,
+                authorizedBy: row.authorized_by_name,
+                authorizedAt: row.authorized_at,
+                remarks: row.remarks,
+              })
+            }
+          >
+=======
     { key: 'asset_name',    header: 'Asset',    render: (r) => <span className="font-medium text-[#1F2937]">{r.asset_name}</span> },
     { key: 'employee_name', header: 'Borrower', render: (r) => r.employee_name },
     { key: 'status',        header: 'Status',   render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> },
@@ -76,6 +135,7 @@ export function BorrowingPage() {
             authorizedAt: r.authorized_at,
             remarks: r.remarks,
           })}>
+>>>>>>> 51d547c43ed3764a6641672d91815b8a9eed0607
             Receipt
           </Button>
           {(r.status === 'BORROWED' || r.status === 'ACTIVE' || r.status === 'OVERDUE') ? (

@@ -7,6 +7,7 @@ import type { Asset, Borrowing } from '@/types'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { assetStatusTone } from '@/utils/statusTone'
 import { notifyDataChanged } from '@/utils/dataRefresh'
+import { formatDate, formatTime } from '@/utils/dateFormat'
 
 interface AssetQrScannerProps {
   open: boolean
@@ -283,6 +284,59 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
 
         {/* Borrowing transaction card */}
         {borrowing && (
+<<<<<<< HEAD
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <div className="mb-2 text-sm font-semibold text-blue-900">Borrowing Transaction</div>
+            <dl className="grid gap-3 text-sm md:grid-cols-2">
+              <div>
+                <dt className="text-blue-700">Borrowing ID</dt>
+                <dd className="font-medium text-gray-900">#{borrowing.id}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Status</dt>
+                <dd className="font-medium text-gray-900">{borrowingStatusLabel(borrowing.status)}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Borrower</dt>
+                <dd className="font-medium text-gray-900">{borrowing.employee_name ?? `User #${borrowing.user_id}`}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Asset</dt>
+                <dd className="font-medium text-gray-900">{borrowing.asset_name ?? `Asset #${borrowing.asset_id}`}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Asset Identifier</dt>
+                <dd className="font-mono text-gray-900">{borrowing.asset_number ?? asset?.psa_qr_identifier ?? 'Not available'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Borrowed Date</dt>
+                <dd>{borrowing.borrowed_at ? formatDate(borrowing.borrowed_at) : 'Not available'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Borrowed Time</dt>
+                <dd>{borrowing.borrowed_at ? formatTime(borrowing.borrowed_at) : 'Not available'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Due Date</dt>
+                <dd>{borrowing.due_date ? formatDate(borrowing.due_date) : 'Not available'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Returned Date</dt>
+                <dd>{borrowing.returned_at ? formatDate(borrowing.returned_at) : 'Not returned'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Returned Time</dt>
+                <dd>{borrowing.returned_at ? formatTime(borrowing.returned_at) : 'Not returned'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Authorized By</dt>
+                <dd>{borrowing.authorized_by_name ?? `User #${borrowing.authorized_by ?? 'N/A'}`}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Authorized At</dt>
+                <dd>{borrowing.authorized_at ?? 'Not available'}</dd>
+              </div>
+=======
           <div className="overflow-hidden rounded-xl border border-[#C5D8FF] bg-[#EEF4FF]">
             <div className="flex items-center gap-2 border-b border-[#C5D8FF] bg-[#D8E8FF]/60 px-4 py-3">
               <CheckCircle2 className="h-4 w-4 text-[#003DA5]" />
@@ -308,6 +362,7 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
                   </dd>
                 </div>
               ))}
+>>>>>>> 51d547c43ed3764a6641672d91815b8a9eed0607
             </dl>
           </div>
         )}
