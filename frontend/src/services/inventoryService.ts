@@ -124,13 +124,19 @@ export const inventoryService = {
   },
 
   async downloadExport(filters: InventoryFilters = {}): Promise<Blob> {
-    const params = new URLSearchParams()
-    if (filters.search) params.set('search', filters.search)
-    if (filters.status) params.set('status', filters.status)
     const response = await api.get('/inventory/export/download', {
       params: filters,
       responseType: 'blob',
     })
+
+    const contentType = String(response.headers['content-type'] ?? '')
+
+    if (contentType.includes('application/json')) {
+      const text = await response.data.text()
+      const payload = JSON.parse(text) as { message?: string }
+      throw new Error(payload.message || 'The inventory export failed. Please try again.')
+    }
+
     return response.data
   },
 

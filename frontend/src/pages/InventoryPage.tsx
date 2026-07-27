@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Download, Upload } from 'lucide-react'
 import {
   Alert, Badge, Button, Card, Dropdown, EmptyState, Input,
   Modal, Pagination, SearchBar, Spinner, Table, type Column,
 } from '@/components/ui'
-import { inventoryService, type CreateInventoryItemPayload, type UpdateInventoryItemPayload } from '@/services/inventoryService'
+import { inventoryService, type CreateInventoryItemPayload, type InventoryFilters, type UpdateInventoryItemPayload } from '@/services/inventoryService'
 import type { InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
@@ -47,18 +47,36 @@ export function InventoryPage() {
     name: '', sku: '', quantity: 0, unit: '', reorder_level: 0, track_as_asset: true,
   })
 
-  const loadInventory = async (nextPage = page) => {
-    setLoading(true)
+  const loadInventory = useCallback(async (
+    nextPage = 1,
+    filters: Pick<InventoryFilters, 'search' | 'status'> = {},
+    showLoading = true,
+  ) => {
+    if (showLoading) {
+      setLoading(true)
+    }
+
     try {
-      const result = await inventoryService.list({ page: nextPage, per_page: 10, search: search || undefined, status: statusFilter || undefined })
+      const result = await inventoryService.list({
+        page: nextPage,
+        per_page: 10,
+        search: filters.search || undefined,
+        status: filters.status || undefined,
+      })
       setRows(result.items); setPage(result.meta.current_page)
       setLastPage(result.meta.last_page); setTotal(result.meta.total)
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load inventory items.' })
     } finally { setLoading(false) }
-  }
+  }, [])
 
-  useEffect(() => { void loadInventory(1) }, [])
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadInventory(1, {}, false)
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [loadInventory])
 
   const handleCreate = () => {
     setEditingItem(null)
@@ -77,7 +95,7 @@ export function InventoryPage() {
     try {
       await inventoryService.delete(item.id)
       setMessage({ type: 'success', text: 'Item deleted successfully.' })
-      await loadInventory()
+      await loadInventory(page, { search, status: statusFilter })
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to delete item.' })
     }
@@ -88,7 +106,7 @@ export function InventoryPage() {
     try {
       if (editingItem) { await inventoryService.update(editingItem.id, formData as UpdateInventoryItemPayload); setMessage({ type: 'success', text: 'Item updated successfully.' }) }
       else             { await inventoryService.create(formData);                                                setMessage({ type: 'success', text: 'Item created successfully.' }) }
-      setModalOpen(false); await loadInventory()
+      setModalOpen(false); await loadInventory(page, { search, status: statusFilter })
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to save item.' })
     } finally { setSaving(false) }
@@ -100,7 +118,7 @@ export function InventoryPage() {
     try {
       if (stockType === 'in') { await inventoryService.stockIn(stockItem.id,  { quantity: stockQty, reason: stockReason || undefined }); setMessage({ type: 'success', text: 'Stock added successfully.' }) }
       else                    { await inventoryService.stockOut(stockItem.id, { quantity: stockQty, reason: stockReason || undefined }); setMessage({ type: 'success', text: 'Stock removed successfully.' }) }
-      setStockModalOpen(false); await loadInventory(page)
+      setStockModalOpen(false); await loadInventory(page, { search, status: statusFilter })
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to update the item quantity.' })
     } finally { setSaving(false) }
@@ -114,7 +132,7 @@ export function InventoryPage() {
       await inventoryService.adjust(adjustItem.id, { quantity: adjustQty, reason: adjustReason.trim() })
       setAdjustItem(null)
       setMessage({ type: 'success', text: 'Stock quantity corrected successfully.' })
-      await loadInventory(page)
+      await loadInventory(page, { search, status: statusFilter })
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to correct stock quantity.' })
     } finally { setSaving(false) }
@@ -189,12 +207,12 @@ export function InventoryPage() {
 
       <Card noPadding>
         <div className="flex flex-col gap-3 border-b border-[#E5E7EB] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-          <SearchBar placeholder="Search item name, code, or unit…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void loadInventory(1) }} />
+          <SearchBar placeholder="Search item name, code, or unit…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void loadInventory(1, { search, status: statusFilter }) }} />
           <div className="flex shrink-0 items-center gap-2">
             <Dropdown value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} placeholder="All stock statuses"
               options={[{ label: 'In Stock', value: 'IN_STOCK' }, { label: 'Low Stock', value: 'LOW_STOCK' }, { label: 'Out of Stock', value: 'OUT_OF_STOCK' }]}
             />
-            <Button variant="secondary" onClick={() => void loadInventory(1)}>Filter</Button>
+            <Button variant="secondary" onClick={() => void loadInventory(1, { search, status: statusFilter })}>Filter</Button>
           </div>
         </div>
         {loading ? (
@@ -203,7 +221,7 @@ export function InventoryPage() {
           <>
             <Table columns={columns} rows={rows} rowKey={(r) => r.id} empty={<div className="py-16"><EmptyState title="No inventory items found" description="Add your first item to begin tracking stock." /></div>} />
             <div className="border-t border-[#E5E7EB] px-5 py-3">
-              <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void loadInventory(p)} />
+              <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void loadInventory(p, { search, status: statusFilter })} />
             </div>
           </>
         )}
@@ -367,7 +385,7 @@ export function InventoryPage() {
       <InventoryImportWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
-        onCompleted={() => { void loadInventory(1); setMessage({ type: 'success', text: 'Inventory imported successfully.' }) }}
+        onCompleted={() => { void loadInventory(1, { search, status: statusFilter }); setMessage({ type: 'success', text: 'Inventory imported successfully.' }) }}
       />
     </div>
   )

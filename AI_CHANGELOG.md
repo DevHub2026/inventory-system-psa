@@ -18,6 +18,89 @@ Always append new entries.
 
 ---
 
+## 2026-07-27 00:01
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Fixed React ESLint issues in the Inventory page mount loading effect without disabling lint rules.
+
+---
+
+### Files Modified
+
+- frontend/src/pages/InventoryPage.tsx
+- CHANGELOG.md
+- AI_CHANGELOG.md
+
+---
+
+### Summary
+
+- Converted the inventory loader to a stable `useCallback`.
+- Scheduled the initial mount fetch asynchronously to avoid direct state-setting calls from the effect body.
+- Passed current filters explicitly to refresh call sites so pagination and search behavior remain intact.
+
+---
+
+### Validation
+
+- `npx.cmd eslint src/pages/InventoryPage.tsx` passed.
+- `npm.cmd run build` passed with existing CSS/chunk-size warnings.
+- Full `npm.cmd run lint` still fails on pre-existing unrelated files outside `InventoryPage`.
+
+---
+
+## 2026-07-27 00:00
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Fixed inventory export authentication, API guest handling, Excel file response, and frontend blob error handling.
+
+---
+
+### Files Modified
+
+- backend/bootstrap/app.php
+- backend/app/Modules/Inventory/Controllers/InventoryController.php
+- backend/app/Modules/Inventory/Services/InventoryService.php
+- backend/tests/Feature/Inventory/InventoryManagementTest.php
+- frontend/src/services/inventoryService.ts
+- CHANGELOG.md
+- AI_CHANGELOG.md
+
+---
+
+### Summary
+
+- Prevented `/api/*` guest requests from attempting a missing web `login` route redirect.
+- Returned downloadable inventory export files through a binary file response with the Excel MIME type.
+- Removed invalid export eager-loading for legacy inventory relationships not present on the active module model.
+- Added frontend detection for JSON error blobs during export downloads.
+- Added backend tests for authorized, unauthenticated, and unauthorized export scenarios.
+
+---
+
+### Validation
+
+- `php artisan test tests\Feature\Inventory\InventoryManagementTest.php` passed.
+- `npm.cmd run build` passed with existing CSS/chunk-size warnings.
+
+---
+
 ## 2026-07-22 00:00
 
 ### AI

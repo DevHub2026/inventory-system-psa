@@ -26,7 +26,7 @@ class InventoryService
 {
     public function export(array $filters = []): string
     {
-        $items = InventoryItem::query()->with('asset', 'category', 'unit', 'supplier')
+        $items = InventoryItem::query()->with('asset')
             ->when(! empty($filters['search']), function ($query) use ($filters) {
                 $search = $filters['search'];
                 $query->where(function ($q) use ($search) {
@@ -54,8 +54,8 @@ class InventoryService
 
         // Headers
         $headers = [
-            'ID', 'Item Name', 'SKU/Code', 'Category', 'Unit', 'Quantity',
-            'Reorder Level', 'Status', 'Linked Asset No.', 'Supplier',
+            'ID', 'Item Name', 'SKU/Code', 'Unit', 'Quantity',
+            'Reorder Level', 'Status', 'Linked Asset No.',
             'Remarks', 'Created At', 'Updated At',
         ];
         foreach (array_values($headers) as $i => $header) {
@@ -75,20 +75,18 @@ class InventoryService
             $sheet->setCellValue('A'.$row, $item->id);
             $sheet->setCellValue('B'.$row, $item->name);
             $sheet->setCellValue('C'.$row, $item->sku ?? '');
-            $sheet->setCellValue('D'.$row, $item->category?->name ?? '');
-            $sheet->setCellValue('E'.$row, $item->unit ?? '');
-            $sheet->setCellValue('F'.$row, $item->quantity);
-            $sheet->setCellValue('G'.$row, $item->reorder_level ?? '');
-            $sheet->setCellValue('H'.$row, $status);
-            $sheet->setCellValue('I'.$row, $item->asset?->asset_number ?? '');
-            $sheet->setCellValue('J'.$row, $item->supplier?->name ?? '');
-            $sheet->setCellValue('K'.$row, $item->remarks ?? '');
-            $sheet->setCellValue('L'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
-            $sheet->setCellValue('M'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');
+            $sheet->setCellValue('D'.$row, $item->unit ?? '');
+            $sheet->setCellValue('E'.$row, $item->quantity);
+            $sheet->setCellValue('F'.$row, $item->reorder_level ?? '');
+            $sheet->setCellValue('G'.$row, $status);
+            $sheet->setCellValue('H'.$row, $item->asset?->asset_number ?? '');
+            $sheet->setCellValue('I'.$row, $item->remarks ?? '');
+            $sheet->setCellValue('J'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
+            $sheet->setCellValue('K'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');
             $row++;
         }
 
-        foreach (range('A', 'M') as $col) {
+        foreach (range('A', 'K') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
