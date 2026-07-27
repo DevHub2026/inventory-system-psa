@@ -61,13 +61,6 @@ export function BorrowingPage() {
     { key: 'asset_name', header: 'Asset', render: (r) => r.asset_name },
     { key: 'asset_number', header: 'Asset Identifier', render: (r) => r.asset_number ?? 'N/A' },
     { key: 'employee_name', header: 'Borrower', render: (r) => r.employee_name },
-<<<<<<< HEAD
-=======
-    { key: 'status',        header: 'Status',   render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> },
-    { key: 'borrowed_at',   header: 'Borrowed', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.borrowed_at ? formatTime(r.borrowed_at) : 'N/A'}</span> },
-    { key: 'due_at',        header: 'Due',      render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.due_at ? formatDate(r.due_at) : 'N/A'}</span> },
-    { key: 'returned_at',   header: 'Returned', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.returned_at ? formatTime(r.returned_at) : 'Not Returned'}</span> },
->>>>>>> 18cf08f61d58f5330ca08b27a1dda8dff0dcb7a6
     {
       key: 'status',
       header: 'Status',
