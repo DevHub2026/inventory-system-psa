@@ -22,21 +22,29 @@ export function formatDate(dateString: string | null | undefined): string {
 
 /**
  * Format a date string to "09:45:18 AM" format (with seconds)
- * @param dateString - ISO date string (e.g., "2026-07-23T09:45:18")
+ * @param dateString - ISO date string (e.g., "2026-07-23T09:45:18" or "2026-07-23 09:45:18")
  * @returns Formatted time string
  */
 export function formatTime(dateString: string | null | undefined): string {
   if (!dateString) return 'N/A'
   
-  const date = new Date(dateString)
+  // Handle both ISO format and MySQL datetime format
+  const normalizedDate = dateString.replace(' ', 'T')
+  const date = new Date(normalizedDate)
   if (isNaN(date.getTime())) return 'Invalid Time'
   
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true
-  })
+  // Extract time components directly to avoid timezone conversion
+  const hours = date.getHours()
+  const minutes = date.getMinutes()
+  const seconds = date.getSeconds()
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  const hours12 = hours % 12 || 12
+  
+  const paddedHours = hours12.toString().padStart(2, '0')
+  const paddedMinutes = minutes.toString().padStart(2, '0')
+  const paddedSeconds = seconds.toString().padStart(2, '0')
+  
+  return `${paddedHours}:${paddedMinutes}:${paddedSeconds} ${ampm}`
 }
 
 /**

@@ -6,6 +6,7 @@ import type { Asset, Borrowing } from '@/types'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { assetStatusTone } from '@/utils/statusTone'
 import { notifyDataChanged } from '@/utils/dataRefresh'
+import { formatDate, formatTime } from '@/utils/dateFormat'
 
 interface AssetQrScannerProps {
   open: boolean
@@ -291,15 +292,23 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
               </div>
               <div>
                 <dt className="text-blue-700">Borrowed Date</dt>
-                <dd>{borrowing.borrow_date ?? borrowing.borrowed_at ?? 'Not available'}</dd>
+                <dd>{borrowing.borrowed_at ? formatDate(borrowing.borrowed_at) : 'Not available'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Borrowed Time</dt>
+                <dd>{borrowing.borrowed_at ? formatTime(borrowing.borrowed_at) : 'Not available'}</dd>
               </div>
               <div>
                 <dt className="text-blue-700">Due Date</dt>
-                <dd>{borrowing.due_date ?? borrowing.due_at ?? 'Not available'}</dd>
+                <dd>{borrowing.due_date ? formatDate(borrowing.due_date) : 'Not available'}</dd>
               </div>
               <div>
-                <dt className="text-blue-700">Returned At</dt>
-                <dd>{borrowing.returned_at ?? 'Not returned'}</dd>
+                <dt className="text-blue-700">Returned Date</dt>
+                <dd>{borrowing.returned_at ? formatDate(borrowing.returned_at) : 'Not returned'}</dd>
+              </div>
+              <div>
+                <dt className="text-blue-700">Returned Time</dt>
+                <dd>{borrowing.returned_at ? formatTime(borrowing.returned_at) : 'Not returned'}</dd>
               </div>
               <div>
                 <dt className="text-blue-700">Authorized By</dt>

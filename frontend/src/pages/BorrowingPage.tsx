@@ -6,6 +6,7 @@ import type { Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
+import { formatDate, formatTime } from '@/utils/dateFormat'
 
 export function BorrowingPage() {
   const [rows, setRows] = useState<Borrowing[]>([])
@@ -29,6 +30,15 @@ export function BorrowingPage() {
     void loadBorrowings()
   }, [])
 
+  // Real-time polling - refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadBorrowings()
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
   useEffect(() => onDataChanged((scope) => {
     if (affectsScope(scope, 'borrowings')) {
       void loadBorrowings()
@@ -49,15 +59,22 @@ export function BorrowingPage() {
   }
 
   const columns: Column<Borrowing>[] = [
+    { key: 'id', header: 'Borrowing ID', render: (row) => `#${row.id}` },
     { key: 'asset_name', header: 'Asset', render: (row) => row.asset_name },
+    { key: 'asset_number', header: 'Asset Identifier', render: (row) => row.asset_number ?? 'N/A' },
     { key: 'employee_name', header: 'Borrower', render: (row) => row.employee_name },
     {
       key: 'status',
       header: 'Status',
       render: (row) => <Badge tone={borrowingStatusTone(row.status)}>{borrowingStatusLabel(row.status)}</Badge>,
     },
-    { key: 'borrowed_at', header: 'Borrowed', render: (row) => row.borrowed_at },
-    { key: 'due_at', header: 'Due', render: (row) => row.due_at },
+    { key: 'borrowed_at', header: 'Borrowed Date', render: (row) => row.borrowed_at ? formatDate(row.borrowed_at) : 'N/A' },
+    { key: 'borrowed_time', header: 'Borrowed Time', render: (row) => row.borrowed_at ? formatTime(row.borrowed_at) : 'N/A' },
+    { key: 'due_date', header: 'Due Date', render: (row) => row.due_date ? formatDate(row.due_date) : 'N/A' },
+    { key: 'returned_at', header: 'Returned Date', render: (row) => row.returned_at ? formatDate(row.returned_at) : 'Not returned' },
+    { key: 'returned_time', header: 'Returned Time', render: (row) => row.returned_at ? formatTime(row.returned_at) : 'Not returned' },
+    { key: 'authorized_by_name', header: 'Authorized By', render: (row) => row.authorized_by_name ?? 'N/A' },
+    { key: 'authorized_at', header: 'Authorized At', render: (row) => row.authorized_at ? formatDate(row.authorized_at) : 'N/A' },
     {
       key: 'actions',
       header: 'Actions',
