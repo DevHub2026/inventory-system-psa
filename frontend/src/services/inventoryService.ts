@@ -1,6 +1,6 @@
 import { api, unwrapData, unwrapPaginated } from '@/services/api'
 
-import type { ApiResponse, InventoryItem, Paginated, StockMovement } from '@/types'
+import type { ApiResponse, ImportResult, InventoryItem, Paginated, StockMovement } from '@/types'
 
 
 
@@ -100,5 +100,79 @@ export const inventoryService = {
     })
 
     return unwrapPaginated(data)
+  },
+
+  async importExcel(file: File): Promise<ImportResult> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await api.post<ApiResponse<ImportResult>>('/inventory/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return unwrapData(data)
+  },
+
+  async exportExcel(filters: InventoryFilters = {}): Promise<{ path: string; url: string; filename: string }> {
+    const { data } = await api.get<ApiResponse<{ path: string; url: string; filename: string }>>('/inventory/export', {
+      params: filters,
+    })
+    return unwrapData(data)
+  },
+
+  getExportDownloadUrl(filters: InventoryFilters = {}): string {
+    const params = new URLSearchParams()
+    if (filters.search) params.set('search', filters.search)
+    if (filters.status) params.set('status', filters.status)
+    const qs = params.toString()
+    return `/api/v1/inventory/export/download${qs ? '?' + qs : ''}`
+  },
+
+  async downloadExport(filters: InventoryFilters = {}): Promise<Blob> {
+    const params = new URLSearchParams()
+    if (filters.search) params.set('search', filters.search)
+    if (filters.status) params.set('status', filters.status)
+    const response = await api.get('/inventory/export/download', {
+      params: filters,
+      responseType: 'blob',
+    })
+    return response.data
+  },
+
+  // Import Wizard methods
+  async importWizardUpload(file: File): Promise<any> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await api.post<ApiResponse<any>>('/inventory/import-wizard/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return unwrapData(data)
+  },
+
+  async importWizardValidateMapping(importId: number, columnMapping: any[]): Promise<any> {
+    const { data } = await api.post<ApiResponse<any>>('/inventory/import-wizard/validate-mapping', {
+      import_id: importId,
+      column_mapping: columnMapping,
+    })
+    return unwrapData(data)
+  },
+
+  async importWizardValidateData(importId: number, columnMapping: any[]): Promise<any> {
+    const { data } = await api.post<ApiResponse<any>>('/inventory/import-wizard/validate-data', {
+      import_id: importId,
+      column_mapping: columnMapping,
+    })
+    return unwrapData(data)
+  },
+
+  async importWizardExecute(importId: number, columnMapping: any[]): Promise<ImportResult> {
+    const { data } = await api.post<ApiResponse<ImportResult>>('/inventory/import-wizard/execute', {
+      import_id: importId,
+      column_mapping: columnMapping,
+    })
+    return unwrapData(data)
+  },
+
+  async importWizardHistory(): Promise<any[]> {
+    const { data } = await api.get<ApiResponse<any[]>>('/inventory/import-wizard/history')
+    return unwrapData(data)
   },
 }

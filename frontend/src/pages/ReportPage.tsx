@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Card, EmptyState, Spinner, Table, Alert, type Column } from '@/components/ui'
+import { Button, EmptyState, Spinner, Table, Alert, type Column } from '@/components/ui'
 import { reportService, type AssetReportItem, type BorrowingReportItem, type OverdueReportItem } from '@/services/reportService'
 import { borrowingStatusLabel, inventoryStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'

@@ -272,6 +272,91 @@ class BorrowingService
         }
     }
 
+    /**
+     * Employee scans an available asset QR code to create a borrow request.
+     * This does NOT borrow the asset - it creates a PENDING reservation
+     * that requires staff/admin approval.
+     *
+     * @return array{id: int, status: string, asset_id: int, asset_name: string, message: string}
+     */
+    public function requestBorrow(User $user, string $identifier): array
+    {
+        $identifier = trim($identifier);
+        if ($identifier === '') {
+            throw new \InvalidArgumentException('Identifier value is required.');
+        }
+
+        return DB::transaction(function () use ($user, $identifier) {
+            $assetIdentifier = $this->assetIdentifierService->findByValue($identifier);
+
+            if (! $assetIdentifier) {
+                throw new \InvalidArgumentException('Invalid or unrecognized asset QR code.');
+            }
+
+            $asset = Asset::query()->lockForUpdate()->findOrFail($assetIdentifier->asset_id);
+
+            // Check asset status
+            if ($asset->status === AssetStatus::BORROWED) {
+                throw new \InvalidArgumentException('This asset is currently borrowed and unavailable.');
+            }
+
+            if ($asset->status === AssetStatus::MAINTENANCE) {
+                throw new \InvalidArgumentException('This asset is currently under maintenance.');
+            }
+
+            if ($asset->status !== AssetStatus::AVAILABLE) {
+                throw new \InvalidArgumentException('This asset is not available for borrowing.');
+            }
+
+            // Check for existing active requests by this user for this asset
+            $existingPending = Reservation::query()
+                ->where('user_id', $user->id)
+                ->where('status', 'PENDING')
+                ->whereHas('assets', fn ($q) => $q->where('assets.id', $asset->id))
+                ->exists();
+
+            if ($existingPending) {
+                throw new \InvalidArgumentException('You already have a pending borrow request for this asset.');
+            }
+
+            // Check for active borrowing by this user for this asset
+            $existingBorrowing = Borrowing::query()
+                ->where('user_id', $user->id)
+                ->where('asset_id', $asset->id)
+                ->where('status', 'BORROWED')
+                ->exists();
+
+            if ($existingBorrowing) {
+                throw new \InvalidArgumentException('You are currently borrowing this asset.');
+            }
+
+            // Create a borrow request (PENDING reservation)
+            $reservation = Reservation::create([
+                'user_id' => $user->id,
+                'status' => 'PENDING',
+                'start_date' => now()->toDateString(),
+                'end_date' => now()->addDays(7)->toDateString(),
+                'remarks' => 'Auto-created via QR scan',
+            ]);
+
+            $reservation->assets()->attach($asset->id);
+            // Do NOT change asset status - it stays AVAILABLE until approved
+
+            $reservation->load(['user', 'assets']);
+
+            return [
+                'id' => $reservation->id,
+                'status' => 'PENDING',
+                'asset_id' => $asset->id,
+                'asset_name' => $asset->name,
+                'asset_number' => $asset->asset_number,
+                'employee_name' => $user->full_name ?: $user->email,
+                'created_at' => $reservation->created_at?->format('Y-m-d H:i:s'),
+                'message' => 'Borrow request submitted successfully. Asset: '.$asset->name.'. Status: Pending Approval.',
+            ];
+        });
+    }
+
     private function canCompleteReturn(User $user, Borrowing $borrowing): bool
     {
         return $borrowing->user_id === $user->id || $this->canCompleteTransactions($user);

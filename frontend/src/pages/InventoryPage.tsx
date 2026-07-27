@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Download, Upload } from 'lucide-react'
 import {
   Alert, Badge, Button, Card, Dropdown, EmptyState, Input,
   Modal, Pagination, SearchBar, Spinner, Table, type Column,
@@ -8,8 +9,7 @@ import { inventoryService, type CreateInventoryItemPayload, type UpdateInventory
 import type { InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
-
-const LABEL_CLS = 'mb-1.5 block text-[13px] font-medium text-[#1F2937]'
+import { InventoryImportWizard } from '@/components/InventoryImportWizard'
 
 function movementTypeLabel(type: string) {
   return ({ stock_in: 'Stock Added', stock_out: 'Stock Removed', adjustment: 'Quantity Corrected' })[type] ?? type
@@ -39,6 +39,9 @@ export function InventoryPage() {
   const [historyItem,   setHistoryItem]   = useState<InventoryItem | null>(null)
   const [historyRows,   setHistoryRows]   = useState<StockMovement[]>([])
   const [historyLoading,setHistoryLoading]= useState(false)
+
+  // Import Wizard state
+  const [wizardOpen, setWizardOpen] = useState(false)
 
   const [formData, setFormData] = useState<CreateInventoryItemPayload>({
     name: '', sku: '', quantity: 0, unit: '', reorder_level: 0, track_as_asset: true,
@@ -153,7 +156,37 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Inventory" subtitle="Manage consumable items and available quantities." actions={<Button onClick={handleCreate}>Add Item</Button>} />
+      <PageHeader
+        title="Inventory"
+        subtitle="Manage consumable items and available quantities."
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setWizardOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Import
+            </Button>
+            <Button variant="secondary" onClick={async () => {
+              try {
+                const blob = await inventoryService.downloadExport({ search: search || undefined, status: statusFilter || undefined })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `inventory-export-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.xlsx`
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                URL.revokeObjectURL(url)
+              } catch (e: unknown) {
+                setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Export failed.' })
+              }
+            }}>
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+            <Button onClick={handleCreate}>Add Item</Button>
+          </div>
+        }
+      />
 
       {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
@@ -332,6 +365,13 @@ export function InventoryPage() {
           )
         }
       </Modal>
+
+      {/* ── Import Wizard ── */}
+      <InventoryImportWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onCompleted={() => { void loadInventory(1); setMessage({ type: 'success', text: 'Inventory imported successfully.' }) }}
+      />
     </div>
   )
 }

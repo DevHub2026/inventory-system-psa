@@ -1,6 +1,6 @@
 import { api, unwrapData } from '@/services/api'
 
-import type { ApiResponse, Asset, AssetStatus, Borrowing, Paginated } from '@/types'
+import type { ApiResponse, Asset, AssetStatus, Borrowing, BorrowRequestResult, Paginated } from '@/types'
 
 
 
@@ -135,6 +135,11 @@ export const assetService = {
     await api.post(`/assets/${assetId}/return`, {
       notes,
     })
+  },
+
+  async requestBorrow(value: string): Promise<BorrowRequestResult> {
+    const { data } = await api.post<ApiResponse<BorrowRequestResult>>('/assets/request-borrow', { value })
+    return unwrapData(data)
   },
 }
 
