@@ -4,7 +4,6 @@ namespace App\Modules\Import\Handlers;
 
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
-use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
 use App\Modules\Auth\Services\UserImportService;
@@ -40,7 +39,6 @@ class UserImportHandler implements ImportHandlerInterface
             ['key' => 'last_name', 'label' => 'Last Name', 'required' => true, 'type' => 'text'],
             ['key' => 'id_number', 'label' => 'ID Number', 'required' => true, 'type' => 'text'],
             ['key' => 'email', 'label' => 'Email', 'required' => true, 'type' => 'email'],
-            ['key' => 'department', 'label' => 'Department', 'required' => false, 'type' => 'reference', 'reference_model' => Department::class, 'reference_field' => 'name'],
             ['key' => 'role', 'label' => 'Role', 'required' => false, 'type' => 'reference', 'reference_model' => Role::class, 'reference_field' => 'name'],
         ];
     }
@@ -58,7 +56,6 @@ class UserImportHandler implements ImportHandlerInterface
             'last_name' => ['lastname', 'surname', 'familyname', 'last'],
             'id_number' => ['idnumber', 'employeeid', 'employeeidnumber', 'idno', 'employee_number', 'employeenumber'],
             'email' => ['email', 'emailaddress', 'mail'],
-            'department' => ['department', 'division', 'office'],
             'role' => ['role', 'userrole', 'accesslevel'],
         ];
     }
@@ -71,7 +68,6 @@ class UserImportHandler implements ImportHandlerInterface
             'last_name' => $this->nullableString($mappedData['last_name'] ?? null),
             'id_number' => $this->nullableString($mappedData['id_number'] ?? null),
             'email' => strtolower((string) $this->nullableString($mappedData['email'] ?? null)),
-            'department' => $this->nullableString($mappedData['department'] ?? null),
             'role' => $this->nullableString($mappedData['role'] ?? null) ?? UserRole::EMPLOYEE->value,
         ];
 
@@ -81,7 +77,6 @@ class UserImportHandler implements ImportHandlerInterface
             'last_name' => ['required', 'string', 'max:255'],
             'id_number' => ['required', 'string', 'regex:/^\d{4}-\d{4}$/'],
             'email' => ['required', 'string', 'email', 'max:255'],
-            'department' => ['nullable', 'string', 'max:255'],
             'role' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -116,14 +111,6 @@ class UserImportHandler implements ImportHandlerInterface
             $errors[] = "Row {$rowNumber}: Role '{$data['role']}' was not found.";
         }
 
-        $departmentId = null;
-        if ($data['department'] !== null) {
-            $departmentId = Department::query()->whereRaw('LOWER(name) = ?', [strtolower($data['department'])])->value('id');
-            if ($departmentId === null) {
-                $errors[] = "Row {$rowNumber}: Department '{$data['department']}' was not found.";
-            }
-        }
-
         $context['seen_emails'][$data['email']] = true;
         if ($data['id_number'] !== null) {
             $context['seen_id_numbers'][$data['id_number']] = true;
@@ -139,7 +126,7 @@ class UserImportHandler implements ImportHandlerInterface
                 'middle_name' => $data['middle_name'],
                 'last_name' => $data['last_name'],
                 'email' => $data['email'],
-                'department_id' => $departmentId,
+                'department_id' => null,
                 'role_id' => $role?->id,
                 'role_name' => $role?->name,
             ],

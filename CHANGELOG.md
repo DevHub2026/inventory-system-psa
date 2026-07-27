@@ -2,6 +2,75 @@
 
 ## 2026-07-27
 
+### Department-Free User Import Default Password Update
+
+### Files Modified
+
+- `backend/app/Modules/Auth/Services/UserImportService.php`
+- `backend/app/Modules/Import/Handlers/UserImportHandler.php`
+- `backend/tests/Feature/Auth/UserManagementTest.php`
+- `frontend/src/pages/UsersPage.tsx`
+- `docs/Business/02_Functional_Requirements.md`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Employee import accepted department columns but treated unknown department values as row failures even though `users.department_id` is nullable, creating unnecessary import failures.
+
+### Summary
+
+- Removed department resolution and department validation from legacy employee import.
+- Removed department from reusable system-wide user import field mapping.
+- Updated imported-user default password to `psagens9500`.
+- Updated frontend templates and import instructions so Department is no longer included.
+- Added endpoint tests for department-free imports, ignored unknown department columns, secure hashed default passwords, default role assignment, duplicate email handling, and invalid role errors.
+
+### Impact
+
+- Newly imported users are created without a department unless later edited by an admin.
+- Existing users, passwords, roles, and department records are not modified.
+- Imported users keep the existing role behavior: provided valid role if present, otherwise the default Employee role.
+
+## 2026-07-27
+
+### User Role Visibility and Assignment
+
+### Files Modified
+
+- `backend/app/Modules/Auth/Controllers/AuthController.php`
+- `backend/app/Modules/Auth/Controllers/UserController.php`
+- `backend/app/Modules/Auth/Resources/UserResource.php`
+- `frontend/src/components/RoleBadges.tsx`
+- `frontend/src/components/ui/Badge.tsx`
+- `frontend/src/components/ui/index.ts`
+- `frontend/src/pages/UsersPage.tsx`
+- `frontend/src/pages/SettingsPage.tsx`
+- `frontend/src/services/userService.ts`
+- `frontend/src/services/roleService.ts`
+- `frontend/src/types/index.ts`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+Administrators could not immediately identify assigned user roles from the Users list, and the user form did not expose the existing role assignment payload even though the backend supported it.
+
+### Summary
+
+- Loaded real `roles` and `department` relationships in user list, profile, login, and profile update responses.
+- Added reusable role badges with distinct colors, uppercase labels, and `+N more` overflow behavior.
+- Added Roles and Department columns to the Users table.
+- Added role assignment checkboxes to the Add/Edit User modal using the existing Roles API and existing `roles: number[]` payload.
+- Displayed status, employee ID, department, and role badges in Profile Settings.
+
+### Impact
+
+- Admin users can quickly identify and manage each user's assigned roles without guessing.
+- Role visibility is backed by the roles database and stays compatible with custom/new roles.
+
+## 2026-07-27
+
 ### System-Wide Import Framework
 
 ### Files Modified

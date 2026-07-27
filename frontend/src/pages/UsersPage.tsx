@@ -109,8 +109,8 @@ export function UsersPage() {
   }
 
   const downloadTemplate = (type: 'csv' | 'json') => {
-    const headers = ['first_name', 'middle_name', 'last_name', 'id_number', 'email', 'role', 'department']
-    const sample  = { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '1234-5678', email: 'juan.marquez@example.com', role: 'Employee', department: 'Administration' }
+    const headers = ['first_name', 'middle_name', 'last_name', 'id_number', 'email', 'role']
+    const sample  = { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '1234-5678', email: 'juan.marquez@example.com', role: 'Employee' }
     const content = type === 'csv'
       ? `${headers.join(',')}\n${headers.map((h) => sample[h as keyof typeof sample]).join(',')}\n`
       : `${JSON.stringify([sample], null, 2)}\n`
@@ -237,7 +237,7 @@ export function UsersPage() {
       >
         <div className="space-y-4">
           <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4 text-[14px] text-[#1E40AF]">
-            Upload employee records as CSV, JSON, or XLSX. Usernames are generated as lowercase last name + ID number. Default password is <strong>psasarangani2026</strong>.
+            Upload employee records as CSV, JSON, or XLSX. Required columns are <strong>first_name</strong>, <strong>last_name</strong>, <strong>id_number</strong>, and <strong>email</strong>. Optional columns are <strong>middle_name</strong> and <strong>role</strong>. If role is empty, the existing default role is Employee. Department is not required for imports. Imported users receive the default password <strong>psagens9500</strong>.
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" onClick={() => downloadTemplate('csv')}>CSV Template</Button>

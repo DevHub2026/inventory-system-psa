@@ -78,8 +78,9 @@ Manage user accounts and access permissions.
 - View account status
 - Bulk import employee accounts from CSV, JSON, or XLSX files
 - Generate employee login usernames from last name and PSA ID number
+- Import employee accounts without requiring department or department ID values
 - Use the reusable import wizard flow for user import preview, mapping, validation, confirmation, and result reporting
-- Assign imported employees the configured temporary initial password
+- Assign imported employees the configured temporary initial password `psagens9500`
 - Report imported, skipped, and failed rows during employee import
 
 ---

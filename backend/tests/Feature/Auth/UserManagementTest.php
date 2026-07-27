@@ -2,8 +2,13 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Enums\UserRole;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class UserManagementTest extends TestCase
@@ -194,5 +199,106 @@ class UserManagementTest extends TestCase
 
         $user = User::where('email', 'john@example.com')->first();
         $this->assertTrue($user->roles()->where('id', $role->id)->exists());
+    }
+
+    public function test_employee_import_accepts_file_without_department_and_hashes_default_password(): void
+    {
+        $admin = User::factory()->create();
+        $employeeRole = Role::query()->firstOrCreate(
+            ['name' => UserRole::EMPLOYEE->value],
+            ['description' => UserRole::EMPLOYEE->name],
+        );
+        $existingPassword = $admin->password;
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->post('/api/v1/users/import', [
+                'file' => $this->csvUpload(
+                    "first_name,middle_name,last_name,id_number,email,role\n".
+                    "Maria,,Santos,1234-5678,maria.santos@example.com,Employee\n",
+                ),
+            ], ['Accept' => 'application/json']);
+
+        $response->assertOk()
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'imported' => 1,
+                    'failed' => 0,
+                    'initial_password' => 'psagens9500',
+                ],
+            ]);
+
+        $importedUser = User::query()->where('email', 'maria.santos@example.com')->firstOrFail();
+
+        $this->assertNull($importedUser->department_id);
+        $this->assertNotSame('psagens9500', $importedUser->password);
+        $this->assertTrue(Hash::check('psagens9500', $importedUser->password));
+        $this->assertTrue($importedUser->roles()->whereKey($employeeRole->id)->exists());
+        $this->assertSame($existingPassword, $admin->fresh()->password);
+
+        $this->assertTrue(Auth::guard('web')->attempt([
+            'email' => 'maria.santos@example.com',
+            'password' => 'psagens9500',
+        ]));
+    }
+
+    public function test_employee_import_ignores_unknown_department_column(): void
+    {
+        $admin = User::factory()->create();
+        Role::query()->firstOrCreate(
+            ['name' => UserRole::EMPLOYEE->value],
+            ['description' => UserRole::EMPLOYEE->name],
+        );
+
+        $response = $this->withToken($admin->createToken('auth')->plainTextToken)
+            ->post('/api/v1/users/import', [
+                'file' => $this->csvUpload(
+                    "first_name,last_name,id_number,email,role,department\n".
+                    "Pedro,Reyes,1111-2222,pedro.reyes@example.com,Employee,Unknown Department\n",
+                ),
+            ], ['Accept' => 'application/json']);
+
+        $response->assertOk()
+            ->assertJsonPath('data.imported', 1)
+            ->assertJsonPath('data.failed', 0);
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'pedro.reyes@example.com',
+            'department_id' => null,
+        ]);
+    }
+
+    public function test_employee_import_still_reports_duplicate_email_and_invalid_role(): void
+    {
+        $admin = User::factory()->create();
+        User::factory()->create(['email' => 'duplicate@example.com']);
+
+        $response = $this->withToken($admin->createToken('auth')->plainTextToken)
+            ->post('/api/v1/users/import', [
+                'file' => $this->csvUpload(
+                    "first_name,last_name,id_number,email,role\n".
+                    "Juan,Cruz,2222-3333,duplicate@example.com,Employee\n".
+                    "Ana,Dela Cruz,3333-4444,ana.delacruz@example.com,Not A Role\n",
+                ),
+            ], ['Accept' => 'application/json']);
+
+        $response->assertOk()
+            ->assertJsonPath('data.imported', 0)
+            ->assertJsonPath('data.skipped', 1)
+            ->assertJsonPath('data.failed', 1);
+
+        $reasons = collect($response->json('data.rows'))->pluck('reason')->implode(' ');
+
+        $this->assertStringContainsString('Email already exists.', $reasons);
+        $this->assertStringContainsString('Role was not found.', $reasons);
+    }
+
+    private function csvUpload(string $contents): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'psa-user-import-');
+        file_put_contents($path, $contents);
+
+        return new UploadedFile($path, 'employees.csv', 'text/csv', null, true);
     }
 }
