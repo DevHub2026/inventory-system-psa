@@ -5,7 +5,9 @@ namespace App\Modules\Auth\Services;
 use App\Models\Role;
 use App\Models\User;
 use App\Modules\Auth\Repositories\Contracts\UserRepositoryInterface;
+use App\Modules\Auth\Services\UserImportService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class UserService
 {
@@ -35,6 +37,22 @@ class UserService
         }
 
         return $user->fresh();
+    }
+
+    public function updatePassword(User $user, string $newPassword): void
+    {
+        $user->update([
+            'password' => Hash::make($newPassword),
+            'updated_by' => Auth::id(),
+        ]);
+    }
+
+    public function resetPassword(User $user): void
+    {
+        $user->update([
+            'password' => Hash::make(UserImportService::INITIAL_PASSWORD),
+            'updated_by' => Auth::id(),
+        ]);
     }
 
     public function delete(User $user): void

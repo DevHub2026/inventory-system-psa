@@ -66,6 +66,7 @@ class UserManagementTest extends TestCase
         $response = $this->withToken($token)
             ->postJson('/api/v1/users', [
                 'employee_number' => 'EMP001',
+                'username' => 'john.doe',
                 'first_name' => 'John',
                 'last_name' => 'Doe',
                 'email' => 'john@example.com',
@@ -188,6 +189,7 @@ class UserManagementTest extends TestCase
         $response = $this->withToken($token)
             ->postJson('/api/v1/users', [
                 'employee_number' => 'EMP001',
+                'username' => 'john.doe',
                 'first_name' => 'John',
                 'last_name' => 'Doe',
                 'email' => 'john@example.com',

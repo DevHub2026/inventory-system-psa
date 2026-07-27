@@ -2,6 +2,34 @@
 
 ## 2026-07-27
 
+### Users Page Lookup Crash Fix
+
+### Files Modified
+
+- `frontend/src/pages/UsersPage.tsx`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+The Users page attempted to load a non-existent `/api/v1/departments` endpoint and assumed `/api/v1/offices` returned a raw array. The actual offices API returns a wrapped paginated response, causing `offices.map is not a function` and a blank page.
+
+### Summary
+
+- Removed the invalid departments API request from the Users page.
+- Switched office lookup loading to the existing setup service, which normalizes wrapped `data.data` responses.
+- Guarded office option rendering so `.map()` is only called on arrays.
+- Added non-fatal lookup warning handling so office lookup failures do not blank the Users page.
+- Left Department as a disabled selector because no current departments API route exists.
+
+### Impact
+
+- Users page no longer triggers a `/departments` 404.
+- Edit User modal can load office options from the existing `/api/v1/offices` route.
+- Users page remains usable even if lookup options fail to load.
+
+## 2026-07-27
+
 ### Department-Free User Import Default Password Update
 
 ### Files Modified

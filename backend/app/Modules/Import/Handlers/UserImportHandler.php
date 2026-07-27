@@ -40,6 +40,7 @@ class UserImportHandler implements ImportHandlerInterface
             ['key' => 'id_number', 'label' => 'ID Number', 'required' => true, 'type' => 'text'],
             ['key' => 'email', 'label' => 'Email', 'required' => true, 'type' => 'email'],
             ['key' => 'role', 'label' => 'Role', 'required' => false, 'type' => 'reference', 'reference_model' => Role::class, 'reference_field' => 'name'],
+            ['key' => 'username', 'label' => 'Username', 'required' => false, 'type' => 'text'],
         ];
     }
 
@@ -57,6 +58,7 @@ class UserImportHandler implements ImportHandlerInterface
             'id_number' => ['idnumber', 'employeeid', 'employeeidnumber', 'idno', 'employee_number', 'employeenumber'],
             'email' => ['email', 'emailaddress', 'mail'],
             'role' => ['role', 'userrole', 'accesslevel'],
+            'username' => ['username', 'login', 'user_name'],
         ];
     }
 
@@ -68,6 +70,7 @@ class UserImportHandler implements ImportHandlerInterface
             'last_name' => $this->nullableString($mappedData['last_name'] ?? null),
             'id_number' => $this->nullableString($mappedData['id_number'] ?? null),
             'email' => strtolower((string) $this->nullableString($mappedData['email'] ?? null)),
+            'username' => $this->nullableString($mappedData['username'] ?? null),
             'role' => $this->nullableString($mappedData['role'] ?? null) ?? UserRole::EMPLOYEE->value,
         ];
 
@@ -77,12 +80,26 @@ class UserImportHandler implements ImportHandlerInterface
             'last_name' => ['required', 'string', 'max:255'],
             'id_number' => ['required', 'string', 'regex:/^\d{4}-\d{4}$/'],
             'email' => ['required', 'string', 'email', 'max:255'],
+            'username' => ['nullable', 'string', 'max:255'],
             'role' => ['nullable', 'string', 'max:255'],
         ]);
 
         $errors = array_map(fn (string $error) => "Row {$rowNumber}: {$error}", $validator->errors()->all());
         $warnings = [];
-        $username = $this->generateUsername((string) $data['last_name'], (string) $data['id_number']);
+
+        // Use provided username or generate one
+        $username = $data['username'] ?? '';
+        if ($username === '') {
+            $username = $this->generateUsername((string) $data['last_name'], (string) $data['id_number']);
+        }
+
+        // Collision-safe username: append number if taken
+        $originalUsername = $username;
+        $counter = 0;
+        while (User::query()->where('username', $username)->exists()) {
+            $counter++;
+            $username = $originalUsername . $counter;
+        }
 
         $context['seen_emails'] ??= [];
         $context['seen_id_numbers'] ??= [];
@@ -96,14 +113,12 @@ class UserImportHandler implements ImportHandlerInterface
 
         if ($data['id_number'] !== null && isset($context['seen_id_numbers'][$data['id_number']])) {
             $errors[] = "Row {$rowNumber}: ID number '{$data['id_number']}' is duplicated in the import file.";
-        } elseif ($data['id_number'] !== null && User::query()->where('employee_number', 'like', '%'.$data['id_number'])->exists()) {
+        } elseif ($data['id_number'] !== null && User::query()->where('employee_number', $data['id_number'])->exists()) {
             $errors[] = "Row {$rowNumber}: ID number '{$data['id_number']}' already exists.";
         }
 
-        if ($username !== '' && isset($context['seen_usernames'][$username])) {
-            $errors[] = "Row {$rowNumber}: Generated username '{$username}' is duplicated in the import file.";
-        } elseif ($username !== '' && User::query()->where('employee_number', $username)->exists()) {
-            $errors[] = "Row {$rowNumber}: Generated username '{$username}' already exists.";
+        if (isset($context['seen_usernames'][$username])) {
+            $errors[] = "Row {$rowNumber}: Username '{$username}' is duplicated in the import file.";
         }
 
         $role = Role::query()->whereRaw('LOWER(name) = ?', [strtolower((string) $data['role'])])->first();
@@ -115,18 +130,16 @@ class UserImportHandler implements ImportHandlerInterface
         if ($data['id_number'] !== null) {
             $context['seen_id_numbers'][$data['id_number']] = true;
         }
-        if ($username !== '') {
-            $context['seen_usernames'][$username] = true;
-        }
+        $context['seen_usernames'][$username] = true;
 
         return [
             'data' => [
-                'employee_number' => $username,
+                'employee_number' => $data['id_number'],
+                'username' => $username,
                 'first_name' => $data['first_name'],
                 'middle_name' => $data['middle_name'],
                 'last_name' => $data['last_name'],
                 'email' => $data['email'],
-                'department_id' => null,
                 'role_id' => $role?->id,
                 'role_name' => $role?->name,
             ],
@@ -144,7 +157,7 @@ class UserImportHandler implements ImportHandlerInterface
 
             $created = User::query()->create([
                 ...$validatedData,
-                'password' => UserImportService::INITIAL_PASSWORD,
+                'password' => bcrypt(UserImportService::INITIAL_PASSWORD),
                 'status' => UserStatus::ACTIVE->value,
             ]);
 
@@ -168,6 +181,6 @@ class UserImportHandler implements ImportHandlerInterface
     {
         $normalizedLastName = preg_replace('/\s+/', '', strtolower(trim($lastName))) ?: '';
 
-        return $normalizedLastName.$idNumber;
+        return $normalizedLastName . $idNumber;
     }
 }

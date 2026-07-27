@@ -43,7 +43,18 @@ class UserImportService
 
             $email = strtolower(trim((string) $normalizedRow['email']));
             $idNumber = trim((string) $normalizedRow['id_number']);
-            $username = $this->generateUsername((string) $normalizedRow['last_name'], $idNumber);
+            $providedUsername = $this->nullableString($normalizedRow['username'] ?? null);
+
+            // Use provided username or generate one
+            $username = $providedUsername ?? $this->generateUsername((string) $normalizedRow['last_name'], $idNumber);
+
+            // Collision-safe username: append number if taken
+            $originalUsername = $username;
+            $counter = 0;
+            while (isset($seenUsernames[$username]) || User::query()->where('username', $username)->exists()) {
+                $counter++;
+                $username = $originalUsername . $counter;
+            }
 
             if (isset($seenEmails[$email])) {
                 $skipped++;
@@ -57,25 +68,13 @@ class UserImportService
                 continue;
             }
 
-            if (isset($seenUsernames[$username])) {
-                $skipped++;
-                $results[] = $this->result($rowNumber, 'skipped', $normalizedRow, 'Duplicate generated username within import file.', $username);
-                continue;
-            }
-
             if (User::query()->where('email', $email)->exists()) {
                 $skipped++;
                 $results[] = $this->result($rowNumber, 'skipped', $normalizedRow, 'Email already exists.', $username);
                 continue;
             }
 
-            if (User::query()->where('employee_number', $username)->exists()) {
-                $skipped++;
-                $results[] = $this->result($rowNumber, 'skipped', $normalizedRow, 'Generated username already exists.', $username);
-                continue;
-            }
-
-            if (User::query()->where('employee_number', 'like', '%'.$idNumber)->exists()) {
+            if (User::query()->where('employee_number', $idNumber)->exists()) {
                 $skipped++;
                 $results[] = $this->result($rowNumber, 'skipped', $normalizedRow, 'ID number already exists.', $username);
                 continue;
@@ -88,15 +87,15 @@ class UserImportService
                 continue;
             }
 
-            DB::transaction(function () use ($normalizedRow, $email, $username, $role): void {
+            DB::transaction(function () use ($normalizedRow, $email, $idNumber, $username, $role): void {
                 $user = User::query()->create([
-                    'employee_number' => $username,
+                    'employee_number' => $idNumber,
+                    'username' => $username,
                     'first_name' => trim((string) $normalizedRow['first_name']),
                     'middle_name' => $this->nullableString($normalizedRow['middle_name'] ?? null),
                     'last_name' => trim((string) $normalizedRow['last_name']),
                     'email' => $email,
-                    'password' => self::INITIAL_PASSWORD,
-                    'department_id' => null,
+                    'password' => \Illuminate\Support\Facades\Hash::make(self::INITIAL_PASSWORD),
                     'status' => UserStatus::ACTIVE->value,
                 ]);
 
@@ -116,7 +115,7 @@ class UserImportService
             'skipped' => $skipped,
             'failed' => $failed,
             'initial_password' => self::INITIAL_PASSWORD,
-            'username_rule' => 'lowercase last name without spaces + ID number',
+            'username_rule' => 'Generated from last name + ID number, or provided in import file',
             'rows' => $results,
         ];
     }
@@ -329,7 +328,7 @@ class UserImportService
     {
         $normalizedLastName = preg_replace('/\s+/', '', strtolower(trim($lastName))) ?: '';
 
-        return $normalizedLastName.$idNumber;
+        return $normalizedLastName . $idNumber;
     }
 
     /**

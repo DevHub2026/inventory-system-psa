@@ -9,18 +9,29 @@ use Illuminate\Support\Facades\Password;
 
 class AuthService
 {
-    public function login(string $email, string $password): User
+    public function login(string $login, string $password): User
     {
-        $field = filter_var($email, FILTER_VALIDATE_EMAIL) ? 'email' : 'employee_number';
+        // Support login via email, username, or employee_number
+        $field = match (true) {
+            filter_var($login, FILTER_VALIDATE_EMAIL) !== false => 'email',
+            default => 'employee_number',
+        };
 
-        if (! Auth::attempt([$field => $email, 'password' => $password])) {
-            throw new AuthenticationException('Invalid credentials');
+        // First attempt with the detected field (email or employee_number)
+        if (Auth::attempt([$field => $login, 'password' => $password])) {
+            /** @var User $user */
+            return Auth::user();
         }
 
-        /** @var User $user */
-        $user = Auth::user();
+        // If employee_number login fails, try username field as fallback
+        if ($field === 'employee_number') {
+            if (Auth::attempt(['username' => $login, 'password' => $password])) {
+                /** @var User $user */
+                return Auth::user();
+            }
+        }
 
-        return $user;
+        throw new AuthenticationException('Invalid credentials');
     }
 
     public function logout(?User $user = null, bool $revokeToken = false): void

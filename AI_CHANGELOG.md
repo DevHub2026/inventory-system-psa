@@ -18,6 +18,47 @@ Always append new entries.
 
 ---
 
+## 2026-07-27 00:05
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Fixed the Users page blank-screen crash caused by invalid departments lookup and unsafe offices response handling.
+
+---
+
+### Files Modified
+
+- frontend/src/pages/UsersPage.tsx
+- CHANGELOG.md
+- AI_CHANGELOG.md
+
+---
+
+### Summary
+
+- Confirmed backend exposes `/api/v1/offices` but not `/api/v1/departments`.
+- Removed the invalid departments API request.
+- Reused `setupService.list('offices')` to normalize the wrapped offices response.
+- Guarded office option rendering with an array check.
+- Added non-blocking lookup warning state so lookup failures do not crash the Users page.
+
+---
+
+### Validation
+
+- `php artisan route:list | Select-String -Pattern "departments|offices"` confirmed offices routes exist and no departments route is exposed.
+- `npx.cmd eslint src/pages/UsersPage.tsx` passed.
+- `npm.cmd run build` passed with existing CSS selector and chunk-size warnings.
+
+---
+
 ## 2026-07-27 00:04
 
 ### AI

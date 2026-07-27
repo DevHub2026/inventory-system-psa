@@ -4,6 +4,7 @@ namespace App\Modules\Auth\Controllers;
 
 use App\Models\User;
 use App\Modules\Auth\Requests\ImportUsersRequest;
+use App\Modules\Auth\Requests\StoreUserPasswordRequest;
 use App\Modules\Auth\Requests\StoreUserRequest;
 use App\Modules\Auth\Requests\UpdateUserRequest;
 use App\Modules\Auth\Resources\UserResource;
@@ -30,7 +31,8 @@ class UserController extends Controller
                 $q->where('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('employee_number', 'like', "%{$search}%");
+                    ->orWhere('employee_number', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%");
             });
         }
 
@@ -40,6 +42,10 @@ class UserController extends Controller
 
         if ($request->has('department_id')) {
             $query->where('department_id', $request->input('department_id'));
+        }
+
+        if ($request->has('office_id')) {
+            $query->where('office_id', $request->input('office_id'));
         }
 
         $users = $query->paginate($request->input('per_page', 15));
@@ -104,6 +110,28 @@ class UserController extends Controller
             'success' => true,
             'message' => 'User updated successfully.',
             'data' => new UserResource($user),
+        ]);
+    }
+
+    public function updatePassword(StoreUserPasswordRequest $request, User $user): JsonResponse
+    {
+        $this->userService->updatePassword($user, $request->validated('password'));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User password updated successfully.',
+            'data' => null,
+        ]);
+    }
+
+    public function resetPassword(User $user): JsonResponse
+    {
+        $this->userService->resetPassword($user);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User password reset to default successfully.',
+            'data' => null,
         ]);
     }
 

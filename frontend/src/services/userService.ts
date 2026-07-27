@@ -16,26 +16,35 @@ export interface UserFilters {
 
 export interface CreateUserPayload {
   employee_number: string
+  username: string
   first_name: string
   middle_name?: string | null
   last_name: string
   email: string
   password: string
   department_id?: number | null
+  office_id?: number | null
   status?: string
   roles?: number[]
 }
 
 export interface UpdateUserPayload {
   employee_number?: string
+  username?: string
   first_name?: string
   middle_name?: string | null
   last_name?: string
   email?: string
   password?: string
   department_id?: number | null
+  office_id?: number | null
   status?: string
   roles?: number[]
+}
+
+export interface ChangePasswordPayload {
+  password: string
+  password_confirmation: string
 }
 
 export interface ImportUserResultRow {
@@ -126,6 +135,22 @@ export const userService = {
   async updateUser(id: number, payload: UpdateUserPayload): Promise<User> {
     const { data } = await api.put<ApiResponse<User>>(`/users/${id}`, payload)
     return unwrapData(data)
+  },
+
+  /**
+   * Change a user's password (admin)
+   * Uses Eman's User API: PUT /api/v1/users/{user}/password
+   */
+  async updateUserPassword(userId: number, payload: ChangePasswordPayload): Promise<void> {
+    await api.put(`/users/${userId}/password`, payload)
+  },
+
+  /**
+   * Reset a user's password to default (admin)
+   * Uses Eman's User API: POST /api/v1/users/{user}/reset-password
+   */
+  async resetUserPassword(userId: number): Promise<void> {
+    await api.post(`/users/${userId}/reset-password`)
   },
 
   /**

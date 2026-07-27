@@ -21,12 +21,14 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'employee_number' => ['required', 'string', 'unique:users,employee_number'],
+            'username' => ['required', 'string', 'max:255', 'unique:users,username'],
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', Password::min(8)->letters()->numbers()],
             'department_id' => ['nullable', 'exists:departments,id'],
+            'office_id' => ['nullable', 'exists:offices,id'],
             'status' => ['sometimes', 'string', Rule::in(UserStatus::values())],
             'roles' => ['sometimes', 'array'],
             'roles.*' => ['exists:roles,id'],

@@ -1,7 +1,8 @@
-﻿import { useCallback, useEffect, useState } from 'react'
+﻿﻿import { useCallback, useEffect, useState } from 'react'
 import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination } from '@/components/ui'
-import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload, type ImportUsersResult } from '@/services/userService'
+import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload, type ImportUsersResult, type ChangePasswordPayload } from '@/services/userService'
 import { roleService, type Role } from '@/services/roleService'
+import { setupService, type SetupRecord } from '@/services/setupService'
 import { displayName } from '@/types'
 import type { Column } from '@/components/ui'
 import type { User } from '@/types'
@@ -22,10 +23,19 @@ export function UsersPage() {
   const [filters,         setFilters]         = useState<UserFilters>({ per_page: 15, page: 1 })
   const [pagination, setPagination] = useState({ current_page: 1, per_page: 15, total: 0, last_page: 1 })
   const [roles, setRoles] = useState<Role[]>([])
+  const [offices, setOffices] = useState<SetupRecord[]>([])
+  const [lookupWarning, setLookupWarning] = useState<string | null>(null)
+
+  // Password change modal state
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+  const [passwordUser, setPasswordUser] = useState<User | null>(null)
+  const [passwordData, setPasswordData] = useState({ password: '', password_confirmation: '' })
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [resetSaving, setResetSaving] = useState(false)
 
   const [formData, setFormData] = useState<CreateUserPayload>({
-    employee_number: '', first_name: '', middle_name: '', last_name: '',
-    email: '', password: '', department_id: null, status: 'active', roles: [],
+    employee_number: '', username: '', first_name: '', middle_name: '', last_name: '',
+    email: '', password: '', department_id: null, office_id: null, status: 'active', roles: [],
   })
 
   const loadUsers = useCallback(async () => {
@@ -47,29 +57,53 @@ export function UsersPage() {
     }
   }, [])
 
+  const loadOffices = useCallback(async () => {
+    try {
+      const loadedOffices = await setupService.list('offices')
+      setOffices(Array.isArray(loadedOffices) ? loadedOffices : [])
+      setLookupWarning(null)
+    } catch (e: unknown) {
+      setOffices([])
+      setLookupWarning(e instanceof Error ? e.message : 'Office options could not be loaded.')
+    }
+  }, [])
+
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadUsers()
-    }, 0)
+    const timeoutId = window.setTimeout(() => { void loadUsers() }, 0)
     return () => window.clearTimeout(timeoutId)
   }, [loadUsers])
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadRoles()
-    }, 0)
+    const timeoutId = window.setTimeout(() => { void loadRoles() }, 0)
     return () => window.clearTimeout(timeoutId)
   }, [loadRoles])
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => { void loadOffices() }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [loadOffices])
+
   const handleCreate = () => {
     setEditingUser(null)
-    setFormData({ employee_number: '', first_name: '', middle_name: '', last_name: '', email: '', password: '', department_id: null, status: 'active', roles: [] })
+    setFormData({ employee_number: '', username: '', first_name: '', middle_name: '', last_name: '', email: '', password: '', department_id: null, office_id: null, status: 'active', roles: [] })
     setModalOpen(true)
   }
 
   const handleEdit = (u: User) => {
     setEditingUser(u)
-    setFormData({ employee_number: u.employee_number || '', first_name: u.first_name || '', middle_name: u.middle_name || '', last_name: u.last_name || '', email: u.email, password: '', department_id: u.department_id || null, status: u.status || 'active', roles: u.roles?.map((role) => role.id) ?? [] })
+    setFormData({
+      employee_number: u.employee_number || '',
+      username: u.username || '',
+      first_name: u.first_name || '',
+      middle_name: u.middle_name || '',
+      last_name: u.last_name || '',
+      email: u.email,
+      password: '',
+      department_id: u.department_id || null,
+      office_id: u.office_id || null,
+      status: u.status || 'active',
+      roles: u.roles?.map((role) => role.id) ?? [],
+    })
     setModalOpen(true)
   }
 
@@ -87,8 +121,25 @@ export function UsersPage() {
   const handleSubmit = async () => {
     setSaving(true); setMessage(null)
     try {
-      if (editingUser) { await userService.updateUser(editingUser.id, formData as UpdateUserPayload); setMessage({ type: 'success', text: 'User updated successfully.' }) }
-      else             { await userService.createUser(formData);                                        setMessage({ type: 'success', text: 'User created successfully.' }) }
+      if (editingUser) {
+        const updatePayload: UpdateUserPayload = {
+          employee_number: formData.employee_number,
+          username: formData.username,
+          first_name: formData.first_name,
+          middle_name: formData.middle_name,
+          last_name: formData.last_name,
+          email: formData.email,
+          department_id: formData.department_id,
+          office_id: formData.office_id,
+          status: formData.status,
+          roles: formData.roles,
+        }
+        await userService.updateUser(editingUser.id, updatePayload)
+        setMessage({ type: 'success', text: 'User updated successfully.' })
+      } else {
+        await userService.createUser(formData)
+        setMessage({ type: 'success', text: 'User created successfully.' })
+      }
       setModalOpen(false); await loadUsers()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to save user.' })
@@ -108,6 +159,43 @@ export function UsersPage() {
     } finally { setImporting(false) }
   }
 
+  const handleOpenPasswordModal = (u: User) => {
+    setPasswordUser(u)
+    setPasswordData({ password: '', password_confirmation: '' })
+    setPasswordModalOpen(true)
+  }
+
+  const handleChangePassword = async () => {
+    if (!passwordUser) return
+    if (passwordData.password !== passwordData.password_confirmation) {
+      setMessage({ type: 'error', text: 'Passwords do not match.' })
+      return
+    }
+    if (passwordData.password.length < 8) {
+      setMessage({ type: 'error', text: 'Password must be at least 8 characters.' })
+      return
+    }
+    setPasswordSaving(true); setMessage(null)
+    try {
+      await userService.updateUserPassword(passwordUser.id, passwordData as ChangePasswordPayload)
+      setMessage({ type: 'success', text: 'Password changed successfully.' })
+      setPasswordModalOpen(false)
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to change password.' })
+    } finally { setPasswordSaving(false) }
+  }
+
+  const handleResetPassword = async (u: User) => {
+    if (!confirm(`Reset password for ${displayName(u)} to default?`)) return
+    setResetSaving(true); setMessage(null)
+    try {
+      await userService.resetUserPassword(u.id)
+      setMessage({ type: 'success', text: 'Password reset successfully to default.' })
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to reset password.' })
+    } finally { setResetSaving(false) }
+  }
+
   const downloadTemplate = (type: 'csv' | 'json') => {
     const headers = ['first_name', 'middle_name', 'last_name', 'id_number', 'email', 'role']
     const sample  = { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '1234-5678', email: 'juan.marquez@example.com', role: 'Employee' }
@@ -123,8 +211,9 @@ export function UsersPage() {
 
   const columns: Column<User>[] = [
     { key: 'name',   header: 'Name',   render: (u) => <span className="font-medium text-[#1F2937]">{displayName(u)}</span> },
-    { key: 'employee_number', header: 'Employee ID', render: (u) => <span className="font-mono text-xs text-[#6B7280]">{u.employee_number || '—'}</span> },
-    { key: 'department', header: 'Department', render: (u) => <span className="text-[#6B7280]">{u.department?.name || '—'}</span> },
+    { key: 'employee_number', header: 'Employee ID', render: (u) => <span className="font-mono text-xs text-[#6B7280]">{u.employee_number || '\u2014'}</span> },
+    { key: 'username', header: 'Username', render: (u) => <span className="font-mono text-xs text-[#6B7280]">{u.username || '\u2014'}</span> },
+    { key: 'department', header: 'Department', render: (u) => <span className="text-[#6B7280]">{u.department?.name || '\u2014'}</span> },
     { key: 'roles', header: 'Roles', render: (u) => <RoleBadges roles={u.roles ?? []} /> },
     { key: 'status', header: 'Status', render: (u) => <Badge tone={u.status === 'active' ? 'green' : 'yellow'}>{u.status || 'unknown'}</Badge> },
     {
@@ -132,6 +221,8 @@ export function UsersPage() {
       render: (u) => (
         <div className="flex items-center gap-1.5">
           <Button size="sm" variant="secondary" onClick={() => handleEdit(u)}>Edit</Button>
+          <Button size="sm" variant="secondary" onClick={() => handleOpenPasswordModal(u)}>Password</Button>
+          <Button size="sm" variant="secondary" onClick={() => handleResetPassword(u)} disabled={resetSaving}>Reset Pwd</Button>
           <Button size="sm" variant="danger"    onClick={() => handleDelete(u)}>Delete</Button>
         </div>
       ),
@@ -155,7 +246,7 @@ export function UsersPage() {
 
       <Card noPadding>
         <div className="border-b border-[#E5E7EB] px-5 py-4">
-          <SearchBar onSearch={(s) => setFilters({ ...filters, search: s, page: 1 })} placeholder="Search usersâ€¦" />
+          <SearchBar onSearch={(s) => setFilters({ ...filters, search: s, page: 1 })} placeholder="Search users..." />
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-16"><Spinner /></div>
@@ -171,18 +262,21 @@ export function UsersPage() {
         )}
       </Card>
 
-      {/* â”€â”€ Add / Edit User â”€â”€ */}
+      {/* Add / Edit User */}
       <Modal
         open={modalOpen} onClose={() => setModalOpen(false)} title={editingUser ? 'Edit User' : 'Add User'}
         footer={
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={saving}>{saving ? 'Savingâ€¦' : editingUser ? 'Save Changes' : 'Create User'}</Button>
+            <Button onClick={handleSubmit} disabled={saving}>{saving ? 'Saving...' : editingUser ? 'Save Changes' : 'Create User'}</Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Input label="Employee Number" value={formData.employee_number} onChange={(e) => setFormData({ ...formData, employee_number: e.target.value })} />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input label="Employee Number" value={formData.employee_number} onChange={(e) => setFormData({ ...formData, employee_number: e.target.value })} />
+            <Input label="Username" value={formData.username || ''} onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
+          </div>
           <div className="grid gap-3 md:grid-cols-2">
             <Input label="First Name" value={formData.first_name}  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} />
             <Input label="Last Name"  value={formData.last_name}   onChange={(e) => setFormData({ ...formData, last_name:  e.target.value })} />
@@ -192,6 +286,37 @@ export function UsersPage() {
           {!editingUser && (
             <Input label="Password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
           )}
+
+          {/* Department selector */}
+          <div>
+            <label className="mb-1 block text-[12px] font-semibold text-[#475569]">Department</label>
+            <select
+              className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm"
+              value={formData.department_id ?? ''}
+              onChange={(e) => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : null })}
+              disabled
+            >
+              <option value="">No Department</option>
+            </select>
+            <p className="mt-1 text-xs text-[#94A3B8]">Department options are not exposed by the current API.</p>
+          </div>
+
+          {/* Office selector */}
+          <div>
+            <label className="mb-1 block text-[12px] font-semibold text-[#475569]">Office</label>
+            <select
+              className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm"
+              value={formData.office_id ?? ''}
+              onChange={(e) => setFormData({ ...formData, office_id: e.target.value ? Number(e.target.value) : null })}
+            >
+              <option value="">No Office</option>
+              {(Array.isArray(offices) ? offices : []).map((off) => (
+                <option key={off.id} value={off.id}>{off.name}</option>
+              ))}
+            </select>
+            {lookupWarning && <p className="mt-1 text-xs text-[#B45309]">{lookupWarning}</p>}
+          </div>
+
           <div>
             <p className="mb-2 text-[12px] font-semibold text-[#475569]">Roles</p>
             {roles.length === 0 ? (
@@ -225,19 +350,46 @@ export function UsersPage() {
         </div>
       </Modal>
 
-      {/* â”€â”€ Import Employees â”€â”€ */}
+      {/* Change Password */}
+      <Modal
+        open={passwordModalOpen} onClose={() => setPasswordModalOpen(false)} title={`Change Password: ${passwordUser ? displayName(passwordUser) : ''}`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPasswordModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleChangePassword} disabled={passwordSaving}>{passwordSaving ? 'Saving...' : 'Change Password'}</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Input
+            label="New Password"
+            type="password"
+            value={passwordData.password}
+            onChange={(e) => setPasswordData({ ...passwordData, password: e.target.value })}
+          />
+          <Input
+            label="Confirm Password"
+            type="password"
+            value={passwordData.password_confirmation}
+            onChange={(e) => setPasswordData({ ...passwordData, password_confirmation: e.target.value })}
+          />
+          <p className="text-xs text-[#6B7280]">Password must be at least 8 characters with letters and numbers.</p>
+        </div>
+      </Modal>
+
+      {/* Import Employees */}
       <Modal
         open={importModalOpen} onClose={() => setImportModalOpen(false)} title="Import Employees"
         footer={
           <>
             <Button variant="secondary" onClick={() => setImportModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleImport} disabled={importing || !importFile}>{importing ? 'Importingâ€¦' : 'Import'}</Button>
+            <Button onClick={handleImport} disabled={importing || !importFile}>{importing ? 'Importing...' : 'Import'}</Button>
           </>
         }
       >
         <div className="space-y-4">
           <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4 text-[14px] text-[#1E40AF]">
-            Upload employee records as CSV, JSON, or XLSX. Required columns are <strong>first_name</strong>, <strong>last_name</strong>, <strong>id_number</strong>, and <strong>email</strong>. Optional columns are <strong>middle_name</strong> and <strong>role</strong>. If role is empty, the existing default role is Employee. Department is not required for imports. Imported users receive the default password <strong>psagens9500</strong>.
+            Upload employee records as CSV, JSON, or XLSX. Required columns are <strong>first_name</strong>, <strong>last_name</strong>, <strong>id_number</strong>, and <strong>email</strong>. Optional columns are <strong>middle_name</strong>, <strong>username</strong>, and <strong>role</strong>. If role is empty, the default role is Employee. Department is not required for imports. Imported users receive the default password <strong>psagens9500</strong>.
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" onClick={() => downloadTemplate('csv')}>CSV Template</Button>
@@ -265,7 +417,7 @@ export function UsersPage() {
   )
 }
 
-/* â”€â”€ EmptyState local usage â”€â”€ */
+/* EmptyState local usage */
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
@@ -274,4 +426,3 @@ function EmptyState({ title, description }: { title: string; description: string
     </div>
   )
 }
-

@@ -15,6 +15,7 @@ class UserResource extends JsonResource
         return [
             'id' => $this->id,
             'employee_number' => $this->employee_number,
+            'username' => $this->username,
             'first_name' => $this->first_name,
             'middle_name' => $this->middle_name,
             'last_name' => $this->last_name,
@@ -25,6 +26,11 @@ class UserResource extends JsonResource
             'department' => $this->whenLoaded('department', fn () => [
                 'id' => $this->department?->id,
                 'name' => $this->department?->name,
+            ]),
+            'office_id' => $this->office_id,
+            'office' => $this->whenLoaded('office', fn () => [
+                'id' => $this->office?->id,
+                'name' => $this->office?->name,
             ]),
             'status' => $this->status,
             'roles' => $this->whenLoaded('roles', function () {

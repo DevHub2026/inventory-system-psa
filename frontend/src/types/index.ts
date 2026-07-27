@@ -31,6 +31,7 @@ export type MaintenanceStatus =
 export interface User {
   id: number
   employee_number?: string | null
+  username?: string | null
   first_name?: string
   middle_name?: string | null
   last_name?: string
@@ -39,6 +40,11 @@ export interface User {
   email: string
   department_id?: number | null
   department?: {
+    id: number
+    name: string
+  } | null
+  office_id?: number | null
+  office?: {
     id: number
     name: string
   } | null

@@ -33,6 +33,8 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware('can:update,user')->group(function (): void {
             Route::put('/users/{user}', [UserController::class, 'update']);
+            Route::put('/users/{user}/password', [UserController::class, 'updatePassword']);
+            Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
         });
 
         Route::middleware('can:delete,user')->group(function (): void {
