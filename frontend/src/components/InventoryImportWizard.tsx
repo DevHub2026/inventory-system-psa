@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Upload, CheckCircle2, AlertCircle, Info, ArrowLeft, ArrowRight, Download } from 'lucide-react'
 import { Badge, Button, Input, Modal, Spinner } from '@/components/ui'
-import { inventoryService } from '@/services/inventoryService'
+import { importService, type ImportTypeOption } from '@/services/importService'
 import type { ImportResult } from '@/types'
 
 interface SystemField {
@@ -29,6 +29,8 @@ interface SuggestedMapping {
 
 interface UploadResult {
   import_id: number
+  import_type?: string
+  entity_label?: string
   filename: string
   total_rows: number
   headers: string[]
@@ -49,13 +51,15 @@ interface ColumnMapping {
 
 interface DataValidationResult {
   import_id: number
+  import_type?: string
+  entity_label?: string
   total_rows: number
   valid_rows: number
   error_count: number
   warning_count: number
   row_errors: string[]
   row_warnings: string[]
-  preview_data: Record<string, string>[]
+  preview_data: Record<string, string | number | boolean | null>[]
 }
 
 interface ImportHistoryItem {
@@ -82,17 +86,21 @@ const STEPS: { key: WizardStep; label: string }[] = [
   { key: 'complete', label: 'Complete' },
 ]
 
-interface InventoryImportWizardProps {
+interface ImportWizardProps {
   open: boolean
   onClose: () => void
   onCompleted?: () => void
+  initialImportType?: string
+  title?: string
 }
 
-export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryImportWizardProps) {
+export function ImportWizard({ open, onClose, onCompleted, initialImportType, title }: ImportWizardProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [step, setStep] = useState<WizardStep>('upload')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null)
+  const [importTypes, setImportTypes] = useState<ImportTypeOption[]>([])
+  const [selectedImportType, setSelectedImportType] = useState(initialImportType ?? 'inventory')
 
   // Upload state
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -113,6 +121,33 @@ export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryI
 
   // Custom field creation
   const [newCustomField, setNewCustomField] = useState<{ name: string; field_type: string; excel_column: string } | null>(null)
+  const selectedTypeLabel = importTypes.find(type => type.key === selectedImportType)?.label ?? 'Inventory Items'
+  const entityLabel = dataValidation?.entity_label ?? uploadResult?.entity_label ?? selectedTypeLabel.toLowerCase()
+
+  useEffect(() => {
+    if (!open) return
+
+    let active = true
+
+    async function loadImportTypes() {
+      try {
+        const types = await importService.types()
+        if (active) setImportTypes(types)
+      } catch {
+        if (active) {
+          setImportTypes([
+            { key: 'inventory', label: 'Inventory Items', entity_label: 'inventory items', supports_custom_fields: true },
+          ])
+        }
+      }
+    }
+
+    void loadImportTypes()
+
+    return () => {
+      active = false
+    }
+  }, [open])
 
   function reset() {
     setStep('upload')
@@ -123,13 +158,14 @@ export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryI
     setImportResult(null)
     setMessage(null)
     setNewCustomField(null)
+    setSelectedImportType(initialImportType ?? 'inventory')
   }
 
   async function handleUpload() {
     if (!uploadFile) { setMessage({ type: 'error', text: 'Please select a file to upload.' }); return }
     setLoading(true); setMessage(null)
     try {
-      const result = await inventoryService.importWizardUpload(uploadFile)
+      const result = await importService.upload(selectedImportType, uploadFile)
       setUploadResult(result)
       setStep('preview')
       // Auto-setup initial mappings
@@ -155,7 +191,7 @@ export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryI
     if (!uploadResult) return
     setLoading(true); setMessage(null)
     try {
-      const result = await inventoryService.importWizardValidateMapping(uploadResult.import_id, columnMappings)
+      const result = await importService.validateMapping(uploadResult.import_type ?? selectedImportType, uploadResult.import_id, columnMappings)
       if (result.is_valid) {
         setStep('validate')
         await handleValidateData()
@@ -171,7 +207,7 @@ export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryI
     if (!uploadResult) return
     setLoading(true)
     try {
-      const result = await inventoryService.importWizardValidateData(uploadResult.import_id, columnMappings)
+      const result = await importService.validateData(uploadResult.import_type ?? selectedImportType, uploadResult.import_id, columnMappings)
       setDataValidation(result)
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Data validation failed.' })
@@ -182,7 +218,7 @@ export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryI
     if (!uploadResult) return
     setLoading(true); setMessage(null)
     try {
-      const result = await inventoryService.importWizardExecute(uploadResult.import_id, columnMappings)
+      const result = await importService.execute(uploadResult.import_type ?? selectedImportType, uploadResult.import_id, columnMappings)
       setImportResult(result)
       setStep('complete')
       onCompleted?.()
@@ -194,7 +230,7 @@ export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryI
   async function loadHistory() {
     setLoading(true)
     try {
-      const h = await inventoryService.importWizardHistory()
+      const h = await importService.history(initialImportType ? selectedImportType : undefined)
       setHistory(h)
       setShowHistory(true)
     } catch (e: unknown) {
@@ -207,7 +243,7 @@ export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryI
   return (
     <Modal
       open={open}
-      title="Import Inventory Wizard"
+      title={title ?? `Import ${selectedTypeLabel} Wizard`}
       onClose={() => { reset(); onClose() }}
       footer={
         <div className="flex w-full items-center justify-between">
@@ -306,6 +342,21 @@ export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryI
         {/* Step: Upload */}
         {step === 'upload' && !showHistory && (
           <div className="space-y-4">
+            {!initialImportType && (
+              <div className="rounded-lg border border-[#E5E7EB] bg-white p-4">
+                <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Import Type</label>
+                <select
+                  className="mt-2 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm"
+                  value={selectedImportType}
+                  onChange={(event) => setSelectedImportType(event.target.value)}
+                  disabled={loading}
+                >
+                  {importTypes.map((type) => (
+                    <option key={type.key} value={type.key}>{type.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFD] p-8 text-center">
               <Upload className="mx-auto h-10 w-10 text-slate-400" />
               <p className="mt-3 text-sm font-medium text-slate-600">Upload an Excel file (.xlsx, .xls, .csv)</p>
@@ -491,7 +542,7 @@ export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryI
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setNewCustomField(null)}>Cancel</Button>
                 </div>
-                <p className="mt-2 text-xs text-slate-500">This will add a new custom field to your inventory records.</p>
+                <p className="mt-2 text-xs text-slate-500">This will add a new custom field when the selected import type supports custom fields.</p>
               </div>
             )}
           </div>
@@ -571,7 +622,7 @@ export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryI
             <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
               <Info className="h-5 w-5 text-yellow-600" />
               <p className="mt-1 text-sm font-medium text-yellow-800">
-                You are about to import <strong>{dataValidation.valid_rows}</strong> inventory items.
+                You are about to import <strong>{dataValidation.valid_rows}</strong> {entityLabel}.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -681,4 +732,14 @@ export function InventoryImportWizard({ open, onClose, onCompleted }: InventoryI
       </div>
     </Modal>
   )
+}
+
+interface InventoryImportWizardProps {
+  open: boolean
+  onClose: () => void
+  onCompleted?: () => void
+}
+
+export function InventoryImportWizard(props: InventoryImportWizardProps) {
+  return <ImportWizard {...props} initialImportType="inventory" title="Import Inventory Wizard" />
 }

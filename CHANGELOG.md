@@ -2,6 +2,49 @@
 
 ## 2026-07-27
 
+### System-Wide Import Framework
+
+### Files Modified
+
+- `backend/app/Modules/Import/Contracts/ImportHandlerInterface.php`
+- `backend/app/Modules/Import/Controllers/ImportWizardController.php`
+- `backend/app/Modules/Import/Handlers/*`
+- `backend/app/Modules/Import/Services/ImportRegistry.php`
+- `backend/app/Modules/Import/Services/ImportWizardService.php`
+- `backend/app/Modules/Import/Routes/api.php`
+- `backend/app/Modules/Import/Providers/ImportServiceProvider.php`
+- `backend/app/Modules/Inventory/Controllers/InventoryImportWizardController.php`
+- `backend/app/Models/InventoryImport.php`
+- `backend/bootstrap/providers.php`
+- `backend/database/migrations/2026_07_27_000003_add_import_type_to_inventory_imports_table.php`
+- `frontend/src/components/InventoryImportWizard.tsx`
+- `frontend/src/services/importService.ts`
+- `frontend/src/services/inventoryService.ts`
+- `docs/Architecture/13_API_Architecture.md`
+- `docs/Business/02_Functional_Requirements.md`
+- `AI_CHANGELOG.md`
+- `CHANGELOG.md`
+
+### Reason
+
+The existing import wizard was inventory-only, which forced future user/category/location/department imports toward duplicated wizard implementations instead of a reusable system-wide import flow.
+
+### Summary
+
+- Added a generic import module with shared upload, preview, mapping, validation, execution, history, and import type discovery endpoints.
+- Added entity-specific handlers for inventory items, users, asset categories, locations, and departments using actual backend schemas and duplicate checks.
+- Preserved the existing inventory import routes by delegating them to the new reusable import service.
+- Added typed frontend import service methods and converted the wizard into a reusable component while keeping `InventoryImportWizard` as the inventory page wrapper.
+- Documented the new import API and functional import framework behavior.
+
+### Impact
+
+- Inventory imports continue to work from the Inventory page.
+- The same wizard/service flow can now support users, categories, locations, departments, and future import types without cloning the wizard.
+- Import history is now type-aware through the `import_type` field.
+
+## 2026-07-27
+
 ### Inventory Page Effect Lint Fix
 
 ### Files Modified

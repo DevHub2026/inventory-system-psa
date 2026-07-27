@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class InventoryImport extends Model
 {
     protected $fillable = [
+        'import_type',
         'original_filename',
         'stored_path',
         'total_rows',
@@ -21,6 +22,7 @@ class InventoryImport extends Model
     ];
 
     protected $casts = [
+        'import_type' => 'string',
         'column_mapping' => 'array',
         'import_errors' => 'array',
         'total_rows' => 'integer',

@@ -78,6 +78,7 @@ Manage user accounts and access permissions.
 - View account status
 - Bulk import employee accounts from CSV, JSON, or XLSX files
 - Generate employee login usernames from last name and PSA ID number
+- Use the reusable import wizard flow for user import preview, mapping, validation, confirmation, and result reporting
 - Assign imported employees the configured temporary initial password
 - Report imported, skipped, and failed rows during employee import
 
@@ -147,6 +148,8 @@ Manage consumable office supplies.
 - Paginate inventory results
 - Prevent duplicate item codes
 - Display clear inventory statuses: In Stock, Low Stock, Out of Stock
+- Import inventory items through the reusable import wizard with preview, column mapping, validation, duplicate detection, confirmation, and result history
+- Support reusable administrative imports for users, asset categories, locations, and departments without creating separate import wizards
 
 ---
 

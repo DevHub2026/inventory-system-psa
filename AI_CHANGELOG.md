@@ -18,6 +18,69 @@ Always append new entries.
 
 ---
 
+## 2026-07-27 00:02
+
+### AI
+
+Name: Codex
+Model: GPT-5.2
+
+---
+
+### Task
+
+Refactored the inventory import wizard into a reusable system-wide import framework while preserving the existing inventory import entry point.
+
+---
+
+### Files Modified
+
+- backend/app/Modules/Import/Contracts/ImportHandlerInterface.php
+- backend/app/Modules/Import/Controllers/ImportWizardController.php
+- backend/app/Modules/Import/Handlers/Concerns/NormalizesImportValues.php
+- backend/app/Modules/Import/Handlers/InventoryImportHandler.php
+- backend/app/Modules/Import/Handlers/UserImportHandler.php
+- backend/app/Modules/Import/Handlers/AssetCategoryImportHandler.php
+- backend/app/Modules/Import/Handlers/LocationImportHandler.php
+- backend/app/Modules/Import/Handlers/DepartmentImportHandler.php
+- backend/app/Modules/Import/Services/ImportRegistry.php
+- backend/app/Modules/Import/Services/ImportWizardService.php
+- backend/app/Modules/Import/Routes/api.php
+- backend/app/Modules/Import/Providers/ImportServiceProvider.php
+- backend/app/Modules/Inventory/Controllers/InventoryImportWizardController.php
+- backend/app/Models/InventoryImport.php
+- backend/bootstrap/providers.php
+- backend/database/migrations/2026_07_27_000003_add_import_type_to_inventory_imports_table.php
+- frontend/src/components/InventoryImportWizard.tsx
+- frontend/src/services/importService.ts
+- frontend/src/services/inventoryService.ts
+- docs/Architecture/13_API_Architecture.md
+- docs/Business/02_Functional_Requirements.md
+- CHANGELOG.md
+- AI_CHANGELOG.md
+
+---
+
+### Summary
+
+- Added generic import endpoints for type discovery, upload, mapping validation, data validation, execution, and history.
+- Added entity handlers for inventory items, users/employees, asset categories, locations, and departments.
+- Updated the existing inventory import controller/service calls to delegate to the canonical import framework.
+- Added a typed frontend import service and made the wizard reusable through `ImportWizard` while preserving `InventoryImportWizard`.
+
+---
+
+### Validation
+
+- `php -l` passed for modified backend import/controller/provider/migration files.
+- `php artisan route:list --path=api/v1/imports` passed and showed 7 import routes.
+- `php artisan test` passed: 115 tests, 410 assertions.
+- `npx.cmd eslint src/components/InventoryImportWizard.tsx src/services/importService.ts src/services/inventoryService.ts` passed.
+- `npm.cmd run build` passed with existing CSS selector and chunk-size warnings.
+- `npm.cmd run lint` still fails on pre-existing unrelated React hook/`any` issues outside the import framework files.
+
+---
+
 ## 2026-07-27 00:01
 
 ### AI

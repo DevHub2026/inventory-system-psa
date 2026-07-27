@@ -6,6 +6,7 @@ use App\Modules\Auth\Providers\AuthServiceProvider;
 use App\Modules\AuditLog\Providers\AuditLogServiceProvider;
 use App\Modules\Borrowing\Providers\BorrowingServiceProvider;
 use App\Modules\Dashboard\Providers\DashboardServiceProvider;
+use App\Modules\Import\Providers\ImportServiceProvider;
 use App\Modules\Inventory\Providers\InventoryServiceProvider;
 use App\Modules\Maintenance\Providers\MaintenanceServiceProvider;
 use App\Modules\Report\Providers\ReportServiceProvider;
@@ -21,6 +22,7 @@ return [
     BorrowingServiceProvider::class,
     InventoryServiceProvider::class,
     DashboardServiceProvider::class,
+    ImportServiceProvider::class,
     ReportServiceProvider::class,
     AuditLogServiceProvider::class,
     MaintenanceServiceProvider::class,
