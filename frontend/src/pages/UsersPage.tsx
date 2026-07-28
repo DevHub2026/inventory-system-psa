@@ -287,6 +287,7 @@ export function UsersPage() {
       {/* Add / Edit User */}
       <Modal
         open={modalOpen} onClose={() => setModalOpen(false)} title={editingUser ? 'Edit User' : 'Add User'}
+        maxWidth={600}
         footer={
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
@@ -294,67 +295,81 @@ export function UsersPage() {
           </>
         }
       >
-        <div className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2">
-            <Input label="Employee Number" value={formData.employee_number} onChange={(e) => setFormData({ ...formData, employee_number: e.target.value })} />
-            <Input label="Username" value={formData.username || ''} onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <Input label="First Name" value={formData.first_name}  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} />
-            <Input label="Last Name"  value={formData.last_name}   onChange={(e) => setFormData({ ...formData, last_name:  e.target.value })} />
-          </div>
-          <Input label="Middle Name" value={formData.middle_name || ''} onChange={(e) => setFormData({ ...formData, middle_name: e.target.value })} />
-          <Input label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-          {!editingUser && (
-            <Input label="Password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-          )}
-
-          {/* Department selector */}
+        <div className="space-y-5">
+          {/* ── Section: Identity ── */}
           <div>
-            <label className="mb-1 block text-[12px] font-semibold text-[#475569]">Department</label>
-            <select
-              className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm"
-              value={formData.department_id ?? ''}
-              onChange={(e) => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : null })}
-            >
-              <option value="">No Department</option>
-              {(Array.isArray(departments) ? departments : []).map((dept) => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
-              ))}
-            </select>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Identity</p>
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input label="Employee Number" value={formData.employee_number} onChange={(e) => setFormData({ ...formData, employee_number: e.target.value })} />
+                <Input label="Username"        value={formData.username || ''}  onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Input label="First Name"  value={formData.first_name}       onChange={(e) => setFormData({ ...formData, first_name:   e.target.value })} />
+                <Input label="Middle Name" value={formData.middle_name || ''} onChange={(e) => setFormData({ ...formData, middle_name: e.target.value })} />
+                <Input label="Last Name"   value={formData.last_name}        onChange={(e) => setFormData({ ...formData, last_name:    e.target.value })} />
+              </div>
+            </div>
           </div>
 
-          {/* Office selector */}
+          {/* ── Section: Account ── */}
           <div>
-            <label className="mb-1 block text-[12px] font-semibold text-[#475569]">Office</label>
-            <select
-              className="w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm"
-              value={formData.office_id ?? ''}
-              onChange={(e) => setFormData({ ...formData, office_id: e.target.value ? Number(e.target.value) : null })}
-            >
-              <option value="">No Office</option>
-              {(Array.isArray(offices) ? offices : []).map((off) => (
-                <option key={off.id} value={off.id}>{off.name}</option>
-              ))}
-            </select>
-            {lookupWarning && <p className="mt-1 text-xs text-[#B45309]">{lookupWarning}</p>}
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Account</p>
+            <div className="space-y-3">
+              <Input label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+              {!editingUser && (
+                <Input label="Password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* Office selector */}
+                <div>
+                  <label className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Office</label>
+                  <select
+                    className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/30"
+                    value={formData.office_id ?? ''}
+                    onChange={(e) => setFormData({ ...formData, office_id: e.target.value ? Number(e.target.value) : null })}
+                  >
+                    <option value="">No Office</option>
+                    {(Array.isArray(offices) ? offices : []).map((off) => (
+                      <option key={off.id} value={off.id}>{off.name}</option>
+                    ))}
+                  </select>
+                  {lookupWarning && <p className="mt-1 text-xs text-[#B45309]">{lookupWarning}</p>}
+                </div>
+
+                {/* Status selector */}
+                <div>
+                  <label className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Status</label>
+                  <select
+                    className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/30"
+                    value={formData.status ?? 'active'}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
 
+          {/* ── Section: Roles ── */}
           <div>
-            <p className="mb-2 text-[12px] font-semibold text-[#475569]">Roles</p>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Roles</p>
             {roles.length === 0 ? (
               <div className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3 text-[13px] text-[#64748B]">
-                No roles available. Add roles first in Roles & Permissions.
+                No roles available. Add roles first in Roles &amp; Permissions.
               </div>
             ) : (
-              <div className="grid gap-2 rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3 md:grid-cols-2">
+              <div className="grid gap-2 rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3 sm:grid-cols-2">
                 {roles.map((role) => {
                   const checked = formData.roles?.includes(role.id) ?? false
                   return (
-                    <label key={role.id} className="flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-2 text-[13px] font-medium text-[#1F2937] ring-1 ring-[#E5E7EB]">
+                    <label key={role.id} className="flex cursor-pointer items-center gap-2.5 rounded-lg bg-white px-3 py-2.5 text-[13px] font-medium text-[#1F2937] ring-1 ring-[#E5E7EB] transition-colors hover:bg-[#F0F7FF] hover:ring-[#BFDBFE]">
                       <input
                         type="checkbox"
                         checked={checked}
+                        className="h-4 w-4 rounded accent-[#0D47A1]"
                         onChange={(event) => {
                           const currentRoles = formData.roles ?? []
                           const nextRoles = event.target.checked
@@ -411,27 +426,105 @@ export function UsersPage() {
         }
       >
         <div className="space-y-4">
-          <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4 text-[14px] text-[#1E40AF]">
-            Upload employee records as CSV, JSON, or XLSX. Required columns are <strong>first_name</strong>, <strong>last_name</strong>, <strong>id_number</strong>, and <strong>email</strong>. Optional columns are <strong>middle_name</strong>, <strong>username</strong>, and <strong>role</strong>. If role is empty, the default role is Employee. Department is not required for imports. Imported users receive the default password <strong>psagens9500</strong>.
+          {/* Instructions */}
+          <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
+            <p className="mb-2 text-[12px] font-bold uppercase tracking-widest text-[#1E40AF]">File Requirements</p>
+            <div className="space-y-1.5 text-[13px] text-[#1E40AF]">
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#1E40AF] text-[10px] font-bold text-white">R</span>
+                <span>Required: <strong>first_name</strong>, <strong>last_name</strong>, <strong>id_number</strong>, <strong>email</strong></span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#BFDBFE] text-[10px] font-bold text-[#1E40AF]">O</span>
+                <span>Optional: <strong>middle_name</strong>, <strong>username</strong>, <strong>role</strong> (defaults to Employee)</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#BFDBFE] text-[10px] font-bold text-[#1E40AF]">i</span>
+                <span>Default password: <strong>psagens9500</strong> · Accepted formats: CSV, JSON, XLSX</span>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="secondary" onClick={() => downloadTemplate('csv')}>CSV Template</Button>
-            <Button size="sm" variant="secondary" onClick={() => downloadTemplate('json')}>JSON Template</Button>
+
+          {/* Template downloads */}
+          <div>
+            <p className="mb-2 text-[12px] font-bold uppercase tracking-widest text-[#94A3B8]">Download Template</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => downloadTemplate('csv')}
+                className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-[13px] font-medium text-[#374151] transition-colors hover:border-[#0D47A1] hover:bg-[#EFF6FF] hover:text-[#0D47A1]"
+              >
+                <span className="rounded bg-[#F0FDF4] px-1.5 py-0.5 text-[10px] font-bold text-[#16A34A]">CSV</span>
+                CSV Template
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadTemplate('json')}
+                className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-[13px] font-medium text-[#374151] transition-colors hover:border-[#0D47A1] hover:bg-[#EFF6FF] hover:text-[#0D47A1]"
+              >
+                <span className="rounded bg-[#EFF6FF] px-1.5 py-0.5 text-[10px] font-bold text-[#1D4ED8]">JSON</span>
+                JSON Template
+              </button>
+            </div>
           </div>
-          <Input label="Employee Import File" type="file" accept=".csv,.json,.xlsx" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
+
+          {/* File picker */}
+          <div>
+            <p className="mb-2 text-[12px] font-bold uppercase tracking-widest text-[#94A3B8]">Select File</p>
+            <label
+              htmlFor="import-file-input"
+              className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-4 transition-colors ${
+                importFile
+                  ? 'border-[#22C55E] bg-[#F0FDF4]'
+                  : 'border-[#CBD5E1] bg-[#F8FAFD] hover:border-[#0D47A1] hover:bg-[#EFF6FF]'
+              }`}
+            >
+              <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${importFile ? 'bg-[#DCFCE7]' : 'bg-[#E2E8F0]'}`}>
+                {importFile
+                  ? <span className="text-[14px]">✓</span>
+                  : <span className="text-[14px] text-[#94A3B8]">↑</span>
+                }
+              </div>
+              <div className="min-w-0 flex-1">
+                {importFile ? (
+                  <>
+                    <p className="truncate text-[13px] font-semibold text-[#15803D]">{importFile.name}</p>
+                    <p className="text-[11px] text-[#6B7280]">{(importFile.size / 1024).toFixed(1)} KB — click to change</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[13px] font-medium text-[#374151]">Click to choose a file</p>
+                    <p className="text-[11px] text-[#9CA3AF]">.csv, .json, .xlsx — max 10 MB</p>
+                  </>
+                )}
+              </div>
+              <input
+                id="import-file-input"
+                type="file"
+                accept=".csv,.json,.xlsx"
+                className="hidden"
+                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          </div>
+
+          {/* Import result */}
           {importResult && (
-            <div className="grid grid-cols-4 gap-2 text-[14px]">
-              {[
-                { label: 'Total',    value: importResult.total_rows, color: 'text-[#1F2937]' },
-                { label: 'Imported', value: importResult.imported,   color: 'text-[#2E7D32]' },
-                { label: 'Skipped',  value: importResult.skipped,    color: 'text-[#B45309]' },
-                { label: 'Failed',   value: importResult.failed,     color: 'text-[#D32F2F]' },
-              ].map((s) => (
-                <div key={s.label} className="rounded-xl border border-[#E5E7EB] p-3 text-center">
-                  <p className="text-[12px] text-[#6B7280]">{s.label}</p>
-                  <p className={`mt-0.5 text-[18px] font-bold ${s.color}`}>{s.value}</p>
-                </div>
-              ))}
+            <div>
+              <p className="mb-2 text-[12px] font-bold uppercase tracking-widest text-[#94A3B8]">Result</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: 'Total',    value: importResult.total_rows, color: 'text-[#1F2937]',   bg: 'bg-[#F8FAFC]',  border: 'border-[#E5E7EB]' },
+                  { label: 'Imported', value: importResult.imported,   color: 'text-[#16A34A]',   bg: 'bg-[#F0FDF4]',  border: 'border-[#BBF7D0]' },
+                  { label: 'Skipped',  value: importResult.skipped,    color: 'text-[#D97706]',   bg: 'bg-[#FFFBEB]',  border: 'border-[#FDE68A]' },
+                  { label: 'Failed',   value: importResult.failed,     color: 'text-[#DC2626]',   bg: 'bg-[#FEF2F2]',  border: 'border-[#FECACA]' },
+                ].map((s) => (
+                  <div key={s.label} className={`rounded-xl border ${s.border} ${s.bg} p-3 text-center`}>
+                    <p className={`text-[18px] font-bold ${s.color}`}>{s.value}</p>
+                    <p className="text-[11px] text-[#6B7280]">{s.label}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

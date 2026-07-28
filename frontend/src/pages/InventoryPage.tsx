@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search } from 'lucide-react'
 import {
-  Alert, Button, Dropdown, EmptyState, Input,
+  Alert, Button, EmptyState, Input,
   Modal, Spinner,
 } from '@/components/ui'
 import {
@@ -139,7 +139,7 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span style={{
       display: 'inline-block', padding: '3px 10px', borderRadius: 999,
-      fontSize: 11.5, fontWeight: 600,
+      fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap' as const,
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
     }}>
       {inventoryStatusLabel(status)}
@@ -179,6 +179,107 @@ function Tabs({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => v
   )
 }
 
+// ─── Action cell ─────────────────────────────────────────────────────────────
+
+interface ActionCellProps {
+  item: InventoryItem
+  onStockIn: () => void
+  onStockOut: () => void
+  onAdjust: () => void
+  onHistory: () => void
+  onEdit: () => void
+  onAsset?: () => void
+  onDelete: () => void
+}
+
+function ActionCell({ onStockIn, onStockOut, onAdjust, onHistory, onEdit, onAsset, onDelete }: ActionCellProps) {
+  // Grouped button — no individual border, sits flush inside a group container
+  const groupBtn = (label: string, onClick: () => void, primary = false) => (
+    <button
+      key={label}
+      onClick={onClick}
+      style={{
+        height: 30, paddingInline: 11,
+        border: 'none',
+        background: primary ? '#1E40AF' : 'transparent',
+        color: primary ? '#fff' : '#374151',
+        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+        fontFamily: 'inherit',
+        display: 'inline-flex', alignItems: 'center',
+        whiteSpace: 'nowrap' as const,
+        transition: 'background 0.12s',
+        borderRadius: 0,
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.background = primary ? '#1D3FAB' : '#EEF2F7'
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.background = primary ? '#1E40AF' : 'transparent'
+      }}
+    >
+      {label}
+    </button>
+  )
+
+  // Internal divider between buttons inside a group
+  const sep = <div style={{ width: 1, alignSelf: 'stretch', background: '#E2E8F0', flexShrink: 0 }} />
+
+  // Group wrapper — rounded pill with border
+  const Group = ({ children }: { children: React.ReactNode }) => (
+    <div style={{
+      display: 'inline-flex', alignItems: 'stretch',
+      border: '1px solid #D1D5DB', borderRadius: 8,
+      overflow: 'hidden', background: '#fff',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    }}>
+      {children}
+    </div>
+  )
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+
+      {/* Stock group */}
+      <Group>
+        {groupBtn('+ Stock', onStockIn,  true)}
+        {sep}
+        {groupBtn('− Stock', onStockOut)}
+        {sep}
+        {groupBtn('Adjust',  onAdjust)}
+      </Group>
+
+      {/* Management group */}
+      <Group>
+        {groupBtn('History', onHistory)}
+        {sep}
+        {groupBtn('Edit',    onEdit)}
+        {onAsset && sep}
+        {onAsset && groupBtn('View Asset', onAsset)}
+      </Group>
+
+      {/* Delete — standalone, clearly destructive */}
+      <button
+        onClick={onDelete}
+        style={{
+          height: 30, paddingInline: 11, borderRadius: 8,
+          border: '1px solid #FECACA',
+          background: '#FEF2F2', color: '#DC2626',
+          fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          fontFamily: 'inherit',
+          display: 'inline-flex', alignItems: 'center',
+          whiteSpace: 'nowrap' as const,
+          transition: 'background 0.12s',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#FEE2E2' }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#FEF2F2' }}
+      >
+        Delete
+      </button>
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function InventoryPage() {
@@ -187,13 +288,15 @@ export function InventoryPage() {
   // Table state
   const [rows,           setRows]           = useState<InventoryItem[]>([])
   const [loading,        setLoading]        = useState(true)
+  const [loadingMore,    setLoadingMore]    = useState(false)
   const [page,           setPage]           = useState(1)
-  const [perPage,        setPerPage]        = useState(10)
   const [lastPage,       setLastPage]       = useState(1)
-  const [total,          setTotal]          = useState(0)
   const [search,         setSearch]         = useState('')
   const [statusFilter,   setStatusFilter]   = useState('')
   const [activeTab,      setActiveTab]      = useState<TabKey>('all')
+
+  // Sentinel ref for infinite scroll
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
 
   // Summary
   const [summary,        setSummary]        = useState<SummaryData>({
@@ -224,25 +327,27 @@ export function InventoryPage() {
     track_as_asset: true, type: 'non_expendable',
   })
 
-  // Load table rows — accepts explicit params to avoid stale closure issues
+  // Load table rows — pg=1 resets list, pg>1 appends (infinite scroll)
   const loadInventory = useCallback(async (pg = 1) => {
-    setLoading(true)
+    if (pg === 1) setLoading(true); else setLoadingMore(true)
     try {
       const result = await inventoryService.list({
         page: pg,
-        per_page: perPage,
+        per_page: 20,
         search: search || undefined,
         status: statusFilter || undefined,
         type: activeTab === 'all' ? undefined : activeTab as 'non_expendable' | 'expendable',
       })
-      setRows(result.items)
+      setRows(prev => pg === 1 ? result.items : [...prev, ...result.items])
       setPage(result.meta.current_page)
       setLastPage(result.meta.last_page)
-      setTotal(result.meta.total)
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load inventory items.' })
-    } finally { setLoading(false) }
-  }, [perPage, search, statusFilter, activeTab])
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [search, statusFilter, activeTab])
 
   // Load summary counts — fires once and on explicit refresh only
   const loadSummary = useCallback(async () => {
@@ -271,15 +376,31 @@ export function InventoryPage() {
     } catch { /* summary is best-effort */ }
   }, [])
 
-  // Trigger on tab / filter / perPage changes — loadInventory is stable per these deps
+  // Trigger on tab / filter changes
   useEffect(() => {
     void loadInventory(1)
-  }, [activeTab, statusFilter, perPage]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Summary loads once on mount
   useEffect(() => {
     void loadSummary()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Infinite scroll — observe sentinel at bottom of table
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && page < lastPage && !loadingMore && !loading) {
+          void loadInventory(page + 1)
+        }
+      },
+      { threshold: 0.1 },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [page, lastPage, loading, loadingMore, loadInventory])
 
   const handleTabChange = (t: TabKey) => { setActiveTab(t); setPage(1) }
   const handleFilter    = () => { void loadInventory(1) }
@@ -310,7 +431,7 @@ export function InventoryPage() {
       await inventoryService.delete(item.id)
       setMessage({ type: 'success', text: 'Item deleted.' })
       notifyDataChanged('inventory')
-      void loadInventory(page); void loadSummary()
+      void loadInventory(1); void loadSummary()
     } catch (e: unknown) { setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to delete.' }) }
   }
 
@@ -439,8 +560,8 @@ export function InventoryPage() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
-  const td: React.CSSProperties = { padding: '13px 16px', fontSize: 13.5, color: '#374151', borderBottom: '1px solid #F1F5F9', verticalAlign: 'middle' }
-  const th: React.CSSProperties = { padding: '10px 16px', fontSize: 11.5, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', textAlign: 'left' as const }
+  const td: React.CSSProperties = { padding: '14px 16px', fontSize: 13.5, color: '#374151', borderBottom: '1px solid #F1F5F9', verticalAlign: 'middle' }
+  const th: React.CSSProperties = { padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const, letterSpacing: '0.07em', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', textAlign: 'left' as const, whiteSpace: 'nowrap' as const }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -472,31 +593,70 @@ export function InventoryPage() {
       {/* ── Table card ── */}
       <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
 
-        {/* Tabs */}
-        <div style={{ padding: '0 20px' }}>
-          <Tabs active={activeTab} onChange={handleTabChange} />
-        </div>
+        {/* Tabs + search/filter — unified top bar */}
+        <div style={{ borderBottom: '1px solid #E2E8F0' }}>
+          {/* Tab row */}
+          <div style={{ padding: '0 20px' }}>
+            <Tabs active={activeTab} onChange={handleTabChange} />
+          </div>
 
-        {/* Search + filters */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid #F1F5F9' }}>
-          {/* Search */}
-          <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
-            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={handleSearch}
-              placeholder="Search item name, code, or unit..."
-              style={{ width: '100%', height: 38, paddingLeft: 34, paddingRight: 12, borderRadius: 10, border: '1.5px solid #E2E8F0', fontSize: 13.5, color: '#1E293B', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', background: '#F8FAFC' }}
-            />
+          {/* Search + filter row — sits flush below tabs */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '10px 16px 10px' }}>
+            {/* Search */}
+            <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
+              <Search size={13} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={handleSearch}
+                placeholder="Search by name, code, or unit…"
+                style={{
+                  width: '100%', height: 36, paddingLeft: 32, paddingRight: 12,
+                  borderRadius: 8, border: '1.5px solid #E2E8F0',
+                  fontSize: 13, color: '#1E293B', outline: 'none',
+                  boxSizing: 'border-box', fontFamily: 'inherit',
+                  background: '#F8FAFC',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = '#93C5FD'; e.currentTarget.style.background = '#fff' }}
+                onBlur={(e)  => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.background = '#F8FAFC' }}
+              />
+            </div>
+
+            {/* Status filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); void loadInventory(1) }}
+              style={{
+                height: 36, paddingInline: '10px 28px', borderRadius: 8,
+                border: '1.5px solid #E2E8F0', fontSize: 13, color: statusFilter ? '#1E293B' : '#94A3B8',
+                background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 10px center`,
+                backgroundSize: '10px 6px',
+                appearance: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                outline: 'none', flexShrink: 0,
+              }}
+            >
+              <option value="">All statuses</option>
+              <option value="IN_STOCK">In Stock</option>
+              <option value="LOW_STOCK">Low Stock</option>
+              <option value="OUT_OF_STOCK">Out of Stock</option>
+            </select>
+
+            {/* Filter button */}
+            <button
+              onClick={handleFilter}
+              style={{
+                height: 36, paddingInline: 14, borderRadius: 8,
+                border: '1.5px solid #E2E8F0', background: '#F8FAFC',
+                fontSize: 13, fontWeight: 600, color: '#374151',
+                cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
+            >
+              <Filter size={13} /> Filter
+            </button>
           </div>
-          <div style={{ width: 160 }}>
-            <Dropdown value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} placeholder="All stock statuses"
-              options={[{ label: 'In Stock', value: 'IN_STOCK' }, { label: 'Low Stock', value: 'LOW_STOCK' }, { label: 'Out of Stock', value: 'OUT_OF_STOCK' }]} />
-          </div>
-          <Button variant="secondary" size="sm" onClick={handleFilter}>
-            <Filter size={13} />Filter
-          </Button>
         </div>
 
         {/* Table */}
@@ -508,43 +668,76 @@ export function InventoryPage() {
               <EmptyState title="No inventory items found" description="Add your first item to begin tracking stock." />
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
+              <colgroup>
+                <col style={{ minWidth: 160 }} />
+                <col style={{ width: 155 }} />
+                <col style={{ width: 60 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 105 }} />
+                <col />
+              </colgroup>
               <thead>
                 <tr>
                   <th style={th}>Item</th>
-                  <th style={th}>Type</th>
-                  <th style={th}>Asset No. / Code</th>
-                  <th style={th}>Available Qty</th>
+                  <th style={th}>Code / Asset No.</th>
+                  <th style={{ ...th, textAlign: 'center' as const }}>Qty</th>
                   <th style={th}>Unit</th>
                   <th style={th}>Status</th>
-                  <th style={{ ...th, textAlign: 'right' as const }}>Actions</th>
+                  <th style={{ ...th, textAlign: 'right' as const, paddingRight: 16 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} style={{ transition: 'background 0.1s' }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F8FAFC' }}
+                  <tr key={r.id}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#FAFBFD' }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '' }}
                   >
+                    {/* Item — name + type badge + optional remark */}
                     <td style={td}>
-                      <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 14 }}>{r.name}</div>
-                      {r.remarks && <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>{r.remarks}</div>}
-                    </td>
-                    <td style={td}><TypeBadge type={r.type} /></td>
-                    <td style={td}><span style={{ fontFamily: 'monospace', fontSize: 12.5, color: '#64748B' }}>{r.asset_number ?? r.sku ?? '—'}</span></td>
-                    <td style={td}><span style={{ fontWeight: 700, fontSize: 15, color: '#1E293B' }}>{r.quantity}</span></td>
-                    <td style={td}><span style={{ color: '#475569', fontSize: 13 }}>{r.unit}</span></td>
-                    <td style={td}><StatusBadge status={r.status} /></td>
-                    <td style={{ ...td, textAlign: 'right' as const }}>
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        <Button size="sm" variant="primary"   onClick={() => { setStockItem(r); setStockType('in');  setStockQty(1); setStockReason(''); setStockModalOpen(true) }}>+ Stock</Button>
-                        <Button size="sm" variant="secondary" onClick={() => { setStockItem(r); setStockType('out'); setStockQty(1); setStockReason(''); setStockModalOpen(true) }}>− Stock</Button>
-                        <Button size="sm" variant="ghost"     onClick={() => { setAdjustItem(r); setAdjustQty(r.quantity); setAdjustReason('') }}>Adjust</Button>
-                        <Button size="sm" variant="ghost"     onClick={() => void loadHistory(r)}>History</Button>
-                        <Button size="sm" variant="secondary" onClick={() => handleEdit(r)}>Edit</Button>
-                        {r.asset_number && <Button size="sm" variant="ghost" onClick={() => navigate(`/assets?search=${encodeURIComponent(r.asset_number ?? '')}`)}>Asset</Button>}
-                        <Button size="sm" variant="danger"    onClick={() => handleDelete(r)}>Delete</Button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap' as const }}>
+                        <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{r.name}</div>
+                        <TypeBadge type={r.type} />
                       </div>
+                      {r.remarks && (
+                        <div style={{ fontSize: 11.5, color: '#9CA3AF', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.remarks}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Code */}
+                    <td style={td}>
+                      {(r.asset_number ?? r.sku) ? (
+                        <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11.5, color: '#475569', background: '#F1F5F9', padding: '3px 7px', borderRadius: 5, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.asset_number ?? r.sku}
+                        </span>
+                      ) : <span style={{ color: '#CBD5E1' }}>—</span>}
+                    </td>
+
+                    {/* Qty */}
+                    <td style={{ ...td, textAlign: 'center' as const }}>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: '#1E293B' }}>{r.quantity}</span>
+                    </td>
+
+                    {/* Unit */}
+                    <td style={td}><span style={{ color: '#64748B', fontSize: 13 }}>{r.unit || '—'}</span></td>
+
+                    {/* Status */}
+                    <td style={td}><StatusBadge status={r.status} /></td>
+
+                    {/* Actions */}
+                    <td style={{ ...td, textAlign: 'right' as const, paddingRight: 16, paddingTop: 10, paddingBottom: 10 }}>
+                      <ActionCell
+                        item={r}
+                        onStockIn   ={() => { setStockItem(r); setStockType('in');  setStockQty(1); setStockReason(''); setStockModalOpen(true) }}
+                        onStockOut  ={() => { setStockItem(r); setStockType('out'); setStockQty(1); setStockReason(''); setStockModalOpen(true) }}
+                        onAdjust    ={() => { setAdjustItem(r); setAdjustQty(r.quantity); setAdjustReason('') }}
+                        onHistory   ={() => void loadHistory(r)}
+                        onEdit      ={() => handleEdit(r)}
+                        onAsset     ={r.asset_number ? () => navigate(`/assets?search=${encodeURIComponent(r.asset_number ?? '')}`) : undefined}
+                        onDelete    ={() => handleDelete(r)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -553,42 +746,11 @@ export function InventoryPage() {
           )}
         </div>
 
-        {/* Pagination */}
-        {!loading && rows.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, padding: '12px 20px', borderTop: '1px solid #F1F5F9' }}>
-            <span style={{ fontSize: 13, color: '#64748B' }}>
-              Showing {(page - 1) * perPage + 1} to {Math.min(page * perPage, total)} of {total} items
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button onClick={() => void loadInventory(page - 1)} disabled={page <= 1}
-                style={{ height: 32, paddingInline: 10, borderRadius: 8, border: '1px solid #E2E8F0', background: page <= 1 ? '#F8FAFC' : '#fff', color: page <= 1 ? '#CBD5E1' : '#374151', cursor: page <= 1 ? 'not-allowed' : 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-                Previous
-              </button>
-              {Array.from({ length: Math.min(lastPage, 5) }, (_, i) => {
-                const pg = i + 1
-                return (
-                  <button key={pg} onClick={() => void loadInventory(pg)}
-                    style={{ height: 32, width: 32, borderRadius: 8, border: '1px solid', borderColor: pg === page ? '#1E40AF' : '#E2E8F0', background: pg === page ? '#1E40AF' : '#fff', color: pg === page ? '#fff' : '#374151', cursor: 'pointer', fontSize: 13, fontWeight: pg === page ? 700 : 400, fontFamily: 'inherit' }}>
-                    {pg}
-                  </button>
-                )
-              })}
-              {lastPage > 5 && <span style={{ color: '#94A3B8', padding: '0 4px' }}>...</span>}
-              {lastPage > 5 && (
-                <button onClick={() => void loadInventory(lastPage)}
-                  style={{ height: 32, width: 32, borderRadius: 8, border: '1px solid', borderColor: lastPage === page ? '#1E40AF' : '#E2E8F0', background: lastPage === page ? '#1E40AF' : '#fff', color: lastPage === page ? '#fff' : '#374151', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-                  {lastPage}
-                </button>
-              )}
-              <button onClick={() => void loadInventory(page + 1)} disabled={page >= lastPage}
-                style={{ height: 32, paddingInline: 10, borderRadius: 8, border: '1px solid #E2E8F0', background: page >= lastPage ? '#F8FAFC' : '#fff', color: page >= lastPage ? '#CBD5E1' : '#374151', cursor: page >= lastPage ? 'not-allowed' : 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-                Next
-              </button>
-              <select value={perPage} onChange={(e) => setPerPage(Number(e.target.value))}
-                style={{ height: 32, paddingInline: 8, borderRadius: 8, border: '1px solid #E2E8F0', fontSize: 13, color: '#374151', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
-                {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n} / page</option>)}
-              </select>
-            </div>
+        {/* Infinite scroll sentinel */}
+        <div ref={sentinelRef} style={{ height: 1 }} />
+        {loadingMore && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0', borderTop: '1px solid #F1F5F9' }}>
+            <Spinner />
           </div>
         )}
       </div>
@@ -694,15 +856,53 @@ export function InventoryPage() {
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 10 }}>File Format</div>
             <div style={{ display: 'flex', gap: 10 }}>
-              {(['xlsx', 'csv', 'json'] as const).map((fmt) => {
+              {([
+                {
+                  fmt: 'xlsx' as const,
+                  label: 'Excel (.xlsx)',
+                  icon: (
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 32, height: 32 }}>
+                      <rect width="40" height="40" rx="8" fill="#E8F5E9"/>
+                      <rect x="8" y="7" width="18" height="26" rx="2" fill="#43A047"/>
+                      <rect x="14" y="7" width="18" height="26" rx="2" fill="#66BB6A"/>
+                      <rect x="20" y="7" width="12" height="26" rx="2" fill="#fff" opacity="0.15"/>
+                      <text x="20" y="23" textAnchor="middle" fontSize="10" fontWeight="800" fill="#fff" fontFamily="Arial,sans-serif">XLS</text>
+                    </svg>
+                  ),
+                },
+                {
+                  fmt: 'csv' as const,
+                  label: 'CSV (.csv)',
+                  icon: (
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 32, height: 32 }}>
+                      <rect width="40" height="40" rx="8" fill="#E3F2FD"/>
+                      <rect x="8" y="7" width="18" height="26" rx="2" fill="#1E88E5"/>
+                      <rect x="14" y="7" width="12" height="4" rx="1" fill="#fff" opacity="0.5"/>
+                      <line x1="12" y1="17" x2="28" y2="17" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+                      <line x1="12" y1="21" x2="28" y2="21" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+                      <line x1="12" y1="25" x2="22" y2="25" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
+                      <line x1="20" y1="14" x2="20" y2="29" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.35"/>
+                    </svg>
+                  ),
+                },
+                {
+                  fmt: 'json' as const,
+                  label: 'JSON (.json)',
+                  icon: (
+                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 32, height: 32 }}>
+                      <rect width="40" height="40" rx="8" fill="#FFF3E0"/>
+                      <rect x="8" y="7" width="18" height="26" rx="2" fill="#FB8C00"/>
+                      <text x="20" y="23" textAnchor="middle" fontSize="9" fontWeight="900" fill="#fff" fontFamily="monospace,Arial">{'{ }'}</text>
+                    </svg>
+                  ),
+                },
+              ]).map(({ fmt, label, icon }) => {
                 const active = exportFormat === fmt
-                const labels: Record<string, string> = { xlsx: 'Excel (.xlsx)', csv: 'CSV (.csv)', json: 'JSON (.json)' }
-                const icons:  Record<string, string> = { xlsx: '📊', csv: '📄', json: '{ }' }
                 return (
                   <button key={fmt} type="button" onClick={() => setExportFormat(fmt)}
-                    style={{ flex: 1, padding: '10px 8px', borderRadius: 12, border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`, background: active ? '#EFF6FF' : '#FAFAFA', color: active ? '#1E40AF' : '#475569', fontWeight: active ? 700 : 500, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 20 }}>{icons[fmt]}</span>
-                    <span>{labels[fmt]}</span>
+                    style={{ flex: 1, padding: '12px 8px', borderRadius: 12, border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`, background: active ? '#EFF6FF' : '#FAFAFA', color: active ? '#1E40AF' : '#475569', fontWeight: active ? 700 : 500, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    {icon}
+                    <span>{label}</span>
                   </button>
                 )
               })}
