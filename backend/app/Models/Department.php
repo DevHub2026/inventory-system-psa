@@ -2,25 +2,16 @@
 
 namespace App\Models;
 
+use App\Modules\Department\Models\Department as DepartmentModule;
 use Database\Factories\DepartmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Department extends Model
+class Department extends DepartmentModule
 {
     /** @use HasFactory<DepartmentFactory> */
     use HasFactory;
-
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
-    protected $fillable = [
-        'name',
-        'description',
-    ];
 
     /**
      * Get the users that belong to the department.

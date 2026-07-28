@@ -1,9 +1,10 @@
-import { Bell, LogOut, Menu, Search } from 'lucide-react'
+import { LogOut, Menu, Search } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { displayName } from '@/types'
 import { getUserRoleCategory } from '@/utils/roleHelpers'
+import { NotificationBell } from '@/components/NotificationBell'
 
 interface TopNavProps {
   onMenuClick: () => void
@@ -144,25 +145,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
         </form>
 
         {/* Notification bell */}
-        <button
-          type="button"
-          aria-label="Notifications"
-          style={{
-            position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: 34, height: 34, borderRadius: 8,
-            border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b',
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#f1f5f9' }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-        >
-          <Bell size={17} />
-          <span style={{
-            position: 'absolute', top: 8, right: 8,
-            width: 7, height: 7, borderRadius: '50%',
-            background: '#ef4444',
-            border: '2px solid #ffffff',
-          }} aria-label="Unread notifications" />
-        </button>
+        <NotificationBell />
 
         {/* Divider */}
         <span

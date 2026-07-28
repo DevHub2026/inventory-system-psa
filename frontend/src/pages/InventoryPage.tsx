@@ -13,6 +13,7 @@ import {
 import type { InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { InventoryImportWizard } from '@/components/InventoryImportWizard'
+import { notifyDataChanged } from '@/utils/dataRefresh'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -429,6 +430,7 @@ export function InventoryPage() {
     try {
       await inventoryService.delete(item.id)
       setMessage({ type: 'success', text: 'Item deleted.' })
+      notifyDataChanged('inventory')
       void loadInventory(1); void loadSummary()
     } catch (e: unknown) { setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to delete.' }) }
   }
@@ -439,7 +441,9 @@ export function InventoryPage() {
       if (editingItem) { await inventoryService.update(editingItem.id, formData as UpdateInventoryItemPayload) }
       else { await inventoryService.create(formData) }
       setMessage({ type: 'success', text: editingItem ? 'Item updated.' : 'Item created.' })
-      setModalOpen(false); void loadInventory(1); void loadSummary()
+      setModalOpen(false)
+      notifyDataChanged('inventory')
+      void loadInventory(1); void loadSummary()
     } catch (e: unknown) { setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to save.' }) }
     finally { setSaving(false) }
   }
@@ -450,7 +454,9 @@ export function InventoryPage() {
       if (stockType === 'in') { await inventoryService.stockIn(stockItem.id,  { quantity: stockQty, reason: stockReason || undefined }) }
       else                    { await inventoryService.stockOut(stockItem.id, { quantity: stockQty, reason: stockReason || undefined }) }
       setMessage({ type: 'success', text: stockType === 'in' ? 'Stock added.' : 'Stock removed.' })
-      setStockModalOpen(false); void loadInventory(1); void loadSummary()
+      setStockModalOpen(false)
+      notifyDataChanged('inventory')
+      void loadInventory(page); void loadSummary()
     } catch (e: unknown) { setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to update stock.' }) }
     finally { setSaving(false) }
   }
@@ -463,7 +469,8 @@ export function InventoryPage() {
       await inventoryService.adjust(adjustItem.id, { quantity: adjustQty, reason: adjustReason.trim() })
       setAdjustItem(null)
       setMessage({ type: 'success', text: 'Quantity corrected.' })
-      void loadInventory(1); void loadSummary()
+      notifyDataChanged('inventory')
+      void loadInventory(page); void loadSummary()
     } catch (e: unknown) { setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to adjust.' }) }
     finally { setSaving(false) }
   }

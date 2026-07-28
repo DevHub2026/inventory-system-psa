@@ -40,6 +40,10 @@ class AssetCategoryService
 
     public function delete(AssetCategory $assetCategory): void
     {
+        if ($assetCategory->assets()->exists()) {
+            throw new \InvalidArgumentException('Cannot delete asset category with assigned assets.');
+        }
+
         $assetCategory->delete();
     }
 

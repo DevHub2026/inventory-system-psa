@@ -27,6 +27,9 @@ class InventoryController extends Controller
             default => 'IN_STOCK',
         };
 
+        // Handle unit - could be string (old) or Unit model (new)
+        $unitName = is_string($item->unit) ? $item->unit : ($item->unit?->name ?? '');
+        
         return [
             'id' => $item->id,
             'asset_id' => $item->asset_id,
@@ -35,7 +38,15 @@ class InventoryController extends Controller
             'name' => $item->name,
             'sku' => $item->sku,
             'quantity' => $item->quantity,
-            'unit' => $item->unit,
+            'unit' => $unitName,
+            'unit_id' => $item->unit_id,
+            'unit_name' => $unitName,
+            'manufacturer_id' => $item->manufacturer_id,
+            'manufacturer_name' => $item->manufacturer?->name,
+            'office_id' => $item->office_id,
+            'office_name' => $item->office?->name,
+            'location_id' => $item->location_id,
+            'location_name' => $item->location?->name,
             'reorder_level' => $item->reorder_level,
             'status' => $status,
             'remarks' => $item->remarks,
@@ -79,6 +90,21 @@ class InventoryController extends Controller
                 'next' => $items->nextPageUrl(),
             ],
         ], 'Inventory items retrieved successfully.');
+    }
+
+    public function simpleList(Request $request): JsonResponse
+    {
+        $items = $this->inventoryService->list($request->all(), 100);
+
+        return $this->success(
+            collect($items->items())->map(fn (InventoryItem $i) => $this->transform($i))->values(),
+            'Inventory items retrieved successfully.'
+        );
+    }
+
+    public function show(InventoryItem $item): JsonResponse
+    {
+        return $this->success($this->transform($item), 'Inventory item retrieved successfully.');
     }
 
     public function store(StoreInventoryItemRequest $request): JsonResponse

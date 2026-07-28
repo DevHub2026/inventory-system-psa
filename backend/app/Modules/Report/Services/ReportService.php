@@ -26,6 +26,14 @@ class ReportService
             $query->where('office_id', $filters['office_id']);
         }
 
+        if (isset($filters['location_id'])) {
+            $query->where('location_id', $filters['location_id']);
+        }
+
+        if (isset($filters['manufacturer_id'])) {
+            $query->where('manufacturer_id', $filters['manufacturer_id']);
+        }
+
         return $query->orderByDesc('created_at')->get();
     }
 
@@ -69,10 +77,26 @@ class ReportService
 
     public function getInventoryReport(array $filters = []): Collection
     {
-        $query = InventoryItem::query();
+        $query = InventoryItem::query()->with(['unit', 'manufacturer', 'office', 'location']);
 
         if (isset($filters['low_stock'])) {
             $query->whereColumn('quantity', '<=', 'reorder_level');
+        }
+
+        if (isset($filters['office_id'])) {
+            $query->where('office_id', $filters['office_id']);
+        }
+
+        if (isset($filters['location_id'])) {
+            $query->where('location_id', $filters['location_id']);
+        }
+
+        if (isset($filters['manufacturer_id'])) {
+            $query->where('manufacturer_id', $filters['manufacturer_id']);
+        }
+
+        if (isset($filters['type'])) {
+            $query->where('type', $filters['type']);
         }
 
         return $query->orderByDesc('created_at')->get();
@@ -91,6 +115,7 @@ class ReportService
     public function getLowStockReport(): Collection
     {
         return InventoryItem::query()
+            ->with(['unit', 'manufacturer', 'office', 'location'])
             ->whereColumn('quantity', '<=', 'reorder_level')
             ->where('reorder_level', '>', 0)
             ->orderBy('quantity', 'asc')

@@ -194,13 +194,59 @@ export interface DashboardStats {
   borrowed: number
   reserved: number
   maintenance: number
+  assets: {
+    total: number
+    available: number
+    borrowed: number
+    reserved: number
+    maintenance: number
+  }
+  inventory: {
+    total: number
+    expendable: number
+    non_expendable: number
+    low_stock: number
+    out_of_stock: number
+  }
+  borrowings: {
+    active: number
+    returned: number
+    pending_requests: number
+    approved_requests: number
+  }
+  reservations: {
+    pending: number
+    approved: number
+    rejected: number
+  }
+  users: {
+    total: number
+    active: number
+    employees: number
+    staff: number
+    administrators: number
+  }
 }
 
 export interface ActivityItem {
-  id: number
+  id: string | number
   action: string
   user: string
   module: string
+  created_at: string
+}
+
+export interface AppNotification {
+  id: number
+  title: string
+  message: string
+  type: string
+  is_read: boolean
+  read_at?: string | null
+  related_id?: number | null
+  related_type?: string | null
+  data?: Record<string, unknown> | null
+  link?: string | null
   created_at: string
 }
 

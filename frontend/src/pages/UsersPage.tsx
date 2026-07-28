@@ -1,13 +1,19 @@
 ﻿﻿import { useCallback, useEffect, useState } from 'react'
 import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination } from '@/components/ui'
+import { api } from '@/services/api'
 import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload, type ImportUsersResult, type ChangePasswordPayload } from '@/services/userService'
 import { roleService, type Role } from '@/services/roleService'
 import { setupService, type SetupRecord } from '@/services/setupService'
 import { displayName } from '@/types'
 import type { Column } from '@/components/ui'
-import type { User } from '@/types'
+import type { User, ApiResponse } from '@/types'
 import { PageHeader } from '@/components/PageHeader'
 import { RoleBadges } from '@/components/RoleBadges'
+
+interface DepartmentOption {
+  id: number
+  name: string
+}
 
 export function UsersPage() {
   const [users,           setUsers]           = useState<User[]>([])
@@ -23,6 +29,7 @@ export function UsersPage() {
   const [filters,         setFilters]         = useState<UserFilters>({ per_page: 15, page: 1 })
   const [pagination, setPagination] = useState({ current_page: 1, per_page: 15, total: 0, last_page: 1 })
   const [roles, setRoles] = useState<Role[]>([])
+  const [departments, setDepartments] = useState<DepartmentOption[]>([])
   const [offices, setOffices] = useState<SetupRecord[]>([])
   const [lookupWarning, setLookupWarning] = useState<string | null>(null)
 
@@ -57,6 +64,16 @@ export function UsersPage() {
     }
   }, [])
 
+  const loadDepartments = useCallback(async () => {
+    try {
+      const { data } = await api.get<ApiResponse<DepartmentOption[]>>('/departments')
+      setDepartments(data.data || [])
+    } catch (e: unknown) {
+      setDepartments([])
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to load departments.' })
+    }
+  }, [])
+
   const loadOffices = useCallback(async () => {
     try {
       const loadedOffices = await setupService.list('offices')
@@ -77,6 +94,11 @@ export function UsersPage() {
     const timeoutId = window.setTimeout(() => { void loadRoles() }, 0)
     return () => window.clearTimeout(timeoutId)
   }, [loadRoles])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => { void loadDepartments() }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [loadDepartments])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => { void loadOffices() }, 0)

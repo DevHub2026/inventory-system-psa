@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Activity,
   Archive,
   BadgeCheck,
   Boxes,
   CalendarClock,
   CheckCircle2,
   Clock3,
+  Package,
+  PackageMinus,
+  PackageX,
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
+  Users,
+  UserCheck,
+  UserCog,
   Wrench,
 } from 'lucide-react'
 import {
@@ -25,46 +30,28 @@ import {
 import { DashboardStatCard } from '@/components/DashboardStatCard'
 import { dashboardService } from '@/services/dashboardService'
 import { reservationService } from '@/services/reservationService'
-import { borrowingService } from '@/services/borrowingService'
-import { maintenanceService } from '@/services/maintenanceService'
 import type {
   ActivityItem,
-  Borrowing,
   DashboardStats,
-  MaintenanceRequest,
   Reservation,
 } from '@/types'
-import { maintenanceStatusTone } from '@/utils/statusTone'
-import { maintenanceStatusLabel } from '@/utils/displayLabels'
-import { affectsScope, onDataChanged } from '@/utils/dataRefresh'
+import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 
-/* ─────────────────────────────────────────
-   Design tokens — single source of truth.
-   All text colours use inline styles so the
-   global CSS cascade can never override them.
-   ───────────────────────────────────────── */
 const T = {
-  text:        '#1e293b',   // headings, strong content
-  textMid:     '#475569',   // body text, table content
-  textMuted:   '#64748b',   // labels, secondary text
-  textFaint:   '#94a3b8',   // hints, descriptions, timestamps
-  accent:      '#0B3D91',   // PSA blue — primary actions
-  accentLight: '#1565C0',   // hover / lighter blue
-  success:     '#2E7D32',   // healthy / approved
-  warning:     '#D97706',   // pending / amber
-  danger:      '#C62828',   // overdue / error
-  teal:        '#0F766E',   // maintenance
-  border:      '#e2e8f0',   // card borders
-  borderLight: '#f1f5f9',   // dividers inside cards
-  bg:          '#f8fafc',   // table header bg
+  text:        '#1e293b',
+  textMid:     '#475569',
+  textMuted:   '#64748b',
+  textFaint:   '#94a3b8',
+  accent:      '#0B3D91',
+  accentLight: '#1565C0',
+  success:     '#2E7D32',
+  warning:     '#D97706',
+  danger:      '#C62828',
+  border:      '#e2e8f0',
+  borderLight: '#f1f5f9',
   white:       '#ffffff',
 }
 
-/* ─────────────────────────────────────────
-   Shared sub-components
-   ───────────────────────────────────────── */
-
-/** Section heading above a group of cards */
 function SectionLabel({ children }: { children: string }) {
   return (
     <div style={{ marginBottom: 12 }}>
@@ -79,10 +66,9 @@ function SectionLabel({ children }: { children: string }) {
   )
 }
 
-/** Count pill shown inside panel headers */
 function CountBadge({ n, tone }: { n: number; tone: 'amber' | 'red' | 'teal' }) {
   const bg    = tone === 'red' ? '#fee2e2' : tone === 'teal' ? '#ccfbf1' : '#fef3c7'
-  const color = tone === 'red' ? T.danger   : tone === 'teal' ? T.teal    : T.warning
+  const color = tone === 'red' ? T.danger   : tone === 'teal' ? '#0F766E' : T.warning
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -95,7 +81,6 @@ function CountBadge({ n, tone }: { n: number; tone: 'amber' | 'red' | 'teal' }) 
   )
 }
 
-/** White panel card with header row + full-bleed body */
 function Panel({
   title, subtitle, count, countTone, onViewAll, loading, children,
 }: {
@@ -114,10 +99,9 @@ function Panel({
       border: `1px solid ${T.border}`,
       borderRadius: 16,
       boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-      overflow: 'hidden',   /* clips table inside rounded corners */
+      overflow: 'hidden',
       boxSizing: 'border-box',
     }}>
-      {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         gap: 16, padding: '16px 20px',
@@ -153,7 +137,6 @@ function Panel({
         )}
       </div>
 
-      {/* Body — overflow-x scroll for tables on mobile */}
       <div style={{ flex: 1, overflowX: 'auto' }}>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '48px 0' }}>
@@ -165,7 +148,6 @@ function Panel({
   )
 }
 
-/** Metric card used for utilization + health row */
 function MetricCard({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
@@ -181,35 +163,26 @@ function MetricCard({ children }: { children: React.ReactNode }) {
   )
 }
 
-/* ─────────────────────────────────────────
-   Main component
-   ───────────────────────────────────────── */
 export function AdminDashboard() {
   const navigate = useNavigate()
 
   const [stats,               setStats]               = useState<DashboardStats | null>(null)
   const [recentActivity,      setRecentActivity]      = useState<ActivityItem[]>([])
   const [pendingReservations, setPendingReservations] = useState<Reservation[]>([])
-  const [overdueBorrowings,   setOverdueBorrowings]   = useState<Borrowing[]>([])
-  const [pendingMaintenance,  setPendingMaintenance]  = useState<MaintenanceRequest[]>([])
   const [loading,             setLoading]             = useState(true)
   const [message,             setMessage]             = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [statsRes, activityRes, reservationsRes, borrowingsRes, maintenanceRes] = await Promise.all([
+      const [statsRes, activityRes, reservationsRes] = await Promise.all([
         dashboardService.getStats(),
         dashboardService.getRecentActivity(),
         reservationService.list(),
-        borrowingService.list(),
-        maintenanceService.list(),
       ])
       setStats(statsRes)
       setRecentActivity(activityRes)
       setPendingReservations(reservationsRes.items.filter((r) => r.status === 'PENDING'))
-      setOverdueBorrowings(borrowingsRes.items.filter((b) => b.status === 'OVERDUE'))
-      setPendingMaintenance(maintenanceRes.items.filter((m) => m.status === 'scheduled'))
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load dashboard data.' })
     } finally {
@@ -219,8 +192,14 @@ export function AdminDashboard() {
 
   useEffect(() => { void loadData() }, [])
   useEffect(() => onDataChanged((scope) => {
-    if (affectsScope(scope, 'dashboard') || affectsScope(scope, 'borrowings') ||
-        affectsScope(scope, 'reservations') || affectsScope(scope, 'assets')) {
+    if (
+      affectsScope(scope, 'dashboard') ||
+      affectsScope(scope, 'borrowings') ||
+      affectsScope(scope, 'reservations') ||
+      affectsScope(scope, 'assets') ||
+      affectsScope(scope, 'inventory') ||
+      affectsScope(scope, 'maintenance')
+    ) {
       void loadData()
     }
   }), [])
@@ -229,17 +208,37 @@ export function AdminDashboard() {
     try {
       await reservationService.approve(id)
       setMessage({ type: 'success', text: 'Borrow request approved successfully.' })
+      notifyDataChanged('all')
       await loadData()
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Unable to approve borrow request.' })
     }
   }
 
-  const utilizationRate = stats?.total_assets
-    ? Math.round(((stats.borrowed || 0) / stats.total_assets) * 100) : 0
-  const isHealthy = overdueBorrowings.length === 0 && pendingReservations.length < 5
+  const handleRejectReservation = async (id: number) => {
+    try {
+      await reservationService.reject(id)
+      setMessage({ type: 'success', text: 'Borrow request rejected.' })
+      notifyDataChanged('all')
+      await loadData()
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Unable to reject borrow request.' })
+    }
+  }
 
-  /* ── Column definitions ── */
+  const assets = stats?.assets
+  const inventory = stats?.inventory
+  const borrowings = stats?.borrowings
+  const reservations = stats?.reservations
+  const users = stats?.users
+
+  const totalAssets = assets?.total ?? stats?.total_assets ?? 0
+  const borrowedAssets = assets?.borrowed ?? stats?.borrowed ?? 0
+  const pendingCount = reservations?.pending ?? pendingReservations.length
+  const utilizationRate = totalAssets
+    ? Math.round((borrowedAssets / totalAssets) * 100) : 0
+  const isHealthy = pendingCount < 5
+
   const activityColumns: Column<ActivityItem>[] = [
     { key: 'action',     header: 'Action',  render: (r) => <span style={{ fontSize: 13, fontWeight: 500, color: T.text,     display: 'block', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.action}</span> },
     { key: 'user',       header: 'User',    render: (r) => <span style={{ fontSize: 13, color: T.textMid }}>{r.user}</span> },
@@ -252,41 +251,57 @@ export function AdminDashboard() {
     { key: 'employee_name', header: 'Employee', render: (r) => <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{r.employee_name}</span> },
     { key: 'purpose',       header: 'Purpose',  render: (r) => <span style={{ fontSize: 13, color: T.textMid, display: 'block', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.purpose}</span> },
     { key: 'dates',         header: 'Schedule', render: (r) => <span style={{ fontSize: 12, fontFamily: 'monospace', color: T.textFaint, whiteSpace: 'nowrap' }}>{r.reserved_from} → {r.reserved_until}</span> },
-    { key: 'actions',       header: '',         render: (r) => <Button size="sm" variant="success" onClick={() => handleApproveReservation(r.id)}>Approve</Button> },
+    {
+      key: 'actions',
+      header: '',
+      render: (r) => (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <Button size="sm" variant="success" onClick={() => handleApproveReservation(r.id)}>Approve</Button>
+          <Button size="sm" variant="outline" onClick={() => handleRejectReservation(r.id)}>Reject</Button>
+        </div>
+      ),
+    },
   ]
 
-  const borrowingColumns: Column<Borrowing>[] = [
-    { key: 'id',            header: '#',       render: (r) => <span style={{ fontSize: 12, fontFamily: 'monospace', color: T.textFaint }}>#{r.id}</span> },
-    { key: 'asset_name',    header: 'Asset',   render: (r) => <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{r.asset_name}</span> },
-    { key: 'employee_name', header: 'Borrower',render: (r) => <span style={{ fontSize: 13, color: T.textMid }}>{r.employee_name}</span> },
-    { key: 'due_at',        header: 'Due Date', render: (r) => <span style={{ fontSize: 12, fontFamily: 'monospace', color: T.danger, whiteSpace: 'nowrap' }}>{r.due_at}</span> },
+  const assetCards = [
+    { label: 'Total Assets', value: totalAssets, description: 'All registered assets', icon: Boxes, tone: 'blue' as const },
+    { label: 'Available', value: assets?.available ?? stats?.available ?? 0, description: 'Ready for use', icon: BadgeCheck, tone: 'green' as const },
+    { label: 'Borrowed', value: borrowedAssets, description: 'Currently in use', icon: Archive, tone: 'amber' as const },
+    { label: 'Reserved', value: assets?.reserved ?? stats?.reserved ?? 0, description: 'Held for requests', icon: Clock3, tone: 'violet' as const },
+    { label: 'Under Maintenance', value: assets?.maintenance ?? stats?.maintenance ?? 0, description: 'Temporarily unavailable', icon: Wrench, tone: 'red' as const },
   ]
 
-  const maintenanceColumns: Column<MaintenanceRequest>[] = [
-    { key: 'id',           header: '#',           render: (r) => <span style={{ fontSize: 12, fontFamily: 'monospace', color: T.textFaint }}>#{r.id}</span> },
-    { key: 'asset_name',   header: 'Asset',       render: (r) => <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{r.asset_name}</span> },
-    { key: 'description',  header: 'Description', render: (r) => <span style={{ fontSize: 13, color: T.textMid, display: 'block', maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description}</span> },
-    { key: 'status',       header: 'Status',      render: (r) => <Badge tone={maintenanceStatusTone(r.status)}>{maintenanceStatusLabel(r.status)}</Badge> },
-    { key: 'scheduled_at', header: 'Scheduled',   render: (r) => <span style={{ fontSize: 12, fontFamily: 'monospace', color: T.textFaint, whiteSpace: 'nowrap' }}>{r.scheduled_at}</span> },
+  const inventoryCards = [
+    { label: 'Total Inventory Items', value: inventory?.total ?? 0, description: 'Tracked stock items', icon: Package, tone: 'blue' as const },
+    { label: 'Expendable Items', value: inventory?.expendable ?? 0, description: 'Consumable stock', icon: PackageMinus, tone: 'amber' as const },
+    { label: 'Non-Expendable Items', value: inventory?.non_expendable ?? 0, description: 'Reusable stock', icon: Boxes, tone: 'green' as const },
+    { label: 'Low Stock', value: inventory?.low_stock ?? 0, description: 'At or below reorder', icon: PackageMinus, tone: 'amber' as const },
+    { label: 'Out of Stock', value: inventory?.out_of_stock ?? 0, description: 'Zero quantity', icon: PackageX, tone: 'red' as const },
   ]
 
-  const primaryCards = [
-    { label: 'Total Assets',  value: stats?.total_assets || 0, description: 'All registered assets', icon: Boxes,      tone: 'blue'   as const },
-    { label: 'Available',     value: stats?.available    || 0, description: 'Ready for use',         icon: BadgeCheck, tone: 'green'  as const },
-    { label: 'Borrowed',      value: stats?.borrowed     || 0, description: 'Currently in use',      icon: Archive,    tone: 'amber'  as const },
-    { label: 'Reserved',      value: stats?.reserved     || 0, description: 'Pending collection',    icon: Clock3,     tone: 'violet' as const },
+  const borrowingCards = [
+    { label: 'Active Borrowings', value: borrowings?.active ?? 0, description: 'Currently borrowed', icon: Archive, tone: 'amber' as const },
+    { label: 'Returned Items', value: borrowings?.returned ?? 0, description: 'Completed returns', icon: BadgeCheck, tone: 'green' as const },
+    { label: 'Pending Borrow Requests', value: borrowings?.pending_requests ?? 0, description: 'Awaiting approval', icon: CalendarClock, tone: 'amber' as const },
+    { label: 'Approved Borrow Requests', value: borrowings?.approved_requests ?? 0, description: 'Ready for release', icon: CheckCircle2, tone: 'green' as const },
   ]
-  const operationalCards = [
-    { label: 'Under Maintenance',  value: stats?.maintenance         || 0, description: 'Requires attention', icon: Wrench,        tone: 'red'   as const },
-    { label: 'Borrow Requests',    value: pendingReservations.length,      description: 'Awaiting approval',  icon: CalendarClock, tone: 'amber' as const },
-    { label: 'Overdue Items',      value: overdueBorrowings.length,        description: 'Past return date',   icon: Activity,      tone: 'red'   as const },
-    { label: 'Pending Maintenance',value: pendingMaintenance.length,       description: 'Scheduled repairs',  icon: Wrench,        tone: 'teal'  as const },
+
+  const reservationCards = [
+    { label: 'Pending Reservations', value: reservations?.pending ?? 0, description: 'Need review', icon: CalendarClock, tone: 'amber' as const },
+    { label: 'Approved Reservations', value: reservations?.approved ?? 0, description: 'Authorized', icon: CheckCircle2, tone: 'green' as const },
+    { label: 'Rejected Reservations', value: reservations?.rejected ?? 0, description: 'Declined requests', icon: ShieldAlert, tone: 'red' as const },
+  ]
+
+  const userCards = [
+    { label: 'Total Users', value: users?.total ?? 0, description: 'Registered accounts', icon: Users, tone: 'blue' as const },
+    { label: 'Active Users', value: users?.active ?? 0, description: 'Active accounts', icon: UserCheck, tone: 'green' as const },
+    { label: 'Employees', value: users?.employees ?? 0, description: 'Employee role', icon: Users, tone: 'violet' as const },
+    { label: 'Staff', value: users?.staff ?? 0, description: 'Operational roles', icon: UserCog, tone: 'amber' as const },
+    { label: 'Administrators', value: users?.administrators ?? 0, description: 'System admins', icon: ShieldCheck, tone: 'red' as const },
   ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-
-      {/* ── Page header ── */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: T.textFaint, marginBottom: 4 }}>
@@ -296,7 +311,7 @@ export function AdminDashboard() {
             Admin Dashboard
           </h1>
           <div style={{ fontSize: 13, color: T.textMuted, marginTop: 6, lineHeight: 1.5 }}>
-            Overview of assets, borrowings, reservations, maintenance, and system activity.
+            Live metrics for assets, inventory, borrowings, reservations, and users.
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 2 }}>
@@ -312,31 +327,47 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* Alert */}
       {message && (
         <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>
       )}
 
-      {/* ── Asset Overview ── */}
       <div>
-        <SectionLabel>Asset Overview</SectionLabel>
+        <SectionLabel>Assets</SectionLabel>
         <div className="stat-grid">
-          {primaryCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
+          {assetCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
         </div>
       </div>
 
-      {/* ── Operational Indicators ── */}
       <div>
-        <SectionLabel>Operational Indicators</SectionLabel>
+        <SectionLabel>Inventory</SectionLabel>
         <div className="stat-grid">
-          {operationalCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
+          {inventoryCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
         </div>
       </div>
 
-      {/* ── Utilization + Health (2 col) ── */}
+      <div>
+        <SectionLabel>Borrowing</SectionLabel>
+        <div className="stat-grid">
+          {borrowingCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
+        </div>
+      </div>
+
+      <div>
+        <SectionLabel>Reservations</SectionLabel>
+        <div className="stat-grid">
+          {reservationCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
+        </div>
+      </div>
+
+      <div>
+        <SectionLabel>Users</SectionLabel>
+        <div className="stat-grid">
+          {userCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
+        </div>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 16 }}
            className="sm:!grid-cols-2">
-        {/* Asset Utilization Rate */}
         <MetricCard>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
             <div style={{ minWidth: 0 }}>
@@ -368,7 +399,6 @@ export function AdminDashboard() {
           </div>
         </MetricCard>
 
-        {/* System Health */}
         <MetricCard>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
             <div style={{ minWidth: 0 }}>
@@ -386,21 +416,18 @@ export function AdminDashboard() {
               </div>
               <div style={{ fontSize: 12, color: T.textFaint, marginTop: 8, lineHeight: 1.5 }}>
                 {isHealthy
-                  ? 'All critical indicators are within normal levels.'
-                  : `${overdueBorrowings.length} overdue · ${pendingReservations.length} pending requests require attention.`}
+                  ? 'Pending borrow requests are within normal levels.'
+                  : `${pendingCount} pending borrow requests require attention.`}
               </div>
             </div>
             <span style={{ display: 'grid', width: 40, height: 40, flexShrink: 0, placeItems: 'center', borderRadius: 12, background: isHealthy ? '#f0fdf4' : '#fffbeb' }}>
-              {isHealthy
-                ? <ShieldCheck size={20} style={{ color: T.success }} />
-                : <ShieldCheck size={20} style={{ color: T.warning }} />
-              }
+              <ShieldCheck size={20} style={{ color: isHealthy ? T.success : T.warning }} />
             </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 20 }}>
             {[
-              { label: 'Overdue',          value: overdueBorrowings.length,   ok: overdueBorrowings.length === 0 },
-              { label: 'Pending Requests', value: pendingReservations.length, ok: pendingReservations.length < 5 },
+              { label: 'Pending Requests', value: pendingCount, ok: pendingCount < 5 },
+              { label: 'Low Stock Items', value: inventory?.low_stock ?? 0, ok: (inventory?.low_stock ?? 0) === 0 },
             ].map((item) => (
               <div key={item.label} style={{ borderRadius: 12, padding: '12px 16px', background: item.ok ? '#f8fafc' : '#fffbeb' }}>
                 <div style={{ fontSize: 11, color: T.textFaint }}>{item.label}</div>
@@ -413,13 +440,12 @@ export function AdminDashboard() {
         </MetricCard>
       </div>
 
-      {/* ── Recent Activity + Borrow Requests ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 20 }} className="lg:!grid-cols-2">
         <Panel title="Recent Activity" subtitle="Latest actions across all modules"
                onViewAll={() => navigate('/reports')} loading={loading}>
           {recentActivity.length === 0
             ? <EmptyState title="No recent activity" description="System activity will appear here." />
-            : <Table columns={activityColumns} rows={recentActivity} rowKey={(r) => r.id} empty={<EmptyState title="No recent activity" />} />}
+            : <Table columns={activityColumns} rows={recentActivity} rowKey={(r) => String(r.id)} empty={<EmptyState title="No recent activity" />} />}
         </Panel>
 
         <Panel title="Borrow Requests" subtitle="Waiting for approval before release"
@@ -431,26 +457,6 @@ export function AdminDashboard() {
         </Panel>
       </div>
 
-      {/* ── Overdue Items + Pending Maintenance ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 20 }} className="lg:!grid-cols-2">
-        <Panel title="Overdue Borrowed Items" subtitle="Items past their return date"
-               count={overdueBorrowings.length} countTone="red"
-               onViewAll={() => navigate('/borrowings')} loading={loading}>
-          {overdueBorrowings.length === 0
-            ? <EmptyState title="No overdue items" description="All borrowed assets have been returned on time." />
-            : <Table columns={borrowingColumns} rows={overdueBorrowings} rowKey={(r) => r.id} empty={<EmptyState title="No overdue items" />} />}
-        </Panel>
-
-        <Panel title="Pending Maintenance" subtitle="Scheduled repairs awaiting completion"
-               count={pendingMaintenance.length} countTone="teal"
-               onViewAll={() => navigate('/maintenance')} loading={loading}>
-          {pendingMaintenance.length === 0
-            ? <EmptyState title="No pending maintenance" description="No maintenance requests are currently scheduled." />
-            : <Table columns={maintenanceColumns} rows={pendingMaintenance} rowKey={(r) => r.id} empty={<EmptyState title="No pending maintenance" />} />}
-        </Panel>
-      </div>
-
-      {/* ── Quick Actions ── */}
       <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 16, padding: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: T.textFaint, marginBottom: 14 }}>
           Quick Actions
@@ -458,12 +464,13 @@ export function AdminDashboard() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           <Button variant="secondary" onClick={() => navigate('/assets')}>Manage Assets</Button>
           <Button variant="secondary" onClick={() => navigate('/reservations')}>Borrow Requests</Button>
+          <Button variant="secondary" onClick={() => navigate('/borrowings')}>Borrowed Items</Button>
+          <Button variant="secondary" onClick={() => navigate('/inventory')}>Inventory</Button>
           <Button variant="secondary" onClick={() => navigate('/maintenance')}>Maintenance</Button>
           <Button variant="secondary" onClick={() => navigate('/reports')}>Reports</Button>
           <Button variant="secondary" onClick={() => navigate('/users')}>Users</Button>
         </div>
       </div>
-
     </div>
   )
 }

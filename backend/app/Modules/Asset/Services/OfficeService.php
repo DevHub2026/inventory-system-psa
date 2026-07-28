@@ -40,6 +40,16 @@ class OfficeService
 
     public function delete(Office $office): void
     {
+        if ($office->assets()->exists()) {
+            throw new \InvalidArgumentException('Cannot delete office with assigned assets.');
+        }
+        if ($office->locations()->exists()) {
+            throw new \InvalidArgumentException('Cannot delete office with assigned locations.');
+        }
+        if (\App\Models\User::where('office_id', $office->id)->exists()) {
+            throw new \InvalidArgumentException('Cannot delete office with assigned users.');
+        }
+
         $office->delete();
     }
 

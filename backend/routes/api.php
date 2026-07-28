@@ -61,6 +61,15 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('/roles/{role}', [RoleController::class, 'destroy']);
         });
 
+        // Departments endpoint for user editing (read-only list)
+        Route::get('/departments', function () {
+            return response()->json([
+                'success' => true,
+                'message' => 'Departments retrieved successfully.',
+                'data' => \App\Models\Department::query()->select('id', 'name', 'description')->orderBy('name')->get(),
+            ]);
+        })->middleware('can:viewAny,App\Models\User');
+
         Route::middleware('role:Super Administrator')->group(function (): void {
             Route::get('/permissions', [PermissionController::class, 'index']);
             Route::post('/permissions', [PermissionController::class, 'store']);

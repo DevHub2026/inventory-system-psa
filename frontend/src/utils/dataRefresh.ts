@@ -1,6 +1,14 @@
 const DATA_CHANGED_EVENT = 'psa:data-changed'
 
-export type DataChangeScope = 'assets' | 'borrowings' | 'reservations' | 'dashboard' | 'all'
+export type DataChangeScope =
+  | 'assets'
+  | 'borrowings'
+  | 'reservations'
+  | 'inventory'
+  | 'maintenance'
+  | 'notifications'
+  | 'dashboard'
+  | 'all'
 
 export function notifyDataChanged(scope: DataChangeScope = 'all') {
   window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail: { scope } }))

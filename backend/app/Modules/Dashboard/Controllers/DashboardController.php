@@ -5,6 +5,7 @@ namespace App\Modules\Dashboard\Controllers;
 use App\Modules\Asset\Traits\RespondsWithJson;
 use App\Modules\Dashboard\Services\DashboardService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
 class DashboardController extends Controller
@@ -15,7 +16,7 @@ class DashboardController extends Controller
 
     public function stats(): JsonResponse
     {
-        $stats = $this->dashboardService->getStats();
+        $stats = $this->dashboardService->getStats(request()->all());
 
         return $this->success($stats, 'Dashboard statistics retrieved successfully.');
     }
@@ -29,14 +30,14 @@ class DashboardController extends Controller
 
     public function lowStock(): JsonResponse
     {
-        $items = $this->dashboardService->getLowStockItems();
+        $items = $this->dashboardService->getLowStockItems(request()->all());
 
         return $this->success($items, 'Low stock items retrieved successfully.');
     }
 
     public function overdueAssets(): JsonResponse
     {
-        $assets = $this->dashboardService->getOverdueAssets();
+        $assets = $this->dashboardService->getOverdueAssets(request()->all());
 
         return $this->success($assets, 'Overdue assets retrieved successfully.');
     }

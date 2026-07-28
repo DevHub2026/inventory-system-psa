@@ -3,6 +3,10 @@
 namespace App\Modules\Inventory\Models;
 
 use App\Modules\Asset\Models\Asset;
+use App\Modules\Asset\Models\Location;
+use App\Modules\Asset\Models\Manufacturer;
+use App\Modules\Asset\Models\Office;
+use App\Modules\Unit\Models\Unit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,6 +25,10 @@ class InventoryItem extends Model
         'sku',
         'quantity',
         'unit',
+        'unit_id',
+        'manufacturer_id',
+        'office_id',
+        'location_id',
         'reorder_level',
         'remarks',
     ];
@@ -28,6 +36,26 @@ class InventoryItem extends Model
     public function asset(): BelongsTo
     {
         return $this->belongsTo(Asset::class);
+    }
+
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
+    public function manufacturer(): BelongsTo
+    {
+        return $this->belongsTo(Manufacturer::class);
+    }
+
+    public function office(): BelongsTo
+    {
+        return $this->belongsTo(Office::class);
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 
     public function stockTransactions(): HasMany

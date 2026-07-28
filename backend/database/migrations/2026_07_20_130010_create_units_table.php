@@ -14,11 +14,14 @@ return new class extends Migration
         Schema::create('units', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
-            $table->string('abbreviation')->unique();
+            $table->string('code')->nullable()->unique();
             $table->text('description')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index('name');
+            $table->index('is_active');
         });
     }
 

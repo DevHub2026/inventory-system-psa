@@ -44,6 +44,10 @@ class LocationService
 
     public function delete(Location $location): void
     {
+        if ($location->assets()->exists()) {
+            throw new \InvalidArgumentException('Cannot delete location with assigned assets.');
+        }
+
         $location->delete();
     }
 

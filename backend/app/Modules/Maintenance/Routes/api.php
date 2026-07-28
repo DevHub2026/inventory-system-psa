@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Asset\Controllers\AssetController;
 use App\Modules\Maintenance\Controllers\MaintenanceController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,4 +15,7 @@ Route::middleware([
     Route::post('maintenances/{maintenance}/complete', [MaintenanceController::class, 'complete']);
     Route::get('maintenances/scheduled', [MaintenanceController::class, 'scheduled']);
     Route::get('maintenances/overdue', [MaintenanceController::class, 'overdue']);
+    
+    // Asset search for maintenance creation
+    Route::get('assets/search', [AssetController::class, 'search']);
 });

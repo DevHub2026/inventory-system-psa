@@ -49,8 +49,11 @@ class OfficeController extends Controller
 
     public function destroy(Office $office): JsonResponse
     {
-        $this->officeService->delete($office);
-
-        return $this->success(null, 'Office deleted successfully.');
+        try {
+            $this->officeService->delete($office);
+            return $this->success(null, 'Office deleted successfully.');
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), null, 422);
+        }
     }
 }

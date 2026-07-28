@@ -43,6 +43,12 @@ class DashboardApiTest extends TestCase
         $this->assertEquals(1, $data['borrowed']);
         $this->assertEquals(1, $data['reserved']);
         $this->assertEquals(1, $data['maintenance']);
+        $this->assertEquals(4, $data['assets']['total']);
+        $this->assertEquals(1, $data['assets']['available']);
+        $this->assertArrayHasKey('inventory', $data);
+        $this->assertArrayHasKey('borrowings', $data);
+        $this->assertArrayHasKey('reservations', $data);
+        $this->assertArrayHasKey('users', $data);
     }
 
     public function test_authenticated_user_can_get_recent_activity(): void

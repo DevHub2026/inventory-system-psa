@@ -59,8 +59,11 @@ class AssetCategoryController extends Controller
 
     public function destroy(AssetCategory $assetCategory): JsonResponse
     {
-        $this->assetCategoryService->delete($assetCategory);
-
-        return $this->success(null, 'Asset category deleted successfully.');
+        try {
+            $this->assetCategoryService->delete($assetCategory);
+            return $this->success(null, 'Asset category deleted successfully.');
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), null, 422);
+        }
     }
 }
