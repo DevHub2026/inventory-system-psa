@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, CalendarClock, ClipboardCheck, HandCoins } from 'lucide-react'
+import { AlertTriangle, CalendarClock, ClipboardCheck, HandCoins, QrCode as QrCodeIcon, Camera } from 'lucide-react'
 import {
-  Badge, Button, Card, EmptyState, Spinner, Table, Alert, Input, type Column,
+  Badge, Button, EmptyState, Spinner, Table, Alert, Input, type Column,
 } from '@/components/ui'
 import { DashboardStatCard } from '@/components/DashboardStatCard'
 import { PageHeader } from '@/components/PageHeader'
@@ -15,7 +15,23 @@ import type { Reservation, Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
-import { cn } from '@/utils/cn'
+
+/* ── Design tokens ── */
+const T = {
+  text:       '#1e293b',
+  textMuted:  '#94a3b8',
+  border:     '#e2e8f0',
+  borderL:    '#f1f5f9',
+  white:      '#ffffff',
+  primary:    '#1565C0',
+  primaryDk:  '#0D47A1',
+  red:        '#dc2626',
+  redBg:      '#fef2f2',
+  redBdr:     '#fecaca',
+  amber:      '#d97706',
+  amberBg:    '#fffbeb',
+  amberBdr:   '#fde68a',
+}
 
 function Panel({
   title, subtitle, count, countTone, onViewAll, loading, urgent, children,
@@ -30,46 +46,68 @@ function Panel({
   children: React.ReactNode
 }) {
   return (
-    <section className={cn(
-      'flex flex-col overflow-hidden rounded-2xl border bg-white shadow-[0_1px_4px_rgba(0,0,0,.06)]',
-      urgent ? 'border-red-200' : 'border-slate-200',
-    )}>
-      <div className={cn(
-        'flex shrink-0 items-center justify-between gap-4 border-b px-5 py-4',
-        urgent ? 'border-red-100 bg-red-50' : 'border-slate-100',
-      )}>
-        <div className="min-w-0">
-          <h3 className={cn('flex items-center text-[14px] font-semibold', urgent ? 'text-red-700' : 'text-slate-800')}>
+    <div style={{
+      display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      borderRadius: 16, border: `1px solid ${urgent ? T.redBdr : T.border}`,
+      background: T.white, boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+        borderBottom: `1px solid ${urgent ? T.redBdr : T.borderL}`,
+        background: urgent ? T.redBg : T.white,
+        padding: '14px 20px', flexShrink: 0,
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <h3 style={{
+            display: 'flex', alignItems: 'center',
+            fontSize: 14, fontWeight: 600,
+            color: urgent ? '#b91c1c' : T.text,
+          }}>
             {title}
             {count !== undefined && count > 0 && countTone && (
-              <span className={cn('ml-2 inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-px text-[10px] font-bold leading-none',
-                countTone === 'red' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700',
-              )}>
+              <span style={{
+                marginLeft: 8, display: 'inline-flex', minWidth: 18,
+                alignItems: 'center', justifyContent: 'center',
+                borderRadius: '50%', padding: '0 6px',
+                height: 18, fontSize: 10, fontWeight: 700, lineHeight: 1,
+                background: countTone === 'red' ? '#fecaca' : T.amberBg,
+                color: countTone === 'red' ? T.red : T.amber,
+              }}>
                 {count}
               </span>
             )}
           </h3>
-          <p className={cn('mt-0.5 text-[12px]', urgent ? 'text-red-400' : 'text-slate-400')}>{subtitle}</p>
+          <p style={{
+            marginTop: 2, fontSize: 12,
+            color: urgent ? '#fca5a5' : T.textMuted,
+          }}>
+            {subtitle}
+          </p>
         </div>
         {onViewAll && (
           <button
             type="button"
             onClick={onViewAll}
-            className={cn('shrink-0 whitespace-nowrap text-[12px] font-medium transition-colors',
-              urgent ? 'text-red-600 hover:text-red-700' : 'text-[#1565C0] hover:text-[#0D47A1]',
-            )}
+            style={{
+              whiteSpace: 'nowrap', fontSize: 12, fontWeight: 500,
+              color: urgent ? T.red : T.primary,
+              background: 'none', border: 'none', cursor: 'pointer',
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = urgent ? '#991b1b' : T.primaryDk }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = urgent ? T.red : T.primary }}
           >
             View all
           </button>
         )}
       </div>
-      <div className="flex-1 overflow-hidden">
+      <div style={{ flex: 1, overflow: 'hidden' }}>
         {loading
-          ? <div className="flex items-center justify-center py-12"><Spinner /></div>
+          ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 0' }}><Spinner /></div>
           : children
         }
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -196,25 +234,35 @@ export function StaffDashboard() {
   ]
 
   return (
-    <div className="space-y-7">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
       <PageHeader title="Staff Dashboard" subtitle="Manage operational requests and asset handovers." />
 
       {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
       {/* Stats */}
-      <div className="stat-grid">
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16,
+      }}>
         {statCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
       </div>
 
-      {/* QR Scanner */}
-      <Card>
-        <div className="mb-4">
-          <p className="text-[14px] font-semibold text-slate-800">Quick QR Scanner</p>
-          <p className="mt-1 text-[12px] text-slate-400">Scan an asset QR code to quickly process a borrow or return</p>
+      {/* ── Quick QR Scanner ── */}
+      <div style={{
+        background: T.white, borderRadius: 16,
+        border: `1px solid ${T.border}`,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+        padding: 20,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <QrCodeIcon size={18} style={{ color: T.primary }} />
+          <p style={{ fontSize: 14, fontWeight: 600, color: T.text }}>Quick QR Scanner</p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <div className="flex-1 min-w-[200px]">
+        <p style={{ fontSize: 12, color: T.textMuted, marginBottom: 14 }}>
+          Scan an asset QR code to quickly process a borrow or return
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
             <Input
               placeholder="Enter QR code or asset ID…"
               value={qrCode}
@@ -222,20 +270,25 @@ export function StaffDashboard() {
               onKeyDown={(e) => { if (e.key === 'Enter') void handleScanQR() }}
             />
           </div>
-          <Button onClick={() => void handleScanQR()}>Scan</Button>
+          <Button onClick={() => void handleScanQR()}>
+            <QrCodeIcon size={16} style={{ marginRight: 6 }} />
+            Scan
+          </Button>
           <Button variant="secondary" onClick={() => { setScannerMode('authorize'); setScannerOpen(true) }}>
+            <Camera size={16} style={{ marginRight: 6 }} />
             Scan to Borrow
           </Button>
           <Button variant="secondary" onClick={() => { setScannerMode('transaction'); setScannerOpen(true) }}>
+            <Camera size={16} style={{ marginRight: 6 }} />
             Scan to Borrow/Return
           </Button>
         </div>
-      </Card>
+      </div>
 
       <AssetQrScanner open={scannerOpen} mode={scannerMode} onClose={() => setScannerOpen(false)} onCompleted={loadData} />
 
       {/* Pending + Active */}
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(2, 1fr)' }}>
         <Panel
           title="Borrow Requests"
           subtitle="Approve before releasing assets for pickup"

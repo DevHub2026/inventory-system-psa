@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser'
-import { ScanLine, AlertCircle, CheckCircle2, Info } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Info, CameraOff, Camera, QrCode } from 'lucide-react'
 import { Badge, Button, Input, Modal, Spinner } from '@/components/ui'
 import { assetService } from '@/services/assetService'
 import type { Asset, Borrowing } from '@/types'
@@ -30,6 +30,25 @@ type ScannerState =
 
 function isLocalhost() {
   return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+}
+
+/* ── Design tokens ── */
+const T = {
+  primary:    '#0B3D91',
+  primaryBg:  '#EEF4FF',
+  primaryBdr: '#C5D8FF',
+  success:    '#16a34a',
+  successBg:  '#f0fdf4',
+  successBdr: '#bbf7d0',
+  danger:     '#E31C23',
+  dangerBg:   '#fef2f2',
+  dangerBdr:  '#fecaca',
+  text:       '#1e293b',
+  textMid:    '#475569',
+  textMuted:  '#94a3b8',
+  border:     '#e2e8f0',
+  bg:         '#f8fafc',
+  white:      '#ffffff',
 }
 
 export function AssetQrScanner({ open, onClose, mode = 'transaction', onCompleted }: AssetQrScannerProps) {
@@ -100,7 +119,6 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
       notifyDataChanged('all')
       onCompleted?.()
     } catch (error: unknown) {
-      // Transaction failed — try a plain asset lookup so we can still show info
       try {
         const resolvedAsset = await assetService.scan(identifier)
         setAsset(resolvedAsset)
@@ -187,14 +205,14 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
   const canScanAgain = ['found', 'not_found', 'transaction_failed', 'invalid', 'unsupported', 'permission_denied', 'camera_error'].includes(state)
   const isActive = state === 'starting' || state === 'scanning' || state === 'resolving'
 
-  /* Banner styling based on state */
+  /* Banner styling */
   const alertConfig = (() => {
     if (!message) return null
     if (state === 'found')
-      return { Icon: CheckCircle2, cls: 'bg-emerald-50 border-emerald-200 text-emerald-800' }
+      return { Icon: CheckCircle2, cls: { bg: T.successBg, bdr: T.successBdr, text: T.success } }
     if (state === 'not_found' || state === 'transaction_failed' || state === 'invalid')
-      return { Icon: AlertCircle, cls: 'bg-red-50 border-[#E31C23]/25 text-[#E31C23]' }
-    return { Icon: Info, cls: 'bg-[#EEF4FF] border-[#C5D8FF] text-[#003DA5]' }
+      return { Icon: AlertCircle, cls: { bg: T.dangerBg, bdr: T.dangerBdr, text: T.danger } }
+    return { Icon: Info, cls: { bg: T.primaryBg, bdr: T.primaryBdr, text: T.primary } }
   })()
 
   return (
@@ -203,51 +221,92 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
       title={mode === 'authorize' ? 'Scan QR to Authorize' : 'Scan Asset QR'}
       onClose={() => { stopCamera(); onClose() }}
       footer={
-        <>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={() => { stopCamera(); onClose() }}>Close</Button>
-          {canScanAgain && <Button onClick={() => void startCamera()}>Scan Again</Button>}
-        </>
+          {canScanAgain && <Button onClick={() => void startCamera()}><Camera size={16} style={{ marginRight: 6 }} />Scan Again</Button>}
+        </div>
       }
     >
-      <div className="space-y-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        {/* Status banner */}
+        {/* ── Status banner ── */}
         {alertConfig && message && (
-          <div className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm font-medium ${alertConfig.cls}`}>
-            <alertConfig.Icon className="mt-px h-4 w-4 flex-none" />
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            borderRadius: 10, border: `1px solid ${alertConfig.cls.bdr}`,
+            background: alertConfig.cls.bg,
+            padding: '10px 14px', fontSize: 13, fontWeight: 500,
+            color: alertConfig.cls.text,
+          }}>
+            <alertConfig.Icon style={{ flexShrink: 0, marginTop: 1 }} size={16} />
             <span>{message}</span>
           </div>
         )}
 
-        {/* Camera viewport */}
-        <div className="relative overflow-hidden rounded-xl border border-[#E2EAF3] bg-slate-950 shadow-inner">
+        {/* ── Camera viewport ── */}
+        <div style={{
+          position: 'relative', overflow: 'hidden', borderRadius: 14,
+          border: `1px solid ${T.border}`,
+          background: '#0f172a', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.3)',
+        }}>
           <video ref={videoRef} className="aspect-video w-full object-cover" muted playsInline />
 
-          {/* Corner scan brackets */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
-            <div className="relative h-40 w-40">
-              <span className="absolute left-0 top-0 h-6 w-6 rounded-tl-md border-l-2 border-t-2 border-[#FFD400]" />
-              <span className="absolute right-0 top-0 h-6 w-6 rounded-tr-md border-r-2 border-t-2 border-[#FFD400]" />
-              <span className="absolute bottom-0 left-0 h-6 w-6 rounded-bl-md border-b-2 border-l-2 border-[#FFD400]" />
-              <span className="absolute bottom-0 right-0 h-6 w-6 rounded-br-md border-b-2 border-r-2 border-[#FFD400]" />
+          {/* Corner brackets */}
+          <div style={{
+            pointerEvents: 'none', position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }} aria-hidden="true">
+            <div style={{ position: 'relative', width: 160, height: 160 }}>
+              {/* Top-left */}
+              <span style={{
+                position: 'absolute', left: 0, top: 0, width: 28, height: 28,
+                borderLeft: '3px solid #FFD400', borderTop: '3px solid #FFD400',
+                borderTopLeftRadius: 8,
+              }} />
+              {/* Top-right */}
+              <span style={{
+                position: 'absolute', right: 0, top: 0, width: 28, height: 28,
+                borderRight: '3px solid #FFD400', borderTop: '3px solid #FFD400',
+                borderTopRightRadius: 8,
+              }} />
+              {/* Bottom-left */}
+              <span style={{
+                position: 'absolute', left: 0, bottom: 0, width: 28, height: 28,
+                borderLeft: '3px solid #FFD400', borderBottom: '3px solid #FFD400',
+                borderBottomLeftRadius: 8,
+              }} />
+              {/* Bottom-right */}
+              <span style={{
+                position: 'absolute', right: 0, bottom: 0, width: 28, height: 28,
+                borderRight: '3px solid #FFD400', borderBottom: '3px solid #FFD400',
+                borderBottomRightRadius: 8,
+              }} />
               {state === 'scanning' && (
-                <span className="absolute inset-x-2 h-[2px] animate-[scan_2s_ease-in-out_infinite] rounded-full bg-[#FFD400]/80" />
+                <span style={{
+                  position: 'absolute', left: 8, right: 8, height: 2,
+                  borderRadius: '50%', background: 'rgba(255,212,0,0.7)',
+                  animation: 'scan 2s ease-in-out infinite',
+                }} />
               )}
             </div>
           </div>
 
           {/* Idle overlay */}
           {state === 'idle' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/70">
-              <ScanLine className="h-8 w-8 text-slate-400" />
-              <p className="text-xs font-medium text-slate-400">Camera inactive</p>
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
+              background: 'rgba(15,23,42,0.7)',
+            }}>
+              <CameraOff size={32} color="#94a3b8" />
+              <p style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}>Camera inactive</p>
             </div>
           )}
         </div>
 
-        {/* Spinner status row */}
+        {/* ── Spinner status ── */}
         {isActive && (
-          <div className="flex items-center justify-center gap-2.5 text-sm text-slate-500">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontSize: 13, color: T.textMuted }}>
             <Spinner />
             <span>
               {state === 'starting'  && 'Requesting camera permission…'}
@@ -257,49 +316,76 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
           </div>
         )}
 
-        {/* Decoded value chip */}
+        {/* ── Decoded value chip ── */}
         {scannedValue && (
-          <div className="flex items-center gap-2 rounded-lg border border-[#E2EAF3] bg-[#F4F7FC] px-3.5 py-2.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Decoded</span>
-            <span className="flex-1 truncate font-mono text-sm font-semibold text-slate-800">{scannedValue}</span>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            borderRadius: 10, border: `1px solid ${T.border}`,
+            background: T.bg, padding: '10px 14px',
+          }}>
+            <QrCode size={16} style={{ color: T.textMuted, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: T.textMuted }}>Decoded</span>
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 13, fontWeight: 600, color: T.text }}>{scannedValue}</span>
           </div>
         )}
 
-        {/* Asset result card */}
+        {/* ── Asset result card ── */}
         {asset && (
-          <div className="overflow-hidden rounded-xl border border-emerald-200 bg-emerald-50">
-            <div className="flex items-center gap-2 border-b border-emerald-200 bg-emerald-100/60 px-4 py-3">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              <p className="text-sm font-bold text-emerald-800">Asset Found</p>
+          <div style={{
+            overflow: 'hidden', borderRadius: 12,
+            border: `1px solid ${T.successBdr}`,
+            background: T.successBg,
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              borderBottom: `1px solid ${T.successBdr}`,
+              background: 'rgba(22,163,74,0.06)',
+              padding: '10px 16px',
+            }}>
+              <CheckCircle2 size={16} color={T.success} />
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>Asset Found</p>
             </div>
-            <dl className="grid gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-2">
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 16px',
+              padding: 16, fontSize: 13,
+            }}>
               {[
                 { label: 'Name',         value: asset.name },
-                { label: 'Asset Number', value: asset.asset_number },
+                { label: 'Asset Number', value: asset.asset_number, mono: true },
                 { label: 'PSA QR ID',    value: asset.psa_qr_identifier ?? scannedValue, mono: true },
                 { label: 'Status',       value: <Badge tone={assetStatusTone(asset.status)}>{asset.status}</Badge> },
                 { label: 'Office',       value: asset.office ?? '—' },
                 { label: 'Location',     value: asset.location ?? '—' },
               ].map((item) => (
                 <div key={item.label}>
-                  <dt className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">{item.label}</dt>
-                  <dd className={`mt-0.5 text-sm font-medium text-slate-900 ${item.mono ? 'font-mono text-xs' : ''}`}>
-                    {item.value}
-                  </dd>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: T.success, marginBottom: 2 }}>{item.label}</div>
+                  <div style={{ fontWeight: 500, color: T.text, fontFamily: item.mono ? 'monospace' : 'inherit', fontSize: item.mono ? 12 : 13 }}>{item.value}</div>
                 </div>
               ))}
-            </dl>
+            </div>
           </div>
         )}
 
-        {/* Borrowing transaction card */}
+        {/* ── Borrowing transaction card ── */}
         {borrowing && (
-          <div className="overflow-hidden rounded-xl border border-[#C5D8FF] bg-[#EEF4FF]">
-            <div className="flex items-center gap-2 border-b border-[#C5D8FF] bg-[#D8E8FF]/60 px-4 py-3">
-              <CheckCircle2 className="h-4 w-4 text-[#003DA5]" />
-              <p className="text-sm font-bold text-[#003DA5]">Borrowing Transaction</p>
+          <div style={{
+            overflow: 'hidden', borderRadius: 12,
+            border: `1px solid ${T.primaryBdr}`,
+            background: T.primaryBg,
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              borderBottom: `1px solid ${T.primaryBdr}`,
+              background: 'rgba(11,61,145,0.06)',
+              padding: '10px 16px',
+            }}>
+              <CheckCircle2 size={16} color={T.primary} />
+              <p style={{ fontSize: 13, fontWeight: 700, color: T.primary }}>Borrowing Transaction</p>
             </div>
-            <dl className="grid gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-2">
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 16px',
+              padding: 16, fontSize: 13,
+            }}>
               {[
                 { label: 'Borrowing ID',       value: `#${borrowing.id}` },
                 { label: 'Status',             value: borrowingStatusLabel(borrowing.status) },
@@ -313,29 +399,37 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
                 { label: 'Authorized At',      value: borrowing.authorized_at ?? '—' },
               ].map((item) => (
                 <div key={item.label}>
-                  <dt className="text-[10px] font-bold uppercase tracking-wide text-[#003DA5]/70">{item.label}</dt>
-                  <dd className={`mt-0.5 text-sm font-medium text-slate-800 ${item.mono ? 'font-mono text-xs' : ''}`}>
-                    {item.value}
-                  </dd>
+                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: `${T.primary}99`, marginBottom: 2 }}>{item.label}</div>
+                  <div style={{ fontWeight: 500, color: T.text, fontFamily: item.mono ? 'monospace' : 'inherit', fontSize: item.mono ? 12 : 13 }}>{item.value}</div>
                 </div>
               ))}
-            </dl>
+            </div>
           </div>
         )}
 
-        {/* Manual / dev fallback */}
-        <div className="rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFD] p-4">
-          <p className="mb-0.5 text-xs font-bold uppercase tracking-wide text-slate-400">Manual lookup</p>
-          <p className="mb-3 text-xs text-slate-400">
+        {/* ── Manual lookup ── */}
+        <div style={{
+          borderRadius: 12,
+          border: `1px dashed ${T.border}`,
+          background: '#F8FAFD',
+          padding: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <QrCode size={14} style={{ color: T.textMuted }} />
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: T.textMuted }}>Manual lookup</p>
+          </div>
+          <p style={{ fontSize: 12, color: T.textMuted, marginBottom: 10 }}>
             Use on devices without a camera or when browser QR support is unavailable.
           </p>
-          <div className="flex gap-2">
-            <Input
-              value={manualValue}
-              onChange={(e) => setManualValue(e.target.value)}
-              placeholder="PSA-ASSET-000123"
-              onKeyDown={(e) => { if (e.key === 'Enter') void resolveIdentifier(manualValue) }}
-            />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <Input
+                value={manualValue}
+                onChange={(e) => setManualValue(e.target.value)}
+                placeholder="PSA-ASSET-000123"
+                onKeyDown={(e) => { if (e.key === 'Enter') void resolveIdentifier(manualValue) }}
+              />
+            </div>
             <Button variant="secondary" onClick={() => void resolveIdentifier(manualValue)}>
               Resolve
             </Button>

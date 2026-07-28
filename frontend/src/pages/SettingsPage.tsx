@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { KeyRound, User, Mail, Lock, Eye, EyeOff } from 'lucide-react'
-import { Input, Button, Alert, Badge } from '@/components/ui'
+import { KeyRound, User, Mail, Lock, Eye, EyeOff, Shield, Building2, Hash } from 'lucide-react'
+import { Input, Button, Alert } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
 import { authService, type UpdateProfilePayload, type ChangePasswordPayload } from '@/services/authService'
 import { displayName } from '@/types'
@@ -18,9 +18,76 @@ const T = {
   bg:         '#f8fafc',
   accent:     '#0B3D91',
   accentBg:   '#eff6ff',
+  amberBg:    '#fffbeb',
+  amberText:  '#b45309',
+  surface:    '#f1f5f9',
 }
 
-/** Consistent section card */
+/* ── Helper: field label ── */
+function FieldLabel({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 12, fontWeight: 600, color: T.textMid }}>
+      <span style={{ color: T.textMuted, display: 'flex', flexShrink: 0 }}>{icon}</span>
+      {label}
+    </div>
+  )
+}
+
+/* ── Helper: info badge ── */
+function InfoChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | React.ReactNode }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      background: T.bg,
+      border: `1px solid ${T.border}`,
+      borderRadius: 10,
+      padding: '12px 14px',
+    }}>
+      <div style={{
+        width: 34, height: 34, flexShrink: 0, display: 'grid', placeItems: 'center',
+        borderRadius: 8, background: T.accentBg, color: T.accent,
+      }}>
+        {icon}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: T.textMuted, marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{value}</div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Password input with toggle ── */
+function PasswordField({
+  value, onChange, placeholder, show, onToggle,
+}: {
+  value: string; onChange: (v: string) => void; placeholder: string
+  show: boolean; onToggle: () => void
+}) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <Input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: T.textMuted, display: 'flex', alignItems: 'center', padding: 0,
+        }}
+      >
+        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  )
+}
+
+/* ── Section card ── */
 function Section({
   icon, iconBg, iconColor, title, subtitle, children,
 }: {
@@ -65,6 +132,9 @@ function Section({
   )
 }
 
+/* ==================================================================
+   PAGE COMPONENT
+   ================================================================== */
 export function SettingsPage() {
   const { user, setUser } = useAuth()
   const [isEditing,   setIsEditing]   = useState(false)
@@ -105,11 +175,6 @@ export function SettingsPage() {
     setIsSaving(true); setMessage(null)
     try {
       const updated = await authService.updateProfile(profileForm)
-      /*
-       * Bug fix: after server confirms the update, explicitly sync
-       * profileForm to the returned user so the form shows the saved value,
-       * not a stale local state value.
-       */
       setUser(updated)
       setProfileForm({
         name:  displayName(updated),
@@ -137,15 +202,22 @@ export function SettingsPage() {
   }
 
   const name     = displayName(user)
-  const initials = name.slice(0, 1).toUpperCase()
+  const initials = name
+    .split(' ')
+    .filter((_, i, a) => i === 0 || i === a.length - 1)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 800 }}>
       <PageHeader title="Profile Settings" subtitle="Manage your account information and security." />
 
       {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
-      {/* ── Personal Information ── */}
+      {/* ════════════════════════════════════════════════════════
+          PERSONAL INFORMATION
+      ════════════════════════════════════════════════════════ */}
       <Section
         icon={<User size={20} />}
         iconBg={T.accentBg}
@@ -153,7 +225,7 @@ export function SettingsPage() {
         title="Personal Information"
         subtitle="Your name, email address, and account details."
       >
-        {/* User identity row */}
+        {/* ── Avatar + identity bar ── */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 16,
           padding: '16px 20px',
@@ -162,186 +234,152 @@ export function SettingsPage() {
           border: `1px solid ${T.border}`,
           marginBottom: 24,
         }}>
-          {/* Avatar */}
           <div style={{
             display: 'grid', width: 52, height: 52, flexShrink: 0,
             placeItems: 'center', borderRadius: '50%',
-            background: T.accent,
+            background: `linear-gradient(135deg, ${T.accent}, #2563eb)`,
             fontSize: 20, fontWeight: 800, color: '#ffffff',
-            boxShadow: '0 2px 8px rgba(11,61,145,0.25)',
+            boxShadow: `0 2px 8px rgba(11,61,145,0.25)`,
           }}>
             {initials}
           </div>
-          {/* Name + role */}
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: T.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {name}
             </div>
-            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 3 }}>
+            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
               {user?.email}
             </div>
           </div>
           <RoleBadges roles={user?.roles ?? []} maxVisible={3} />
         </div>
 
-        <div className="mb-6 grid gap-3 rounded-xl border border-[#E5E7EB] bg-white p-4 text-[13px] md:grid-cols-2">
-          <InfoItem label="Name" value={name} />
-          <InfoItem label="Employee ID" value={user?.employee_number || '—'} />
-          <InfoItem label="Department" value={user?.department?.name || '—'} />
-          <div>
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Status</p>
-            <Badge tone={user?.status === 'active' ? 'green' : 'yellow'}>{(user?.status || 'unknown').toUpperCase()}</Badge>
-          </div>
-          <div className="md:col-span-2">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">Roles</p>
-            <RoleBadges roles={user?.roles ?? []} maxVisible={6} />
-          </div>
-        </div>
-
-        {/* Form fields */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 16 }}
-             className="md:!grid-cols-2">
-          <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 12, fontWeight: 600, color: T.textMid }}>
-              <User size={13} style={{ color: T.textMuted }} />
-              Full Name
-            </label>
-            <Input
-              value={profileForm.name || ''}
-              onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-              readOnly={!isEditing}
-              placeholder="Your full name"
-            />
-          </div>
-          <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 12, fontWeight: 600, color: T.textMid }}>
-              <Mail size={13} style={{ color: T.textMuted }} />
-              Email Address
-            </label>
-            <Input
-              type="email"
-              value={profileForm.email || ''}
-              onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-              readOnly={!isEditing}
-              placeholder="your@email.com"
-            />
+        {/* ── Info chips grid ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 24 }}>
+          <InfoChip icon={<User size={16} />} label="Full Name" value={name} />
+          <InfoChip icon={<Mail size={16} />} label="Email" value={user?.email || '—'} />
+          <InfoChip icon={<Hash size={16} />} label="Employee ID" value={user?.employee_number || '—'} />
+          <InfoChip icon={<Building2 size={16} />} label="Department" value={user?.department?.name || '—'} />
+          <InfoChip
+            icon={<Shield size={16} />}
+            label="Status"
+            value={`${(user?.status || 'unknown').charAt(0).toUpperCase()}${(user?.status || 'unknown').slice(1)}`}
+          />
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            background: T.bg,
+            border: `1px solid ${T.border}`,
+            borderRadius: 10,
+            padding: '12px 14px',
+          }}>
+            <div style={{
+              width: 34, height: 34, flexShrink: 0, display: 'grid', placeItems: 'center',
+              borderRadius: 8, background: T.accentBg, color: T.accent,
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: T.textMuted, marginBottom: 4 }}>Roles</div>
+              <RoleBadges roles={user?.roles ?? []} maxVisible={4} />
+            </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20, paddingTop: 20, borderTop: `1px solid ${T.borderLight}` }}>
-          {isEditing ? (
-            <>
-              <Button onClick={handleProfileUpdate} disabled={isSaving}>
-                {isSaving ? 'Saving…' : 'Save Changes'}
-              </Button>
-              <Button variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button>
-            </>
-          ) : (
-            <Button variant="outline" onClick={() => setIsEditing(true)}>Edit Profile</Button>
-          )}
+        {/* ── Editable fields ── */}
+        <div style={{ borderTop: `1px solid ${T.borderLight}`, paddingTop: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+            <div>
+              <FieldLabel icon={<User size={13} />} label="Full Name" />
+              <Input
+                value={profileForm.name || ''}
+                onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                readOnly={!isEditing}
+                placeholder="Your full name"
+              />
+            </div>
+            <div>
+              <FieldLabel icon={<Mail size={13} />} label="Email Address" />
+              <Input
+                type="email"
+                value={profileForm.email || ''}
+                onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                readOnly={!isEditing}
+                placeholder="your@email.com"
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20 }}>
+            {isEditing ? (
+              <>
+                <Button onClick={handleProfileUpdate} disabled={isSaving}>
+                  {isSaving ? 'Saving…' : 'Save Changes'}
+                </Button>
+                <Button variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button>
+              </>
+            ) : (
+              <Button variant="outline" onClick={() => setIsEditing(true)}>Edit Profile</Button>
+            )}
+          </div>
         </div>
       </Section>
 
-      {/* ── Change Password ── */}
+      {/* ════════════════════════════════════════════════════════
+          CHANGE PASSWORD
+      ════════════════════════════════════════════════════════ */}
       <Section
         icon={<KeyRound size={20} />}
-        iconBg="#fffbeb"
-        iconColor="#b45309"
+        iconBg={T.amberBg}
+        iconColor={T.amberText}
         title="Change Password"
         subtitle="Use a strong password that you don't use elsewhere."
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Current password */}
+          {/* Current Password */}
           <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 12, fontWeight: 600, color: T.textMid }}>
-              <Lock size={13} style={{ color: T.textMuted }} />
-              Current Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Input
-                type={showCurrent ? 'text' : 'password'}
-                value={passwordForm.current_password}
-                onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
-                placeholder="Enter current password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrent((v) => !v)}
-                style={{
-                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: T.textMuted, display: 'flex', alignItems: 'center', padding: 0,
-                }}
-              >
-                {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
+            <FieldLabel icon={<Lock size={13} />} label="Current Password" />
+            <PasswordField
+              value={passwordForm.current_password}
+              onChange={(v) => setPasswordForm({ ...passwordForm, current_password: v })}
+              placeholder="Enter current password"
+              show={showCurrent}
+              onToggle={() => setShowCurrent((v) => !v)}
+            />
           </div>
 
           {/* New + Confirm */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 16 }}
-               className="md:!grid-cols-2">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
             <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 12, fontWeight: 600, color: T.textMid }}>
-                <Lock size={13} style={{ color: T.textMuted }} />
-                New Password
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Input
-                  type={showNew ? 'text' : 'password'}
-                  value={passwordForm.password}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })}
-                  placeholder="Min. 8 characters"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNew((v) => !v)}
-                  style={{
-                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: T.textMuted, display: 'flex', alignItems: 'center', padding: 0,
-                  }}
-                >
-                  {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
+              <FieldLabel icon={<Lock size={13} />} label="New Password" />
+              <PasswordField
+                value={passwordForm.password}
+                onChange={(v) => setPasswordForm({ ...passwordForm, password: v })}
+                placeholder="Min. 8 characters"
+                show={showNew}
+                onToggle={() => setShowNew((v) => !v)}
+              />
             </div>
             <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 12, fontWeight: 600, color: T.textMid }}>
-                <Lock size={13} style={{ color: T.textMuted }} />
-                Confirm New Password
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Input
-                  type={showConfirm ? 'text' : 'password'}
-                  value={passwordForm.password_confirmation}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, password_confirmation: e.target.value })}
-                  placeholder="Repeat new password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm((v) => !v)}
-                  style={{
-                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: T.textMuted, display: 'flex', alignItems: 'center', padding: 0,
-                  }}
-                >
-                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
+              <FieldLabel icon={<Lock size={13} />} label="Confirm New Password" />
+              <PasswordField
+                value={passwordForm.password_confirmation}
+                onChange={(v) => setPasswordForm({ ...passwordForm, password_confirmation: v })}
+                placeholder="Repeat new password"
+                show={showConfirm}
+                onToggle={() => setShowConfirm((v) => !v)}
+              />
             </div>
           </div>
 
-          {/* Password strength hint */}
+          {/* Hint */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.textMuted }}>
             <Lock size={12} />
             Password must be at least 8 characters long with a mix of letters and numbers.
           </div>
 
           {/* Action */}
-          <div style={{ paddingTop: 4, borderTop: `1px solid ${T.borderLight}`, marginTop: 4 }}>
+          <div style={{ paddingTop: 16, borderTop: `1px solid ${T.borderLight}` }}>
             <Button
               onClick={handlePasswordChange}
               disabled={isSaving || !passwordForm.current_password || !passwordForm.password}
@@ -351,15 +389,6 @@ export function SettingsPage() {
           </div>
         </div>
       </Section>
-    </div>
-  )
-}
-
-function InfoItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-[#94A3B8]">{label}</p>
-      <p className="font-medium text-[#1E293B]">{value}</p>
     </div>
   )
 }
