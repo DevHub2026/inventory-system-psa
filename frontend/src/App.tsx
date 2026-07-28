@@ -12,6 +12,7 @@ import { ReportPage } from '@/pages/ReportPage'
 import { ReservationPage } from '@/pages/ReservationPage'
 import { RolesPage } from '@/pages/RolesPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { DevelopersPage } from '@/pages/DevelopersPage'
 import { SystemSetupPage } from '@/pages/SystemSetupPage'
 import LoginPage from '@/pages/LoginPage'
 import { UsersPage } from '@/pages/UsersPage'
@@ -47,6 +48,7 @@ function App() {
             <Route path="/permissions" element={<PermissionsPage />} />
             <Route path="/system-setup" element={<SystemSetupPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/developers" element={<DevelopersPage />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Route>
