@@ -4,6 +4,7 @@ namespace App\Modules\Asset\Services;
 
 use App\Modules\Asset\Models\Office;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class OfficeService
@@ -28,13 +29,14 @@ class OfficeService
 
     public function create(array $data): Office
     {
+        $data['created_by'] = Auth::id();
         return Office::query()->create($data);
     }
 
     public function update(Office $office, array $data): Office
     {
+        $data['updated_by'] = Auth::id();
         $office->update($data);
-
         return $office->fresh();
     }
 

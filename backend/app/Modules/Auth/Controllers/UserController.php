@@ -23,7 +23,7 @@ class UserController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = User::query()->with(['department', 'roles']);
+        $query = User::query()->with(['department', 'office', 'roles']);
 
         if ($request->has('search')) {
             $search = $request->input('search');

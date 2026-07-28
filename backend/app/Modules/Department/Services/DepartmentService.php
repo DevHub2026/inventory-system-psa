@@ -5,6 +5,7 @@ namespace App\Modules\Department\Services;
 use App\Modules\Department\Models\Department;
 use App\Modules\Department\Repositories\Contracts\DepartmentRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DepartmentService
@@ -31,11 +32,13 @@ class DepartmentService
 
     public function create(array $data): Department
     {
+        $data['created_by'] = Auth::id();
         return $this->departmentRepository->create($data);
     }
 
     public function update(Department $department, array $data): Department
     {
+        $data['updated_by'] = Auth::id();
         return $this->departmentRepository->update($department, $data);
     }
 

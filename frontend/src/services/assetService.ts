@@ -24,6 +24,10 @@ interface BackendAsset {
   purchase_date?: string | null
   purchase_cost?: string | number | null
   warranty_until?: string | null
+  issued_to?: string | null
+  issued_by_user_id?: number | null
+  date_issued?: string | null
+  issued_by_name?: string | null
   category?: { name?: string } | string | null
   location?: { name?: string } | string | null
   office?: { name?: string } | string | null
@@ -38,6 +42,9 @@ export interface UpdateAssetPayload {
   status?: AssetStatus
   condition_status?: string | null
   remarks?: string | null
+  issued_to?: string | null
+  issued_by_user_id?: number | null
+  date_issued?: string | null
 }
 
 function mapAsset(asset: BackendAsset): Asset {
@@ -68,6 +75,10 @@ function mapAsset(asset: BackendAsset): Asset {
     purchase_date: asset.purchase_date,
     purchase_cost: asset.purchase_cost,
     warranty_until: asset.warranty_until,
+    issued_to: asset.issued_to,
+    issued_by_user_id: asset.issued_by_user_id,
+    date_issued: asset.date_issued,
+    issued_by_name: asset.issued_by_name,
     identifiers: asset.identifiers,
   }
 }

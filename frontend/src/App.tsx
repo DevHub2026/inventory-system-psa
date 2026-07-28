@@ -4,7 +4,10 @@ import { useAuth } from '@/hooks/useAuth'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AssetPage } from '@/pages/AssetPage'
 import { BorrowingPage } from '@/pages/BorrowingPage'
+import BorrowingDetailsPage from '@/pages/BorrowingDetailsPage'
+import ExtensionRequestsPage from '@/pages/ExtensionRequestsPage'
 import { DashboardPage } from '@/pages/DashboardPage'
+import { DocumentTemplatesPage } from '@/pages/DocumentTemplatesPage'
 import { InventoryPage } from '@/pages/InventoryPage'
 import { MaintenancePage } from '@/pages/MaintenancePage'
 import { PermissionsPage } from '@/pages/PermissionsPage'
@@ -39,6 +42,8 @@ function App() {
             <Route path="/assets" element={<AssetPage />} />
             <Route path="/reservations" element={<ReservationPage />} />
             <Route path="/borrowings" element={<BorrowingPage />} />
+            <Route path="/borrowings/:id" element={<BorrowingDetailsPage />} />
+            <Route path="/extension-requests" element={<ExtensionRequestsPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/maintenance" element={<MaintenancePage />} />
             <Route path="/reports" element={<ReportPage />} />
@@ -46,6 +51,7 @@ function App() {
             <Route path="/roles" element={<RolesPage />} />
             <Route path="/permissions" element={<PermissionsPage />} />
             <Route path="/system-setup" element={<SystemSetupPage />} />
+            <Route path="/document-templates" element={<DocumentTemplatesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>

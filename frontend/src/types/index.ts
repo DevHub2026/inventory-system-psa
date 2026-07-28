@@ -27,6 +27,8 @@ export type MaintenanceStatus =
   | 'completed'
   | 'cancelled'
 
+export type ExtensionRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
 /** Matches Auth UserResource (+ optional display helpers). */
 export interface User {
   id: number
@@ -76,6 +78,10 @@ export interface Asset {
   purchase_date?: string | null
   purchase_cost?: string | number | null
   warranty_until?: string | null
+  issued_to?: string | null
+  issued_by_user_id?: number | null
+  date_issued?: string | null
+  issued_by_name?: string | null
   identifiers?: Array<{
     id: number
     asset_id: number
@@ -130,6 +136,7 @@ export interface Borrowing {
   authorized_at?: string | null
   receipt_code?: string
   receipt_payload?: string
+  has_pending_extension?: boolean
 }
 
 export interface InventoryItem {
@@ -186,6 +193,20 @@ export interface MaintenanceRequest {
   status: MaintenanceStatus
   scheduled_date?: string
   scheduled_at?: string
+}
+
+export interface BorrowExtensionRequest {
+  id: number
+  borrowing_id: number
+  current_due_date: string
+  requested_due_date: string
+  reason: string
+  status: ExtensionRequestStatus
+  remarks?: string | null
+  reviewed_by?: number | null
+  reviewed_by_name?: string | null
+  reviewed_at?: string | null
+  created_at?: string
 }
 
 export interface DashboardStats {

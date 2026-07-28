@@ -64,6 +64,7 @@ export function AssetPage() {
   const [saving,     setSaving]     = useState(false)
   const [editForm,   setEditForm]   = useState<UpdateAssetPayload>({
     name: '', description: '', model: '', status: 'AVAILABLE', condition_status: '', remarks: '',
+    issued_to: '', date_issued: '',
   })
 
   async function load(nextPage = page, nextSearch = search) {
@@ -91,7 +92,16 @@ export function AssetPage() {
     try {
       const a = await assetService.show(id)
       setEditAsset(a)
-      setEditForm({ name: a.name, description: a.description ?? '', model: a.model ?? '', status: a.status, condition_status: a.condition_status ?? '', remarks: a.remarks ?? '' })
+      setEditForm({
+        name: a.name,
+        description: a.description ?? '',
+        model: a.model ?? '',
+        status: a.status,
+        condition_status: a.condition_status ?? '',
+        remarks: a.remarks ?? '',
+        issued_to: a.issued_to ?? '',
+        date_issued: a.date_issued ?? '',
+      })
     } catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to load asset for editing.') }
   }
 
@@ -105,7 +115,15 @@ export function AssetPage() {
     if (!editAsset) return
     setSaving(true); setMessage(null)
     try {
-      await assetService.update(editAsset.id, { ...editForm, description: editForm.description || null, model: editForm.model || null, condition_status: editForm.condition_status || null, remarks: editForm.remarks || null })
+      await assetService.update(editAsset.id, {
+        ...editForm,
+        description: editForm.description || null,
+        model: editForm.model || null,
+        condition_status: editForm.condition_status || null,
+        remarks: editForm.remarks || null,
+        issued_to: editForm.issued_to || null,
+        date_issued: editForm.date_issued || null,
+      })
       setEditAsset(null)
       setMessage('Asset updated successfully.')
       await load(page)
@@ -367,6 +385,9 @@ export function AssetPage() {
               { label: 'Condition',    value: viewAsset.condition_status ?? '—' },
               { label: 'Description',  value: viewAsset.description ?? '—', full: true },
               { label: 'Remarks',      value: viewAsset.remarks ?? '—',     full: true },
+              { label: 'Issued To',    value: viewAsset.issued_to ?? '—' },
+              { label: 'Issued By',    value: viewAsset.issued_by_name ?? '—' },
+              { label: 'Date Issued',  value: viewAsset.date_issued ?? '—', full: true },
             ].map((item) => (
               <div key={item.label} className={item.full ? 'sm:col-span-2' : ''}>
                 <dt className="text-[11px] font-bold uppercase tracking-wide text-[#9CA3AF]">{item.label}</dt>
@@ -439,6 +460,17 @@ export function AssetPage() {
           <Input label="Condition"   value={editForm.condition_status ?? ''} onChange={(e) => setEditForm({ ...editForm, condition_status: e.target.value })} placeholder="GOOD, FAIR, DAMAGED, LOST, UNDER_REPAIR" />
           <Input label="Description" value={editForm.description ?? ''} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
           <Input label="Remarks"     value={editForm.remarks ?? ''} onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })} />
+          
+          <div className="border-t border-[#E5E7EB] pt-3 mt-3">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Permanent Issuance Information</p>
+            <div className="space-y-3">
+              <Input label="Issued To" value={editForm.issued_to ?? ''} onChange={(e) => setEditForm({ ...editForm, issued_to: e.target.value })} placeholder="Full Name / Employee Name" />
+              <div>
+                <label className={LABEL_CLS}>Date Issued</label>
+                <input type="date" className={SELECT_CLS} value={editForm.date_issued ?? ''} onChange={(e) => setEditForm({ ...editForm, date_issued: e.target.value })} />
+              </div>
+            </div>
+          </div>
         </div>
       </Modal>
     </div>

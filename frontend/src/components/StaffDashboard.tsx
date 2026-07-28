@@ -10,6 +10,7 @@ import { AssetQrScanner } from '@/components/AssetQrScanner'
 import { assetService } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
+import { borrowExtensionService } from '@/services/borrowExtensionService'
 import type { Reservation, Borrowing } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
@@ -74,25 +75,28 @@ function Panel({
 
 export function StaffDashboard() {
   const navigate = useNavigate()
-  const [pendingReservations, setPendingReservations] = useState<Reservation[]>([])
-  const [activeBorrowings,    setActiveBorrowings]    = useState<Borrowing[]>([])
-  const [overdueBorrowings,   setOverdueBorrowings]   = useState<Borrowing[]>([])
-  const [loading,             setLoading]             = useState(true)
-  const [message,             setMessage]             = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [qrCode,              setQrCode]              = useState('')
-  const [scannerOpen,         setScannerOpen]         = useState(false)
-  const [scannerMode,         setScannerMode]         = useState<'transaction' | 'authorize'>('transaction')
+  const [pendingReservations,    setPendingReservations]    = useState<Reservation[]>([])
+  const [activeBorrowings,       setActiveBorrowings]       = useState<Borrowing[]>([])
+  const [overdueBorrowings,      setOverdueBorrowings]      = useState<Borrowing[]>([])
+  const [pendingExtensionsCount, setPendingExtensionsCount] = useState<number>(0)
+  const [loading,                setLoading]                = useState(true)
+  const [message,                setMessage]                = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [qrCode,                 setQrCode]                 = useState('')
+  const [scannerOpen,            setScannerOpen]            = useState(false)
+  const [scannerMode,            setScannerMode]            = useState<'transaction' | 'authorize'>('transaction')
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [reservationsRes, borrowingsRes] = await Promise.all([
+      const [reservationsRes, borrowingsRes, extCountRes] = await Promise.all([
         reservationService.list(),
         borrowingService.list(),
+        borrowExtensionService.getPendingExtensionRequests().catch(() => ({ count: 0 })),
       ])
       setPendingReservations(reservationsRes.items.filter((r) => r.status === 'PENDING'))
       setActiveBorrowings(borrowingsRes.items.filter((b) => b.status === 'BORROWED' || b.status === 'ACTIVE'))
       setOverdueBorrowings(borrowingsRes.items.filter((b) => b.status === 'OVERDUE'))
+      setPendingExtensionsCount(extCountRes.count ?? 0)
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load dashboard data.' })
     } finally {
@@ -184,10 +188,11 @@ export function StaffDashboard() {
   ]
 
   const statCards = [
-    { label: 'Borrow Requests',  value: pendingReservations.length,                           description: 'Waiting for approval',          icon: CalendarClock,  tone: 'blue'  as const },
-    { label: 'Borrowed Items',   value: activeBorrowings.length,                              description: 'Currently borrowed items',       icon: HandCoins,      tone: 'green' as const },
-    { label: 'Overdue Items',    value: overdueBorrowings.length,                             description: 'Need immediate follow-up',       icon: AlertTriangle,  tone: 'red'   as const },
-    { label: 'Ready to Process', value: pendingReservations.length + activeBorrowings.length, description: 'Operations requiring attention', icon: ClipboardCheck, tone: 'amber' as const },
+    { label: 'Borrow Requests',    value: pendingReservations.length,                           description: 'Waiting for approval',                icon: CalendarClock,  tone: 'blue'  as const },
+    { label: 'Borrowed Items',     value: activeBorrowings.length,                              description: 'Currently borrowed items',             icon: HandCoins,      tone: 'green' as const },
+    { label: 'Pending Extensions', value: pendingExtensionsCount,                               description: 'Awaiting due date extension approval', icon: CalendarClock,  tone: 'amber' as const, onClick: () => navigate('/extension-requests') },
+    { label: 'Overdue Items',      value: overdueBorrowings.length,                             description: 'Need immediate follow-up',             icon: AlertTriangle,  tone: 'red'   as const },
+    { label: 'Ready to Process',   value: pendingReservations.length + activeBorrowings.length, description: 'Operations requiring attention',       icon: ClipboardCheck, tone: 'amber' as const },
   ]
 
   return (

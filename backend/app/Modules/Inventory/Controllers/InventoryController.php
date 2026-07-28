@@ -223,7 +223,8 @@ class InventoryController extends Controller
     public function export(Request $request): JsonResponse
     {
         try {
-            $path = $this->inventoryService->export($request->all());
+            $format = $request->query('format', 'xlsx');
+            $path = $this->inventoryService->export($request->all(), $format);
 
             return $this->success([
                 'path' => $path,
@@ -238,12 +239,17 @@ class InventoryController extends Controller
     public function downloadExport(Request $request): BinaryFileResponse|JsonResponse
     {
         try {
-            $path = $this->inventoryService->export($request->all());
+            $format = $request->query('format', 'xlsx');
+            $path = $this->inventoryService->export($request->all(), $format);
+
+            $contentType = $format === 'csv'
+                ? 'text/csv'
+                : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
             return response()->download(
                 Storage::path($path),
                 basename($path),
-                ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+                ['Content-Type' => $contentType],
             )->deleteFileAfterSend(true);
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), null, 500);

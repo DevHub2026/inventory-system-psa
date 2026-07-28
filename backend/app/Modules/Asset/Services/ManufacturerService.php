@@ -4,6 +4,7 @@ namespace App\Modules\Asset\Services;
 
 use App\Modules\Asset\Models\Manufacturer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ManufacturerService
@@ -25,13 +26,14 @@ class ManufacturerService
 
     public function create(array $data): Manufacturer
     {
+        $data['created_by'] = Auth::id();
         return Manufacturer::query()->create($data);
     }
 
     public function update(Manufacturer $manufacturer, array $data): Manufacturer
     {
+        $data['updated_by'] = Auth::id();
         $manufacturer->update($data);
-
         return $manufacturer->fresh();
     }
 
