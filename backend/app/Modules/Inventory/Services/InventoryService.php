@@ -26,7 +26,7 @@ class InventoryService
 {
     public function export(array $filters = []): string
     {
-        $items = InventoryItem::query()->with('asset', 'category', 'unit', 'supplier')
+        $items = InventoryItem::query()->with('asset')
             ->when(! empty($filters['type']), function ($query) use ($filters) {
                 $query->where('type', $filters['type']);
             })
@@ -79,13 +79,13 @@ class InventoryService
             $sheet->setCellValue('B'.$row, ucfirst(str_replace('_', '-', $item->type ?? '')));
             $sheet->setCellValue('C'.$row, $item->name);
             $sheet->setCellValue('D'.$row, $item->sku ?? '');
-            $sheet->setCellValue('E'.$row, $item->category?->name ?? '');
+            $sheet->setCellValue('E'.$row, '');
             $sheet->setCellValue('F'.$row, $item->unit ?? '');
             $sheet->setCellValue('G'.$row, $item->quantity);
             $sheet->setCellValue('H'.$row, $item->reorder_level ?? '');
             $sheet->setCellValue('I'.$row, $status);
             $sheet->setCellValue('J'.$row, $item->asset?->asset_number ?? '');
-            $sheet->setCellValue('K'.$row, $item->supplier?->name ?? '');
+            $sheet->setCellValue('K'.$row, '');
             $sheet->setCellValue('L'.$row, $item->remarks ?? '');
             $sheet->setCellValue('M'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
             $sheet->setCellValue('N'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');

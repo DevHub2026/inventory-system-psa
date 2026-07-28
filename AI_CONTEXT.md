@@ -55,7 +55,7 @@ Mobile
 
 ## Current Task
 
-Stabilize the authentication flow and protected app navigation for the frontend.
+All known issues resolved. Backend and frontend are in a clean, passing state.
 
 ---
 

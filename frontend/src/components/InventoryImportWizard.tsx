@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Upload, CheckCircle2, AlertCircle, Info, ArrowLeft, ArrowRight, Download } from 'lucide-react'
+import {
+  Upload, CheckCircle2, AlertCircle, Info, ArrowLeft, ArrowRight,
+  History, FileText, X as XIcon,
+} from 'lucide-react'
 import { Badge, Button, Input, Modal, Spinner } from '@/components/ui'
 import { importService, type ImportTypeOption } from '@/services/importService'
 import type { ImportResult } from '@/types'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface SystemField {
   key: string
@@ -78,13 +83,120 @@ interface ImportHistoryItem {
 type WizardStep = 'upload' | 'preview' | 'mapping' | 'validate' | 'confirm' | 'complete' | 'history'
 
 const STEPS: { key: WizardStep; label: string }[] = [
-  { key: 'upload', label: 'Upload' },
-  { key: 'preview', label: 'Preview' },
-  { key: 'mapping', label: 'Map Columns' },
+  { key: 'upload',   label: 'Upload'   },
+  { key: 'preview',  label: 'Preview'  },
+  { key: 'mapping',  label: 'Map'      },
   { key: 'validate', label: 'Validate' },
-  { key: 'confirm', label: 'Confirm' },
-  { key: 'complete', label: 'Complete' },
+  { key: 'confirm',  label: 'Confirm'  },
+  { key: 'complete', label: 'Done'     },
 ]
+
+// ─── Step Progress Bar ─────────────────────────────────────────────────────────
+
+interface StepBarProps { currentIndex: number }
+
+function StepBar({ currentIndex }: StepBarProps) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+      {STEPS.map((s, i) => {
+        const done   = i < currentIndex
+        const active = i === currentIndex
+
+        const circleStyle: React.CSSProperties = {
+          width: 28, height: 28,
+          borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 700, flexShrink: 0,
+          border: done ? 'none' : active ? '2px solid #0D47A1' : '2px solid #CBD5E1',
+          background: done ? '#0D47A1' : active ? '#EFF6FF' : '#F8FAFD',
+          color: done ? '#fff' : active ? '#0D47A1' : '#94A3B8',
+          transition: 'all 0.2s',
+        }
+
+        const labelStyle: React.CSSProperties = {
+          fontSize: 10, fontWeight: active ? 700 : 500,
+          marginTop: 4, textAlign: 'center',
+          color: done || active ? '#0D47A1' : '#94A3B8',
+          whiteSpace: 'nowrap',
+        }
+
+        return (
+          <div key={s.key} style={{ display: 'flex', alignItems: 'center', flex: i < STEPS.length - 1 ? '1' : 'none' }}>
+            {/* Step circle + label */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+              <div style={circleStyle}>
+                {done ? <CheckCircle2 size={14} /> : i + 1}
+              </div>
+              <span style={labelStyle}>{s.label}</span>
+            </div>
+
+            {/* Connector line (not after last step) */}
+            {i < STEPS.length - 1 && (
+              <div style={{
+                flex: 1, height: 2, marginBottom: 14,
+                background: i < currentIndex ? '#0D47A1' : '#E2E8F0',
+                transition: 'background 0.2s',
+                minWidth: 12,
+              }} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Inline Alert ─────────────────────────────────────────────────────────────
+
+interface InlineAlertProps {
+  type: 'success' | 'error' | 'warning'
+  text: string
+  onClose?: () => void
+}
+
+function InlineAlert({ type, text, onClose }: InlineAlertProps) {
+  const map = {
+    success: { bg: '#F0FDF4', border: '#BBF7D0', color: '#15803D', Icon: CheckCircle2 },
+    error:   { bg: '#FEF2F2', border: '#FECACA', color: '#B91C1C', Icon: AlertCircle  },
+    warning: { bg: '#FFFBEB', border: '#FDE68A', color: '#92400E', Icon: Info         },
+  }
+  const { bg, border, color, Icon } = map[type]
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 10,
+      padding: '10px 14px', borderRadius: 10,
+      background: bg, border: `1px solid ${border}`,
+      fontSize: 13, color, fontWeight: 500,
+    }}>
+      <Icon size={16} style={{ marginTop: 1, flexShrink: 0 }} />
+      <span style={{ flex: 1 }}>{text}</span>
+      {onClose && (
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color, padding: 0, lineHeight: 1 }}>
+          <XIcon size={14} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+
+interface StatCardProps { value: number | string; label: string; color?: string }
+
+function StatCard({ value, label, color = '#1e293b' }: StatCardProps) {
+  return (
+    <div style={{
+      flex: 1, textAlign: 'center', padding: '14px 8px',
+      borderRadius: 10, border: '1px solid #E5E7EB',
+      background: '#fff',
+    }}>
+      <div style={{ fontSize: 22, fontWeight: 800, color }}>{value}</div>
+      <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{label}</div>
+    </div>
+  )
+}
+
+// ─── Main Wizard ──────────────────────────────────────────────────────────────
 
 interface ImportWizardProps {
   open: boolean
@@ -96,57 +208,52 @@ interface ImportWizardProps {
 
 export function ImportWizard({ open, onClose, onCompleted, initialImportType, title }: ImportWizardProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const [step, setStep] = useState<WizardStep>('upload')
+  const [step, setStep]       = useState<WizardStep>('upload')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null)
   const [importTypes, setImportTypes] = useState<ImportTypeOption[]>([])
   const [selectedImportType, setSelectedImportType] = useState(initialImportType ?? 'inventory')
 
-  // Upload state
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  // Drag-over state for drop zone
+  const [dragOver, setDragOver] = useState(false)
+
+  // Upload
+  const [uploadFile, setUploadFile]     = useState<File | null>(null)
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
 
-  // Mapping state
+  // Mapping
   const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([])
 
-  // Data validation state
+  // Validation
   const [dataValidation, setDataValidation] = useState<DataValidationResult | null>(null)
 
-  // Import result
+  // Result
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
 
   // History
-  const [history, setHistory] = useState<ImportHistoryItem[]>([])
+  const [history, setHistory]       = useState<ImportHistoryItem[]>([])
   const [showHistory, setShowHistory] = useState(false)
 
   // Custom field creation
   const [newCustomField, setNewCustomField] = useState<{ name: string; field_type: string; excel_column: string } | null>(null)
-  const selectedTypeLabel = importTypes.find(type => type.key === selectedImportType)?.label ?? 'Inventory Items'
-  const entityLabel = dataValidation?.entity_label ?? uploadResult?.entity_label ?? selectedTypeLabel.toLowerCase()
+
+  const selectedTypeLabel = importTypes.find(t => t.key === selectedImportType)?.label ?? 'Inventory Items'
+  const entityLabel       = dataValidation?.entity_label ?? uploadResult?.entity_label ?? selectedTypeLabel.toLowerCase()
 
   useEffect(() => {
     if (!open) return
-
     let active = true
-
-    async function loadImportTypes() {
+    void (async () => {
       try {
         const types = await importService.types()
         if (active) setImportTypes(types)
       } catch {
-        if (active) {
-          setImportTypes([
-            { key: 'inventory', label: 'Inventory Items', entity_label: 'inventory items', supports_custom_fields: true },
-          ])
-        }
+        if (active) setImportTypes([
+          { key: 'inventory', label: 'Inventory Items', entity_label: 'inventory items', supports_custom_fields: true },
+        ])
       }
-    }
-
-    void loadImportTypes()
-
-    return () => {
-      active = false
-    }
+    })()
+    return () => { active = false }
   }, [open])
 
   function reset() {
@@ -158,7 +265,12 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
     setImportResult(null)
     setMessage(null)
     setNewCustomField(null)
+    setShowHistory(false)
     setSelectedImportType(initialImportType ?? 'inventory')
+  }
+
+  function acceptFile(file: File | undefined) {
+    if (file) { setUploadFile(file); setMessage(null) }
   }
 
   async function handleUpload() {
@@ -167,15 +279,14 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
     try {
       const result = await importService.upload(selectedImportType, uploadFile)
       setUploadResult(result)
-      setStep('preview')
-      // Auto-setup initial mappings
       const mappings: ColumnMapping[] = result.suggested_mappings.map((m: SuggestedMapping) => ({
         excel_column: m.excel_column,
-        excel_index: m.excel_index,
-        target_type: m.suggested_system_field ? 'system' : 'ignore',
-        target_key: m.suggested_system_field ? m.suggested_system_field.key : null,
+        excel_index:  m.excel_index,
+        target_type:  m.suggested_system_field ? 'system' : 'ignore',
+        target_key:   m.suggested_system_field ? m.suggested_system_field.key : null,
       }))
       setColumnMappings(mappings)
+      setStep('preview')
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Upload failed.' })
     } finally { setLoading(false) }
@@ -191,7 +302,11 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
     if (!uploadResult) return
     setLoading(true); setMessage(null)
     try {
-      const result = await importService.validateMapping(uploadResult.import_type ?? selectedImportType, uploadResult.import_id, columnMappings)
+      const result = await importService.validateMapping(
+        uploadResult.import_type ?? selectedImportType,
+        uploadResult.import_id,
+        columnMappings,
+      )
       if (result.is_valid) {
         setStep('validate')
         await handleValidateData()
@@ -207,7 +322,11 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
     if (!uploadResult) return
     setLoading(true)
     try {
-      const result = await importService.validateData(uploadResult.import_type ?? selectedImportType, uploadResult.import_id, columnMappings)
+      const result = await importService.validateData(
+        uploadResult.import_type ?? selectedImportType,
+        uploadResult.import_id,
+        columnMappings,
+      )
       setDataValidation(result)
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Data validation failed.' })
@@ -218,7 +337,11 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
     if (!uploadResult) return
     setLoading(true); setMessage(null)
     try {
-      const result = await importService.execute(uploadResult.import_type ?? selectedImportType, uploadResult.import_id, columnMappings)
+      const result = await importService.execute(
+        uploadResult.import_type ?? selectedImportType,
+        uploadResult.import_id,
+        columnMappings,
+      )
       setImportResult(result)
       setStep('complete')
       onCompleted?.()
@@ -228,7 +351,7 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
   }
 
   async function loadHistory() {
-    setLoading(true)
+    setLoading(true); setMessage(null)
     try {
       const h = await importService.history(initialImportType ? selectedImportType : undefined)
       setHistory(h)
@@ -238,501 +361,497 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
     } finally { setLoading(false) }
   }
 
+  // ── Navigation helpers ───────────────────────────────────────────────────────
+  function goBack() {
+    const idx = STEPS.findIndex(s => s.key === step)
+    if (idx > 0) setStep(STEPS[idx - 1].key)
+  }
+
   const currentStepIndex = STEPS.findIndex(s => s.key === step)
+
+  // ── Footer ───────────────────────────────────────────────────────────────────
+  const footer = (
+    <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+      {/* Left side */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        {step !== 'upload' && step !== 'complete' && !showHistory && (
+          <Button variant="secondary" onClick={goBack}>
+            <ArrowLeft size={15} /> Back
+          </Button>
+        )}
+        {showHistory && (
+          <Button variant="secondary" onClick={() => setShowHistory(false)}>
+            <ArrowLeft size={15} /> Back to Import
+          </Button>
+        )}
+        {step === 'complete' && (
+          <Button variant="secondary" onClick={() => void loadHistory()}>
+            <History size={15} /> View History
+          </Button>
+        )}
+      </div>
+
+      {/* Right side */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button variant="secondary" onClick={() => { reset(); onClose() }}>Cancel</Button>
+
+        {step === 'upload' && !showHistory && (
+          <Button onClick={() => void handleUpload()} disabled={!uploadFile || loading}>
+            {loading ? <><Spinner />&nbsp;Uploading…</> : <>Upload &amp; Preview <ArrowRight size={15} /></>}
+          </Button>
+        )}
+        {step === 'preview' && !showHistory && (
+          <Button onClick={() => setStep('mapping')}>
+            Map Columns <ArrowRight size={15} />
+          </Button>
+        )}
+        {step === 'mapping' && !showHistory && (
+          <Button onClick={() => void handleValidateMapping()} disabled={loading}>
+            {loading ? <><Spinner />&nbsp;Validating…</> : <>Validate <ArrowRight size={15} /></>}
+          </Button>
+        )}
+        {step === 'validate' && dataValidation && !showHistory && dataValidation.error_count === 0 && (
+          <Button onClick={() => setStep('confirm')}>
+            Review Import <ArrowRight size={15} />
+          </Button>
+        )}
+        {step === 'validate' && dataValidation && !showHistory && dataValidation.error_count > 0 && (
+          <Button variant="secondary" onClick={() => setStep('mapping')}>
+            Fix Mapping
+          </Button>
+        )}
+        {step === 'confirm' && !showHistory && (
+          <Button onClick={() => void handleExecuteImport()} disabled={loading}>
+            {loading ? <><Spinner />&nbsp;Importing…</> : 'Confirm Import'}
+          </Button>
+        )}
+        {step === 'complete' && (
+          <Button onClick={() => { reset(); onClose() }}>Done</Button>
+        )}
+      </div>
+    </div>
+  )
 
   return (
     <Modal
       open={open}
-      title={title ?? `Import ${selectedTypeLabel} Wizard`}
+      title={title ?? `Import ${selectedTypeLabel}`}
       onClose={() => { reset(); onClose() }}
-      footer={
-        <div className="flex w-full items-center justify-between">
-          <div className="flex gap-2">
-            {step !== 'upload' && step !== 'complete' && (
-              <Button variant="secondary" onClick={() => {
-                const idx = STEPS.findIndex(s => s.key === step)
-                if (idx > 0) setStep(STEPS[idx - 1].key)
-              }}>
-                <ArrowLeft className="h-4 w-4" /> Back
-              </Button>
-            )}
-            {step === 'complete' && (
-              <Button variant="secondary" onClick={() => loadHistory()}>
-                <Download className="h-4 w-4" /> View History
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => { reset(); onClose() }}>Cancel</Button>
-            {step === 'upload' && (
-              <Button onClick={() => void handleUpload()} disabled={!uploadFile || loading}>
-                {loading ? 'Uploading…' : 'Upload & Preview'}
-              </Button>
-            )}
-            {step === 'preview' && (
-              <Button onClick={() => setStep('mapping')}>
-                Configure Mapping <ArrowRight className="h-4 w-4" />
-              </Button>
-            )}
-            {step === 'mapping' && (
-              <Button onClick={() => void handleValidateMapping()} disabled={loading}>
-                {loading ? 'Validating…' : 'Validate Mapping'}
-              </Button>
-            )}
-            {step === 'validate' && dataValidation && dataValidation.error_count === 0 && (
-              <Button onClick={() => setStep('confirm')}>
-                Review Import <ArrowRight className="h-4 w-4" />
-              </Button>
-            )}
-            {step === 'validate' && dataValidation && dataValidation.error_count > 0 && (
-              <Button variant="secondary" onClick={() => setStep('mapping')}>
-                Fix Mapping Issues
-              </Button>
-            )}
-            {step === 'confirm' && (
-              <Button onClick={() => void handleExecuteImport()} disabled={loading}>
-                {loading ? 'Importing…' : 'Confirm Import'}
-              </Button>
-            )}
-            {step === 'complete' && (
-              <Button onClick={() => { reset(); onClose() }}>Done</Button>
-            )}
-            {showHistory && (
-              <Button variant="secondary" onClick={() => setShowHistory(false)}>Back to Import</Button>
-            )}
-          </div>
-        </div>
-      }
+      footer={footer}
+      maxWidth={680}
     >
-      <div className="space-y-6">
-        {/* Progress indicator */}
-        {!showHistory && (
-          <div className="flex items-center justify-between">
-            {STEPS.map((s, i) => (
-              <div key={s.key} className="flex items-center">
-                <div className={`flex items-center gap-1.5 ${i <= currentStepIndex ? 'text-[#0D47A1]' : 'text-slate-400'}`}>
-                  <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                    i < currentStepIndex ? 'bg-[#0D47A1] text-white' :
-                    i === currentStepIndex ? 'border-2 border-[#0D47A1] text-[#0D47A1]' :
-                    'border-2 border-slate-300 text-slate-400'
-                  }`}>
-                    {i < currentStepIndex ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
-                  </div>
-                  <span className="text-xs font-medium hidden sm:inline">{s.label}</span>
-                </div>
-                {i < STEPS.length - 1 && <div className={`mx-2 h-px w-8 ${i < currentStepIndex ? 'bg-[#0D47A1]' : 'bg-slate-300'}`} />}
-              </div>
-            ))}
-          </div>
-        )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {message && (
-          <div className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-sm font-medium ${
-            message.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' :
-            message.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
-            'bg-emerald-50 border-emerald-200 text-emerald-700'
-          }`}>
-            {message.type === 'error' ? <AlertCircle className="mt-px h-4 w-4 flex-none" /> :
-             message.type === 'warning' ? <Info className="mt-px h-4 w-4 flex-none" /> :
-             <CheckCircle2 className="mt-px h-4 w-4 flex-none" />}
-            <span>{message.text}</span>
-          </div>
-        )}
+        {/* Step progress bar — hidden in history view */}
+        {!showHistory && <StepBar currentIndex={currentStepIndex} />}
 
-        {/* Step: Upload */}
+        {/* Alert */}
+        {message && <InlineAlert type={message.type} text={message.text} onClose={() => setMessage(null)} />}
+
+        {/* ── Step: Upload ── */}
         {step === 'upload' && !showHistory && (
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Import type selector (only shown when not pre-set) */}
             {!initialImportType && (
-              <div className="rounded-lg border border-[#E5E7EB] bg-white p-4">
-                <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Import Type</label>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#64748B', marginBottom: 6 }}>
+                  Import Type
+                </label>
                 <select
-                  className="mt-2 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm"
+                  style={{ width: '100%', borderRadius: 8, border: '1px solid #E5E7EB', padding: '8px 12px', fontSize: 13 }}
                   value={selectedImportType}
-                  onChange={(event) => setSelectedImportType(event.target.value)}
+                  onChange={e => setSelectedImportType(e.target.value)}
                   disabled={loading}
                 >
-                  {importTypes.map((type) => (
-                    <option key={type.key} value={type.key}>{type.label}</option>
-                  ))}
+                  {importTypes.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                 </select>
               </div>
             )}
-            <div className="rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFD] p-8 text-center">
-              <Upload className="mx-auto h-10 w-10 text-slate-400" />
-              <p className="mt-3 text-sm font-medium text-slate-600">Upload an Excel file (.xlsx, .xls, .csv, .json)</p>
-              <p className="mt-1 text-xs text-slate-400">Maximum file size: 10 MB</p>
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv,.json" className="hidden"
-                onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)} />
-              <Button variant="secondary" className="mt-4" onClick={() => fileInputRef.current?.click()}>
-                {uploadFile ? uploadFile.name : 'Choose File'}
-              </Button>
+
+            {/* Drop zone */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={e => { e.preventDefault(); setDragOver(false); acceptFile(e.dataTransfer.files[0]) }}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: 10, padding: '36px 24px',
+                borderRadius: 12,
+                border: `2px dashed ${dragOver ? '#0D47A1' : uploadFile ? '#22C55E' : '#CBD5E1'}`,
+                background: dragOver ? '#EFF6FF' : uploadFile ? '#F0FDF4' : '#F8FAFD',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {uploadFile
+                ? <FileText size={36} color="#22C55E" />
+                : <Upload size={36} color={dragOver ? '#0D47A1' : '#94A3B8'} />
+              }
+
+              {uploadFile ? (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#15803D', margin: 0 }}>{uploadFile.name}</p>
+                  <p style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                    {(uploadFile.size / 1024).toFixed(1)} KB — click to change
+                  </p>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#374151', margin: 0 }}>
+                    Drag &amp; drop a file here, or click to browse
+                  </p>
+                  <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>
+                    Accepted: .xlsx, .xls, .csv, .json — max 10 MB
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="flex justify-center">
-              <Button variant="ghost" size="sm" onClick={() => loadHistory()}>
-                <Download className="h-4 w-4" /> View Import History
-              </Button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv,.json"
+              style={{ display: 'none' }}
+              onChange={e => acceptFile(e.target.files?.[0])}
+            />
+
+            {/* View History link */}
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => void loadHistory()}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  fontSize: 12, color: '#64748B', fontWeight: 500,
+                }}
+              >
+                <History size={13} /> View Import History
+              </button>
             </div>
           </div>
         )}
 
-        {/* Step: Preview */}
+        {/* ── Step: Preview ── */}
         {step === 'preview' && uploadResult && !showHistory && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-center">
-                <div className="text-xl font-bold text-[#0D47A1]">{uploadResult.total_rows}</div>
-                <div className="text-xs text-slate-500">Total Rows</div>
-              </div>
-              <div className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-center">
-                <div className="text-xl font-bold text-slate-700">{uploadResult.headers.length}</div>
-                <div className="text-xs text-slate-500">Columns</div>
-              </div>
-              <div className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-center">
-                <div className="text-xl font-bold text-slate-700">{uploadResult.filename}</div>
-                <div className="text-xs text-slate-500">File</div>
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <StatCard value={uploadResult.total_rows} label="Rows" color="#0D47A1" />
+              <StatCard value={uploadResult.headers.length} label="Columns" />
+              <StatCard value={uploadResult.filename} label="File" />
             </div>
 
             {uploadResult.duplicate_headers.length > 0 && (
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-                <p className="text-xs font-bold text-yellow-700">Duplicate columns detected: {uploadResult.duplicate_headers.join(', ')}</p>
-              </div>
+              <InlineAlert type="warning" text={`Duplicate columns: ${uploadResult.duplicate_headers.join(', ')}`} />
             )}
 
-            <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
-              <table className="w-full text-xs">
+            <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #E5E7EB' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
-                  <tr className="bg-slate-50">
+                  <tr style={{ background: '#F8FAFD' }}>
                     {uploadResult.headers.map((h, i) => (
-                      <th key={i} className="px-3 py-2 text-left font-semibold text-slate-600">{h}</th>
+                      <th key={i} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {uploadResult.preview_rows.map((row, ri) => (
-                    <tr key={ri} className="border-t border-[#E5E7EB]">
+                    <tr key={ri} style={{ borderTop: '1px solid #F1F5F9' }}>
                       {row.map((cell, ci) => (
-                        <td key={ci} className="px-3 py-2 text-slate-700">{cell || <span className="text-slate-300">—</span>}</td>
+                        <td key={ci} style={{ padding: '7px 12px', color: '#374151' }}>
+                          {cell || <span style={{ color: '#CBD5E1' }}>—</span>}
+                        </td>
                       ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-slate-400">Showing first {uploadResult.preview_rows.length} of {uploadResult.total_rows} rows</p>
+            <p style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'right' }}>
+              Showing {uploadResult.preview_rows.length} of {uploadResult.total_rows} rows
+            </p>
           </div>
         )}
 
-        {/* Step: Mapping */}
+        {/* ── Step: Mapping ── */}
         {step === 'mapping' && uploadResult && !showHistory && (
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600">Map each Excel column to a system field. Required fields are marked.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>
+              Map each spreadsheet column to a system field. Required fields are marked with *.
+            </p>
 
             {columnMappings.map((mapping, idx) => {
               const suggested = uploadResult.suggested_mappings[idx]
               return (
-                <div key={idx} className="rounded-lg border border-[#E5E7EB] bg-white p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-800">{mapping.excel_column}</span>
-                        {suggested?.sample_values && suggested.sample_values.length > 0 && (
-                          <span className="text-xs text-slate-400">
-                            e.g. {suggested.sample_values.join(', ')}
-                          </span>
-                        )}
+                <div key={idx} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                  padding: '10px 14px', borderRadius: 10,
+                  border: '1px solid #E5E7EB', background: '#fff',
+                }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{mapping.excel_column}</div>
+                    {suggested?.sample_values && suggested.sample_values.length > 0 && (
+                      <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                        e.g. {suggested.sample_values.slice(0, 3).join(', ')}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <select
-                        className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-sm"
-                        value={mapping.target_type}
-                        onChange={(e) => {
-                          const val = e.target.value as ColumnMapping['target_type']
-                          if (val === 'system') {
-                            const sug = uploadResult.suggested_mappings[idx]?.suggested_system_field
-                            updateMapping(idx, val, sug?.key ?? null)
-                          } else {
-                            updateMapping(idx, val, null)
-                          }
-                        }}
-                      >
-                        <option value="system">Map to Field</option>
-                        <option value="custom">Custom Field</option>
-                        <option value="ignore">Ignore</option>
-                      </select>
+                    )}
+                  </div>
 
-                      {mapping.target_type === 'system' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <select
+                      style={{ borderRadius: 7, border: '1px solid #E5E7EB', padding: '6px 10px', fontSize: 12 }}
+                      value={mapping.target_type}
+                      onChange={e => {
+                        const val = e.target.value as ColumnMapping['target_type']
+                        if (val === 'system') {
+                          const sug = uploadResult.suggested_mappings[idx]?.suggested_system_field
+                          updateMapping(idx, val, sug?.key ?? null)
+                        } else {
+                          updateMapping(idx, val, null)
+                        }
+                      }}
+                    >
+                      <option value="system">Map to Field</option>
+                      <option value="custom">Custom Field</option>
+                      <option value="ignore">Ignore</option>
+                    </select>
+
+                    {mapping.target_type === 'system' && (
+                      <select
+                        style={{ borderRadius: 7, border: '1px solid #E5E7EB', padding: '6px 10px', fontSize: 12 }}
+                        value={mapping.target_key ?? ''}
+                        onChange={e => updateMapping(idx, 'system', e.target.value)}
+                      >
+                        <option value="">Select field…</option>
+                        {uploadResult.system_fields.map(f => (
+                          <option key={f.key} value={f.key}>{f.label}{f.required ? ' *' : ''}</option>
+                        ))}
+                      </select>
+                    )}
+
+                    {mapping.target_type === 'custom' && (
+                      <div style={{ display: 'flex', gap: 6 }}>
                         <select
-                          className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-sm"
+                          style={{ borderRadius: 7, border: '1px solid #E5E7EB', padding: '6px 10px', fontSize: 12 }}
                           value={mapping.target_key ?? ''}
-                          onChange={(e) => updateMapping(idx, 'system', e.target.value)}
+                          onChange={e => updateMapping(idx, 'custom', e.target.value)}
                         >
-                          <option value="">Select field…</option>
-                          {uploadResult.system_fields.map((f) => (
-                            <option key={f.key} value={f.key}>
-                              {f.label} {f.required ? '(Required)' : ''}
-                            </option>
+                          <option value="">Select custom field…</option>
+                          {uploadResult.custom_fields.map(cf => (
+                            <option key={cf.id} value={cf.id.toString()}>{cf.name}</option>
                           ))}
                         </select>
-                      )}
+                        <Button size="sm" variant="ghost" onClick={() => setNewCustomField({ name: mapping.excel_column, field_type: 'text', excel_column: mapping.excel_column })}>
+                          + New
+                        </Button>
+                      </div>
+                    )}
 
-                      {mapping.target_type === 'custom' && (
-                        <div className="flex gap-2">
-                          <select
-                            className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-sm"
-                            value={mapping.target_key ?? ''}
-                            onChange={(e) => updateMapping(idx, 'custom', e.target.value)}
-                          >
-                            <option value="">Select custom field…</option>
-                            {uploadResult.custom_fields.map((cf) => (
-                              <option key={cf.id} value={cf.id.toString()}>{cf.name}</option>
-                            ))}
-                          </select>
-                          <Button size="sm" variant="ghost" onClick={() => setNewCustomField({
-                            name: mapping.excel_column,
-                            field_type: 'text',
-                            excel_column: mapping.excel_column,
-                          })}>
-                            + New
-                          </Button>
-                        </div>
-                      )}
-
-                      {mapping.target_type === 'ignore' && (
-                        <Badge tone="red">Ignored</Badge>
-                      )}
-                    </div>
+                    {mapping.target_type === 'ignore' && (
+                      <Badge tone="red">Ignored</Badge>
+                    )}
                   </div>
                 </div>
               )
             })}
 
-            {/* New custom field dialog */}
+            {/* New custom field panel */}
             {newCustomField && (
-              <div className="rounded-lg border border-[#0D47A1]/20 bg-blue-50 p-4">
-                <p className="text-sm font-medium text-[#0D47A1]">Create New Custom Field</p>
-                <div className="mt-3 flex gap-3">
+              <div style={{ padding: 14, borderRadius: 10, border: '1px solid #BFDBFE', background: '#EFF6FF' }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#1D4ED8', marginBottom: 10 }}>Create New Custom Field</p>
+                <div style={{ display: 'flex', gap: 8 }}>
                   <Input
                     value={newCustomField.name}
-                    onChange={(e) => setNewCustomField({ ...newCustomField, name: e.target.value })}
+                    onChange={e => setNewCustomField({ ...newCustomField, name: e.target.value })}
                     placeholder="Field name"
                   />
                   <select
-                    className="rounded-lg border border-[#E5E7EB] px-3 py-1.5 text-sm"
+                    style={{ borderRadius: 7, border: '1px solid #E5E7EB', padding: '6px 10px', fontSize: 12 }}
                     value={newCustomField.field_type}
-                    onChange={(e) => setNewCustomField({ ...newCustomField, field_type: e.target.value })}
+                    onChange={e => setNewCustomField({ ...newCustomField, field_type: e.target.value })}
                   >
                     <option value="text">Text</option>
                     <option value="number">Number</option>
                     <option value="date">Date</option>
                     <option value="boolean">Yes/No</option>
                   </select>
-                  <Button size="sm" variant="primary" onClick={async () => {
-                    if (!newCustomField.name.trim()) return
-                    // Add to custom fields list and update mapping
+                  <Button size="sm" onClick={() => {
                     const idx = columnMappings.findIndex(m => m.excel_column === newCustomField.excel_column)
-                    if (idx >= 0) {
-                      // We'll create the field during validateMapping step
-                      updateMapping(idx, 'custom', '__new__')
-                    }
+                    if (idx >= 0) updateMapping(idx, 'custom', '__new__')
                     setNewCustomField(null)
-                  }}>
-                    Add Field
-                  </Button>
+                  }}>Add</Button>
                   <Button size="sm" variant="ghost" onClick={() => setNewCustomField(null)}>Cancel</Button>
                 </div>
-                <p className="mt-2 text-xs text-slate-500">This will add a new custom field when the selected import type supports custom fields.</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Step: Validate */}
+        {/* ── Step: Validate ── */}
         {step === 'validate' && dataValidation && !showHistory && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
-                <div className="text-xl font-bold text-emerald-600">{dataValidation.valid_rows}</div>
-                <div className="text-xs text-emerald-700">Valid Rows</div>
-              </div>
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-center">
-                <div className="text-xl font-bold text-yellow-600">{dataValidation.warning_count}</div>
-                <div className="text-xs text-yellow-700">Warnings</div>
-              </div>
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center">
-                <div className="text-xl font-bold text-red-600">{dataValidation.error_count}</div>
-                <div className="text-xs text-red-700">Errors</div>
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <StatCard value={dataValidation.valid_rows}    label="Valid Rows"  color="#16A34A" />
+              <StatCard value={dataValidation.warning_count} label="Warnings"    color="#D97706" />
+              <StatCard value={dataValidation.error_count}   label="Errors"      color="#DC2626" />
             </div>
 
             {dataValidation.row_errors.length > 0 && (
-              <div className="max-h-40 overflow-y-auto rounded-lg border border-red-200 bg-red-50 p-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-red-600">Row Errors</p>
-                <ul className="mt-1 space-y-0.5">
-                  {dataValidation.row_errors.map((err, i) => (
-                    <li key={i} className="text-xs text-red-700">{err}</li>
-                  ))}
-                </ul>
+              <div style={{ maxHeight: 140, overflowY: 'auto', borderRadius: 8, border: '1px solid #FECACA', background: '#FEF2F2', padding: 12 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#DC2626', marginBottom: 4 }}>Row Errors</p>
+                {dataValidation.row_errors.map((e, i) => <p key={i} style={{ fontSize: 12, color: '#B91C1C', margin: '2px 0' }}>{e}</p>)}
               </div>
             )}
 
             {dataValidation.row_warnings.length > 0 && (
-              <div className="max-h-40 overflow-y-auto rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-yellow-600">Warnings</p>
-                <ul className="mt-1 space-y-0.5">
-                  {dataValidation.row_warnings.map((w, i) => (
-                    <li key={i} className="text-xs text-yellow-700">{w}</li>
-                  ))}
-                </ul>
+              <div style={{ maxHeight: 120, overflowY: 'auto', borderRadius: 8, border: '1px solid #FDE68A', background: '#FFFBEB', padding: 12 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#D97706', marginBottom: 4 }}>Warnings</p>
+                {dataValidation.row_warnings.map((w, i) => <p key={i} style={{ fontSize: 12, color: '#92400E', margin: '2px 0' }}>{w}</p>)}
               </div>
             )}
 
             {dataValidation.preview_data.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Preview (first {dataValidation.preview_data.length} rows)</p>
-                <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
-                  <table className="w-full text-xs">
+              <>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B' }}>
+                  Preview — first {dataValidation.preview_data.length} rows
+                </p>
+                <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid #E5E7EB' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
-                      <tr className="bg-slate-50">
-                        {Object.keys(dataValidation.preview_data[0]).map((key) => (
-                          <th key={key} className="px-3 py-2 text-left font-semibold text-slate-600">{key}</th>
+                      <tr style={{ background: '#F8FAFD' }}>
+                        {Object.keys(dataValidation.preview_data[0]).map(k => (
+                          <th key={k} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>{k}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {dataValidation.preview_data.map((row, ri) => (
-                        <tr key={ri} className="border-t border-[#E5E7EB]">
+                        <tr key={ri} style={{ borderTop: '1px solid #F1F5F9' }}>
                           {Object.values(row).map((val, ci) => (
-                            <td key={ci} className="px-3 py-2 text-slate-700">{val || <span className="text-slate-300">—</span>}</td>
+                            <td key={ci} style={{ padding: '7px 12px', color: '#374151' }}>
+                              {String(val || '') || <span style={{ color: '#CBD5E1' }}>—</span>}
+                            </td>
                           ))}
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </>
             )}
           </div>
         )}
 
-        {/* Step: Confirm */}
+        {/* ── Step: Confirm ── */}
         {step === 'confirm' && dataValidation && !showHistory && (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-              <Info className="h-5 w-5 text-yellow-600" />
-              <p className="mt-1 text-sm font-medium text-yellow-800">
-                You are about to import <strong>{dataValidation.valid_rows}</strong> {entityLabel}.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', borderRadius: 10, border: '1px solid #FDE68A', background: '#FFFBEB' }}>
+              <Info size={18} color="#D97706" style={{ flexShrink: 0, marginTop: 1 }} />
+              <p style={{ fontSize: 13, color: '#92400E', fontWeight: 500, margin: 0 }}>
+                You are about to import <strong>{dataValidation.valid_rows}</strong> {entityLabel} into the system. This action cannot be undone.
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-center">
-                <div className="text-2xl font-bold text-emerald-600">{dataValidation.valid_rows}</div>
-                <div className="text-xs text-slate-500">Valid Items</div>
-              </div>
-              <div className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-center">
-                <div className="text-2xl font-bold text-yellow-600">{dataValidation.warning_count}</div>
-                <div className="text-xs text-slate-500">Warnings</div>
-              </div>
-              <div className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-center">
-                <div className="text-2xl font-bold text-red-600">{dataValidation.error_count}</div>
-                <div className="text-xs text-slate-500">Errors</div>
-              </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <StatCard value={dataValidation.valid_rows}    label="Will be imported" color="#16A34A" />
+              <StatCard value={dataValidation.warning_count} label="Warnings"          color="#D97706" />
+              <StatCard value={dataValidation.error_count}   label="Will be skipped"   color="#DC2626" />
             </div>
             {dataValidation.error_count > 0 && (
-              <p className="text-sm text-red-600">Rows with errors will be skipped during import.</p>
+              <InlineAlert type="warning" text="Rows with errors will be skipped during import." />
             )}
           </div>
         )}
 
-        {/* Step: Complete */}
+        {/* ── Step: Complete ── */}
         {step === 'complete' && importResult && !showHistory && (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-              <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
-              <p className="mt-2 text-lg font-bold text-emerald-800">Import Complete</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ textAlign: 'center', padding: '24px 16px', borderRadius: 12, border: '1px solid #BBF7D0', background: '#F0FDF4' }}>
+              <CheckCircle2 size={44} color="#16A34A" style={{ margin: '0 auto' }} />
+              <p style={{ fontSize: 17, fontWeight: 700, color: '#15803D', marginTop: 10 }}>Import Complete</p>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-center">
-                <div className="text-2xl font-bold text-emerald-600">{importResult.imported}</div>
-                <div className="text-xs text-slate-500">Imported</div>
-              </div>
-              <div className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-center">
-                <div className="text-2xl font-bold text-yellow-600">{importResult.skipped}</div>
-                <div className="text-xs text-slate-500">Skipped</div>
-              </div>
-              <div className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-center">
-                <div className="text-2xl font-bold text-red-600">{importResult.failed}</div>
-                <div className="text-xs text-slate-500">Failed</div>
-              </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <StatCard value={importResult.imported} label="Imported" color="#16A34A" />
+              <StatCard value={importResult.skipped}  label="Skipped"  color="#D97706" />
+              <StatCard value={importResult.failed}   label="Failed"   color="#DC2626" />
             </div>
             {importResult.errors && importResult.errors.length > 0 && (
-              <div className="max-h-40 overflow-y-auto rounded-lg border border-red-200 bg-red-50 p-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-red-600">Error Details</p>
-                <ul className="mt-1 space-y-0.5">
-                  {importResult.errors.map((err, i) => (
-                    <li key={i} className="text-xs text-red-700">{err}</li>
-                  ))}
-                </ul>
+              <div style={{ maxHeight: 120, overflowY: 'auto', borderRadius: 8, border: '1px solid #FECACA', background: '#FEF2F2', padding: 12 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#DC2626', marginBottom: 4 }}>Errors</p>
+                {importResult.errors.map((e, i) => <p key={i} style={{ fontSize: 12, color: '#B91C1C', margin: '2px 0' }}>{e}</p>)}
               </div>
             )}
           </div>
         )}
 
-        {/* Import History */}
+        {/* ── History panel ── */}
         {showHistory && (
-          <div className="space-y-4">
-            <p className="text-sm font-medium text-slate-700">Import History</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <History size={16} color="#64748B" />
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0 }}>Import History</p>
+            </div>
+
             {history.length === 0 ? (
-              <div className="rounded-lg border border-[#E5E7EB] bg-white p-6 text-center">
-                <p className="text-sm text-slate-500">No import history found.</p>
+              <div style={{ textAlign: 'center', padding: '32px 16px', borderRadius: 10, border: '1px solid #E5E7EB', background: '#F8FAFD' }}>
+                <p style={{ fontSize: 13, color: '#9CA3AF' }}>No import history found.</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {history.map((h) => (
-                  <div key={h.id} className="rounded-lg border border-[#E5E7EB] bg-white p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium text-slate-800">{h.filename}</p>
-                        <p className="text-xs text-slate-500">
-                          Imported by {h.imported_by} on {h.imported_at}
-                        </p>
-                      </div>
-                      <Badge tone={h.status === 'completed' ? 'green' : 'red'}>{h.status}</Badge>
+              history.map(h => (
+                <div key={h.id} style={{ borderRadius: 10, border: '1px solid #E5E7EB', background: '#fff', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px' }}>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', margin: 0 }}>{h.filename}</p>
+                      <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                        by {h.imported_by} · {h.imported_at}
+                      </p>
                     </div>
-                    <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs">
-                      <div><span className="font-bold text-slate-700">{h.total_rows}</span> Total</div>
-                      <div><span className="font-bold text-emerald-600">{h.imported_rows}</span> Imported</div>
-                      <div><span className="font-bold text-yellow-600">{h.skipped_rows}</span> Skipped</div>
-                      <div><span className="font-bold text-red-600">{h.failed_rows}</span> Failed</div>
-                    </div>
-                    {h.errors && h.errors.length > 0 && (
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-xs text-red-600">View {h.errors.length} error(s)</summary>
-                        <ul className="mt-1 space-y-0.5">
-                          {h.errors.map((err, i) => (
-                            <li key={i} className="text-xs text-red-700">{err}</li>
-                          ))}
-                        </ul>
-                      </details>
-                    )}
+                    <Badge tone={h.status === 'completed' ? 'green' : 'red'}>{h.status}</Badge>
                   </div>
-                ))}
-              </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderTop: '1px solid #F1F5F9', fontSize: 12, textAlign: 'center' }}>
+                    {[
+                      { v: h.total_rows,    l: 'Total',    c: '#1e293b' },
+                      { v: h.imported_rows, l: 'Imported', c: '#16A34A' },
+                      { v: h.skipped_rows,  l: 'Skipped',  c: '#D97706' },
+                      { v: h.failed_rows,   l: 'Failed',   c: '#DC2626' },
+                    ].map(({ v, l, c }) => (
+                      <div key={l} style={{ padding: '8px 6px', borderRight: '1px solid #F1F5F9' }}>
+                        <div style={{ fontWeight: 700, color: c }}>{v}</div>
+                        <div style={{ color: '#9CA3AF', marginTop: 1 }}>{l}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {h.errors && h.errors.length > 0 && (
+                    <details style={{ padding: '8px 14px', borderTop: '1px solid #F1F5F9' }}>
+                      <summary style={{ fontSize: 12, color: '#DC2626', cursor: 'pointer' }}>
+                        View {h.errors.length} error(s)
+                      </summary>
+                      <ul style={{ marginTop: 6, paddingLeft: 16 }}>
+                        {h.errors.map((e, i) => <li key={i} style={{ fontSize: 12, color: '#B91C1C', marginBottom: 2 }}>{e}</li>)}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              ))
             )}
           </div>
         )}
 
+        {/* Loading overlay */}
         {loading && (
-          <div className="flex items-center justify-center py-8">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '16px 0' }}>
             <Spinner />
-            <span className="ml-2 text-sm text-slate-500">Processing…</span>
+            <span style={{ fontSize: 13, color: '#64748B' }}>Processing…</span>
           </div>
         )}
       </div>
     </Modal>
   )
 }
+
+// ─── Inventory-specific wrapper ───────────────────────────────────────────────
 
 interface InventoryImportWizardProps {
   open: boolean

@@ -13,9 +13,13 @@ interface ModalProps {
    * Pass footer={null} to suppress the footer entirely.
    */
   footer?: ReactNode
+  /**
+   * Override the modal max-width. Defaults to 520px.
+   */
+  maxWidth?: number | string
 }
 
-export function Modal({ open, title, children, onClose, footer }: ModalProps) {
+export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }: ModalProps) {
   if (!open) return null
 
   return (
@@ -32,7 +36,7 @@ export function Modal({ open, title, children, onClose, footer }: ModalProps) {
     >
       <div style={{
         display: 'flex', flexDirection: 'column',
-        width: '100%', maxWidth: 520,
+        width: '100%', maxWidth: maxWidth,
         maxHeight: 'calc(100dvh - 2rem)',
         borderRadius: 20,
         border: '1px solid #e2e8f0',
