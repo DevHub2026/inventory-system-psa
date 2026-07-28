@@ -571,7 +571,7 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
                 <p className="text-xs font-bold uppercase tracking-wide text-red-600">Row Errors</p>
                 <ul className="mt-1 space-y-0.5">
                   {dataValidation.row_errors.map((err, i) => (
-                    <li key={i} className="text-xs text-red-700">{err}</li>
+                    <li key={`err-${i}`} className="text-xs text-red-700">{err}</li>
                   ))}
                 </ul>
               </div>
@@ -582,7 +582,7 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
                 <p className="text-xs font-bold uppercase tracking-wide text-yellow-600">Warnings</p>
                 <ul className="mt-1 space-y-0.5">
                   {dataValidation.row_warnings.map((w, i) => (
-                    <li key={i} className="text-xs text-yellow-700">{w}</li>
+                    <li key={`warn-${i}`} className="text-xs text-yellow-700">{w}</li>
                   ))}
                 </ul>
               </div>
@@ -671,7 +671,7 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
                 <p className="text-xs font-bold uppercase tracking-wide text-red-600">Error Details</p>
                 <ul className="mt-1 space-y-0.5">
                   {importResult.errors.map((err, i) => (
-                    <li key={i} className="text-xs text-red-700">{err}</li>
+                    <li key={`import-err-${i}`} className="text-xs text-red-700">{err}</li>
                   ))}
                 </ul>
               </div>
@@ -711,7 +711,7 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
                         <summary className="cursor-pointer text-xs text-red-600">View {h.errors.length} error(s)</summary>
                         <ul className="mt-1 space-y-0.5">
                           {h.errors.map((err, i) => (
-                            <li key={i} className="text-xs text-red-700">{err}</li>
+                            <li key={`history-err-${i}`} className="text-xs text-red-700">{err}</li>
                           ))}
                         </ul>
                       </details>

@@ -46,7 +46,7 @@ function mapBorrowing(borrowing: BackendBorrowing): Borrowing {
     status: borrowing.status,
     borrow_date: borrowing.borrow_date,
     due_date: borrowing.due_date,
-    borrowed_at: borrowing.borrowed_at,
+    borrowed_at: borrowing.borrowed_at ?? undefined,
     due_at: borrowing.due_date,
     returned_at: borrowing.returned_at,
     remarks: borrowing.remarks,
@@ -63,8 +63,10 @@ function mapBorrowing(borrowing: BackendBorrowing): Borrowing {
 }
 
 export const borrowingService = {
-  async list(): Promise<Paginated<Borrowing>> {
-    const { data } = await api.get<ApiResponse<BackendBorrowing[] | Paginated<BackendBorrowing>>>('/borrowings')
+  async list(params?: { per_page?: number }): Promise<Paginated<Borrowing>> {
+    const { data } = await api.get<ApiResponse<BackendBorrowing[] | Paginated<BackendBorrowing>>>('/borrowings', {
+      params,
+    })
     const result = unwrapPaginated(data)
 
     return {

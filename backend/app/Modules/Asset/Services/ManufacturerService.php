@@ -37,6 +37,10 @@ class ManufacturerService
 
     public function delete(Manufacturer $manufacturer): void
     {
+        if ($manufacturer->assets()->exists()) {
+            throw new \InvalidArgumentException('Cannot delete manufacturer with assigned assets.');
+        }
+
         $manufacturer->delete();
     }
 

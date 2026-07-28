@@ -72,7 +72,10 @@ class ReportController extends Controller
             'name' => $item->name,
             'sku' => $item->sku,
             'quantity' => $item->quantity,
-            'unit' => $item->unit,
+            'unit' => $item->unit?->name ?? $item->unit,
+            'manufacturer' => $item->manufacturer?->name,
+            'office' => $item->office?->name,
+            'location' => $item->location?->name,
             'reorder_level' => $item->reorder_level,
             'remarks' => $item->remarks,
         ])->values(), 'Inventory report generated successfully.');
@@ -101,7 +104,10 @@ class ReportController extends Controller
             'sku' => $item->sku,
             'quantity' => $item->quantity,
             'reorder_level' => $item->reorder_level,
-            'unit' => $item->unit,
+            'unit' => $item->unit?->name ?? $item->unit,
+            'manufacturer' => $item->manufacturer?->name,
+            'office' => $item->office?->name,
+            'location' => $item->location?->name,
         ])->values(), 'Low stock report generated successfully.');
     }
 

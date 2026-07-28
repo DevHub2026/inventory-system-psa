@@ -133,6 +133,40 @@ export const reservationService = {
     )
   },
 
+  async reject(reservationId: number, remarks?: string): Promise<Reservation> {
+    return withMockFallback(
+      async () => {
+        const { data } = await api.post<ApiResponse<BackendReservation>>(`/reservations/${reservationId}/reject`, {
+          remarks,
+        })
+        return mapReservation(unwrapData(data))
+      },
+      async () => {
+        const reservation = mockReservations.find((r) => r.id === reservationId)
+        if (reservation) {
+          reservation.status = 'REJECTED'
+        }
+        return reservation || mockReservations[0]
+      },
+    )
+  },
+
+  async cancel(reservationId: number): Promise<Reservation> {
+    return withMockFallback(
+      async () => {
+        const { data } = await api.post<ApiResponse<BackendReservation>>(`/reservations/${reservationId}/cancel`)
+        return mapReservation(unwrapData(data))
+      },
+      async () => {
+        const reservation = mockReservations.find((r) => r.id === reservationId)
+        if (reservation) {
+          reservation.status = 'CANCELLED'
+        }
+        return reservation || mockReservations[0]
+      },
+    )
+  },
+
   async authorizeScan(value: string): Promise<Reservation> {
     const { data } = await api.post<ApiResponse<BackendReservation>>('/reservations/scan-authorize', { value })
     return mapReservation(unwrapData(data))

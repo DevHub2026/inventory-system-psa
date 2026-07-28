@@ -84,6 +84,32 @@ class ReservationController extends Controller
         );
     }
 
+    public function reject(Request $request, Reservation $reservation): JsonResponse
+    {
+        abort_unless($this->canApproveReservations($request->user()), 403, 'Only authorized staff can reject reservations.');
+
+        $reservation = $this->reservationService->reject(
+            $reservation,
+            $request->user(),
+            $request->input('remarks'),
+        );
+
+        return $this->success(
+            $this->transform($reservation),
+            'Reservation rejected successfully.',
+        );
+    }
+
+    public function cancel(Request $request, Reservation $reservation): JsonResponse
+    {
+        $reservation = $this->reservationService->cancel($reservation, $request->user());
+
+        return $this->success(
+            $this->transform($reservation),
+            'Reservation cancelled successfully.',
+        );
+    }
+
     public function scanAuthorize(Request $request): JsonResponse
     {
         abort_unless($this->canApproveReservations($request->user()), 403, 'Only authorized staff can approve reservations.');

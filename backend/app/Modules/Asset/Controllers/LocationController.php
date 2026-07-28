@@ -51,8 +51,11 @@ class LocationController extends Controller
 
     public function destroy(Location $location): JsonResponse
     {
-        $this->locationService->delete($location);
-
-        return $this->success(null, 'Location deleted successfully.');
+        try {
+            $this->locationService->delete($location);
+            return $this->success(null, 'Location deleted successfully.');
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), null, 422);
+        }
     }
 }

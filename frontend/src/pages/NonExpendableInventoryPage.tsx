@@ -12,6 +12,7 @@ import {
 import type { InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
+import { notifyDataChanged } from '@/utils/dataRefresh'
 
 const ITEM_TYPE = 'non_expendable' as const
 
@@ -94,6 +95,7 @@ export function NonExpendableInventoryPage() {
     try {
       await inventoryService.delete(item.id)
       setMessage({ type: 'success', text: 'Item deleted successfully.' })
+      notifyDataChanged('inventory')
       await loadInventory()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to delete item.' })
@@ -110,7 +112,9 @@ export function NonExpendableInventoryPage() {
         await inventoryService.create(formData)
         setMessage({ type: 'success', text: 'Item created successfully.' })
       }
-      setModalOpen(false); await loadInventory()
+      setModalOpen(false)
+      notifyDataChanged('inventory')
+      await loadInventory()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to save item.' })
     } finally { setSaving(false) }
@@ -126,7 +130,9 @@ export function NonExpendableInventoryPage() {
         await inventoryService.stockOut(stockItem.id, { quantity: stockQty, reason: stockReason || undefined })
         setMessage({ type: 'success', text: 'Stock removed successfully.' })
       }
-      setStockModalOpen(false); await loadInventory(page)
+      setStockModalOpen(false)
+      notifyDataChanged('inventory')
+      await loadInventory(page)
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to update the item quantity.' })
     } finally { setSaving(false) }
@@ -140,6 +146,7 @@ export function NonExpendableInventoryPage() {
       await inventoryService.adjust(adjustItem.id, { quantity: adjustQty, reason: adjustReason.trim() })
       setAdjustItem(null)
       setMessage({ type: 'success', text: 'Stock quantity corrected successfully.' })
+      notifyDataChanged('inventory')
       await loadInventory(page)
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to correct stock quantity.' })

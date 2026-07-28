@@ -10,11 +10,14 @@ use App\Modules\Asset\Enums\ConditionStatus;
 use App\Modules\Asset\Enums\IdentifierType;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\Asset\Models\Location;
+use App\Modules\Asset\Models\Manufacturer;
 use App\Modules\Asset\Models\Office;
 use App\Modules\AssetCategory\Models\AssetCategory;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
 use App\Modules\Inventory\Models\InventoryItem;
 use App\Modules\Inventory\Models\StockTransaction;
+use App\Modules\Notification\Services\NotificationService;
+use App\Modules\Unit\Models\Unit;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -24,9 +27,12 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class InventoryService
 {
+    public function __construct(private readonly NotificationService $notificationService) {}
+
     public function export(array $filters = []): string
     {
-        $items = InventoryItem::query()->with('asset', 'category', 'unit', 'supplier')
+        $items = InventoryItem::query()
+            ->with(['asset', 'unit', 'manufacturer', 'office', 'location'])
             ->when(! empty($filters['type']), function ($query) use ($filters) {
                 $query->where('type', $filters['type']);
             })
@@ -35,7 +41,9 @@ class InventoryService
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', '%'.$search.'%')
                         ->orWhere('sku', 'like', '%'.$search.'%')
-                        ->orWhere('unit', 'like', '%'.$search.'%');
+                        ->orWhereHas('unit', function ($q) use ($search) {
+                            $q->where('name', 'like', '%'.$search.'%');
+                        });
                 });
             })
             ->when(! empty($filters['status']), function ($query) use ($filters) {
@@ -57,9 +65,9 @@ class InventoryService
 
         // Headers
         $headers = [
-            'ID', 'Type', 'Item Name', 'SKU/Code', 'Category', 'Unit', 'Quantity',
-            'Reorder Level', 'Status', 'Linked Asset No.', 'Supplier',
-            'Remarks', 'Created At', 'Updated At',
+            'ID', 'Type', 'Item Name', 'SKU/Code', 'Unit', 'Manufacturer', 
+            'Office', 'Location', 'Quantity', 'Reorder Level', 'Status', 
+            'Linked Asset No.', 'Remarks', 'Created At', 'Updated At',
         ];
         foreach (array_values($headers) as $i => $header) {
             $sheet->setCellValue(chr(65 + $i).'1', $header);
@@ -79,20 +87,21 @@ class InventoryService
             $sheet->setCellValue('B'.$row, ucfirst(str_replace('_', '-', $item->type ?? '')));
             $sheet->setCellValue('C'.$row, $item->name);
             $sheet->setCellValue('D'.$row, $item->sku ?? '');
-            $sheet->setCellValue('E'.$row, $item->category?->name ?? '');
-            $sheet->setCellValue('F'.$row, $item->unit ?? '');
-            $sheet->setCellValue('G'.$row, $item->quantity);
-            $sheet->setCellValue('H'.$row, $item->reorder_level ?? '');
-            $sheet->setCellValue('I'.$row, $status);
-            $sheet->setCellValue('J'.$row, $item->asset?->asset_number ?? '');
-            $sheet->setCellValue('K'.$row, $item->supplier?->name ?? '');
-            $sheet->setCellValue('L'.$row, $item->remarks ?? '');
-            $sheet->setCellValue('M'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
-            $sheet->setCellValue('N'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');
+            $sheet->setCellValue('E'.$row, $item->unit?->name ?? $item->unit ?? '');
+            $sheet->setCellValue('F'.$row, $item->manufacturer?->name ?? '');
+            $sheet->setCellValue('G'.$row, $item->office?->name ?? '');
+            $sheet->setCellValue('H'.$row, $item->location?->name ?? '');
+            $sheet->setCellValue('I'.$row, $item->quantity);
+            $sheet->setCellValue('J'.$row, $item->reorder_level ?? '');
+            $sheet->setCellValue('K'.$row, $status);
+            $sheet->setCellValue('L'.$row, $item->asset?->asset_number ?? '');
+            $sheet->setCellValue('M'.$row, $item->remarks ?? '');
+            $sheet->setCellValue('N'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
+            $sheet->setCellValue('O'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');
             $row++;
         }
 
-        foreach (range('A', 'N') as $col) {
+        foreach (range('A', 'O') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -123,7 +132,7 @@ class InventoryService
         }
 
         $headers = array_map('trim', $rows[0]);
-        $expectedHeaders = ['name', 'sku', 'category_name', 'unit', 'quantity', 'reorder_level', 'remarks'];
+        $expectedHeaders = ['name', 'sku', 'category_name', 'unit', 'manufacturer', 'office', 'location', 'quantity', 'reorder_level', 'remarks'];
 
         // Validate headers
         $headerMap = [];
@@ -152,7 +161,10 @@ class InventoryService
 
             $sku = $row[$headerMap['sku']] ?? '';
             $categoryName = $row[$headerMap['category_name']] ?? '';
-            $unit = $row[$headerMap['unit']] ?? '';
+            $unitName = $row[$headerMap['unit']] ?? '';
+            $manufacturerName = $row[$headerMap['manufacturer']] ?? '';
+            $officeName = $row[$headerMap['office']] ?? '';
+            $locationName = $row[$headerMap['location']] ?? '';
             $quantity = (int) ($row[$headerMap['quantity']] ?? 0);
             $reorderLevel = $row[$headerMap['reorder_level']] ?? null;
             $remarks = $row[$headerMap['remarks']] ?? '';
@@ -168,6 +180,46 @@ class InventoryService
                 $category = null;
             }
 
+            // Validate unit exists
+            $unit = null;
+            if (! empty($unitName)) {
+                $unit = Unit::query()->where('name', $unitName)->first();
+                if (! $unit) {
+                    $errors[] = "Row {$rowNum}: Unit '{$unitName}' not found in System Setup.";
+                    continue;
+                }
+            }
+
+            // Validate manufacturer exists
+            $manufacturer = null;
+            if (! empty($manufacturerName)) {
+                $manufacturer = Manufacturer::query()->where('name', $manufacturerName)->first();
+                if (! $manufacturer) {
+                    $errors[] = "Row {$rowNum}: Manufacturer '{$manufacturerName}' not found in System Setup.";
+                    continue;
+                }
+            }
+
+            // Validate office exists
+            $office = null;
+            if (! empty($officeName)) {
+                $office = Office::query()->where('name', $officeName)->first();
+                if (! $office) {
+                    $errors[] = "Row {$rowNum}: Office '{$officeName}' not found in System Setup.";
+                    continue;
+                }
+            }
+
+            // Validate location exists
+            $location = null;
+            if (! empty($locationName)) {
+                $location = Location::query()->where('name', $locationName)->first();
+                if (! $location) {
+                    $errors[] = "Row {$rowNum}: Location '{$locationName}' not found in System Setup.";
+                    continue;
+                }
+            }
+
             // Check for duplicate SKU
             if (! empty($sku) && InventoryItem::query()->where('sku', $sku)->exists()) {
                 $errors[] = "Row {$rowNum}: Item with SKU '{$sku}' already exists.";
@@ -178,7 +230,11 @@ class InventoryService
                 'name' => $name,
                 'sku' => $sku,
                 'inventory_category_id' => $category?->id,
-                'unit' => $unit,
+                'unit' => $unitName, // Keep text for backward compatibility
+                'unit_id' => $unit?->id,
+                'manufacturer_id' => $manufacturer?->id,
+                'office_id' => $office?->id,
+                'location_id' => $location?->id,
                 'quantity' => $quantity,
                 'reorder_level' => $reorderLevel !== '' ? (int) $reorderLevel : null,
                 'remarks' => $remarks,
@@ -207,7 +263,7 @@ class InventoryService
     }
     public function list(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
-        $query = InventoryItem::query()->with('asset');
+        $query = InventoryItem::query()->with(['asset', 'unit', 'manufacturer', 'office', 'location']);
 
         // Filter by inventory type (non_expendable / expendable)
         if (! empty($filters['type'])) {
@@ -219,7 +275,10 @@ class InventoryService
             $query->where(function ($query) use ($search): void {
                 $query->where('name', 'like', '%'.$search.'%')
                     ->orWhere('sku', 'like', '%'.$search.'%')
-                    ->orWhere('unit', 'like', '%'.$search.'%');
+                    ->orWhere('unit', 'like', '%'.$search.'%')
+                    ->orWhereHas('unit', function ($q) use ($search) {
+                        $q->where('name', 'like', '%'.$search.'%');
+                    });
             });
         }
 
@@ -285,6 +344,19 @@ class InventoryService
             throw new \InvalidArgumentException('Use Correct Stock Quantity to change quantity and provide a reason.');
         }
 
+        // Validate type transition: ensure the type value is valid
+        if (array_key_exists('type', $data) && $data['type'] !== null) {
+            $validTypes = ['non_expendable', 'expendable'];
+            if (! in_array($data['type'], $validTypes, true)) {
+                throw new \InvalidArgumentException(
+                    "Invalid inventory type '{$data['type']}'. Valid types are: " . implode(', ', $validTypes) . '.'
+                );
+            }
+
+            // If changing type, preserve existing relationships and history
+            // No destructive operations needed — just update the type column
+        }
+
         $item->update($data);
 
         if ($trackAsAsset && ! $item->asset_id) {
@@ -321,6 +393,7 @@ class InventoryService
             $item->update(['quantity' => $after]);
             $this->recordMovement($item, 'stock_in', $quantity, $before, $after, $reason, $user);
             $this->syncLinkedAsset($item->fresh('asset'));
+            $this->notifyStockThresholds($item->fresh());
 
             return $item->fresh('asset');
         });
@@ -343,6 +416,7 @@ class InventoryService
             $item->update(['quantity' => $after]);
             $this->recordMovement($item, 'stock_out', -$quantity, $before, $after, $reason, $user);
             $this->syncLinkedAsset($item->fresh('asset'));
+            $this->notifyStockThresholds($item->fresh());
 
             return $item->fresh('asset');
         });
@@ -365,6 +439,7 @@ class InventoryService
             $item->update(['quantity' => $newQuantity]);
             $this->recordMovement($item, 'adjustment', $difference, $before, $newQuantity, $reason, $user);
             $this->syncLinkedAsset($item->fresh('asset'));
+            $this->notifyStockThresholds($item->fresh());
 
             return $item->fresh('asset');
         });
@@ -473,5 +548,32 @@ class InventoryService
                 'is_active' => true,
             ],
         );
+    }
+
+    private function notifyStockThresholds(InventoryItem $item): void
+    {
+        if ($item->quantity <= 0) {
+            $this->notificationService->notifyStaffAndAdmins(
+                'Inventory Out of Stock',
+                "{$item->name} is out of stock.",
+                'inventory_out_of_stock',
+                $item->id,
+                InventoryItem::class,
+                ['link' => '/inventory', 'sku' => $item->sku, 'quantity' => $item->quantity],
+            );
+
+            return;
+        }
+
+        if ($item->reorder_level !== null && $item->quantity <= $item->reorder_level) {
+            $this->notificationService->notifyStaffAndAdmins(
+                'Inventory Low Stock',
+                "{$item->name} is low on stock ({$item->quantity} remaining; reorder at {$item->reorder_level}).",
+                'inventory_low_stock',
+                $item->id,
+                InventoryItem::class,
+                ['link' => '/inventory', 'sku' => $item->sku, 'quantity' => $item->quantity],
+            );
+        }
     }
 }

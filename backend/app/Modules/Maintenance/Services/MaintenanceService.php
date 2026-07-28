@@ -2,12 +2,17 @@
 
 namespace App\Modules\Maintenance\Services;
 
+use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\Maintenance\Models\Maintenance;
+use App\Modules\Notification\Services\NotificationService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class MaintenanceService
 {
+    public function __construct(private readonly NotificationService $notificationService) {}
+
     public function list(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
         $query = Maintenance::query()->with(['asset', 'user']);
@@ -29,14 +34,44 @@ class MaintenanceService
 
     public function create(array $data): Maintenance
     {
-        return Maintenance::create($data);
+        return DB::transaction(function () use ($data) {
+            $maintenance = Maintenance::create($data)->load(['asset', 'user']);
+
+            // Set asset status to Maintenance when maintenance is created
+            if ($maintenance->asset) {
+                $maintenance->asset->update(['status' => AssetStatus::MAINTENANCE->value]);
+            }
+
+            $assetName = $maintenance->asset?->name ?? 'an asset';
+            $this->notificationService->notifyStaffAndAdmins(
+                'Maintenance Update',
+                "Maintenance was scheduled for {$assetName}.",
+                'maintenance_update',
+                $maintenance->id,
+                Maintenance::class,
+                ['link' => '/maintenance', 'status' => $maintenance->status],
+            );
+
+            return $maintenance;
+        });
     }
 
     public function update(Maintenance $maintenance, array $data): Maintenance
     {
         $maintenance->update($data);
+        $fresh = $maintenance->fresh()->load(['asset', 'user']);
 
-        return $maintenance->fresh();
+        $assetName = $fresh->asset?->name ?? 'an asset';
+        $this->notificationService->notifyStaffAndAdmins(
+            'Maintenance Update',
+            "Maintenance for {$assetName} was updated (status: {$fresh->status}).",
+            'maintenance_update',
+            $fresh->id,
+            Maintenance::class,
+            ['link' => '/maintenance', 'status' => $fresh->status],
+        );
+
+        return $fresh;
     }
 
     public function delete(Maintenance $maintenance): void
@@ -46,12 +81,31 @@ class MaintenanceService
 
     public function complete(Maintenance $maintenance): Maintenance
     {
-        $maintenance->update([
-            'status' => 'completed',
-            'completed_date' => now(),
-        ]);
+        return DB::transaction(function () use ($maintenance) {
+            $maintenance->update([
+                'status' => 'completed',
+                'completed_date' => now(),
+            ]);
 
-        return $maintenance->fresh();
+            // Set asset status back to Available when maintenance is completed
+            if ($maintenance->asset) {
+                $maintenance->asset->update(['status' => AssetStatus::AVAILABLE->value]);
+            }
+
+            $fresh = $maintenance->fresh()->load(['asset', 'user']);
+            $assetName = $fresh->asset?->name ?? 'an asset';
+
+            $this->notificationService->notifyStaffAndAdmins(
+                'Maintenance Completed',
+                "Maintenance for {$assetName} has been completed.",
+                'maintenance_update',
+                $fresh->id,
+                Maintenance::class,
+                ['link' => '/maintenance', 'status' => 'completed'],
+            );
+
+            return $fresh;
+        });
     }
 
     public function getScheduled(): Collection

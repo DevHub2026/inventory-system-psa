@@ -5,6 +5,7 @@ import type { MaintenanceRequest } from '@/types'
 import { maintenanceStatusTone } from '@/utils/statusTone'
 import { maintenanceStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
+import { notifyDataChanged } from '@/utils/dataRefresh'
 
 const LABEL_CLS = 'mb-1.5 block text-[13px] font-medium text-[#1F2937]'
 const SELECT_CLS =
@@ -55,6 +56,7 @@ export function MaintenancePage() {
     try {
       await maintenanceService.delete(r.id)
       setMessage({ type: 'success', text: 'Maintenance request deleted.' })
+      notifyDataChanged('maintenance')
       await loadMaintenance()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to delete.' })
@@ -66,7 +68,9 @@ export function MaintenancePage() {
     try {
       if (editingRequest) { await maintenanceService.update(editingRequest.id, formData as UpdateMaintenancePayload); setMessage({ type: 'success', text: 'Maintenance request updated.' }) }
       else                { await maintenanceService.create(formData);                                                 setMessage({ type: 'success', text: 'Maintenance request created.' }) }
-      setModalOpen(false); await loadMaintenance()
+      setModalOpen(false)
+      notifyDataChanged('maintenance')
+      await loadMaintenance()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to save maintenance details.' })
     } finally { setSaving(false) }
@@ -77,6 +81,7 @@ export function MaintenancePage() {
     try {
       await maintenanceService.complete(id)
       setMessage({ type: 'success', text: 'Maintenance completed.' })
+      notifyDataChanged('maintenance')
       await loadMaintenance()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to complete maintenance.' })
@@ -88,6 +93,7 @@ export function MaintenancePage() {
     try {
       await maintenanceService.update(r.id, { status: 'cancelled' } as UpdateMaintenancePayload)
       setMessage({ type: 'success', text: 'Maintenance cancelled.' })
+      notifyDataChanged('maintenance')
       await loadMaintenance()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to cancel maintenance.' })

@@ -84,6 +84,28 @@ export function ReservationPage() {
     }
   }
 
+  const handleReject = async (id: number) => {
+    try {
+      await reservationService.reject(id)
+      setMessage({ type: 'success', text: 'Borrow request rejected.' })
+      notifyDataChanged('all')
+      await loadReservations()
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to reject borrow request.' })
+    }
+  }
+
+  const handleCancel = async (id: number) => {
+    try {
+      await reservationService.cancel(id)
+      setMessage({ type: 'success', text: 'Borrow request cancelled.' })
+      notifyDataChanged('all')
+      await loadReservations()
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to cancel borrow request.' })
+    }
+  }
+
   const columns: Column<Reservation>[] = [
     { key: 'id',            header: '#',         render: (r) => <span className="font-mono text-xs text-[#9CA3AF]">#{r.id}</span> },
     { key: 'employee_name', header: 'Employee',  render: (r) => <span className="font-medium text-[#1F2937]">{r.employee_name}</span> },
@@ -98,7 +120,13 @@ export function ReservationPage() {
             Receipt
           </Button>
           {canApprove && r.status === 'PENDING' && (
-            <Button size="sm" variant="success" onClick={() => handleApprove(r.id)}>Approve</Button>
+            <>
+              <Button size="sm" variant="success" onClick={() => handleApprove(r.id)}>Approve</Button>
+              <Button size="sm" variant="outline" onClick={() => handleReject(r.id)}>Reject</Button>
+            </>
+          )}
+          {!canApprove && r.status === 'PENDING' && (
+            <Button size="sm" variant="ghost" onClick={() => handleCancel(r.id)}>Cancel</Button>
           )}
         </div>
       ),

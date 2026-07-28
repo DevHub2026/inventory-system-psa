@@ -8,6 +8,7 @@ use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\Asset\Exceptions\AssetNotAvailableException;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\Borrowing\Models\Borrowing;
+use App\Modules\Notification\Services\NotificationService;
 use App\Modules\Reservation\Models\Reservation;
 use App\Modules\AssetIdentifier\Services\AssetIdentifierService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -15,7 +16,10 @@ use Illuminate\Support\Facades\DB;
 
 class BorrowingService
 {
-    public function __construct(private readonly AssetIdentifierService $assetIdentifierService) {}
+    public function __construct(
+        private readonly AssetIdentifierService $assetIdentifierService,
+        private readonly NotificationService $notificationService,
+    ) {}
 
     public function list(User $user, int $perPage = 20): LengthAwarePaginator
     {
@@ -72,7 +76,18 @@ class BorrowingService
             $asset->update(['status' => AssetStatus::BORROWED]);
             $reservation->assets()->updateExistingPivot($asset->id, ['fulfilled_at' => now()]);
 
-            return $borrowing->load(['user', 'asset', 'authorizer']);
+            $borrowing = $borrowing->load(['user', 'asset', 'authorizer']);
+
+            $this->notificationService->notifyStaffAndAdmins(
+                'Asset Borrowed',
+                ($borrowing->user?->full_name ?: $borrowing->user?->email ?? 'A user').' borrowed '.($borrowing->asset?->name ?? 'an asset').'.',
+                'borrowing_confirmed',
+                $borrowing->id,
+                Borrowing::class,
+                ['link' => '/borrowings'],
+            );
+
+            return $borrowing;
         });
     }
 
@@ -98,7 +113,31 @@ class BorrowingService
             ]);
             $borrowing->asset()->update(['status' => AssetStatus::AVAILABLE]);
 
-            return $borrowing->fresh()->load(['user', 'asset', 'authorizer']);
+            $fresh = $borrowing->fresh()->load(['user', 'asset', 'authorizer']);
+
+            $assetName = $fresh->asset?->name ?? 'an asset';
+            $this->notificationService->notifyStaffAndAdmins(
+                'Asset Returned',
+                ($fresh->user?->full_name ?: $fresh->user?->email ?? 'A user')." returned {$assetName}.",
+                'asset_returned',
+                $fresh->id,
+                Borrowing::class,
+                ['link' => '/borrowings'],
+            );
+
+            if ($fresh->user_id && $fresh->user_id !== $actor->id) {
+                $this->notificationService->notifyUser(
+                    $fresh->user_id,
+                    'Asset Returned',
+                    "Your borrowed item {$assetName} has been marked as returned.",
+                    'asset_returned',
+                    $fresh->id,
+                    Borrowing::class,
+                    ['link' => '/borrowings'],
+                );
+            }
+
+            return $fresh;
         });
     }
 
@@ -343,6 +382,16 @@ class BorrowingService
             // Do NOT change asset status - it stays AVAILABLE until approved
 
             $reservation->load(['user', 'assets']);
+
+            $requester = ($user->full_name ?: $user->email) ?? 'An employee';
+            $this->notificationService->notifyStaffAndAdmins(
+                'New Borrow Request',
+                "{$requester} submitted a borrow request for {$asset->name} via QR scan.",
+                'borrow_request',
+                $reservation->id,
+                Reservation::class,
+                ['link' => '/reservations'],
+            );
 
             return [
                 'id' => $reservation->id,

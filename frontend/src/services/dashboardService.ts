@@ -1,8 +1,5 @@
 import { api, unwrapData } from '@/services/api'
-
 import type { ActivityItem, ApiResponse, DashboardStats } from '@/types'
-
-
 
 export const dashboardService = {
   async getStats(): Promise<DashboardStats> {
@@ -15,4 +12,3 @@ export const dashboardService = {
     return unwrapData(data)
   },
 }
-

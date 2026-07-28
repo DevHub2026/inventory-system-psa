@@ -59,8 +59,11 @@ class ManufacturerController extends Controller
 
     public function destroy(Manufacturer $manufacturer): JsonResponse
     {
-        $this->manufacturerService->delete($manufacturer);
-
-        return $this->success(null, 'Manufacturer deleted successfully.');
+        try {
+            $this->manufacturerService->delete($manufacturer);
+            return $this->success(null, 'Manufacturer deleted successfully.');
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), null, 422);
+        }
     }
 }
