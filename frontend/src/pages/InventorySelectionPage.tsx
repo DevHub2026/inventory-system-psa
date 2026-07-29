@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { Package, ArrowRight, LayoutGrid } from 'lucide-react'
 
 /* ─────────────────────────────────────────────
-   Non-Expendable illustration
+   PPE illustration
    Desk setup: monitor + keyboard + device stack
 ───────────────────────────────────────────── */
-function NonExpendableIllustration() {
+function PPEIllustration() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -57,10 +57,10 @@ function NonExpendableIllustration() {
 }
 
 /* ─────────────────────────────────────────────
-   Expendable illustration
+   SE illustration
    Open box with office supplies spilling out
 ───────────────────────────────────────────── */
-function ExpendableIllustration() {
+function SEIllustration() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -417,31 +417,31 @@ export function InventorySelectionPage() {
         >
           <InventoryCard
             accent="blue"
-            badge="Non-Expendable"
-            illustration={<NonExpendableIllustration />}
-            title="Non-Expendable Inventory"
+            badge="PPE"
+            illustration={<PPEIllustration />}
+            title="Property, Plant & Equipment (PPE)"
             description="Track durable government assets with long service life — equipment, devices, and physical property that are recorded, maintained, and not consumed during normal use."
             features={[
               'Computers, laptops, monitors, printers',
               'Furniture, office equipment, power devices',
               'Items linked to PSA asset records',
             ]}
-            buttonLabel="View Non-Expendable"
+            buttonLabel="View PPE"
             onClick={() => navigate('/inventory/non-expendable')}
           />
 
           <InventoryCard
             accent="green"
-            badge="Expendable"
-            illustration={<ExpendableIllustration />}
-            title="Expendable Inventory"
+            badge="SE"
+            illustration={<SEIllustration />}
+            title="Semi-Expendable (SE)"
             description="Manage consumable supplies and materials used up during day-to-day office operations — stock levels, reorder alerts, and movement history are tracked here."
             features={[
               'Bond paper, printer toner, ink cartridges',
               'Pens, folders, envelopes, office supplies',
               'Items consumed and replenished regularly',
             ]}
-            buttonLabel="View Expendable"
+            buttonLabel="View SE"
             onClick={() => navigate('/inventory/expendable')}
           />
         </div>
@@ -461,7 +461,7 @@ export function InventorySelectionPage() {
         >
           <Package size={15} style={{ color: '#94A3B8', flexShrink: 0 }} aria-hidden="true" />
           <span style={{ fontSize: 12.5, color: '#64748B', lineHeight: 1.5 }}>
-            Items added from each category are automatically tagged and separated — non-expendable items are also linked to the Assets module for full lifecycle tracking.
+            Items added from each category are automatically tagged and separated — PPE items are also linked to the Assets module for full lifecycle tracking.
           </span>
         </div>
 

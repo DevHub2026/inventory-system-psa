@@ -183,7 +183,7 @@ export function ExpendableInventoryPage() {
         Back to Inventory
       </button>
 
-      <PageHeader title="Expendable Inventory" subtitle="Manage consumable items and supplies that are used up during operations." actions={<Button onClick={handleCreate}>Add Item</Button>} />
+      <PageHeader title="Semi-Expendable (SE)" subtitle="Manage consumable items and supplies that are used up during operations." actions={<Button onClick={handleCreate}>Add Item</Button>} />
 
       {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
@@ -197,7 +197,7 @@ export function ExpendableInventoryPage() {
           <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : (
           <>
-            <Table columns={columns} rows={rows} rowKey={(r) => r.id} empty={<div className="py-16"><EmptyState title="No expendable items found" description="Add consumable supplies such as bond paper, toner, and pens." /></div>} />
+            <Table columns={columns} rows={rows} rowKey={(r) => r.id} empty={<div className="py-16"><EmptyState title="No SE items found" description="Add consumable supplies such as bond paper, toner, and pens." /></div>} />
             <div className="border-t border-[#E5E7EB] px-5 py-3">
               <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void loadInventory(p)} />
             </div>

@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search } from 'lucide-react'
+import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode } from 'lucide-react'
 import {
   Alert, Button, EmptyState, Input,
-  Modal, Spinner,
+  Modal, Spinner, Badge, Card,
 } from '@/components/ui'
 import {
   inventoryService,
@@ -28,122 +28,159 @@ interface SummaryData {
   exp:    { total: number; in_stock: number; low_stock: number; out_of_stock: number }
 }
 
+// ─── Color palette ───────────────────────────────────────────────────────────
+
+const colors = {
+  blue:    { bg: '#EFF6FF', text: '#1E40AF', border: '#BFDBFE', icon: '#2563EB' },
+  green:   { bg: '#F0FDF4', text: '#166534', border: '#BBF7D0', icon: '#16A34A' },
+  amber:   { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A', icon: '#D97706' },
+  red:     { bg: '#FEF2F2', text: '#DC2626', border: '#FECACA', icon: '#EF4444' },
+  violet:  { bg: '#FAF5FF', text: '#7C3AED', border: '#DDD6FE', icon: '#8B5CF6' },
+  gray:    { bg: '#F8FAFC', text: '#475569', border: '#E2E8F0', icon: '#94A3B8' },
+}
+
+// ─── Stat card (individual stat inside a summary card) ────────────────────────
+
+function Stat({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+      <span style={{ fontSize: 13, color: '#475569', flex: 1 }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+    </div>
+  )
+}
+
+// ─── Icon wrapper ─────────────────────────────────────────────────────────────
+
+function IconBox({ icon, color }: { icon: React.ReactNode; color: typeof colors.blue }) {
+  return (
+    <div style={{
+      width: 48, height: 48, borderRadius: 12,
+      background: color.bg, border: `1px solid ${color.border}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+    }}>
+      {icon}
+    </div>
+  )
+}
+
 // ─── Summary cards ────────────────────────────────────────────────────────────
 
 function SummaryCard({ data, onNavigate }: { data: SummaryData; onNavigate: (tab: TabKey) => void }) {
-  const [hovNE, setHovNE] = useState(false)
-  const [hovEx, setHovEx] = useState(false)
-
-  const cardBase: React.CSSProperties = {
-    flex: '1 1 0', minWidth: 280,
+  const cardStyle: React.CSSProperties = {
+    flex: '1 1 0', minWidth: 300,
     background: '#ffffff',
     borderRadius: 16,
     border: '1px solid #E2E8F0',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-    padding: '20px 24px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+    padding: '24px',
     cursor: 'pointer',
-    transition: 'box-shadow 0.18s, border-color 0.18s',
-    display: 'flex', alignItems: 'center', gap: 20,
-    boxSizing: 'border-box',
+    transition: 'box-shadow 0.2s, border-color 0.2s',
+    display: 'flex', flexDirection: 'column', gap: 0,
   }
 
-  const row = (label: string, value: number, dot: string) => (
-    <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0 }} />
-        <span style={{ fontSize: 13, color: '#64748B' }}>{label}</span>
-      </div>
-      <span style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{value}</span>
-    </div>
-  )
-
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
-      {/* Non-expendable */}
-      <div
-        style={{ ...cardBase, borderColor: hovNE ? '#93C5FD' : '#E2E8F0', boxShadow: hovNE ? '0 4px 16px rgba(0,0,0,0.10)' : '0 1px 4px rgba(0,0,0,0.06)' }}
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+      {/* PPE Card */}
+      <SummaryCardInner
+        style={cardStyle}
         onClick={() => onNavigate('non_expendable')}
-        onMouseEnter={() => setHovNE(true)} onMouseLeave={() => setHovNE(false)}
-      >
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Monitor size={26} style={{ color: '#2563EB' }} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Non-Expendable Assets</div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: '#0F172A', lineHeight: 1.1, marginBottom: 12 }}>{data.nonExp.total}</div>
-          <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: 8 }}>Total Assets</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {row('In Use', data.nonExp.in_use, '#3B82F6')}
-            {row('Available', data.nonExp.available, '#22C55E')}
-            {row('Under Maintenance', data.nonExp.maintenance, '#A855F7')}
-          </div>
-        </div>
-        <ChevronRight size={18} style={{ color: '#CBD5E1', flexShrink: 0 }} />
-      </div>
+        icon={<Monitor size={22} style={{ color: colors.blue.icon }} />}
+        color={colors.blue}
+        title="Property, Plant & Equipment"
+        subtitle="PPE — Durable Assets"
+        total={data.nonExp.total}
+        totalLabel="Total Assets"
+        stats={[
+          { label: 'In Use', value: data.nonExp.in_use, color: colors.blue.text },
+          { label: 'Available', value: data.nonExp.available, color: colors.green.text },
+          { label: 'Under Maintenance', value: data.nonExp.maintenance, color: colors.violet.text },
+        ]}
+      />
 
-      {/* Expendable */}
-      <div
-        style={{ ...cardBase, borderColor: hovEx ? '#6EE7B7' : '#E2E8F0', boxShadow: hovEx ? '0 4px 16px rgba(0,0,0,0.10)' : '0 1px 4px rgba(0,0,0,0.06)' }}
+      {/* SE Card */}
+      <SummaryCardInner
+        style={cardStyle}
         onClick={() => onNavigate('expendable')}
-        onMouseEnter={() => setHovEx(true)} onMouseLeave={() => setHovEx(false)}
-      >
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Package size={26} style={{ color: '#16A34A' }} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Expendable Items</div>
-          <div style={{ fontSize: 32, fontWeight: 800, color: '#0F172A', lineHeight: 1.1, marginBottom: 12 }}>{data.exp.total}</div>
-          <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: 8 }}>Total Items</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {row('In Stock', data.exp.in_stock, '#22C55E')}
-            {row('Low Stock', data.exp.low_stock, '#F59E0B')}
-            {row('Out of Stock', data.exp.out_of_stock, '#EF4444')}
-          </div>
-        </div>
-        <ChevronRight size={18} style={{ color: '#CBD5E1', flexShrink: 0 }} />
-      </div>
+        icon={<Package size={22} style={{ color: colors.green.icon }} />}
+        color={colors.green}
+        title="Semi-Expendable"
+        subtitle="SE — Consumable Items"
+        total={data.exp.total}
+        totalLabel="Total Items"
+        stats={[
+          { label: 'In Stock', value: data.exp.in_stock, color: colors.green.text },
+          { label: 'Low Stock', value: data.exp.low_stock, color: colors.amber.text },
+          { label: 'Out of Stock', value: data.exp.out_of_stock, color: colors.red.text },
+        ]}
+      />
     </div>
   )
 }
 
-// ─── Type badge ──────────────────────────────────────────────────────────────
+function SummaryCardInner({
+  style, onClick, icon, color, title, subtitle, total, totalLabel, stats,
+}: {
+  style: React.CSSProperties
+  onClick: () => void
+  icon: React.ReactNode
+  color: typeof colors.blue
+  title: string
+  subtitle: string
+  total: number
+  totalLabel: string
+  stats: { label: string; value: number; color: string }[]
+}) {
+  const [hovered, setHovered] = useState(false)
 
-function TypeBadge({ type }: { type?: string | null }) {
-  const isNE = type === 'non_expendable'
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-      background: isNE ? '#EFF6FF' : '#F0FDF4',
-      color: isNE ? '#1E40AF' : '#15803D',
-      border: `1px solid ${isNE ? '#BFDBFE' : '#BBF7D0'}`,
-      whiteSpace: 'nowrap',
-    }}>
-      {isNE ? 'Non-Expendable' : 'Expendable'}
-    </span>
-  )
-}
+    <div
+      style={{
+        ...style,
+        borderColor: hovered ? color.border : '#E2E8F0',
+        boxShadow: hovered ? '0 4px 20px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.05)',
+      }}
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Top row: icon + title */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 20 }}>
+        <IconBox icon={icon} color={color} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', lineHeight: 1.3 }}>{title}</div>
+          <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 1 }}>{subtitle}</div>
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 28, height: 28, borderRadius: 8,
+          background: hovered ? color.bg : 'transparent',
+          transition: 'background 0.2s',
+        }}>
+          <ChevronRight size={16} style={{ color: '#CBD5E1' }} />
+        </div>
+      </div>
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
+      {/* Total figure */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 16 }}>
+        <span style={{ fontSize: 36, fontWeight: 800, color: '#0F172A', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+          {total}
+        </span>
+        <span style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500 }}>{totalLabel}</span>
+      </div>
 
-function StatusBadge({ status }: { status: string }) {
-  const cfg: Record<string, { bg: string; color: string; border: string }> = {
-    IN_STOCK:         { bg: '#F0FDF4', color: '#15803D', border: '#BBF7D0' },
-    LOW_STOCK:        { bg: '#FFFBEB', color: '#B45309', border: '#FDE68A' },
-    OUT_OF_STOCK:     { bg: '#FEF2F2', color: '#DC2626', border: '#FECACA' },
-    AVAILABLE:        { bg: '#F0FDF4', color: '#15803D', border: '#BBF7D0' },
-    IN_USE:           { bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE' },
-    UNDER_MAINTENANCE:{ bg: '#FAF5FF', color: '#7C3AED', border: '#DDD6FE' },
-  }
-  const s = cfg[status] ?? { bg: '#F8FAFC', color: '#475569', border: '#E2E8F0' }
-  return (
-    <span style={{
-      display: 'inline-block', padding: '3px 10px', borderRadius: 999,
-      fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap' as const,
-      background: s.bg, color: s.color, border: `1px solid ${s.border}`,
-    }}>
-      {inventoryStatusLabel(status)}
-    </span>
+      {/* Divider */}
+      <div style={{ height: 1, background: '#F1F5F9', marginBottom: 12 }} />
+
+      {/* Stats breakdown */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {stats.map((s) => (
+          <Stat key={s.label} label={s.label} value={s.value} color={s.color} />
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -152,11 +189,11 @@ function StatusBadge({ status }: { status: string }) {
 function Tabs({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => void }) {
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'all',           label: 'All Items' },
-    { key: 'non_expendable',label: 'Non-Expendable' },
-    { key: 'expendable',    label: 'Expendable' },
+    { key: 'non_expendable',label: 'PPE (Durable Assets)' },
+    { key: 'expendable',    label: 'SE (Consumables)' },
   ]
   return (
-    <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E2E8F0' }}>
+    <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E2E8F0', background: '#FAFBFC' }}>
       {tabs.map((t) => {
         const isActive = t.key === active
         return (
@@ -164,14 +201,33 @@ function Tabs({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => v
             key={t.key} type="button"
             onClick={() => onChange(t.key)}
             style={{
-              padding: '12px 20px', fontSize: 13.5, fontWeight: isActive ? 700 : 500,
+              position: 'relative',
+              padding: '14px 24px',
+              fontSize: 13,
+              fontWeight: isActive ? 700 : 500,
               color: isActive ? '#1E40AF' : '#64748B',
-              background: 'none', border: 'none', borderBottom: isActive ? '2px solid #1E40AF' : '2px solid transparent',
-              cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s',
-              fontFamily: 'inherit', marginBottom: -1,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'color 0.15s',
+              fontFamily: 'inherit',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) (e.currentTarget as HTMLButtonElement).style.color = '#334155'
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) (e.currentTarget as HTMLButtonElement).style.color = '#64748B'
             }}
           >
             {t.label}
+            {isActive && (
+              <span style={{
+                position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+                width: 28, height: 2.5, borderRadius: '1px',
+                background: '#1E40AF',
+              }} />
+            )}
           </button>
         )
       })}
@@ -179,7 +235,26 @@ function Tabs({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => v
   )
 }
 
-// ─── Action cell ─────────────────────────────────────────────────────────────
+// ─── Status badge ─────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg: Record<string, { bg: string; color: string; border: string; tone: 'green' | 'yellow' | 'red' | 'blue' | 'violet' }> = {
+    IN_STOCK:          { bg: '#F0FDF4', color: '#166534', border: '#BBF7D0', tone: 'green' },
+    LOW_STOCK:         { bg: '#FFFBEB', color: '#B45309', border: '#FDE68A', tone: 'yellow' },
+    OUT_OF_STOCK:      { bg: '#FEF2F2', color: '#DC2626', border: '#FECACA', tone: 'red' },
+    AVAILABLE:         { bg: '#F0FDF4', color: '#166534', border: '#BBF7D0', tone: 'green' },
+    IN_USE:            { bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE', tone: 'blue' },
+    UNDER_MAINTENANCE: { bg: '#FAF5FF', color: '#7C3AED', border: '#DDD6FE', tone: 'violet' },
+  }
+  const s = cfg[status] ?? { bg: '#F8FAFC', color: '#475569', border: '#E2E8F0', tone: 'green' as const }
+  return (
+    <Badge tone={s.tone}>
+      {inventoryStatusLabel(status)}
+    </Badge>
+  )
+}
+
+// ─── Action cell ──────────────────────────────────────────────────────────────
 
 interface ActionCellProps {
   item: InventoryItem
@@ -193,89 +268,107 @@ interface ActionCellProps {
 }
 
 function ActionCell({ onStockIn, onStockOut, onAdjust, onHistory, onEdit, onAsset, onDelete }: ActionCellProps) {
-  // Grouped button — no individual border, sits flush inside a group container
-  const groupBtn = (label: string, onClick: () => void, primary = false) => (
+  const [openMenu, setOpenMenu] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  // Close on click outside
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenu(false)
+      }
+    }
+    if (openMenu) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [openMenu])
+
+  // Primary actions (most used)
+  const primaryBtn = (icon: React.ReactNode, label: string, onClick: () => void, variant: 'primary' | 'secondary' | 'danger' = 'secondary') => {
+    const v = variant === 'primary'
+      ? { bg: '#1E40AF', color: '#fff', border: '#1E40AF', hoverBg: '#1D4ED8' }
+      : variant === 'danger'
+        ? { bg: '#FEF2F2', color: '#DC2626', border: '#FECACA', hoverBg: '#FEE2E2' }
+        : { bg: '#fff', color: '#475569', border: '#D1D5DB', hoverBg: '#F1F5F9' }
+    return (
+      <button
+        onClick={onClick}
+        title={label}
+        style={{
+          height: 32, width: 32, padding: 0,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          border: `1px solid ${v.border}`,
+          borderRadius: 8,
+          background: v.bg,
+          color: v.color,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          transition: 'all 0.15s',
+          fontSize: 13,
+          fontWeight: 600,
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = v.hoverBg }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = v.bg }}
+      >
+        {icon}
+      </button>
+    )
+  }
+
+  const menuItem = (icon: React.ReactNode, label: string, onClick: () => void, variant: 'normal' | 'danger' = 'normal') => (
     <button
-      key={label}
-      onClick={onClick}
+      onClick={() => { onClick(); setOpenMenu(false) }}
       style={{
-        height: 30, paddingInline: 11,
-        border: 'none',
-        background: primary ? '#1E40AF' : 'transparent',
-        color: primary ? '#fff' : '#374151',
-        fontSize: 12, fontWeight: 600, cursor: 'pointer',
-        fontFamily: 'inherit',
-        display: 'inline-flex', alignItems: 'center',
-        whiteSpace: 'nowrap' as const,
-        transition: 'background 0.12s',
-        borderRadius: 0,
+        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+        padding: '8px 12px', border: 'none', background: 'transparent',
+        color: variant === 'danger' ? '#DC2626' : '#1E293B',
+        fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+        fontFamily: 'inherit', borderRadius: 6,
+        transition: 'background 0.1s',
       }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = primary ? '#1D3FAB' : '#EEF2F7'
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = primary ? '#1E40AF' : 'transparent'
-      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
     >
-      {label}
+      {icon}
+      <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
     </button>
   )
 
-  // Internal divider between buttons inside a group
-  const sep = <div style={{ width: 1, alignSelf: 'stretch', background: '#E2E8F0', flexShrink: 0 }} />
-
-  // Group wrapper — rounded pill with border
-  const Group = ({ children }: { children: React.ReactNode }) => (
-    <div style={{
-      display: 'inline-flex', alignItems: 'stretch',
-      border: '1px solid #D1D5DB', borderRadius: 8,
-      overflow: 'hidden', background: '#fff',
-      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-    }}>
-      {children}
-    </div>
-  )
-
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+      {/* Quick action: Stock In (always visible) */}
+      {primaryBtn(<TrendingUp size={14} />, 'Add Stock', onStockIn, 'primary')}
 
-      {/* Stock group */}
-      <Group>
-        {groupBtn('+ Stock', onStockIn,  true)}
-        {sep}
-        {groupBtn('− Stock', onStockOut)}
-        {sep}
-        {groupBtn('Adjust',  onAdjust)}
-      </Group>
+      {/* Quick action: Stock Out (always visible) */}
+      {primaryBtn(<TrendingDown size={14} />, 'Remove Stock', onStockOut)}
 
-      {/* Management group */}
-      <Group>
-        {groupBtn('History', onHistory)}
-        {sep}
-        {groupBtn('Edit',    onEdit)}
-        {onAsset && sep}
-        {onAsset && groupBtn('View Asset', onAsset)}
-      </Group>
+      {/* More actions dropdown */}
+      <div ref={menuRef} style={{ position: 'relative' }}>
+        {primaryBtn(
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
+          </svg>,
+          'More actions',
+          () => setOpenMenu(!openMenu),
+        )}
 
-      {/* Delete — standalone, clearly destructive */}
-      <button
-        onClick={onDelete}
-        style={{
-          height: 30, paddingInline: 11, borderRadius: 8,
-          border: '1px solid #FECACA',
-          background: '#FEF2F2', color: '#DC2626',
-          fontSize: 12, fontWeight: 600, cursor: 'pointer',
-          fontFamily: 'inherit',
-          display: 'inline-flex', alignItems: 'center',
-          whiteSpace: 'nowrap' as const,
-          transition: 'background 0.12s',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-        }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#FEE2E2' }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#FEF2F2' }}
-      >
-        Delete
-      </button>
+        {openMenu && (
+          <div style={{
+            position: 'absolute', right: 0, top: '100%', marginTop: 4,
+            background: '#fff', border: '1px solid #E2E8F0',
+            borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            padding: 6, zIndex: 50, minWidth: 160,
+          }}>
+            {menuItem(<RotateCcw size={14} />, 'Adjust Quantity', onAdjust)}
+            {menuItem(<History size={14} />, 'View History', onHistory)}
+            {menuItem(<Edit3 size={14} />, 'Edit Item', onEdit)}
+            {onAsset && menuItem(<Eye size={14} />, 'View Asset', onAsset)}
+            <div style={{ height: 1, background: '#F1F5F9', margin: '4px 0' }} />
+            {menuItem(<Trash2 size={14} />, 'Delete Item', onDelete, 'danger')}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -494,12 +587,7 @@ export function InventoryPage() {
       const scopeFilter = exportScope === 'all' ? undefined : exportScope as 'non_expendable' | 'expendable'
 
       if (exportFormat === 'json') {
-        // JSON: fetch all items client-side and serialise
-        const result = await inventoryService.list({
-          per_page: 9999,
-          search: search || undefined,
-          type: scopeFilter,
-        })
+        const result = await inventoryService.list({ per_page: 9999, search: search || undefined, type: scopeFilter })
         const json = JSON.stringify(result.items, null, 2)
         const blob = new Blob([json], { type: 'application/json' })
         const url  = URL.createObjectURL(blob)
@@ -508,14 +596,8 @@ export function InventoryPage() {
         a.download = `inventory-${exportScope}-${Date.now()}.json`
         document.body.appendChild(a); a.click(); document.body.removeChild(a)
         URL.revokeObjectURL(url)
-
       } else if (exportFormat === 'csv') {
-        // CSV: fetch all items and build CSV client-side
-        const result = await inventoryService.list({
-          per_page: 9999,
-          search: search || undefined,
-          type: scopeFilter,
-        })
+        const result = await inventoryService.list({ per_page: 9999, search: search || undefined, type: scopeFilter })
         const headers = ['id', 'name', 'type', 'sku', 'asset_number', 'quantity', 'unit', 'status', 'reorder_level', 'remarks']
         const lines   = [headers.join(',')]
         for (const item of result.items) {
@@ -535,14 +617,8 @@ export function InventoryPage() {
         a.download = `inventory-${exportScope}-${Date.now()}.csv`
         document.body.appendChild(a); a.click(); document.body.removeChild(a)
         URL.revokeObjectURL(url)
-
       } else {
-        // XLSX: use existing backend endpoint
-        const blob = await inventoryService.downloadExport({
-          search: search || undefined,
-          status: statusFilter || undefined,
-          type: scopeFilter,
-        })
+        const blob = await inventoryService.downloadExport({ search: search || undefined, status: statusFilter || undefined, type: scopeFilter })
         const url  = URL.createObjectURL(blob)
         const a    = document.createElement('a')
         a.href     = url
@@ -560,65 +636,127 @@ export function InventoryPage() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
-  const td: React.CSSProperties = { padding: '14px 16px', fontSize: 13.5, color: '#374151', borderBottom: '1px solid #F1F5F9', verticalAlign: 'middle' }
-  const th: React.CSSProperties = { padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase' as const, letterSpacing: '0.07em', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', textAlign: 'left' as const, whiteSpace: 'nowrap' as const }
+  const td: React.CSSProperties = {
+    padding: '14px 16px',
+    fontSize: 13.5,
+    color: '#374151',
+    borderBottom: '1px solid #F1F5F9',
+    verticalAlign: 'middle',
+  }
+
+  const th: React.CSSProperties = {
+    padding: '10px 16px',
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#94A3B8',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.07em',
+    background: '#FAFBFC',
+    borderBottom: '1px solid #E2E8F0',
+    textAlign: 'left' as const,
+    whiteSpace: 'nowrap' as const,
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 32 }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 16,
+      }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em' }}>Inventory</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13.5, color: '#64748B' }}>Manage consumable items and available quantities.</p>
+          <h1 style={{
+            margin: 0,
+            fontSize: 26,
+            fontWeight: 800,
+            color: '#0F172A',
+            letterSpacing: '-0.03em',
+            lineHeight: 1.2,
+          }}>
+            Inventory
+          </h1>
+          <p style={{ margin: '6px 0 0', fontSize: 14, color: '#64748B', lineHeight: 1.4 }}>
+            Track and manage all items, supplies, and equipment in one place.
+          </p>
         </div>
+
+        {/* Actions */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Button variant="secondary" size="sm" onClick={() => setWizardOpen(true)}>
-            <Upload size={14} />Import
+            <Upload size={14} />
+            Import
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => { setExportScope(activeTab === 'all' ? 'all' : activeTab as 'non_expendable' | 'expendable'); setExportModalOpen(true) }}>
-            <Download size={14} />Export
+          <Button variant="secondary" size="sm" onClick={() => {
+            setExportScope(activeTab === 'all' ? 'all' : activeTab as 'non_expendable' | 'expendable')
+            setExportModalOpen(true)
+          }}>
+            <Download size={14} />
+            Export
           </Button>
           <Button size="sm" onClick={handleCreate}>
-            <Plus size={14} />Add Item
+            <Plus size={14} />
+            Add Item
           </Button>
         </div>
       </div>
 
-      {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
+      {/* Alert message */}
+      {message && (
+        <Alert tone={message.type} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
+      )}
 
       {/* ── Summary cards ── */}
       <SummaryCard data={summary} onNavigate={handleTabChange} />
 
       {/* ── Table card ── */}
-      <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-
+      <Card noPadding>
         {/* Tabs + search/filter — unified top bar */}
-        <div style={{ borderBottom: '1px solid #E2E8F0' }}>
+        <div>
           {/* Tab row */}
-          <div style={{ padding: '0 20px' }}>
-            <Tabs active={activeTab} onChange={handleTabChange} />
-          </div>
+          <Tabs active={activeTab} onChange={handleTabChange} />
 
           {/* Search + filter row — sits flush below tabs */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '10px 16px 10px' }}>
+          <div style={{
+            display: 'flex',
+            gap: 10,
+            alignItems: 'center',
+            padding: '12px 20px',
+            borderBottom: '1px solid #E2E8F0',
+            background: '#fff',
+          }}>
             {/* Search */}
             <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
-              <Search size={13} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
+              <Search size={14} style={{
+                position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                color: '#94A3B8', pointerEvents: 'none',
+              }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={handleSearch}
-                placeholder="Search by name, code, or unit…"
+                placeholder="Search by name, code, or unit..."
                 style={{
-                  width: '100%', height: 36, paddingLeft: 32, paddingRight: 12,
-                  borderRadius: 8, border: '1.5px solid #E2E8F0',
-                  fontSize: 13, color: '#1E293B', outline: 'none',
+                  width: '100%', height: 38, paddingLeft: 34, paddingRight: 14,
+                  borderRadius: 10, border: '1.5px solid #E2E8F0',
+                  fontSize: 13.5, color: '#1E293B', outline: 'none',
                   boxSizing: 'border-box', fontFamily: 'inherit',
                   background: '#F8FAFC',
+                  transition: 'border-color 0.15s, background 0.15s',
                 }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = '#93C5FD'; e.currentTarget.style.background = '#fff' }}
-                onBlur={(e)  => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.background = '#F8FAFC' }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#93C5FD'
+                  e.currentTarget.style.background = '#fff'
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#E2E8F0'
+                  e.currentTarget.style.background = '#F8FAFC'
+                }}
               />
             </div>
 
@@ -627,34 +765,42 @@ export function InventoryPage() {
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); void loadInventory(1) }}
               style={{
-                height: 36, paddingInline: '10px 28px', borderRadius: 8,
+                height: 38, paddingInline: '12px 32px', borderRadius: 10,
                 border: '1.5px solid #E2E8F0', fontSize: 13, color: statusFilter ? '#1E293B' : '#94A3B8',
-                background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 10px center`,
+                background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 12px center`,
                 backgroundSize: '10px 6px',
                 appearance: 'none', cursor: 'pointer', fontFamily: 'inherit',
                 outline: 'none', flexShrink: 0,
+                transition: 'border-color 0.15s',
               }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = '#93C5FD' }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = '#E2E8F0' }}
             >
               <option value="">All statuses</option>
               <option value="IN_STOCK">In Stock</option>
               <option value="LOW_STOCK">Low Stock</option>
               <option value="OUT_OF_STOCK">Out of Stock</option>
+              <option value="AVAILABLE">Available</option>
+              <option value="IN_USE">In Use</option>
+              <option value="UNDER_MAINTENANCE">Under Maintenance</option>
             </select>
 
             {/* Filter button */}
             <button
               onClick={handleFilter}
               style={{
-                height: 36, paddingInline: 14, borderRadius: 8,
+                height: 38, paddingInline: 14, borderRadius: 10,
                 border: '1.5px solid #E2E8F0', background: '#F8FAFC',
                 fontSize: 13, fontWeight: 600, color: '#374151',
                 cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
-                display: 'inline-flex', alignItems: 'center', gap: 5,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                transition: 'background 0.12s',
               }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
             >
-              <Filter size={13} /> Filter
+              <Filter size={14} />
+              Filter
             </button>
           </div>
         </div>
@@ -662,20 +808,29 @@ export function InventoryPage() {
         {/* Table */}
         <div style={{ overflowX: 'auto' }}>
           {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}><Spinner /></div>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+              <Spinner />
+            </div>
           ) : rows.length === 0 ? (
-            <div style={{ padding: '60px 0' }}>
-              <EmptyState title="No inventory items found" description="Add your first item to begin tracking stock." />
+            <div style={{ padding: '80px 0' }}>
+              <EmptyState
+                title="No inventory items found"
+                description={
+                  search || statusFilter
+                    ? 'Try adjusting your search or filter criteria.'
+                    : 'Add your first item to begin tracking stock.'
+                }
+              />
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
               <colgroup>
-                <col style={{ minWidth: 160 }} />
-                <col style={{ width: 155 }} />
-                <col style={{ width: 60 }} />
-                <col style={{ width: 90 }} />
-                <col style={{ width: 105 }} />
-                <col />
+                <col style={{ minWidth: 200 }} />
+                <col style={{ width: 160 }} />
+                <col style={{ width: 72 }} />
+                <col style={{ width: 80 }} />
+                <col style={{ width: 110 }} />
+                <col style={{ width: 140 }} />
               </colgroup>
               <thead>
                 <tr>
@@ -684,23 +839,42 @@ export function InventoryPage() {
                   <th style={{ ...th, textAlign: 'center' as const }}>Qty</th>
                   <th style={th}>Unit</th>
                   <th style={th}>Status</th>
-                  <th style={{ ...th, textAlign: 'right' as const, paddingRight: 16 }}>Actions</th>
+                  <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#FAFBFD' }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '' }}
+                {rows.map((r, idx) => (
+                  <tr
+                    key={r.id}
+                    style={{
+                      background: idx % 2 === 0 ? '#fff' : '#FAFBFC',
+                      transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F1F5F9' }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? '#fff' : '#FAFBFC'
+                    }}
                   >
                     {/* Item — name + type badge + optional remark */}
                     <td style={td}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap' as const }}>
-                        <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{r.name}</div>
-                        <TypeBadge type={r.type} />
+                        <span style={{
+                          fontWeight: 600, color: '#0F172A', fontSize: 13.5,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          minWidth: 0, maxWidth: 220,
+                        }}>
+                          {r.name}
+                        </span>
+                        <Badge tone={r.type === 'non_expendable' ? 'blue' : 'green'}>
+                          {r.type === 'non_expendable' ? 'PPE' : 'SE'}
+                        </Badge>
                       </div>
                       {r.remarks && (
-                        <div style={{ fontSize: 11.5, color: '#9CA3AF', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{
+                          fontSize: 11.5, color: '#9CA3AF', marginTop: 3,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          maxWidth: 300,
+                        }}>
                           {r.remarks}
                         </div>
                       )}
@@ -709,25 +883,47 @@ export function InventoryPage() {
                     {/* Code */}
                     <td style={td}>
                       {(r.asset_number ?? r.sku) ? (
-                        <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11.5, color: '#475569', background: '#F1F5F9', padding: '3px 7px', borderRadius: 5, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <code style={{
+                          fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                          fontSize: 11.5, color: '#475569',
+                          background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                          display: 'inline-block', maxWidth: 160,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
                           {r.asset_number ?? r.sku}
-                        </span>
-                      ) : <span style={{ color: '#CBD5E1' }}>—</span>}
+                        </code>
+                      ) : (
+                        <span style={{ color: '#CBD5E1' }}>—</span>
+                      )}
                     </td>
 
                     {/* Qty */}
                     <td style={{ ...td, textAlign: 'center' as const }}>
-                      <span style={{ fontWeight: 700, fontSize: 15, color: '#1E293B' }}>{r.quantity}</span>
+                      <span style={{
+                        fontWeight: 700, fontSize: 15, color: '#0F172A',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {r.quantity}
+                      </span>
                     </td>
 
                     {/* Unit */}
-                    <td style={td}><span style={{ color: '#64748B', fontSize: 13 }}>{r.unit || '—'}</span></td>
+                    <td style={td}>
+                      <span style={{ color: '#64748B', fontSize: 13 }}>
+                        {r.unit || '—'}
+                      </span>
+                    </td>
 
                     {/* Status */}
-                    <td style={td}><StatusBadge status={r.status} /></td>
+                    <td style={td}>
+                      <StatusBadge status={r.status} />
+                    </td>
 
                     {/* Actions */}
-                    <td style={{ ...td, textAlign: 'right' as const, paddingRight: 16, paddingTop: 10, paddingBottom: 10 }}>
+                    <td style={{
+                      ...td, textAlign: 'right' as const,
+                      paddingRight: 20, paddingTop: 10, paddingBottom: 10,
+                    }}>
                       <ActionCell
                         item={r}
                         onStockIn   ={() => { setStockItem(r); setStockType('in');  setStockQty(1); setStockReason(''); setStockModalOpen(true) }}
@@ -749,33 +945,91 @@ export function InventoryPage() {
         {/* Infinite scroll sentinel */}
         <div ref={sentinelRef} style={{ height: 1 }} />
         {loadingMore && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0', borderTop: '1px solid #F1F5F9' }}>
+          <div style={{
+            display: 'flex', justifyContent: 'center', padding: '20px 0',
+            borderTop: '1px solid #F1F5F9',
+          }}>
             <Spinner />
           </div>
         )}
-      </div>
-
+      </Card>
 
       {/* ── Add / Edit modal ── */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingItem ? 'Edit Item' : 'Add Item'}
-        footer={<><Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button><Button onClick={handleSubmit} disabled={saving}>{saving ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Item'}</Button></>}>
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingItem ? 'Edit Item' : 'Add Item'}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={saving}>
+              {saving ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Item'}
+            </Button>
+          </>
+        }
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <Input label="Item Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Bond Paper A4" />
-          <Input label="Item Code / SKU" helperText="Use the existing code if available." value={formData.sku || ''} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="e.g. SKU-001" />
+          <Input
+            label="Item Name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="e.g. Bond Paper A4"
+          />
+          <Input
+            label="Item Code / SKU"
+            helperText="Use the existing code if available."
+            value={formData.sku || ''}
+            onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+            placeholder="e.g. SKU-001"
+          />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Input label="Available Quantity" type="number" value={formData.quantity.toString()} disabled={Boolean(editingItem)} helperText={editingItem ? 'Use Adjust to update stock.' : undefined} onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })} />
-            <Input label="Unit" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} placeholder="e.g. reams, pcs" />
+            <Input
+              label="Available Quantity"
+              type="number"
+              value={formData.quantity.toString()}
+              disabled={Boolean(editingItem)}
+              helperText={editingItem ? 'Use Adjust to update stock.' : undefined}
+              onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
+            />
+            <Input
+              label="Unit"
+              value={formData.unit}
+              onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+              placeholder="e.g. reams, pcs"
+            />
           </div>
-          <Input label="Low Stock Alert" helperText="Warn when quantity reaches this number." type="number" value={formData.reorder_level?.toString() || '0'} onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })} />
+          <Input
+            label="Low Stock Alert"
+            helperText="Warn when quantity reaches this number."
+            type="number"
+            value={formData.reorder_level?.toString() || '0'}
+            onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })}
+          />
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Inventory Type</div>
             <div style={{ display: 'flex', gap: 10 }}>
               {(['non_expendable', 'expendable'] as const).map((t) => {
                 const active = formData.type === t
                 return (
-                  <button key={t} type="button" onClick={() => setFormData({ ...formData, type: t, track_as_asset: t === 'non_expendable' })}
-                    style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`, background: active ? '#EFF6FF' : '#fff', color: active ? '#1E40AF' : '#64748B', fontWeight: active ? 700 : 500, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
-                    {t === 'non_expendable' ? 'Non-Expendable' : 'Expendable'}
+                  <button
+                    key={t} type="button"
+                    onClick={() => setFormData({ ...formData, type: t, track_as_asset: t === 'non_expendable' })}
+                    style={{
+                      flex: 1, padding: '10px 12px', borderRadius: 10,
+                      border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`,
+                      background: active ? '#EFF6FF' : '#fff',
+                      color: active ? '#1E40AF' : '#64748B',
+                      fontWeight: active ? 700 : 500,
+                      fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>
+                      {t === 'non_expendable' ? 'PPE' : 'SE'}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.7 }}>
+                      {t === 'non_expendable' ? 'Durable Assets' : 'Consumables'}
+                    </div>
                   </button>
                 )
               })}
@@ -785,55 +1039,184 @@ export function InventoryPage() {
       </Modal>
 
       {/* ── Stock In / Out modal ── */}
-      <Modal open={stockModalOpen} onClose={() => setStockModalOpen(false)}
-        title={`${stockType === 'in' ? 'Add Stock' : 'Remove Stock'} — ${stockItem?.name}`}
-        footer={<><Button variant="secondary" onClick={() => setStockModalOpen(false)}>Cancel</Button><Button onClick={handleStockSubmit} disabled={saving}>{saving ? 'Processing...' : stockType === 'in' ? 'Add Stock' : 'Remove Stock'}</Button></>}>
+      <Modal
+        open={stockModalOpen}
+        onClose={() => setStockModalOpen(false)}
+        title={`${stockType === 'in' ? 'Add Stock' : 'Remove Stock'} — ${stockItem?.name ?? ''}`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setStockModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleStockSubmit} disabled={saving}>
+              {saving ? 'Processing...' : stockType === 'in' ? 'Add Stock' : 'Remove Stock'}
+            </Button>
+          </>
+        }
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <Input label="Quantity" type="number" min={1} value={stockQty.toString()} onChange={(e) => setStockQty(parseInt(e.target.value) || 1)} />
-          <Input label="Reason" value={stockReason} onChange={(e) => setStockReason(e.target.value)} placeholder={stockType === 'in' ? 'New supplies received' : 'Office use'} />
+          <Input
+            label="Quantity"
+            type="number"
+            min={1}
+            value={stockQty.toString()}
+            onChange={(e) => setStockQty(parseInt(e.target.value) || 1)}
+          />
+          <Input
+            label="Reason"
+            value={stockReason}
+            onChange={(e) => setStockReason(e.target.value)}
+            placeholder={stockType === 'in' ? 'New supplies received' : 'Office use'}
+          />
         </div>
       </Modal>
 
       {/* ── Adjust Quantity modal ── */}
-      <Modal open={adjustItem !== null} onClose={() => setAdjustItem(null)}
+      <Modal
+        open={adjustItem !== null}
+        onClose={() => setAdjustItem(null)}
         title={`Correct Stock Quantity — ${adjustItem?.name}`}
-        footer={<><Button variant="secondary" onClick={() => setAdjustItem(null)}>Cancel</Button><Button onClick={() => void handleAdjustSubmit()} disabled={saving}>{saving ? 'Saving...' : 'Save Correction'}</Button></>}>
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setAdjustItem(null)}>Cancel</Button>
+            <Button onClick={() => void handleAdjustSubmit()} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Correction'}
+            </Button>
+          </>
+        }
+      >
         {adjustItem && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', padding: '14px 16px' }}>
-              {[['Current', adjustItem.quantity, '#1e293b'], ['New', adjustQty, '#1e293b'], ['Diff', adjustQty - adjustItem.quantity, adjustQty - adjustItem.quantity < 0 ? '#DC2626' : '#16A34A']].map(([l, v, c]) => (
-                <div key={String(l)}><div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{String(l)}</div><div style={{ fontSize: 16, fontWeight: 700, color: String(c) }}>{Number(v) > 0 && l === 'Diff' ? '+' : ''}{String(v)}</div></div>
+            {/* Quick summary of current vs new */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
+              borderRadius: 12, border: '1px solid #E2E8F0', background: '#F8FAFC',
+              padding: '16px 20px',
+            }}>
+              {[
+                { label: 'Current', value: adjustItem.quantity, color: '#1E293B' },
+                { label: 'New', value: adjustQty, color: '#1E293B' },
+                {
+                  label: 'Diff',
+                  value: adjustQty - adjustItem.quantity,
+                  color: adjustQty - adjustItem.quantity < 0 ? '#DC2626' : '#16A34A',
+                },
+              ].map(({ label, value, color }) => (
+                <div key={label}>
+                  <div style={{
+                    fontSize: 11, color: '#94A3B8', fontWeight: 600,
+                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4,
+                  }}>
+                    {label}
+                  </div>
+                  <div style={{
+                    fontSize: 18, fontWeight: 700, color,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {value > 0 && label === 'Diff' ? '+' : ''}{value}
+                  </div>
+                </div>
               ))}
             </div>
-            <Input label="Corrected Quantity" type="number" min={0} value={adjustQty.toString()} onChange={(e) => setAdjustQty(parseInt(e.target.value) || 0)} />
-            <Input label="Reason" value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="Physical count correction, damage, expiry..." />
+
+            <Input
+              label="Corrected Quantity"
+              type="number"
+              min={0}
+              value={adjustQty.toString()}
+              onChange={(e) => setAdjustQty(parseInt(e.target.value) || 0)}
+            />
+            <Input
+              label="Reason"
+              value={adjustReason}
+              onChange={(e) => setAdjustReason(e.target.value)}
+              placeholder="Physical count correction, damage, expiry..."
+            />
           </div>
         )}
       </Modal>
 
       {/* ── Stock History modal ── */}
-      <Modal open={historyItem !== null} onClose={() => { setHistoryItem(null); setHistoryRows([]) }}
-        title={`Stock Movement History — ${historyItem?.name}`}>
-        {historyLoading ? <Spinner /> : historyRows.length === 0
-          ? <EmptyState title="No movement history" description="Stock changes will appear here." />
-          : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {historyRows.map((m) => (
-                <div key={m.id} style={{ borderRadius: 12, border: '1px solid #E5E7EB', background: '#fff', padding: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                    <div><div style={{ fontWeight: 600, color: '#1F2937', fontSize: 14 }}>{movementTypeLabel(m.type)}</div><div style={{ fontSize: 12, color: '#9CA3AF' }}>{m.created_at ?? 'Date unavailable'}</div></div>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: m.quantity < 0 ? '#DC2626' : '#16A34A', fontSize: 15 }}>{m.quantity > 0 ? '+' : ''}{m.quantity}</span>
+      <Modal
+        open={historyItem !== null}
+        onClose={() => { setHistoryItem(null); setHistoryRows([]) }}
+        title={`Stock Movement History — ${historyItem?.name ?? ''}`}
+      >
+        {historyLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+            <Spinner />
+          </div>
+        ) : historyRows.length === 0 ? (
+          <EmptyState
+            title="No movement history"
+            description="Stock changes will appear here."
+          />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {historyRows.map((m) => {
+              const typeIcon = m.type === 'stock_in'
+                ? <TrendingUp size={14} style={{ color: '#16A34A' }} />
+                : m.type === 'stock_out'
+                  ? <TrendingDown size={14} style={{ color: '#DC2626' }} />
+                  : <RotateCcw size={14} style={{ color: '#D97706' }} />
+
+              return (
+                <div key={m.id} style={{
+                  borderRadius: 12, border: '1px solid #E5E7EB',
+                  background: '#fff', padding: 16,
+                  transition: 'box-shadow 0.15s',
+                }}>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between',
+                    flexWrap: 'wrap', gap: 8, marginBottom: 10,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 8,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: m.type === 'stock_in'
+                          ? '#F0FDF4'
+                          : m.type === 'stock_out'
+                            ? '#FEF2F2'
+                            : '#FFFBEB',
+                      }}>
+                        {typeIcon}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#1F2937', fontSize: 14 }}>
+                          {movementTypeLabel(m.type)}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#9CA3AF' }}>
+                          {m.created_at ?? 'Date unavailable'}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge
+                      tone={m.quantity > 0 ? 'green' : 'red'}
+                    >
+                      {m.quantity > 0 ? '+' : ''}{m.quantity}
+                    </Badge>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12, color: '#6B7280' }}>
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px',
+                    fontSize: 12, color: '#6B7280',
+                  }}>
                     <div>Previous: <strong style={{ color: '#1F2937' }}>{m.quantity_before}</strong></div>
                     <div>New: <strong style={{ color: '#1F2937' }}>{m.quantity_after}</strong></div>
-                    <div>Reason: <strong style={{ color: '#1F2937' }}>{m.reason ?? 'Not provided'}</strong></div>
-                    <div>By: <strong style={{ color: '#1F2937' }}>{m.performed_by ?? 'System'}</strong></div>
+                    <div>
+                      Reason: <strong style={{ color: '#1F2937' }}>
+                        {m.reason ?? 'Not provided'}
+                      </strong>
+                    </div>
+                    <div>
+                      By: <strong style={{ color: '#1F2937' }}>
+                        {m.performed_by ?? 'System'}
+                      </strong>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              )
+            })}
+          </div>
+        )}
       </Modal>
 
       {/* ── Export Modal ── */}
@@ -854,54 +1237,40 @@ export function InventoryPage() {
 
           {/* Format */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 10 }}>File Format</div>
+            <div style={{
+              fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 10,
+            }}>
+              File Format
+            </div>
             <div style={{ display: 'flex', gap: 10 }}>
               {([
-                {
-                  fmt: 'xlsx' as const,
-                  label: 'Excel (.xlsx)',
-                  icon: (
-                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 32, height: 32 }}>
-                      <rect width="40" height="40" rx="8" fill="#E8F5E9"/>
-                      <rect x="8" y="7" width="18" height="26" rx="2" fill="#43A047"/>
-                      <rect x="14" y="7" width="18" height="26" rx="2" fill="#66BB6A"/>
-                      <rect x="20" y="7" width="12" height="26" rx="2" fill="#fff" opacity="0.15"/>
-                      <text x="20" y="23" textAnchor="middle" fontSize="10" fontWeight="800" fill="#fff" fontFamily="Arial,sans-serif">XLS</text>
-                    </svg>
-                  ),
-                },
-                {
-                  fmt: 'csv' as const,
-                  label: 'CSV (.csv)',
-                  icon: (
-                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 32, height: 32 }}>
-                      <rect width="40" height="40" rx="8" fill="#E3F2FD"/>
-                      <rect x="8" y="7" width="18" height="26" rx="2" fill="#1E88E5"/>
-                      <rect x="14" y="7" width="12" height="4" rx="1" fill="#fff" opacity="0.5"/>
-                      <line x1="12" y1="17" x2="28" y2="17" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
-                      <line x1="12" y1="21" x2="28" y2="21" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
-                      <line x1="12" y1="25" x2="22" y2="25" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity="0.6"/>
-                      <line x1="20" y1="14" x2="20" y2="29" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.35"/>
-                    </svg>
-                  ),
-                },
-                {
-                  fmt: 'json' as const,
-                  label: 'JSON (.json)',
-                  icon: (
-                    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 32, height: 32 }}>
-                      <rect width="40" height="40" rx="8" fill="#FFF3E0"/>
-                      <rect x="8" y="7" width="18" height="26" rx="2" fill="#FB8C00"/>
-                      <text x="20" y="23" textAnchor="middle" fontSize="9" fontWeight="900" fill="#fff" fontFamily="monospace,Arial">{'{ }'}</text>
-                    </svg>
-                  ),
-                },
-              ]).map(({ fmt, label, icon }) => {
+                { fmt: 'xlsx' as const, label: 'Excel (.xlsx)', icon: <FileDown size={22} style={{ color: '#43A047' }} />, bg: '#E8F5E9' },
+                { fmt: 'csv' as const,  label: 'CSV (.csv)',   icon: <FileText size={22} style={{ color: '#1E88E5' }} />, bg: '#E3F2FD' },
+                { fmt: 'json' as const, label: 'JSON (.json)', icon: <FileCode size={22} style={{ color: '#FB8C00' }} />, bg: '#FFF3E0' },
+              ]).map(({ fmt, label, icon, bg }) => {
                 const active = exportFormat === fmt
                 return (
-                  <button key={fmt} type="button" onClick={() => setExportFormat(fmt)}
-                    style={{ flex: 1, padding: '12px 8px', borderRadius: 12, border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`, background: active ? '#EFF6FF' : '#FAFAFA', color: active ? '#1E40AF' : '#475569', fontWeight: active ? 700 : 500, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                    {icon}
+                  <button
+                    key={fmt} type="button"
+                    onClick={() => setExportFormat(fmt)}
+                    style={{
+                      flex: 1, padding: '14px 8px', borderRadius: 12,
+                      border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`,
+                      background: active ? '#EFF6FF' : '#FAFAFA',
+                      color: active ? '#1E40AF' : '#475569',
+                      fontWeight: active ? 700 : 500,
+                      fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit',
+                      transition: 'all 0.15s',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                    }}
+                  >
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 10,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: bg,
+                    }}>
+                      {icon}
+                    </div>
                     <span>{label}</span>
                   </button>
                 )
@@ -911,23 +1280,45 @@ export function InventoryPage() {
 
           {/* Scope */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 10 }}>Inventory Scope</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 10 }}>
+              Inventory Scope
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {([
-                { value: 'all',            label: 'All Items',           desc: 'Export both non-expendable and expendable items' },
-                { value: 'non_expendable', label: 'Non-Expendable Only', desc: 'Durable assets — computers, equipment, furniture' },
-                { value: 'expendable',     label: 'Expendable Only',     desc: 'Consumables — paper, toner, pens, supplies' },
+                { value: 'all',            label: 'All Items',               desc: 'Export both PPE and SE items' },
+                { value: 'non_expendable', label: 'PPE (Durable Assets)',    desc: 'Computers, equipment, furniture, and other durable assets' },
+                { value: 'expendable',     label: 'SE (Consumables)',        desc: 'Paper, toner, pens, supplies, and other consumable items' },
               ] as const).map((opt) => {
                 const active = exportScope === opt.value
                 return (
-                  <button key={opt.value} type="button" onClick={() => setExportScope(opt.value)}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`, background: active ? '#EFF6FF' : '#FAFAFA', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${active ? '#1E40AF' : '#CBD5E1'}`, background: active ? '#1E40AF' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <button
+                    key={opt.value} type="button"
+                    onClick={() => setExportScope(opt.value)}
+                    style={{
+                      width: '100%', padding: '12px 14px', borderRadius: 10,
+                      border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`,
+                      background: active ? '#EFF6FF' : '#FAFAFA',
+                      textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+                      transition: 'all 0.15s',
+                      display: 'flex', alignItems: 'center', gap: 12,
+                    }}
+                  >
+                    <span style={{
+                      width: 18, height: 18, borderRadius: '50%',
+                      border: `2px solid ${active ? '#1E40AF' : '#CBD5E1'}`,
+                      background: active ? '#1E40AF' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, transition: 'all 0.15s',
+                    }}>
                       {active && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'block' }} />}
                     </span>
                     <div>
-                      <div style={{ fontSize: 13.5, fontWeight: 600, color: active ? '#1E40AF' : '#0F172A' }}>{opt.label}</div>
-                      <div style={{ fontSize: 12, color: '#64748B', marginTop: 1 }}>{opt.desc}</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: active ? '#1E40AF' : '#0F172A' }}>
+                        {opt.label}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748B', marginTop: 1 }}>
+                        {opt.desc}
+                      </div>
                     </div>
                   </button>
                 )
@@ -935,9 +1326,15 @@ export function InventoryPage() {
             </div>
           </div>
 
-          {/* Summary */}
-          <div style={{ padding: '10px 14px', borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', fontSize: 12.5, color: '#64748B' }}>
-            Will export <strong style={{ color: '#0F172A' }}>{exportScope === 'all' ? 'all' : exportScope.replace('_', '-')} inventory items</strong> as a <strong style={{ color: '#0F172A' }}>.{exportFormat}</strong> file.
+          {/* Summary info */}
+          <div style={{
+            padding: '12px 16px', borderRadius: 10,
+            background: '#F8FAFC', border: '1px solid #E2E8F0',
+            fontSize: 12.5, color: '#64748B', lineHeight: 1.5,
+          }}>
+            Will export <strong style={{ color: '#0F172A' }}>
+              {exportScope === 'all' ? 'all' : exportScope === 'non_expendable' ? 'PPE' : 'SE'} inventory items
+            </strong> as a <strong style={{ color: '#0F172A' }}>.{exportFormat}</strong> file.
             {search && <> Filtered by search: <em>"{search}"</em>.</>}
           </div>
 
@@ -945,8 +1342,15 @@ export function InventoryPage() {
       </Modal>
 
       {/* ── Import Wizard ── */}
-      <InventoryImportWizard open={wizardOpen} onClose={() => setWizardOpen(false)}
-        onCompleted={() => { void loadInventory(1); void loadSummary(); setMessage({ type: 'success', text: 'Import completed.' }) }} />
+      <InventoryImportWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onCompleted={() => {
+          void loadInventory(1)
+          void loadSummary()
+          setMessage({ type: 'success', text: 'Import completed.' })
+        }}
+      />
     </div>
   )
 }
