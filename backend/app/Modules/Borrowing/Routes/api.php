@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Borrowing\Controllers\BorrowExtensionController;
 use App\Modules\Borrowing\Controllers\BorrowingController;
 use Illuminate\Support\Facades\Route;
 
@@ -11,4 +12,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     // Employee QR scan to create a borrow request (PENDING reservation)
     Route::post('assets/request-borrow', [BorrowingController::class, 'requestBorrow']);
+
+    // Borrow Extension Requests
+    Route::get('borrowings/{borrowing}/extension-requests', [BorrowExtensionController::class, 'index']);
+    Route::post('borrowings/{borrowing}/extension-requests', [BorrowExtensionController::class, 'store']);
+    Route::patch('extension-requests/{extensionRequest}/approve', [BorrowExtensionController::class, 'approve']);
+    Route::patch('extension-requests/{extensionRequest}/reject', [BorrowExtensionController::class, 'reject']);
+    Route::get('extension-requests/pending-count', [BorrowExtensionController::class, 'pendingCount']);
 });

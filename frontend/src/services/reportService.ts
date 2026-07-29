@@ -140,4 +140,25 @@ export const reportService = {
       async () => [],
     )
   },
+
+  async exportReport(type: string, format: 'excel' | 'csv', params?: Record<string, unknown>): Promise<Blob> {
+    const response = await api.get('/reports/export', {
+      params: { ...params, type, format },
+      responseType: 'blob',
+    })
+    return response.data
+  },
+
+  async renderDocumentData(type: string, targetId: number): Promise<{
+    template: unknown
+    placeholders: Record<string, string>
+  }> {
+    const { data } = await api.get<ApiResponse<{
+      template: unknown
+      placeholders: Record<string, string>
+    }>>('/documents/render', {
+      params: { type, target_id: targetId },
+    })
+    return unwrapData(data)
+  },
 }

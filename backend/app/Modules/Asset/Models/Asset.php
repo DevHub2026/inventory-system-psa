@@ -32,6 +32,9 @@ class Asset extends Model
         'purchase_cost',
         'warranty_until',
         'remarks',
+        'issued_to',
+        'issued_by_user_id',
+        'date_issued',
     ];
 
     protected function casts(): array
@@ -41,6 +44,7 @@ class Asset extends Model
             'condition_status' => ConditionStatus::class,
             'purchase_date' => 'date',
             'warranty_until' => 'date',
+            'date_issued' => 'date',
             'purchase_cost' => 'decimal:2',
         ];
     }
@@ -63,6 +67,11 @@ class Asset extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    public function issuedByUser(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'issued_by_user_id');
     }
 
     public function identifiers(): HasMany

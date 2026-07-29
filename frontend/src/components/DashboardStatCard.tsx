@@ -9,6 +9,7 @@ interface DashboardStatCardProps {
   description: string
   icon: LucideIcon
   tone?: MetricTone
+  onClick?: () => void
 }
 
 const TONES: Record<MetricTone, { accent: string; iconBg: string; iconColor: string }> = {
@@ -26,6 +27,7 @@ export function DashboardStatCard({
   description,
   icon: Icon,
   tone = 'blue',
+  onClick,
 }: DashboardStatCardProps) {
   const { accent, iconBg, iconColor } = TONES[tone]
 
@@ -45,6 +47,8 @@ export function DashboardStatCard({
      *     description (pushed to bottom via mt-auto)
      */
     <article
+      onClick={onClick}
+      className={onClick ? 'hover:shadow-[0_4px_16px_rgba(0,0,0,.08)] hover:-translate-y-0.5' : undefined}
       style={{
         /* Layout */
         display: 'flex',
@@ -66,6 +70,7 @@ export function DashboardStatCard({
         overflow: 'visible',
         /* Smooth hover */
         transition: 'box-shadow 0.2s ease',
+        cursor: onClick ? 'pointer' : 'default',
       }}
     >
       {/* ── Row 1: label + icon ── */}

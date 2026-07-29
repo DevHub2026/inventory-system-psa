@@ -1,7 +1,7 @@
 import { api, unwrapData } from '@/services/api'
 import type { ApiResponse } from '@/types'
 
-export type SetupResource = 'asset-categories' | 'offices' | 'locations' | 'manufacturers'
+export type SetupResource = 'asset-categories' | 'offices' | 'locations' | 'manufacturers' | 'departments'
 
 export interface SetupRecord {
   id: number
@@ -10,6 +10,12 @@ export interface SetupRecord {
   description?: string | null
   office_id?: number | null
   is_active?: boolean
+  created_by?: number | null
+  updated_by?: number | null
+  created_by_name?: string | null
+  updated_by_name?: string | null
+  created_at?: string | null
+  updated_at?: string | null
 }
 
 export interface SetupPayload {

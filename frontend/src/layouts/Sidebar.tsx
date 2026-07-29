@@ -1,8 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Boxes,
+  CalendarClock,
   ClipboardList,
   FileBarChart,
+  FileText,
   HandCoins,
   LayoutDashboard,
   LogOut,
@@ -21,24 +23,26 @@ import { displayName } from '@/types'
 import logo from '@/assets/logo.png'
 
 const allLinks = [
-  { to: '/dashboard',    label: 'Dashboard',           icon: LayoutDashboard,   roles: ['admin', 'staff', 'employee'] },
-  { to: '/assets',       label: 'Assets',              icon: Boxes,             roles: ['admin', 'staff', 'employee'] },
-  { to: '/reservations', label: 'Borrow Requests',     icon: ClipboardList,     roles: ['admin', 'staff', 'employee'] },
-  { to: '/borrowings',   label: 'Borrowed Items',      icon: HandCoins,         roles: ['admin', 'staff', 'employee'] },
-  { to: '/inventory',    label: 'Inventory',           icon: Package,           roles: ['admin', 'staff'] },
-  { to: '/maintenance',  label: 'Maintenance',         icon: Wrench,            roles: ['admin', 'staff'] },
-  { to: '/reports',      label: 'Reports',             icon: FileBarChart,      roles: ['admin', 'staff'] },
-  { to: '/users',        label: 'Users',               icon: Users,             roles: ['admin'] },
-  { to: '/roles',        label: 'Roles & Permissions', icon: Shield,            roles: ['admin'] },
-  { to: '/system-setup', label: 'System Setup',        icon: SlidersHorizontal, roles: ['admin'] },
-  { to: '/settings',     label: 'Settings',            icon: Settings,          roles: ['admin', 'staff', 'employee'] },
-  { to: '/developers',   label: 'Development Team',    icon: Code2,             roles: ['admin', 'staff', 'employee'] },
+  { to: '/dashboard',           label: 'Dashboard',           icon: LayoutDashboard,   roles: ['admin', 'staff', 'employee'] },
+  { to: '/assets',               label: 'Assets',              icon: Boxes,             roles: ['admin', 'staff', 'employee'] },
+  { to: '/reservations',         label: 'Borrow Requests',     icon: ClipboardList,     roles: ['admin', 'staff', 'employee'] },
+  { to: '/borrowings',           label: 'Borrowed Items',      icon: HandCoins,         roles: ['admin', 'staff', 'employee'] },
+  { to: '/extension-requests',   label: 'Extension Requests',  icon: CalendarClock,     roles: ['admin', 'staff'] },
+  { to: '/inventory',            label: 'Inventory',           icon: Package,           roles: ['admin', 'staff'] },
+  { to: '/maintenance',          label: 'Maintenance',         icon: Wrench,            roles: ['admin', 'staff'] },
+  { to: '/reports',              label: 'Reports',             icon: FileBarChart,      roles: ['admin', 'staff'] },
+  { to: '/users',                label: 'Users',               icon: Users,             roles: ['admin'] },
+  { to: '/roles',                label: 'Roles & Permissions', icon: Shield,            roles: ['admin'] },
+  { to: '/system-setup',         label: 'System Setup',        icon: SlidersHorizontal, roles: ['admin'] },
+  { to: '/document-templates',   label: 'Document Templates',  icon: FileText,          roles: ['admin'] },
+  { to: '/settings',             label: 'Settings',            icon: Settings,          roles: ['admin', 'staff', 'employee'] },
+  { to: '/developers',           label: 'Development Team',    icon: Code2,             roles: ['admin', 'staff', 'employee'] },
 ]
 
 const NAV_GROUPS = [
   { label: 'Main Menu',  paths: ['/dashboard', '/assets', '/reservations', '/borrowings'] },
-  { label: 'Operations', paths: ['/inventory', '/maintenance', '/reports'] },
-  { label: 'Admin',      paths: ['/users', '/roles', '/system-setup'] },
+  { label: 'Operations', paths: ['/extension-requests', '/inventory', '/maintenance', '/reports'] },
+  { label: 'Admin',      paths: ['/users', '/roles', '/system-setup', '/document-templates'] },
   { label: 'Account',    paths: ['/settings', '/developers'] },
 ]
 

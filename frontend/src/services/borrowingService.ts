@@ -33,6 +33,7 @@ interface BackendBorrowing {
   employee_name?: string | null
   receipt_code?: string
   receipt_payload?: string
+  has_pending_extension?: boolean
 }
 
 function mapBorrowing(borrowing: BackendBorrowing): Borrowing {
@@ -59,6 +60,7 @@ function mapBorrowing(borrowing: BackendBorrowing): Borrowing {
     employee_name: borrowing.employee_name || `User #${borrowing.user_id}`,
     receipt_code: borrowing.receipt_code,
     receipt_payload: borrowing.receipt_payload,
+    has_pending_extension: borrowing.has_pending_extension,
   }
 }
 
@@ -77,6 +79,11 @@ export const borrowingService = {
       ...result,
       items: result.items.map(mapBorrowing),
     }
+  },
+
+  async getById(id: number): Promise<Borrowing | null> {
+    const result = await this.list({ per_page: 100 })
+    return result.items.find((b) => b.id === id) ?? null
   },
 
   async create(payload: CreateBorrowingPayload): Promise<Borrowing> {

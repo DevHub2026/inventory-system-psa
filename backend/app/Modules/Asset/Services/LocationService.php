@@ -4,6 +4,7 @@ namespace App\Modules\Asset\Services;
 
 use App\Modules\Asset\Models\Location;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class LocationService
@@ -32,13 +33,14 @@ class LocationService
 
     public function create(array $data): Location
     {
+        $data['created_by'] = Auth::id();
         return Location::query()->create($data);
     }
 
     public function update(Location $location, array $data): Location
     {
+        $data['updated_by'] = Auth::id();
         $location->update($data);
-
         return $location->fresh()->load('office');
     }
 

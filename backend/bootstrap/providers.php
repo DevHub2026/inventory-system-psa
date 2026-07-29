@@ -13,6 +13,7 @@ use App\Modules\Maintenance\Providers\MaintenanceServiceProvider;
 use App\Modules\Notification\Providers\NotificationServiceProvider;
 use App\Modules\Report\Providers\ReportServiceProvider;
 use App\Modules\Reservation\Providers\ReservationServiceProvider;
+use App\Modules\SystemSetup\Providers\SystemSetupServiceProvider;
 use App\Modules\Unit\Providers\UnitServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -32,4 +33,5 @@ return [
     AuditLogServiceProvider::class,
     MaintenanceServiceProvider::class,
     NotificationServiceProvider::class,
+    SystemSetupServiceProvider::class,
 ];

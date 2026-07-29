@@ -8,11 +8,47 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
+use App\Modules\Report\Services\DocumentExportService;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+
 class ReportController extends Controller
 {
     use RespondsWithJson;
 
-    public function __construct(private readonly ReportService $reportService) {}
+    public function __construct(
+        private readonly ReportService $reportService,
+        private readonly DocumentExportService $exportService,
+    ) {}
+
+    public function export(Request $request): BinaryFileResponse|JsonResponse
+    {
+        $type   = $request->query('type', 'assets');
+        $format = $request->query('format', 'excel') === 'csv' ? 'csv' : 'xlsx';
+
+        try {
+            return $this->exportService->exportReport($type, $format, $request->all());
+        } catch (\Throwable $e) {
+            return $this->error('Failed to generate export file: '.$e->getMessage(), null, 500);
+        }
+    }
+
+    public function renderDocument(Request $request): JsonResponse
+    {
+        $type     = $request->query('type');
+        $targetId = (int) $request->query('target_id');
+
+        if (! $type || ! $targetId) {
+            return $this->error('Document type and target ID are required.', null, 422);
+        }
+
+        try {
+            $result = $this->exportService->resolveDocumentData($type, $targetId);
+
+            return $this->success($result, 'Document template resolved successfully.');
+        } catch (\Throwable $e) {
+            return $this->error('Failed to resolve document template: '.$e->getMessage(), null, 404);
+        }
+    }
 
     public function assets(Request $request): JsonResponse
     {
