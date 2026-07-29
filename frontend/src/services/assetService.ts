@@ -38,6 +38,7 @@ interface BackendAsset {
   location?: { name?: string } | string | null
   office?: { name?: string } | string | null
   identifiers?: Asset['identifiers']
+  reservation_context?: Asset['reservation_context']
 }
 
 export interface UpdateAssetPayload {
@@ -96,6 +97,7 @@ function mapAsset(asset: BackendAsset): Asset {
     created_at: asset.created_at,
     updated_at: asset.updated_at,
     identifiers: asset.identifiers,
+    reservation_context: asset.reservation_context ?? null,
   }
 }
 

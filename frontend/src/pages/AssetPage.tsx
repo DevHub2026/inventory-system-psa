@@ -18,9 +18,8 @@ import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
 import { SharedQrScanner } from '@/components/qr/SharedQrScanner'
 import { QrCode } from '@/components/QrCode'
 import type { Asset, AssetStatus } from '@/types'
-import { assetStatusTone } from '@/utils/statusTone'
 import { isAdmin, isStaff, hasAnyRole } from '@/utils/roleHelpers'
-import { assetStatusLabel } from '@/utils/displayLabels'
+import { getEffectiveAssetStatus } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 import { PrintableDocumentModal } from '@/components/documents/PrintableDocumentModal'
 import { ReissueAssetModal } from '@/components/assets/ReissueAssetModal'
@@ -712,9 +711,17 @@ export function AssetPage() {
 
                     {/* Status */}
                     <td style={td}>
-                      <Badge tone={assetStatusTone(r.status)}>
-                        {assetStatusLabel(r.status)}
-                      </Badge>
+                      {(() => {
+                        const eff = getEffectiveAssetStatus(r)
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                            <Badge tone={eff.tone}>{eff.label}</Badge>
+                            {eff.subtext && eff.subtextTone && (
+                              <Badge tone={eff.subtextTone}>{eff.subtext}</Badge>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </td>
 
                     {/* Location */}
@@ -958,7 +965,22 @@ export function AssetPage() {
               <dl className="grid gap-4 text-sm sm:grid-cols-2 mt-2">
                 {[
                   { label: 'Asset Number', value: viewAsset.asset_number, mono: true },
-                  { label: 'Status',       value: <Badge tone={assetStatusTone(viewAsset.status)}>{assetStatusLabel(viewAsset.status)}</Badge> },
+                  { label: 'Status', value: (() => {
+                    const eff = getEffectiveAssetStatus(viewAsset)
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                        <Badge tone={eff.tone}>{eff.label}</Badge>
+                        {eff.subtext && eff.subtextTone && (
+                          <Badge tone={eff.subtextTone}>
+                            {eff.subtext}
+                            {viewAsset.reservation_context?.requester_name && (
+                              <span style={{ fontWeight: 400, opacity: 0.75 }}> · {viewAsset.reservation_context.requester_name}</span>
+                            )}
+                          </Badge>
+                        )}
+                      </div>
+                    )
+                  })() },
                   { label: 'Name',         value: viewAsset.name },
                   { label: 'Category',     value: viewAsset.category ?? '—' },
                   { label: 'Office',       value: viewAsset.office ?? '—' },

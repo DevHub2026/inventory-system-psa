@@ -182,7 +182,7 @@ export function ScannedQrResultModal({
                     </div>
                   )}
                 </div>
-                <Badge tone={isAvailable ? 'green' : isBorrowed ? 'blue' : isMaintenance ? 'purple' : 'yellow'}>
+                <Badge tone={isAvailable ? 'green' : isBorrowed ? 'blue' : isMaintenance ? 'violet' : 'yellow'}>
                   {asset_status || asset.status}
                 </Badge>
               </div>
@@ -511,7 +511,7 @@ export function ScannedQrResultModal({
                   </div>
                 )}
               </div>
-              <Badge tone={isPending ? 'yellow' : isApproved ? 'blue' : isReturned ? 'green' : 'slate'}>
+              <Badge tone={isPending ? 'yellow' : isApproved ? 'blue' : isReturned ? 'green' : 'gray'}>
                 {workflowStatus || status}
               </Badge>
             </div>

@@ -11,6 +11,7 @@ use App\Modules\Borrowing\Models\Borrowing;
 use App\Modules\Notification\Services\NotificationService;
 use App\Modules\Reservation\Models\Reservation;
 use App\Modules\AssetIdentifier\Services\AssetIdentifierService;
+use App\Modules\Workflow\Services\WorkflowEngineService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -19,6 +20,7 @@ class BorrowingService
     public function __construct(
         private readonly AssetIdentifierService $assetIdentifierService,
         private readonly NotificationService $notificationService,
+        private readonly WorkflowEngineService $workflowEngineService,
     ) {}
 
     public function list(User $user, int $perPage = 20): LengthAwarePaginator
@@ -379,9 +381,16 @@ class BorrowingService
             ]);
 
             $reservation->assets()->attach($asset->id);
-            // Do NOT change asset status - it stays AVAILABLE until approved
+
+            // Mark asset RESERVED so no other employee can request it while
+            // this request is pending approval — consistent with the form-based
+            // path in ReservationService::create().
+            $asset->update(['status' => AssetStatus::RESERVED]);
 
             $reservation->load(['user', 'assets']);
+
+            // Register with the workflow engine (same as ReservationService::create).
+            $this->workflowEngineService->startWorkflow($reservation, 'borrow_request', $user, 'Auto-created via QR scan');
 
             $requester = ($user->full_name ?: $user->email) ?? 'An employee';
             $this->notificationService->notifyStaffAndAdmins(

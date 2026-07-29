@@ -96,6 +96,19 @@ export interface Asset {
     identifier_value: string
     is_primary: boolean
   }>
+  /**
+   * Populated by the backend only when status === 'RESERVED'.
+   * Contains the reservation (PENDING or APPROVED) that is holding this asset.
+   * null when the asset is not reserved.
+   */
+  reservation_context?: {
+    id: number
+    status: 'PENDING' | 'APPROVED'
+    workflow_status?: string | null
+    requester_name?: string | null
+    authorized_by_name?: string | null
+    authorized_at?: string | null
+  } | null
 }
 
 export interface Reservation {

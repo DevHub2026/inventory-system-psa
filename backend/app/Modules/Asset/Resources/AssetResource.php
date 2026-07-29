@@ -3,8 +3,10 @@
 namespace App\Modules\Asset\Resources;
 
 use App\Modules\AssetCategory\Resources\AssetCategoryResource;
+use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\Asset\Enums\IdentifierType;
 use App\Modules\AssetIdentifier\Resources\AssetIdentifierResource;
+use App\Modules\Reservation\Models\Reservation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,6 +18,35 @@ class AssetResource extends JsonResource
             'identifiers',
             fn () => $this->identifiers->firstWhere('identifier_type', IdentifierType::PSA_QR->value),
         );
+
+        // Attach lightweight reservation context only when the asset is RESERVED.
+        // This tells the frontend WHY the asset is reserved without requiring an
+        // extra API call. We only read the single most-relevant reservation.
+        $reservationContext = null;
+        $statusValue = $this->status instanceof AssetStatus
+            ? $this->status->value
+            : (string) $this->status;
+
+        if ($statusValue === AssetStatus::RESERVED->value) {
+            // Prefer an APPROVED reservation (awaiting release) over a PENDING one.
+            $reservation = Reservation::query()
+                ->whereIn('status', ['APPROVED', 'PENDING'])
+                ->whereHas('assets', fn ($q) => $q->where('assets.id', $this->id))
+                ->orderByRaw("CASE WHEN status = 'APPROVED' THEN 0 ELSE 1 END")
+                ->orderBy('created_at')
+                ->first();
+
+            if ($reservation) {
+                $reservationContext = [
+                    'id'                => $reservation->id,
+                    'status'            => $reservation->status,
+                    'workflow_status'   => $reservation->workflow_status,
+                    'requester_name'    => $reservation->user?->full_name ?? $reservation->user?->email,
+                    'authorized_by_name' => $reservation->authorizer?->full_name ?? $reservation->authorizer?->email,
+                    'authorized_at'     => $reservation->authorized_at?->format('Y-m-d H:i:s'),
+                ];
+            }
+        }
 
         return [
             'id' => $this->id,
@@ -52,6 +83,9 @@ class AssetResource extends JsonResource
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
             'deleted_at' => $this->deleted_at,
+            // Inline reservation context — only present when status = RESERVED.
+            // null when asset is not reserved.
+            'reservation_context' => $reservationContext,
         ];
     }
 }
