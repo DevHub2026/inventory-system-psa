@@ -10,8 +10,12 @@ import {
   type CreateInventoryItemPayload,
   type UpdateInventoryItemPayload,
 } from '@/services/inventoryService'
+<<<<<<< HEAD
+import type { InventoryItem, StockMovement } from '@/types'
+=======
 import { api, unwrapData } from '@/services/api'
 import type { ApiResponse, InventoryItem, StockMovement } from '@/types'
+>>>>>>> 97b32359c7a5ed3c8f37f71d67bef910f9357e1b
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { InventoryImportWizard } from '@/components/InventoryImportWizard'
 import { notifyDataChanged } from '@/utils/dataRefresh'
@@ -430,6 +434,8 @@ export function InventoryPage() {
     track_as_asset: true, type: 'non_expendable',
     asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
   })
+<<<<<<< HEAD
+=======
     useEffect(() => {
     const validateCode = async () => {
       try {
@@ -445,6 +451,7 @@ export function InventoryPage() {
       void validateCode();
     }
   }, [formData.sku]);
+>>>>>>> 97b32359c7a5ed3c8f37f71d67bef910f9357e1b
 
   // Load table rows — pg=1 resets list, pg>1 appends (infinite scroll)
   const loadInventory = useCallback(async (pg = 1) => {
