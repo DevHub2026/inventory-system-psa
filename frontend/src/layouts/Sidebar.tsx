@@ -4,6 +4,7 @@ import {
   CalendarClock,
   ClipboardList,
   FileBarChart,
+  FileText,
   HandCoins,
   LayoutDashboard,
   LogOut,
@@ -33,14 +34,15 @@ const allLinks = [
   { to: '/users',                label: 'Users',               icon: Users,             roles: ['admin'] },
   { to: '/roles',                label: 'Roles & Permissions', icon: Shield,            roles: ['admin'] },
   { to: '/system-setup',         label: 'System Setup',        icon: SlidersHorizontal, roles: ['admin'] },
+  { to: '/document-templates',   label: 'Document Templates',  icon: FileText,          roles: ['admin'] },
   { to: '/settings',             label: 'Settings',            icon: Settings,          roles: ['admin', 'staff', 'employee'] },
-  { to: '/developers',   label: 'Development Team',    icon: Code2,             roles: ['admin', 'staff', 'employee'] },
+  { to: '/developers',           label: 'Development Team',    icon: Code2,             roles: ['admin', 'staff', 'employee'] },
 ]
 
 const NAV_GROUPS = [
   { label: 'Main Menu',  paths: ['/dashboard', '/assets', '/reservations', '/borrowings'] },
   { label: 'Operations', paths: ['/extension-requests', '/inventory', '/maintenance', '/reports'] },
-  { label: 'Admin',      paths: ['/users', '/roles', '/system-setup'] },
+  { label: 'Admin',      paths: ['/users', '/roles', '/system-setup', '/document-templates'] },
   { label: 'Account',    paths: ['/settings', '/developers'] },
 ]
 

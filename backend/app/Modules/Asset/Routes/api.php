@@ -14,13 +14,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware('auth:sanctum')->group(function (): void {
+    Route::get('assets/validate-code', [AssetController::class, 'validateCode']);
     Route::get('assets/search', [AssetController::class, 'search']);
     Route::get('assets/scan', [AssetController::class, 'scan']);
     Route::post('assets/{asset}/archive', [AssetController::class, 'archive']);
     Route::post('assets/{asset}/transfer', [AssetController::class, 'transfer']);
     Route::apiResource('assets', AssetController::class);
 
-    Route::middleware('role:Super Administrator,System Administrator')->group(function (): void {
+    Route::middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Supply Officer,Department Head')->group(function (): void {
         Route::apiResource('asset-categories', AssetCategoryController::class)
             ->parameters(['asset-categories' => 'assetCategory']);
 

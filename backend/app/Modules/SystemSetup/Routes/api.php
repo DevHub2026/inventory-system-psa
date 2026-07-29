@@ -16,6 +16,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::put('document-templates/{template}', [DocumentTemplateController::class, 'update']);
         Route::delete('document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
         Route::post('document-templates/{template}/set-default', [DocumentTemplateController::class, 'setDefault']);
+        Route::post('document-templates/{template}/restore-default', [DocumentTemplateController::class, 'restoreDefault']);
         Route::post('document-templates/{template}/toggle-status', [DocumentTemplateController::class, 'toggleStatus']);
         Route::post('document-templates/{template}/duplicate', [DocumentTemplateController::class, 'duplicate']);
     });

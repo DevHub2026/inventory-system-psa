@@ -79,14 +79,21 @@ class DocumentTemplateService
             throw new \InvalidArgumentException('Template not found.');
         }
 
-        $updateData = [
-            'name'          => $data['name'] ?? $template->name,
-            'document_type' => $data['document_type'] ?? $template->document_type,
-            'description'   => $data['description'] ?? $template->description,
-            'version'       => $data['version'] ?? $template->version,
-            'status'        => $data['status'] ?? $template->status,
-            'is_default'    => $data['is_default'] ?? $template->is_default,
+        $fields = [
+            'name', 'document_type', 'description', 'version', 'status', 'is_default',
+            'header_org_name', 'header_office_name', 'header_title', 'logo_url',
+            'body_template', 'footer_text', 'footer_notes', 'signature_blocks',
+            'paper_size', 'orientation', 'margin_top', 'margin_bottom', 'margin_left', 'margin_right',
+            'font_family', 'font_size', 'text_alignment',
         ];
+
+        $updateData = [];
+        foreach ($fields as $field) {
+            if (array_key_exists($field, $data)) {
+                $updateData[$field] = $data[$field];
+            }
+        }
+        $updateData['updated_by'] = auth()->id();
 
         // If a new file is uploaded, replace the old one
         if ($file !== null) {
@@ -200,6 +207,129 @@ class DocumentTemplateService
     public function hasDefault(DocumentType|string $type): bool
     {
         return $this->resolveDefault($type) !== null;
+    }
+
+    public function restoreDefault(int $id): DocumentTemplate
+    {
+        $template = $this->repository->find($id);
+        if (! $template) {
+            throw new \InvalidArgumentException('Template not found.');
+        }
+
+        $docType = $template->getRawOriginal('document_type');
+        $preset = $this->getDefaultPreset($docType);
+
+        $template->update([
+            'header_org_name'    => $preset['header_org_name'],
+            'header_office_name' => $preset['header_office_name'],
+            'header_title'       => $preset['header_title'],
+            'body_template'      => $preset['body_template'],
+            'footer_text'        => $preset['footer_text'],
+            'footer_notes'       => $preset['footer_notes'],
+            'signature_blocks'   => $preset['signature_blocks'],
+            'paper_size'         => 'A4',
+            'orientation'        => 'portrait',
+            'margin_top'         => 25,
+            'margin_bottom'      => 25,
+            'margin_left'        => 25,
+            'margin_right'       => 25,
+            'font_family'        => 'Arial',
+            'font_size'          => 12,
+            'text_alignment'     => 'left',
+            'updated_by'         => auth()->id(),
+        ]);
+
+        return $template->fresh();
+    }
+
+    public static function getDefaultPreset(string $docType): array
+    {
+        return match ($docType) {
+            'borrow_receipt' => [
+                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
+                'header_office_name' => 'Regional Statistical Services Office',
+                'header_title'       => 'PROPERTY BORROW RECEIPT',
+                'body_template'      => "This is to acknowledge receipt of the following property/equipment borrowed by {{employee_name}} (Employee No: {{employee_number}}) from {{department}} ({{office}}):\n\nAsset Name: {{asset_name}}\nAsset Code / Property Tag: {{asset_code}}\nSerial Number: {{serial_number}}\nManufacturer: {{manufacturer}}\nCategory: {{category}}\nCondition: {{condition}}\n\nBorrow Date: {{borrow_date}}\nDue Date: {{due_date}}\n\nThe borrower agrees to maintain the item in good condition and return it on or before the due date.",
+                'footer_text'        => 'Official Document — Philippine Statistics Authority',
+                'footer_notes'       => 'Note: Unreturned items after the due date will be subject to property accountability review.',
+                'signature_blocks'   => [
+                    ['key' => 'prepared_by', 'label' => 'Prepared By', 'name' => '{{prepared_by}}', 'position' => 'Property Custodian', 'enabled' => true],
+                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Department Head', 'position' => 'Supervising Officer', 'enabled' => true],
+                    ['key' => 'received_by', 'label' => 'Received By (Borrower)', 'name' => '{{employee_name}}', 'position' => 'Borrower', 'enabled' => true],
+                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'Witness', 'enabled' => false],
+                ],
+            ],
+            'return_receipt' => [
+                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
+                'header_office_name' => 'Regional Statistical Services Office',
+                'header_title'       => 'PROPERTY RETURN RECEIPT',
+                'body_template'      => "This is to certify that {{employee_name}} (Employee No: {{employee_number}}) of {{department}} has returned the following item:\n\nAsset Name: {{asset_name}}\nAsset Code: {{asset_code}}\nSerial Number: {{serial_number}}\n\nReturned Date: {{returned_date}}\nCondition upon Return: {{condition}}\n\nThe property has been inspected and returned to active inventory.",
+                'footer_text'        => 'Official Document — Philippine Statistics Authority',
+                'footer_notes'       => 'Verified and accepted into system inventory.',
+                'signature_blocks'   => [
+                    ['key' => 'prepared_by', 'label' => 'Received & Inspected By', 'name' => '{{prepared_by}}', 'position' => 'Inventory Inspector', 'enabled' => true],
+                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Property Custodian', 'position' => 'Custodian Officer', 'enabled' => true],
+                    ['key' => 'received_by', 'label' => 'Returned By', 'name' => '{{employee_name}}', 'position' => 'Borrower', 'enabled' => true],
+                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'Witness', 'enabled' => false],
+                ],
+            ],
+            'issuance' => [
+                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
+                'header_office_name' => 'Regional Statistical Services Office',
+                'header_title'       => 'PROPERTY ACKNOWLEDGEMENT RECEIPT (PAR)',
+                'body_template'      => "I hereby acknowledge receipt from {{office}} of the following official property for which I am permanently responsible:\n\nItem: {{asset_name}}\nProperty Tag / Code: {{asset_code}}\nSerial Number: {{serial_number}}\nManufacturer: {{manufacturer}}\nCategory: {{category}}\nIssued Date: {{issued_date}}\n\nIssued To: {{employee_name}} (Employee No: {{employee_number}})\nDepartment: {{department}}",
+                'footer_text'        => 'Official Document — Philippine Statistics Authority',
+                'footer_notes'       => 'Permanent issuance record. Please report any loss or damage immediately.',
+                'signature_blocks'   => [
+                    ['key' => 'prepared_by', 'label' => 'Issued By', 'name' => '{{prepared_by}}', 'position' => 'Supply Officer', 'enabled' => true],
+                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Property Custodian', 'position' => 'Head Custodian', 'enabled' => true],
+                    ['key' => 'received_by', 'label' => 'Received By (Recipient)', 'name' => '{{employee_name}}', 'position' => 'Accountable Employee', 'enabled' => true],
+                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'Witness', 'enabled' => false],
+                ],
+            ],
+            'property_transfer' => [
+                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
+                'header_office_name' => 'Regional Statistical Services Office',
+                'header_title'       => 'PROPERTY TRANSFER REPORT',
+                'body_template'      => "This document certifies the official transfer of property accountability:\n\nAsset Name: {{asset_name}}\nProperty Code: {{asset_code}}\nSerial Number: {{serial_number}}\nCategory: {{category}}\nCondition: {{condition}}\n\nTransfer Date: {{current_date}}\nTransferred From: {{office}}\nTransferred To: {{department}}",
+                'footer_text'        => 'Official Document — Philippine Statistics Authority',
+                'footer_notes'       => 'Transfer of accountability is effective upon signature of both parties.',
+                'signature_blocks'   => [
+                    ['key' => 'prepared_by', 'label' => 'Transferor (Relinquishing Officer)', 'name' => '{{prepared_by}}', 'position' => 'Relinquishing Officer', 'enabled' => true],
+                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Property Custodian', 'position' => 'Chief Custodian', 'enabled' => true],
+                    ['key' => 'received_by', 'label' => 'Transferee (Receiving Officer)', 'name' => '{{employee_name}}', 'position' => 'Receiving Officer', 'enabled' => true],
+                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'Witness', 'enabled' => false],
+                ],
+            ],
+            'clearance' => [
+                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
+                'header_office_name' => 'Regional Statistical Services Office',
+                'header_title'       => 'PROPERTY CLEARANCE CERTIFICATE',
+                'body_template'      => "This is to certify that {{employee_name}} (Employee No: {{employee_number}}) of {{department}} has been cleared of all property accountabilities, equipment borrowings, and inventory obligations as of {{current_date}}.\n\nStatus: FULLY CLEARED",
+                'footer_text'        => 'Official Document — Philippine Statistics Authority',
+                'footer_notes'       => 'Valid for official clearance processes.',
+                'signature_blocks'   => [
+                    ['key' => 'prepared_by', 'label' => 'Verified & Prepared By', 'name' => '{{prepared_by}}', 'position' => 'Clearance Officer', 'enabled' => true],
+                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Property Custodian', 'position' => 'Chief Custodian', 'enabled' => true],
+                    ['key' => 'received_by', 'label' => 'Cleared Employee', 'name' => '{{employee_name}}', 'position' => 'Employee', 'enabled' => true],
+                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'HR Representative', 'enabled' => false],
+                ],
+            ],
+            default => [
+                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
+                'header_office_name' => 'Regional Statistical Services Office',
+                'header_title'       => 'OFFICIAL DOCUMENT',
+                'body_template'      => "Document content for {{employee_name}} regarding {{asset_name}} ({{asset_code}}). Generated on {{current_date}}.",
+                'footer_text'        => 'Official Document — Philippine Statistics Authority',
+                'footer_notes'       => '',
+                'signature_blocks'   => [
+                    ['key' => 'prepared_by', 'label' => 'Prepared By', 'name' => '{{prepared_by}}', 'position' => 'Officer', 'enabled' => true],
+                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Head', 'position' => 'Supervisor', 'enabled' => true],
+                    ['key' => 'received_by', 'label' => 'Received By', 'name' => 'Recipient', 'position' => 'Recipient', 'enabled' => false],
+                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'Witness', 'enabled' => false],
+                ],
+            ],
+        };
     }
 
     private function storeFile(UploadedFile $file, string $documentType): string

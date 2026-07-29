@@ -22,6 +22,14 @@ export interface DocumentTypeOption {
   category: string
 }
 
+export interface SignatureBlock {
+  key: string
+  label: string
+  name: string
+  position: string
+  enabled: boolean
+}
+
 export interface DocumentTemplate {
   id: number
   name: string
@@ -33,13 +41,34 @@ export interface DocumentTemplate {
   status: string
   status_label: string
   is_default: boolean
-  file_name: string
-  file_size: number
-  mime_type: string | null
-  extension: string | null
-  file_url: string | null
-  uploaded_by: number | null
-  upload_date: string | null
+  file_name?: string | null
+  file_size?: number | null
+  mime_type?: string | null
+  extension?: string | null
+  file_url?: string | null
+  uploaded_by?: number | null
+  upload_date?: string | null
+  header_org_name?: string | null
+  header_office_name?: string | null
+  header_title?: string | null
+  logo_url?: string | null
+  body_template?: string | null
+  footer_text?: string | null
+  footer_notes?: string | null
+  signature_blocks?: SignatureBlock[] | null
+  paper_size?: 'A4' | 'Letter' | string
+  orientation?: 'portrait' | 'landscape' | string
+  margin_top?: number
+  margin_bottom?: number
+  margin_left?: number
+  margin_right?: number
+  font_family?: 'Arial' | 'Calibri' | 'Times New Roman' | string
+  font_size?: number
+  text_alignment?: 'left' | 'center' | 'right' | string
+  created_by?: number | null
+  updated_by?: number | null
+  created_by_name?: string | null
+  updated_by_name?: string | null
   created_at: string
   updated_at: string
 }
@@ -58,7 +87,7 @@ export interface TemplateUploadPayload {
   version?: string
   status?: string
   is_default?: boolean
-  file: File
+  file?: File | null
 }
 
 export const templateService = {
@@ -108,7 +137,7 @@ export const templateService = {
     if (payload.version) formData.append('version', payload.version)
     if (payload.status) formData.append('status', payload.status)
     if (payload.is_default) formData.append('is_default', '1')
-    formData.append('file', payload.file)
+    if (payload.file) formData.append('file', payload.file)
 
     const { data } = await api.post<ApiResponse<DocumentTemplate>>('/document-templates', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -156,6 +185,16 @@ export const templateService = {
 
   async setDefault(id: number): Promise<DocumentTemplate> {
     const { data } = await api.post<ApiResponse<DocumentTemplate>>(`/document-templates/${id}/set-default`)
+    return unwrapData(data)
+  },
+
+  async updateContent(id: number, payload: Partial<DocumentTemplate>): Promise<DocumentTemplate> {
+    const { data } = await api.put<ApiResponse<DocumentTemplate>>(`/document-templates/${id}`, payload)
+    return unwrapData(data)
+  },
+
+  async restoreDefault(id: number): Promise<DocumentTemplate> {
+    const { data } = await api.post<ApiResponse<DocumentTemplate>>(`/document-templates/${id}/restore-default`)
     return unwrapData(data)
   },
 

@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search } from 'lucide-react'
+import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search, CheckCircle2, XCircle } from 'lucide-react'
 import {
-  Alert, Button, EmptyState, Input,
+  Alert, Button, EmptyState, Input, SetupDropdown,
   Modal, Spinner,
 } from '@/components/ui'
 import {
@@ -10,6 +10,8 @@ import {
   type CreateInventoryItemPayload,
   type UpdateInventoryItemPayload,
 } from '@/services/inventoryService'
+import { setupService, type SetupRecord } from '@/services/setupService'
+import { api, unwrapData } from '@/services/api'
 import type { InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { InventoryImportWizard } from '@/components/InventoryImportWizard'
@@ -322,10 +324,57 @@ export function InventoryPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [wizardOpen,     setWizardOpen]     = useState(false)
 
-  const [formData, setFormData] = useState<CreateInventoryItemPayload>({
+  // Setup options for SetupDropdowns
+  const [offices, setOffices]                 = useState<SetupRecord[]>([])
+  const [locations, setLocations]             = useState<SetupRecord[]>([])
+  const [assetCategories, setAssetCategories] = useState<SetupRecord[]>([])
+  const [manufacturers, setManufacturers]     = useState<SetupRecord[]>([])
+
+  // Live SKU validation state
+  const [codeValidation, setCodeValidation]   = useState<{ exists: boolean; message: string } | null>(null)
+
+  const [formData, setFormData] = useState<CreateInventoryItemPayload & {
+    asset_category_id?: number | null
+    manufacturer_id?: number | null
+    office_id?: number | null
+    location_id?: number | null
+    description?: string
+  }>({
     name: '', sku: '', quantity: 0, unit: '', reorder_level: 0,
     track_as_asset: true, type: 'non_expendable',
+    asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
   })
+
+  const loadSetupOptions = useCallback(async () => {
+    try {
+      const [offs, locs, cats, mans] = await Promise.all([
+        setupService.list('offices'),
+        setupService.list('locations'),
+        setupService.list('asset-categories'),
+        setupService.list('manufacturers'),
+      ])
+      setOffices(offs)
+      setLocations(locs)
+      setAssetCategories(cats)
+      setManufacturers(mans)
+    } catch { /* best effort */ }
+  }, [])
+
+  useEffect(() => {
+    void loadSetupOptions()
+  }, [loadSetupOptions])
+
+  const validateCodeLive = useCallback(async (code: string, currentItemId?: number) => {
+    if (!code.trim()) { setCodeValidation(null); return }
+    try {
+      const { data } = await api.get('/assets/validate-code', {
+        params: { code: code.trim(), ignore_id: currentItemId }
+      })
+      setCodeValidation(unwrapData(data))
+    } catch {
+      setCodeValidation(null)
+    }
+  }, [])
 
   // Load table rows — pg=1 resets list, pg>1 appends (infinite scroll)
   const loadInventory = useCallback(async (pg = 1) => {
@@ -410,18 +459,35 @@ export function InventoryPage() {
 
   const handleCreate = () => {
     setEditingItem(null)
-    setFormData({ name: '', sku: '', quantity: 0, unit: '', reorder_level: 0,
+    setCodeValidation(null)
+    void loadSetupOptions()
+    setFormData({
+      name: '', sku: '', quantity: 0, unit: '', reorder_level: 0,
       track_as_asset: activeTab !== 'expendable',
-      type: activeTab === 'all' ? 'non_expendable' : activeTab as 'non_expendable' | 'expendable' })
+      type: activeTab === 'all' ? 'non_expendable' : activeTab as 'non_expendable' | 'expendable',
+      asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
+    })
     setModalOpen(true)
   }
 
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item)
-    setFormData({ name: item.name, sku: (item as unknown as { sku?: string }).sku ?? '',
-      quantity: item.quantity, unit: item.unit, reorder_level: item.reorder_level || 0,
+    setCodeValidation(null)
+    void loadSetupOptions()
+    setFormData({
+      name: item.name,
+      sku: item.sku ?? '',
+      quantity: item.quantity,
+      unit: item.unit,
+      reorder_level: item.reorder_level || 0,
       track_as_asset: Boolean(item.asset_id),
-      type: (item.type as 'non_expendable' | 'expendable') ?? 'non_expendable' })
+      type: (item.type as 'non_expendable' | 'expendable') ?? 'non_expendable',
+      asset_category_id: item.asset_category_id ?? null,
+      manufacturer_id: item.manufacturer_id ?? null,
+      office_id: item.office_id ?? null,
+      location_id: item.location_id ?? null,
+      description: item.description ?? '',
+    })
     setModalOpen(true)
   }
 
@@ -436,6 +502,10 @@ export function InventoryPage() {
   }
 
   const handleSubmit = async () => {
+    if (codeValidation?.exists) {
+      setMessage({ type: 'error', text: 'Please fix duplicate Item Code / SKU before saving.' })
+      return
+    }
     setSaving(true); setMessage(null)
     try {
       if (editingItem) { await inventoryService.update(editingItem.id, formData as UpdateInventoryItemPayload) }
@@ -757,30 +827,195 @@ export function InventoryPage() {
 
 
       {/* ── Add / Edit modal ── */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingItem ? 'Edit Item' : 'Add Item'}
-        footer={<><Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button><Button onClick={handleSubmit} disabled={saving}>{saving ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Item'}</Button></>}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <Input label="Item Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Bond Paper A4" />
-          <Input label="Item Code / SKU" helperText="Use the existing code if available." value={formData.sku || ''} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="e.g. SKU-001" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Input label="Available Quantity" type="number" value={formData.quantity.toString()} disabled={Boolean(editingItem)} helperText={editingItem ? 'Use Adjust to update stock.' : undefined} onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })} />
-            <Input label="Unit" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} placeholder="e.g. reams, pcs" />
-          </div>
-          <Input label="Low Stock Alert" helperText="Warn when quantity reaches this number." type="number" value={formData.reorder_level?.toString() || '0'} onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })} />
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Inventory Type</div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {(['non_expendable', 'expendable'] as const).map((t) => {
-                const active = formData.type === t
-                return (
-                  <button key={t} type="button" onClick={() => setFormData({ ...formData, type: t, track_as_asset: t === 'non_expendable' })}
-                    style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`, background: active ? '#EFF6FF' : '#fff', color: active ? '#1E40AF' : '#64748B', fontWeight: active ? 700 : 500, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
-                    {t === 'non_expendable' ? 'Non-Expendable' : 'Expendable'}
-                  </button>
-                )
-              })}
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingItem ? 'Edit Item' : 'Add Item'}
+        maxWidth={650}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={saving || Boolean(codeValidation?.exists)}>
+              {saving ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Item'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-5">
+          {/* Basic Information */}
+          <div className="space-y-4">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Basic Information</p>
+            
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                label="Item Name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g. Bond Paper A4"
+              />
+              <div>
+                <label className="mb-1.5 block text-[13px] font-semibold text-[#334155]">Item Code / SKU</label>
+                <div className="relative">
+                  <Input
+                    value={formData.sku || ''}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setFormData({ ...formData, sku: val })
+                      void validateCodeLive(val, editingItem?.id)
+                    }}
+                    placeholder="e.g. SKU-001"
+                  />
+                  {codeValidation && (
+                    <div className="mt-1 flex items-center gap-1 text-xs">
+                      {codeValidation.exists ? (
+                        <span className="flex items-center gap-1 font-medium text-red-600">
+                          <XCircle size={14} /> ❌ Already exists
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 font-medium text-emerald-600">
+                          <CheckCircle2 size={14} /> ✓ Available
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[#1F2937]">Description</label>
+              <textarea
+                className="w-full rounded-[10px] border border-[#E5E7EB] bg-white p-3 text-[14px] text-[#1F2937] shadow-[0_1px_2px_rgba(0,0,0,.05)] focus:border-[#0D47A1] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/15"
+                rows={2}
+                value={formData.description || ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Item description..."
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SetupDropdown
+                label="Asset Category"
+                resource="asset-categories"
+                options={assetCategories.map((c) => ({ label: c.name, value: c.id, raw: c }))}
+                value={formData.asset_category_id}
+                onChange={(val) => setFormData({ ...formData, asset_category_id: val })}
+                onRefreshNeeded={loadSetupOptions}
+                placeholder="Select Category"
+              />
+              <SetupDropdown
+                label="Manufacturer"
+                resource="manufacturers"
+                options={manufacturers.map((m) => ({ label: m.name, value: m.id, raw: m }))}
+                value={formData.manufacturer_id}
+                onChange={(val) => setFormData({ ...formData, manufacturer_id: val })}
+                onRefreshNeeded={loadSetupOptions}
+                placeholder="Select Manufacturer"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SetupDropdown
+                label="Office"
+                resource="offices"
+                options={offices.map((o) => ({ label: o.name, value: o.id, raw: o }))}
+                value={formData.office_id}
+                onChange={(val) => setFormData({ ...formData, office_id: val, location_id: null })}
+                onRefreshNeeded={loadSetupOptions}
+                placeholder="Select Office"
+              />
+              <SetupDropdown
+                label="Location"
+                resource="locations"
+                options={locations
+                  .filter((l) => !formData.office_id || l.office_id === formData.office_id)
+                  .map((l) => ({ label: l.name, value: l.id, raw: l }))}
+                value={formData.location_id}
+                onChange={(val) => setFormData({ ...formData, location_id: val })}
+                onRefreshNeeded={loadSetupOptions}
+                needsOffice
+                currentOfficeId={formData.office_id}
+                placeholder="Select Location"
+              />
             </div>
           </div>
+
+          {/* Inventory Section */}
+          <div className="space-y-3 pt-2 border-t border-[#E5E7EB]">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Inventory</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Input
+                  label="Available Quantity (Current Stock)"
+                  type="number"
+                  value={formData.quantity.toString()}
+                  disabled={Boolean(editingItem)}
+                  helperText={editingItem ? 'Available Quantity is read-only. Use Stock Adjustment to update stock.' : undefined}
+                  onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+              <Input
+                label="Unit"
+                value={formData.unit}
+                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                placeholder="e.g. reams, pcs"
+              />
+            </div>
+            <Input
+              label="Low Stock Alert"
+              helperText="Warn when quantity reaches this number."
+              type="number"
+              value={formData.reorder_level?.toString() || '0'}
+              onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })}
+            />
+            <div>
+              <div className="mb-2 text-[13px] font-semibold text-[#334155]">Inventory Type</div>
+              <div className="flex gap-2.5">
+                {(['non_expendable', 'expendable'] as const).map((t) => {
+                  const active = formData.type === t
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, type: t, track_as_asset: t === 'non_expendable' })}
+                      className={`flex-1 rounded-[10px] border px-3 py-2 text-center text-[13px] font-medium transition-all ${
+                        active
+                          ? 'border-[#0D47A1] bg-[#EFF6FF] font-bold text-[#0D47A1]'
+                          : 'border-[#E5E7EB] bg-white text-[#64748B] hover:bg-slate-50'
+                      }`}
+                    >
+                      {t === 'non_expendable' ? 'Non-Expendable' : 'Expendable'}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Audit Section */}
+          {editingItem && (
+            <div className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3.5 pt-3">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Audit Information</p>
+              <div className="grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                <div>
+                  <span className="font-semibold text-slate-700">Created By:</span>{' '}
+                  {editingItem.created_by_name || 'System'}
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Created At:</span>{' '}
+                  {editingItem.created_at ? new Date(editingItem.created_at).toLocaleString() : '—'}
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Updated By:</span>{' '}
+                  {editingItem.updated_by_name || '—'}
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Updated At:</span>{' '}
+                  {editingItem.updated_at ? new Date(editingItem.updated_at).toLocaleString() : '—'}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 

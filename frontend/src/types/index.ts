@@ -82,6 +82,12 @@ export interface Asset {
   issued_by_user_id?: number | null
   date_issued?: string | null
   issued_by_name?: string | null
+  created_by?: number | null
+  updated_by?: number | null
+  created_by_name?: string | null
+  updated_by_name?: string | null
+  created_at?: string | null
+  updated_at?: string | null
   identifiers?: Array<{
     id: number
     asset_id: number
@@ -151,6 +157,17 @@ export interface InventoryItem {
   unit: string
   reorder_level?: number
   remarks?: string | null
+  description?: string | null
+  asset_category_id?: number | null
+  manufacturer_id?: number | null
+  office_id?: number | null
+  location_id?: number | null
+  created_by?: number | null
+  updated_by?: number | null
+  created_by_name?: string | null
+  updated_by_name?: string | null
+  created_at?: string | null
+  updated_at?: string | null
 }
 
 export interface BorrowRequestResult {

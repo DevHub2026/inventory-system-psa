@@ -28,6 +28,12 @@ interface BackendAsset {
   issued_by_user_id?: number | null
   date_issued?: string | null
   issued_by_name?: string | null
+  created_by?: number | null
+  updated_by?: number | null
+  created_by_name?: string | null
+  updated_by_name?: string | null
+  created_at?: string | null
+  updated_at?: string | null
   category?: { name?: string } | string | null
   location?: { name?: string } | string | null
   office?: { name?: string } | string | null
@@ -38,6 +44,10 @@ export interface UpdateAssetPayload {
   asset_number?: string
   name?: string
   description?: string | null
+  asset_category_id?: number | null
+  manufacturer_id?: number | null
+  office_id?: number | null
+  location_id?: number | null
   model?: string | null
   status?: AssetStatus
   condition_status?: string | null
@@ -79,6 +89,12 @@ function mapAsset(asset: BackendAsset): Asset {
     issued_by_user_id: asset.issued_by_user_id,
     date_issued: asset.date_issued,
     issued_by_name: asset.issued_by_name,
+    created_by: asset.created_by,
+    updated_by: asset.updated_by,
+    created_by_name: asset.created_by_name,
+    updated_by_name: asset.updated_by_name,
+    created_at: asset.created_at,
+    updated_at: asset.updated_at,
     identifiers: asset.identifiers,
   }
 }

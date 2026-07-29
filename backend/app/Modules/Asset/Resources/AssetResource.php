@@ -44,8 +44,12 @@ class AssetResource extends JsonResource
             'office' => OfficeResource::make($this->whenLoaded('office')),
             'location' => LocationResource::make($this->whenLoaded('location')),
             'identifiers' => AssetIdentifierResource::collection($this->whenLoaded('identifiers')),
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'created_by' => $this->created_by,
+            'updated_by' => $this->updated_by,
+            'created_by_name' => $this->created_by ? optional(\App\Models\User::find($this->created_by))->full_name : null,
+            'updated_by_name' => $this->updated_by ? optional(\App\Models\User::find($this->updated_by))->full_name : null,
+            'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
+            'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
             'deleted_at' => $this->deleted_at,
         ];
     }

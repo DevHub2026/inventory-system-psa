@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             DepartmentSeeder::class,
             RoleSeeder::class,
+            DocumentTemplateSeeder::class,
         ]);
 
         $departmentId = Department::query()->firstOrFail()->id;

@@ -7,6 +7,8 @@ use App\Modules\SystemSetup\Enums\TemplateStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+use App\Models\User;
+
 class DocumentTemplate extends Model
 {
     use SoftDeletes;
@@ -25,17 +27,52 @@ class DocumentTemplate extends Model
         'extension',
         'uploaded_by',
         'upload_date',
+        'header_org_name',
+        'header_office_name',
+        'header_title',
+        'logo_url',
+        'body_template',
+        'footer_text',
+        'footer_notes',
+        'signature_blocks',
+        'paper_size',
+        'orientation',
+        'margin_top',
+        'margin_bottom',
+        'margin_left',
+        'margin_right',
+        'font_family',
+        'font_size',
+        'text_alignment',
+        'created_by',
+        'updated_by',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_default'   => 'boolean',
-            'file_size'    => 'integer',
-            'upload_date'  => 'datetime',
-            'status'       => TemplateStatus::class,
-            'document_type' => DocumentType::class,
+            'is_default'       => 'boolean',
+            'file_size'        => 'integer',
+            'upload_date'      => 'datetime',
+            'status'           => TemplateStatus::class,
+            'document_type'    => DocumentType::class,
+            'signature_blocks' => 'array',
+            'margin_top'       => 'float',
+            'margin_bottom'    => 'float',
+            'margin_left'      => 'float',
+            'margin_right'     => 'float',
+            'font_size'        => 'integer',
         ];
+    }
+
+    public function createdByUser()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updatedByUser()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
     public function scopeActive($query)
@@ -66,7 +103,7 @@ class DocumentTemplate extends Model
             ->where('document_type', $value)
             ->where('status', TemplateStatus::ACTIVE->value)
             ->where('is_default', true)
-            ->latest('upload_date')
+            ->latest('updated_at')
             ->first();
     }
 

@@ -14,4 +14,6 @@ Route::middleware([
     Route::get('reports/overdue', [ReportController::class, 'overdue']);
     Route::get('reports/low-stock', [ReportController::class, 'lowStock']);
     Route::get('reports/user-activity', [ReportController::class, 'userActivity']);
+    Route::get('reports/export', [ReportController::class, 'export']);
+    Route::get('documents/render', [ReportController::class, 'renderDocument']);
 });

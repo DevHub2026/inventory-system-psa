@@ -10,6 +10,8 @@ import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { formatDate, formatTime } from '@/utils/dateFormat'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
+import { PrintableDocumentModal } from '@/components/documents/PrintableDocumentModal'
+import { Printer } from 'lucide-react'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -98,6 +100,15 @@ export function BorrowingDetailsPage({
 
   // Validation Errors State
   const [errors, setErrors] = useState<{ additionalDays?: string; reason?: string; submit?: string }>({})
+
+  // Printable Document Modal
+  const [printModalOpen, setPrintModalOpen] = useState(false)
+  const [printDocType, setPrintDocType] = useState<'borrow_receipt' | 'return_receipt'>('borrow_receipt')
+
+  const openPrintModal = (type: 'borrow_receipt' | 'return_receipt') => {
+    setPrintDocType(type)
+    setPrintModalOpen(true)
+  }
 
   // Load borrowing details
   const loadBorrowing = useCallback(async () => {
@@ -246,6 +257,20 @@ export function BorrowingDetailsPage({
             ) : (
               <Button variant="secondary" onClick={() => navigate('/borrowings')}>
                 ← Back to Borrowed Items
+              </Button>
+            )}
+
+            {/* Print Borrow Receipt */}
+            {!loading && borrowing && (
+              <Button variant="secondary" onClick={() => openPrintModal('borrow_receipt')}>
+                <Printer size={14} style={{ marginRight: 6 }} /> Borrow Receipt
+              </Button>
+            )}
+
+            {/* Print Return Receipt (only once returned) */}
+            {!loading && borrowing && ['RETURNED', 'COMPLETED'].includes(borrowing.status) && (
+              <Button variant="secondary" onClick={() => openPrintModal('return_receipt')}>
+                <Printer size={14} style={{ marginRight: 6 }} /> Return Receipt
               </Button>
             )}
 
@@ -660,6 +685,15 @@ export function BorrowingDetailsPage({
           </div>
         </form>
       </Modal>
+
+      {/* Printable Receipt Modal */}
+      <PrintableDocumentModal
+        open={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        documentType={printDocType}
+        targetId={targetId ?? null}
+        title={printDocType === 'return_receipt' ? 'Property Return Receipt' : 'Property Borrow Receipt'}
+      />
     </div>
   )
 }
