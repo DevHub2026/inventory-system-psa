@@ -78,7 +78,7 @@ export function unwrapData<T>(payload: ApiResponse<T>): T {
   return payload.data
 }
 
-export function unwrapPaginated<T>(payload: ApiResponse<T[] | Paginated<T>>): Paginated<T> {
+export function unwrapPaginated<T>(payload: ApiResponse<T[] | Paginated<T> | Record<string, unknown>>): Paginated<T> {
   const data = unwrapData(payload)
 
   if (Array.isArray(data)) {
@@ -93,5 +93,39 @@ export function unwrapPaginated<T>(payload: ApiResponse<T[] | Paginated<T>>): Pa
     }
   }
 
-  return data
+  if (data && typeof data === 'object') {
+    const raw = data as Record<string, unknown>
+    if (Array.isArray(raw.items)) {
+      return {
+        items: raw.items as T[],
+        meta: (raw.meta as Paginated<T>['meta']) || {
+          current_page: (raw.current_page as number) ?? 1,
+          per_page: (raw.per_page as number) ?? (raw.items as T[]).length,
+          total: (raw.total as number) ?? (raw.items as T[]).length,
+          last_page: (raw.last_page as number) ?? 1,
+        },
+      }
+    }
+    if (Array.isArray(raw.data)) {
+      return {
+        items: raw.data as T[],
+        meta: {
+          current_page: (raw.current_page as number) ?? 1,
+          per_page: (raw.per_page as number) ?? (raw.data as T[]).length,
+          total: (raw.total as number) ?? (raw.data as T[]).length,
+          last_page: (raw.last_page as number) ?? 1,
+        },
+      }
+    }
+  }
+
+  return {
+    items: [],
+    meta: {
+      current_page: 1,
+      per_page: 15,
+      total: 0,
+      last_page: 1,
+    },
+  }
 }

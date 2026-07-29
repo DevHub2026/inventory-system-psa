@@ -22,6 +22,7 @@ class QrScanController extends Controller
     public function resolveAsset(Request $request, string $identifier): JsonResponse
     {
         $identifier = trim(urldecode($identifier));
+        $scanSource = $request->query('scan_source') ?? $request->input('scan_source') ?? 'sidebar_scanner';
 
         if ($identifier === '') {
             return $this->error('QR identifier is required.', null, 422);
@@ -39,12 +40,12 @@ class QrScanController extends Controller
             return $this->error($context['message'], null, $status);
         }
 
-        // Record the VIEW scan asynchronously (find asset from context)
+        // Record the VIEW scan asynchronously
         $assetId = $context['asset']['id'] ?? null;
         if ($assetId) {
             $asset = Asset::find($assetId);
             if ($asset) {
-                $this->qrScanService->recordScan($asset, $request->user(), 'VIEW', $request);
+                $this->qrScanService->recordScan($asset, $request->user(), 'VIEW', $request, $scanSource);
             }
         }
 
@@ -60,10 +61,12 @@ class QrScanController extends Controller
         $request->validate([
             'asset_id'        => ['required', 'integer', 'exists:assets,id'],
             'action_performed' => ['required', 'string', 'max:100'],
+            'scan_source'      => ['nullable', 'string', 'max:100'],
         ]);
 
         $asset = Asset::findOrFail($request->input('asset_id'));
-        $this->qrScanService->recordScan($asset, $request->user(), $request->input('action_performed'), $request);
+        $scanSource = $request->input('scan_source', 'sidebar_scanner');
+        $this->qrScanService->recordScan($asset, $request->user(), $request->input('action_performed'), $request, $scanSource);
 
         return $this->success(null, 'Scan action recorded.');
     }

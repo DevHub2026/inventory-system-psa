@@ -297,30 +297,32 @@ class QrScanService
     /**
      * Record a QR scan event.
      */
-    public function recordScan(Asset $asset, ?User $user, string $action, ?Request $request = null): QrScanHistory
+    public function recordScan(Asset $asset, ?User $user, string $action, ?Request $request = null, ?string $scanSource = null): QrScanHistory
     {
-        $ua      = $request?->userAgent() ?? '';
-        $browser = $this->detectBrowser($ua);
+        $ua       = $request?->userAgent() ?? '';
+        $browser  = $this->detectBrowser($ua);
         $platform = $this->detectPlatform($ua);
-        $device  = $this->detectDevice($ua);
+        $device   = $this->detectDevice($ua);
+        $source   = $scanSource ?? $request?->input('scan_source') ?? $request?->query('scan_source') ?? 'sidebar_scanner';
 
         $scan = QrScanHistory::create([
-            'asset_id'        => $asset->id,
-            'user_id'         => $user?->id,
+            'asset_id'         => $asset->id,
+            'user_id'          => $user?->id,
             'action_performed' => $action,
-            'device'          => $device,
-            'platform'        => $platform,
-            'browser'         => $browser,
-            'ip_address'      => $request?->ip(),
-            'scanned_at'      => now(),
+            'device'           => $device,
+            'platform'         => $platform,
+            'browser'          => $browser,
+            'scan_source'      => $source,
+            'ip_address'       => $request?->ip(),
+            'scanned_at'       => now(),
         ]);
 
         $this->auditLogService->log(
             'QR_SCANNED',
             'QrScan',
-            "QR scanned for asset #{$asset->id} ({$asset->name}). Action: {$action}",
+            "QR scanned for asset #{$asset->id} ({$asset->name}). Action: {$action} via {$source}",
             null,
-            ['asset_id' => $asset->id, 'action' => $action],
+            ['asset_id' => $asset->id, 'action' => $action, 'scan_source' => $source],
             $user?->id,
             $request?->ip(),
             $ua,

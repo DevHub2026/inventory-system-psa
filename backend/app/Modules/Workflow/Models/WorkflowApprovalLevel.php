@@ -3,7 +3,7 @@
 namespace App\Modules\Workflow\Models;
 
 use App\Modules\Department\Models\Department;
-use App\Modules\Office\Models\Office;
+use App\Models\Office;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 

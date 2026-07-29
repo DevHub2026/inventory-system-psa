@@ -1,4 +1,4 @@
-import { api, unwrapData, withMockFallback } from '@/services/api'
+import { api, unwrapData, unwrapPaginated, withMockFallback } from '@/services/api'
 import type {
   ApiResponse,
   Paginated,
@@ -24,7 +24,7 @@ export const workflowService = {
     return withMockFallback(
       async () => {
         const { data } = await api.get<ApiResponse<Paginated<Workflow>>>('/workflows', { params })
-        return unwrapData(data)
+        return unwrapPaginated(data)
       },
       async () => ({ items: [], meta: { current_page: 1, per_page: 15, total: 0, last_page: 1 } })
     )

@@ -15,7 +15,7 @@ import { api, unwrapData } from '@/services/api'
 import { reservationService } from '@/services/reservationService'
 import { useAuth } from '@/hooks/useAuth'
 import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
-import { AssetQrScanner } from '@/components/AssetQrScanner'
+import { SharedQrScanner } from '@/components/qr/SharedQrScanner'
 import { QrCode } from '@/components/QrCode'
 import type { Asset, AssetStatus } from '@/types'
 import { assetStatusTone } from '@/utils/statusTone'
@@ -882,7 +882,7 @@ export function AssetPage() {
       />
 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
-      <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onCompleted={() => { void load(page); void loadSummary() }} />
+      <SharedQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} scanSource="assets_page_scanner" mode="modal" onCompleted={() => { void load(page); void loadSummary() }} />
 
       {/* ── View Asset ── */}
       <Modal
