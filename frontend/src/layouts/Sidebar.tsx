@@ -13,6 +13,7 @@ import {
   Users,
   Wrench,
   X,
+  Briefcase,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdmin, isStaff, isEmployee } from '@/utils/roleHelpers'
@@ -24,6 +25,7 @@ const allLinks = [
   { to: '/assets',       label: 'Assets',              icon: Boxes,             roles: ['admin', 'staff', 'employee'] },
   { to: '/reservations', label: 'Borrow Requests',     icon: ClipboardList,     roles: ['admin', 'staff', 'employee'] },
   { to: '/borrowings',   label: 'Borrowed Items',      icon: HandCoins,         roles: ['admin', 'staff', 'employee'] },
+  { to: '/issued-assets', label: 'Issued Assets',      icon: Briefcase,         roles: ['admin', 'staff'] },
   { to: '/inventory',    label: 'Inventory',           icon: Package,           roles: ['admin', 'staff'] },
   { to: '/maintenance',  label: 'Maintenance',         icon: Wrench,            roles: ['admin', 'staff'] },
   { to: '/reports',      label: 'Reports',             icon: FileBarChart,      roles: ['admin', 'staff'] },
@@ -31,13 +33,15 @@ const allLinks = [
   { to: '/roles',        label: 'Roles & Permissions', icon: Shield,            roles: ['admin'] },
   { to: '/system-setup', label: 'System Setup',        icon: SlidersHorizontal, roles: ['admin'] },
   { to: '/settings',     label: 'Settings',            icon: Settings,          roles: ['admin', 'staff', 'employee'] },
+  { to: '/sessions',     label: 'Active Sessions',     icon: LogOut,            roles: ['admin', 'staff', 'employee'] },
+  { to: '/privacy',      label: 'Privacy Notice',      icon: Shield,            roles: ['admin', 'staff', 'employee'] },
 ]
 
 const NAV_GROUPS = [
   { label: 'Main Menu',  paths: ['/dashboard', '/assets', '/reservations', '/borrowings'] },
-  { label: 'Operations', paths: ['/inventory', '/maintenance', '/reports'] },
+  { label: 'Operations', paths: ['/issued-assets', '/inventory', '/maintenance', '/reports'] },
   { label: 'Admin',      paths: ['/users', '/roles', '/system-setup'] },
-  { label: 'Account',    paths: ['/settings'] },
+  { label: 'Account',    paths: ['/settings', '/sessions', '/privacy'] },
 ]
 
 interface SidebarProps {

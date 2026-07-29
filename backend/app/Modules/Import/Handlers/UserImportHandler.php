@@ -121,7 +121,7 @@ class UserImportHandler implements ImportHandlerInterface
             $errors[] = "Row {$rowNumber}: Username '{$username}' is duplicated in the import file.";
         }
 
-        $role = Role::query()->whereRaw('LOWER(name) = ?', [strtolower((string) $data['role'])])->first();
+        $role = Role::query()->whereRaw('LOWER(name) = LOWER(?)', [(string) $data['role']])->first();
         if (! $role instanceof Role) {
             $errors[] = "Row {$rowNumber}: Role '{$data['role']}' was not found.";
         }

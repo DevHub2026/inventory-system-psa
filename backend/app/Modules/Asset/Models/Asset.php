@@ -31,6 +31,9 @@ class Asset extends Model
         'purchase_date',
         'purchase_cost',
         'warranty_until',
+        'insurance_provider',
+        'insurance_policy_number',
+        'insurance_expiration_date',
         'remarks',
     ];
 
@@ -41,6 +44,7 @@ class Asset extends Model
             'condition_status' => ConditionStatus::class,
             'purchase_date' => 'date',
             'warranty_until' => 'date',
+            'insurance_expiration_date' => 'date',
             'purchase_cost' => 'decimal:2',
         ];
     }
@@ -72,7 +76,7 @@ class Asset extends Model
 
     public function borrows(): HasMany
     {
-        return $this->hasMany(Borrow::class);
+        return $this->hasMany(\App\Modules\Borrowing\Models\Borrowing::class);
     }
 
     public function scopeAvailable(Builder $query): Builder

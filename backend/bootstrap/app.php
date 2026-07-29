@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Auth\AuthenticationException;
+use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureUserHasRole;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,12 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(SecurityHeaders::class);
         $middleware->statefulApi();
         $middleware->redirectGuestsTo(
             fn (Request $request): ?string => $request->is('api/*') ? null : '/login',
         );
         $middleware->alias([
-            'role' => EnsureUserHasRole::class,
+            'role'    => EnsureUserHasRole::class,
+            'audit'   => AuditLog::class,
+            'security.headers' => SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

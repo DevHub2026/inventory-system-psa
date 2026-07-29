@@ -65,6 +65,69 @@ export interface ImportUsersResult {
   rows: ImportUserResultRow[]
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// User Profile Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface UserProfileStats {
+  currently_borrowed: number
+  total_borrowed: number
+  returned: number
+  overdue: number
+  pending_requests: number
+}
+
+export interface UserProfile {
+  user: User
+  stats: UserProfileStats
+}
+
+export interface IssuedAsset {
+  id: number
+  asset_id: number
+  asset_name: string
+  asset_number: string
+  asset_code: string | null
+  category: string | null
+  serial_number: string | null
+  status: string
+  borrowed_at: string
+  borrow_date: string
+  due_date: string | null
+  location: string | null
+  issued_by: string | null
+  remarks: string | null
+}
+
+export interface BorrowingHistoryItem {
+  id: number
+  asset_id: number
+  asset_name: string
+  asset_number: string
+  asset_code: string | null
+  category: string | null
+  status: string
+  borrowed_at: string
+  borrow_date: string
+  due_date: string | null
+  returned_at: string | null
+  issued_by: string | null
+  remarks: string | null
+}
+
+export interface BorrowingHistoryFilters {
+  search?: string
+  status?: string
+  date_from?: string
+  date_to?: string
+  per_page?: number
+  page?: number
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User Service
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const userService = {
   /**
    * Get paginated list of users with optional filters
@@ -159,5 +222,50 @@ export const userService = {
    */
   async deleteUser(id: number): Promise<void> {
     await api.delete(`/users/${id}`)
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Profile endpoints
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * GET /api/v1/users/{id}/profile
+   * Returns full user info + borrow statistics.
+   */
+  async getUserProfile(id: number): Promise<UserProfile> {
+    const { data } = await api.get<ApiResponse<UserProfile>>(`/users/${id}/profile`)
+    return unwrapData(data)
+  },
+
+  /**
+   * GET /api/v1/users/{id}/issued-assets
+   * Returns assets currently issued to this user.
+   */
+  async getIssuedAssets(id: number): Promise<IssuedAsset[]> {
+    const { data } = await api.get<ApiResponse<{ items: IssuedAsset[] }>>(`/users/${id}/issued-assets`)
+    return unwrapData(data).items
+  },
+
+  /**
+   * GET /api/v1/users/{id}/borrowing-history
+   * Returns paginated borrowing history with optional filters.
+   */
+  async getBorrowingHistory(
+    id: number,
+    filters?: BorrowingHistoryFilters,
+  ): Promise<Paginated<BorrowingHistoryItem>> {
+    const params = new URLSearchParams()
+    if (filters?.search)    params.append('search',    filters.search)
+    if (filters?.status)    params.append('status',    filters.status)
+    if (filters?.date_from) params.append('date_from', filters.date_from)
+    if (filters?.date_to)   params.append('date_to',   filters.date_to)
+    if (filters?.per_page)  params.append('per_page',  String(filters.per_page))
+    if (filters?.page)      params.append('page',      String(filters.page))
+
+    const qs  = params.toString()
+    const url = qs ? `/users/${id}/borrowing-history?${qs}` : `/users/${id}/borrowing-history`
+    const { data } = await api.get<ApiResponse<{ items: BorrowingHistoryItem[]; meta: Paginated<BorrowingHistoryItem>['meta'] }>>(url)
+    const payload = unwrapData(data)
+    return { items: payload.items, meta: payload.meta }
   },
 }
