@@ -1,4 +1,4 @@
-import { teamMembers, teamDescription, type TeamMember } from '@/data/developers'
+import { teamMembers, type TeamMember } from '@/data/developers'
 import psaLogo from '@/assets/logo.png'
 
 // ─── Logo imports ─────────────────────────────────────────────────────────────
