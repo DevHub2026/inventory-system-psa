@@ -19,6 +19,7 @@ enum DocumentType: string
     case CLEARANCE = 'clearance';
     case ISSUANCE = 'issuance';
     case PROPERTY_TRANSFER = 'property_transfer';
+    case REISSUANCE = 'reissuance';
 
     // Exports
     case EXCEL_EXPORT = 'excel_export';
@@ -43,6 +44,7 @@ enum DocumentType: string
             self::CLEARANCE            => 'Clearance',
             self::ISSUANCE             => 'Issuance',
             self::PROPERTY_TRANSFER    => 'Property Transfer',
+            self::REISSUANCE           => 'Asset Re-Issuance Form',
             self::EXCEL_EXPORT         => 'Excel Export',
             self::CSV_EXPORT           => 'CSV Export',
             self::PDF_TEMPLATE         => 'PDF Template',
@@ -61,7 +63,7 @@ enum DocumentType: string
 
             self::BORROW_RECEIPT, self::RETURN_RECEIPT => 'Receipts',
 
-            self::CLEARANCE, self::ISSUANCE, self::PROPERTY_TRANSFER => 'Documents',
+            self::CLEARANCE, self::ISSUANCE, self::PROPERTY_TRANSFER, self::REISSUANCE => 'Documents',
 
             self::EXCEL_EXPORT, self::CSV_EXPORT, self::PDF_TEMPLATE => 'Exports',
         };

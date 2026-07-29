@@ -9,6 +9,7 @@ import { reservationStatusTone } from '@/utils/statusTone'
 import { isAdmin, isStaff } from '@/utils/roleHelpers'
 import { reservationStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
+import { ApprovalHistoryTimeline } from '@/components/workflows/ApprovalHistoryTimeline'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 import { formatDate } from '@/utils/dateFormat'
 
@@ -186,6 +187,7 @@ export function ReservationPage() {
   const [form, setForm] = useState({ assetIds: [] as number[], startDate: '', endDate: '', remarks: '' })
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [receipt, setReceipt] = useState<ReceiptRecord | null>(null)
+  const [historyModalId, setHistoryModalId] = useState<number | null>(null)
 
   const loadReservations = async () => {
     setLoading(true)
@@ -435,6 +437,12 @@ export function ReservationPage() {
                     <td style={{ ...td, textAlign: 'right', paddingRight: 20 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, flexWrap: 'wrap' }}>
                         <ActionBtn
+                          label="History"
+                          onClick={() => setHistoryModalId(r.id)}
+                          variant="ghost"
+                          icon={ReceiptIcon}
+                        />
+                        <ActionBtn
                           label="Receipt"
                           onClick={() => setReceipt(buildReceipt(r))}
                           icon={ReceiptIcon}
@@ -625,6 +633,20 @@ export function ReservationPage() {
       </Modal>
 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
+
+      {historyModalId && (
+        <Modal
+          open={Boolean(historyModalId)}
+          onClose={() => setHistoryModalId(null)}
+          title={`Borrow Request #${historyModalId} — Approval Trail`}
+          maxWidth="max-w-xl"
+        >
+          <ApprovalHistoryTimeline
+            requestType="App\Modules\Reservation\Models\Reservation"
+            requestId={historyModalId}
+          />
+        </Modal>
+      )}
     </div>
   )
 }

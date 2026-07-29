@@ -315,6 +315,20 @@ class DocumentTemplateService
                     ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'HR Representative', 'enabled' => false],
                 ],
             ],
+            'reissuance' => [
+                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
+                'header_office_name' => 'Regional Statistical Services Office',
+                'header_title'       => 'ASSET RE-ISSUANCE FORM',
+                'body_template'      => "This certifies the official transfer and permanent reassignment of accountability for the asset described below:\n\nAsset Name: {{asset_name}}\nProperty Code: {{asset_code}}\nSerial Number: {{serial_number}}\nOffice: {{office}}\nDepartment: {{department}}\n\nPrevious Accountable Holder: {{previous_employee}}\nNew Accountable Holder: {{new_employee}}\nTransfer Date: {{transfer_date}}\n\nReason for Re-Issuance: {{reason}}",
+                'footer_text'        => 'Official Document — Philippine Statistics Authority',
+                'footer_notes'       => 'The new accountable holder assumes full responsibility for the custody and maintenance of the asset.',
+                'signature_blocks'   => [
+                    ['key' => 'prepared_by', 'label' => 'Prepared / Transferred By', 'name' => '{{prepared_by}}', 'position' => 'Property Officer', 'enabled' => true],
+                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => '{{approved_by}}', 'position' => 'Property Custodian', 'enabled' => true],
+                    ['key' => 'received_by', 'label' => 'Accountability Accepted By', 'name' => '{{new_employee}}', 'position' => 'New Accountable Employee', 'enabled' => true],
+                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '{{previous_employee}}', 'position' => 'Previous Accountable Employee', 'enabled' => true],
+                ],
+            ],
             default => [
                 'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
                 'header_office_name' => 'Regional Statistical Services Office',

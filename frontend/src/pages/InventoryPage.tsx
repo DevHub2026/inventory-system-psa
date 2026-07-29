@@ -58,9 +58,9 @@ function SummaryCard({ data, onNavigate }: { data: SummaryData; onNavigate: (tab
       <span style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{value}</span>
     </div>
   )
-
+  //ismeringohy
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}> 
       {/* Non-expendable */}
       <div
         style={{ ...cardBase, borderColor: hovNE ? '#93C5FD' : '#E2E8F0', boxShadow: hovNE ? '0 4px 16px rgba(0,0,0,0.10)' : '0 1px 4px rgba(0,0,0,0.06)' }}

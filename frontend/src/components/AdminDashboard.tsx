@@ -273,6 +273,7 @@ export function AdminDashboard() {
     { label: 'Borrowed', value: borrowedAssets, description: 'Currently in use', icon: Archive, tone: 'amber' as const },
     { label: 'Reserved', value: assets?.reserved ?? stats?.reserved ?? 0, description: 'Held for requests', icon: Clock3, tone: 'violet' as const },
     { label: 'Under Maintenance', value: assets?.maintenance ?? stats?.maintenance ?? 0, description: 'Temporarily unavailable', icon: Wrench, tone: 'red' as const },
+    { label: 'Re-Issued This Month', value: assets?.reissued_this_month ?? 0, description: 'Permanent transfers', icon: TrendingUp, tone: 'blue' as const },
   ]
 
   const inventoryCards = [

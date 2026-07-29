@@ -18,6 +18,9 @@ class BorrowExtensionRequest extends Model
         'reviewed_by',
         'reviewed_at',
         'remarks',
+        'workflow_version_id',
+        'current_level_order',
+        'workflow_status',
     ];
 
     protected function casts(): array
@@ -48,10 +51,5 @@ class BorrowExtensionRequest extends Model
     public function scopeForBorrowing($query, int $borrowingId)
     {
         return $query->where('borrowing_id', $borrowingId);
-    }
-
-    public function scopeOrdered($query)
-    {
-        return $query->orderByDesc('created_at');
     }
 }

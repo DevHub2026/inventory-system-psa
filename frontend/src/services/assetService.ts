@@ -168,5 +168,22 @@ export const assetService = {
     const { data } = await api.post<ApiResponse<BorrowRequestResult>>('/assets/request-borrow', { value })
     return unwrapData(data)
   },
+
+  async reissue(
+    assetId: number,
+    payload: { new_employee_id: number; transfer_date: string; reason: string; remarks?: string }
+  ): Promise<{ history_id: number; asset: Asset }> {
+    const { data } = await api.post<ApiResponse<{ history_id: number; asset: BackendAsset }>>(`/assets/${assetId}/reissue`, payload)
+    const result = unwrapData(data)
+    return {
+      history_id: result.history_id,
+      asset: mapAsset(result.asset)
+    }
+  },
+
+  async getIssuanceHistory(assetId: number): Promise<any[]> {
+    const { data } = await api.get<ApiResponse<any[]>>(`/assets/${assetId}/issuance-history`)
+    return unwrapData(data)
+  },
 }
 

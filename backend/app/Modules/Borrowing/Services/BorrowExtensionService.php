@@ -17,6 +17,7 @@ class BorrowExtensionService
     public function __construct(
         private readonly BorrowExtensionRequestRepositoryInterface $repository,
         private readonly NotificationService $notificationService,
+        private readonly \App\Modules\Workflow\Services\WorkflowEngineService $workflowEngineService,
     ) {}
 
     public function findByBorrowing(int $borrowingId): Collection
@@ -36,27 +37,22 @@ class BorrowExtensionService
 
     public function create(User $user, Borrowing $borrowing, array $data): BorrowExtensionRequest
     {
-        // Validate borrowing belongs to user
         if ($borrowing->user_id !== $user->id) {
             throw new \InvalidArgumentException('You can only request an extension for your own borrowings.');
         }
 
-        // Validate borrowing is active
         if ($borrowing->status !== 'BORROWED') {
             throw new \InvalidArgumentException('Extension can only be requested for active borrowings.');
         }
 
-        // Validate not returned
         if ($borrowing->returned_at !== null) {
             throw new \InvalidArgumentException('Cannot request extension for a returned borrowing.');
         }
 
-        // Validate no pending request exists
         if ($this->repository->hasPending($borrowing->id)) {
             throw new \InvalidArgumentException('A pending extension request already exists for this borrowing.');
         }
 
-        // Validate requested due date is after current due date
         $requestedDate = $data['requested_due_date'];
         $currentDueDate = $borrowing->due_date;
 
@@ -64,7 +60,7 @@ class BorrowExtensionService
             throw new \InvalidArgumentException('Requested due date must be later than the current due date.');
         }
 
-        return DB::transaction(function () use ($borrowing, $data, $requestedDate, $currentDueDate) {
+        return DB::transaction(function () use ($user, $borrowing, $data, $requestedDate, $currentDueDate) {
             $request = $this->repository->create([
                 'borrowing_id' => $borrowing->id,
                 'current_due_date' => $currentDueDate,
@@ -75,7 +71,9 @@ class BorrowExtensionService
 
             $fresh = $request->fresh(['borrowing.user', 'borrowing.asset']);
 
-            // Notify administrators
+            // Start Workflow Engine
+            $this->workflowEngineService->startWorkflow($fresh, 'borrow_extension_request', $user, $data['reason'] ?? null);
+
             $borrowerName = $fresh->borrowing?->user?->full_name ?: $fresh->borrowing?->user?->email ?? 'A borrower';
             $assetName = $fresh->borrowing?->asset?->name ?? 'an asset';
 
@@ -92,39 +90,45 @@ class BorrowExtensionService
         });
     }
 
-    public function approve(User $reviewer, BorrowExtensionRequest $request): BorrowExtensionRequest
+    public function approve(User $reviewer, BorrowExtensionRequest $request, ?string $remarks = null): BorrowExtensionRequest
     {
         if ($request->status !== ExtensionRequestStatus::PENDING) {
             throw new \InvalidArgumentException('Only pending extension requests can be approved.');
         }
 
-        return DB::transaction(function () use ($reviewer, $request) {
-            // Update the extension request
-            $updated = $this->repository->update($request->id, [
-                'status' => ExtensionRequestStatus::APPROVED,
-                'reviewed_by' => $reviewer->id,
-                'reviewed_at' => now(),
-            ]);
 
-            // Update the borrowing due date
-            $borrowing = $updated->borrowing;
-            $borrowing->update(['due_date' => $updated->requested_due_date]);
+        return DB::transaction(function () use ($reviewer, $request, $remarks) {
+            // Process workflow engine approval
+            $request = $this->workflowEngineService->approveCurrentLevel($request, $reviewer, $remarks);
 
-            $fresh = $updated->fresh(['borrowing.user', 'borrowing.asset', 'reviewer']);
+            if ($request->workflow_status === 'APPROVED') {
+                $updated = $this->repository->update($request->id, [
+                    'status' => ExtensionRequestStatus::APPROVED,
+                    'reviewed_by' => $reviewer->id,
+                    'reviewed_at' => now(),
+                    'remarks' => $remarks ?? $request->remarks,
+                ]);
 
-            // Notify the borrower
-            $assetName = $fresh->borrowing?->asset?->name ?? 'an asset';
-            $this->notificationService->notifyUser(
-                $fresh->borrowing->user_id,
-                'Extension Approved',
-                "Your extension request for {$assetName} has been approved. New due date: {$fresh->requested_due_date}.",
-                'extension_approved',
-                $fresh->id,
-                BorrowExtensionRequest::class,
-                ['link' => '/borrowings'],
-            );
+                $borrowing = $updated->borrowing;
+                $borrowing->update(['due_date' => $updated->requested_due_date]);
 
-            return $fresh;
+                $fresh = $updated->fresh(['borrowing.user', 'borrowing.asset', 'reviewer']);
+
+                $assetName = $fresh->borrowing?->asset?->name ?? 'an asset';
+                $this->notificationService->notifyUser(
+                    $fresh->borrowing->user_id,
+                    'Extension Approved',
+                    "Your extension request for {$assetName} has been approved. New due date: {$fresh->requested_due_date}.",
+                    'extension_approved',
+                    $fresh->id,
+                    BorrowExtensionRequest::class,
+                    ['link' => '/borrowings'],
+                );
+
+                return $fresh;
+            }
+
+            return $request->fresh(['borrowing.user', 'borrowing.asset', 'reviewer']);
         });
     }
 
@@ -135,6 +139,8 @@ class BorrowExtensionService
         }
 
         return DB::transaction(function () use ($reviewer, $request, $remarks) {
+            $request = $this->workflowEngineService->rejectCurrentLevel($request, $reviewer, $remarks);
+
             $updated = $this->repository->update($request->id, [
                 'status' => ExtensionRequestStatus::REJECTED,
                 'reviewed_by' => $reviewer->id,
@@ -144,7 +150,6 @@ class BorrowExtensionService
 
             $fresh = $updated->fresh(['borrowing.user', 'borrowing.asset', 'reviewer']);
 
-            // Notify the borrower
             $assetName = $fresh->borrowing?->asset?->name ?? 'an asset';
             $this->notificationService->notifyUser(
                 $fresh->borrowing->user_id,

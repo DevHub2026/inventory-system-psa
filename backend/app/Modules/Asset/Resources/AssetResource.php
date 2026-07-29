@@ -34,6 +34,7 @@ class AssetResource extends JsonResource
             'warranty_until' => $this->warranty_until,
             'remarks' => $this->remarks,
             'issued_to' => $this->issued_to,
+            'issued_to_user_id' => $this->issued_to_user_id,
             'issued_by_user_id' => $this->issued_by_user_id,
             'date_issued' => $this->date_issued?->format('Y-m-d'),
             'issued_by_name' => $this->issued_by_user_id ? optional($this->issuedByUser ?? \App\Models\User::find($this->issued_by_user_id))->full_name : null,

@@ -79,6 +79,7 @@ export interface Asset {
   purchase_cost?: string | number | null
   warranty_until?: string | null
   issued_to?: string | null
+  issued_to_user_id?: number | null
   issued_by_user_id?: number | null
   date_issued?: string | null
   issued_by_name?: string | null
@@ -238,6 +239,7 @@ export interface DashboardStats {
     borrowed: number
     reserved: number
     maintenance: number
+    reissued_this_month?: number
   }
   inventory: {
     total: number
@@ -318,4 +320,111 @@ export function displayName(user: User | null | undefined): string {
   const parts = [user.first_name, user.last_name].map((p) => p?.trim()).filter(Boolean)
   if (parts.length > 0) return parts.join(' ')
   return user.email
+}
+
+/* ── Workflow Engine Types ── */
+
+export type WorkflowModuleType =
+  | 'borrow_request'
+  | 'borrow_extension_request'
+  | 'asset_issuance'
+  | 'asset_reissuance'
+  | 'clearance_processing'
+  | 'maintenance_request'
+
+export type ApprovalType = 'single' | 'any' | 'all'
+
+export interface WorkflowOptions {
+  auto_approve_no_approver?: boolean
+  skip_disabled_levels?: boolean
+  allow_rejection_any_level?: boolean
+  allow_request_cancellation?: boolean
+  allow_requester_withdrawal?: boolean
+  require_remarks_on_rejection?: boolean
+  require_remarks_on_approval?: boolean
+}
+
+export interface WorkflowApprovalLevel {
+  id?: number
+  workflow_version_id?: number
+  level_order: number
+  name: string
+  roles?: string[]
+  user_ids?: number[]
+  office_id?: number | null
+  department_id?: number | null
+  office?: { id: number; name: string; code?: string }
+  department?: { id: number; name: string; code?: string }
+  approval_type: ApprovalType
+  is_enabled: boolean
+  execution_type?: 'sequential' | 'parallel'
+  parallel_group_id?: string | null
+  conditions?: Record<string, unknown> | null
+  escalation_hours?: number | null
+  escalate_to_roles?: string[] | null
+  escalate_to_user_ids?: number[] | null
+  allow_delegation?: boolean
+}
+
+export interface WorkflowVersion {
+  id: number
+  workflow_id: number
+  version_number: number
+  options?: WorkflowOptions
+  change_summary?: string
+  created_by?: number
+  creator?: { id: number; name?: string; full_name?: string; email: string }
+  created_at: string
+  approval_levels?: WorkflowApprovalLevel[]
+}
+
+export interface Workflow {
+  id: number
+  name: string
+  module_type: WorkflowModuleType
+  description?: string | null
+  is_active: boolean
+  is_archived: boolean
+  current_version_id?: number | null
+  current_version?: WorkflowVersion
+  options?: WorkflowOptions
+  created_by?: number | null
+  updated_by?: number | null
+  creator?: { id: number; name?: string; full_name?: string; email: string }
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkflowApprovalHistory {
+  id: number
+  request_type: string
+  request_id: number
+  workflow_id?: number | null
+  workflow_version_id?: number | null
+  approval_level_id?: number | null
+  level_order?: number | null
+  action: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'WITHDRAWN' | 'SKIPPED' | 'AUTO_APPROVED' | 'DELEGATED' | 'ESCALATED'
+  user_id?: number | null
+  user?: { id: number; name?: string; full_name?: string; email: string }
+  role?: string | null
+  office_id?: number | null
+  office?: { id: number; name: string }
+  department_id?: number | null
+  department?: { id: number; name: string }
+  remarks?: string | null
+  metadata?: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface WorkflowAuditLog {
+  id: number
+  workflow_id?: number | null
+  user_id?: number | null
+  user?: { id: number; name?: string; full_name?: string; email: string }
+  action: string
+  previous_value?: Record<string, unknown> | null
+  new_value?: Record<string, unknown> | null
+  ip_address?: string | null
+  user_agent?: string | null
+  created_at: string
 }
