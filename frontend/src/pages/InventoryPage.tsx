@@ -136,10 +136,10 @@ function SummaryCardInner({
   stats: { label: string; value: number; color: string }[]
 }) {
   const [hovered, setHovered] = useState(false)
-
+  //ismeringohy
   return (
     <div
-      style={{
+      style={{ 
         ...style,
         borderColor: hovered ? color.border : '#E2E8F0',
         boxShadow: hovered ? '0 4px 20px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.05)',

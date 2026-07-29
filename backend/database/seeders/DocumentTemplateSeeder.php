@@ -51,6 +51,14 @@ class DocumentTemplateSeeder extends Seeder
                 'status' => 'active',
                 'is_default' => true,
             ],
+            [
+                'name' => 'Asset Re-Issuance Form',
+                'document_type' => 'reissuance',
+                'description' => 'Official form for transferring permanent asset accountability between employees.',
+                'version' => '1.0',
+                'status' => 'active',
+                'is_default' => true,
+            ],
         ];
 
         foreach ($templates as $data) {

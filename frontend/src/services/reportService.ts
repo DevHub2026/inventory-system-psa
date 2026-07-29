@@ -70,6 +70,18 @@ export interface UserActivityReportItem {
   date: string
 }
 
+export interface ReissuanceReportItem {
+  id: number
+  asset_number: string
+  asset_name: string
+  previous_employee: string
+  new_employee: string
+  transferred_by: string
+  transfer_date: string
+  reason: string
+  remarks: string
+}
+
 export const reportService = {
   async getAssets(params?: Record<string, unknown>): Promise<AssetReportItem[]> {
     return withMockFallback(
@@ -141,8 +153,19 @@ export const reportService = {
     )
   },
 
+  async getReissuances(params?: Record<string, unknown>): Promise<ReissuanceReportItem[]> {
+    return withMockFallback(
+      async () => {
+        const { data } = await api.get<ApiResponse<ReissuanceReportItem[]>>('/reports/reissuances', { params })
+        return unwrapData(data)
+      },
+      async () => [],
+    )
+  },
+
   async exportReport(type: string, format: 'excel' | 'csv', params?: Record<string, unknown>): Promise<Blob> {
-    const response = await api.get('/reports/export', {
+    const urlPath = type === 'reissuances' ? '/reports/reissuances/export' : '/reports/export';
+    const response = await api.get(urlPath, {
       params: { ...params, type, format },
       responseType: 'blob',
     })

@@ -99,6 +99,34 @@ class DocumentExportService
                     'office'          => 'Philippine Statistics Authority',
                 ]);
                 break;
+
+            case 'reissuance':
+                $history = \App\Modules\Asset\Models\AssetIssuanceHistory::with([
+                    'asset.office',
+                    'previousEmployee',
+                    'newEmployee.department',
+                    'officer'
+                ])->findOrFail($targetId);
+
+                $asset = $history->asset;
+                $prev  = $history->previousEmployee;
+                $new   = $history->newEmployee;
+                $officer = $history->officer;
+
+                $placeholders = array_merge($placeholders, [
+                    'previous_employee' => $prev ? $prev->full_name : ($asset->issued_to ?? 'N/A'),
+                    'new_employee'      => $new ? $new->full_name : 'N/A',
+                    'asset_name'        => $asset ? $asset->name : 'N/A',
+                    'asset_code'        => $asset ? $asset->asset_number : 'N/A',
+                    'serial_number'     => $asset ? ($asset->serial_number ?? 'N/A') : 'N/A',
+                    'office'            => $asset?->office?->name ?? 'N/A',
+                    'department'        => $new?->department?->name ?? 'N/A',
+                    'transfer_date'     => $history->transfer_date?->format('F j, Y') ?? 'N/A',
+                    'reason'            => $history->reason ?? 'N/A',
+                    'prepared_by'       => $officer ? $officer->full_name : 'N/A',
+                    'approved_by'       => 'Property Custodian',
+                ]);
+                break;
         }
 
         return [

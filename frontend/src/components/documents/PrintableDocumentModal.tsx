@@ -8,7 +8,7 @@ import { Printer } from 'lucide-react'
 interface PrintableDocumentModalProps {
   open: boolean
   onClose: () => void
-  documentType: 'borrow_receipt' | 'return_receipt' | 'issuance' | 'property_transfer' | 'clearance'
+  documentType: 'borrow_receipt' | 'return_receipt' | 'issuance' | 'property_transfer' | 'clearance' | 'reissuance'
   targetId: number | null
   title?: string
 }

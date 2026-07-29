@@ -19,6 +19,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('assets/scan', [AssetController::class, 'scan']);
     Route::post('assets/{asset}/archive', [AssetController::class, 'archive']);
     Route::post('assets/{asset}/transfer', [AssetController::class, 'transfer']);
+    
+    // Reissuance routes
+    Route::post('assets/{asset}/reissue', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'reissue']);
+    Route::get('assets/{asset}/issuance-history', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'history']);
+    Route::get('reports/reissuances', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'report']);
+    Route::get('reports/reissuances/export', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'export']);
+    
     Route::apiResource('assets', AssetController::class);
 
     Route::middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Supply Officer,Department Head')->group(function (): void {

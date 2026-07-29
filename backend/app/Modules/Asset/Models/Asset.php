@@ -33,6 +33,7 @@ class Asset extends Model
         'warranty_until',
         'remarks',
         'issued_to',
+        'issued_to_user_id',
         'issued_by_user_id',
         'date_issued',
     ];
@@ -72,6 +73,16 @@ class Asset extends Model
     public function issuedByUser(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'issued_by_user_id');
+    }
+
+    public function issuedToUser(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'issued_to_user_id');
+    }
+
+    public function issuanceHistories(): HasMany
+    {
+        return $this->hasMany(AssetIssuanceHistory::class, 'asset_id');
     }
 
     public function identifiers(): HasMany

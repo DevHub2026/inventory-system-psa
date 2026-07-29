@@ -34,4 +34,5 @@ return [
     MaintenanceServiceProvider::class,
     NotificationServiceProvider::class,
     SystemSetupServiceProvider::class,
+    App\Modules\Workflow\Providers\WorkflowServiceProvider::class,
 ];

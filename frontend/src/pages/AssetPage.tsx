@@ -19,10 +19,11 @@ import { AssetQrScanner } from '@/components/AssetQrScanner'
 import { QrCode } from '@/components/QrCode'
 import type { Asset, AssetStatus } from '@/types'
 import { assetStatusTone } from '@/utils/statusTone'
-import { isAdmin, isStaff } from '@/utils/roleHelpers'
+import { isAdmin, isStaff, hasAnyRole } from '@/utils/roleHelpers'
 import { assetStatusLabel } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 import { PrintableDocumentModal } from '@/components/documents/PrintableDocumentModal'
+import { ReissueAssetModal } from '@/components/assets/ReissueAssetModal'
 
 
 /* ── shared select / textarea style ── */
@@ -266,6 +267,12 @@ export function AssetPage() {
   // Summary counts
   const [summary, setSummary] = useState({ available: 0, borrowed: 0, reserved: 0, maintenance: 0, total: 0 })
 
+  // Re-issuance State
+  const [reissueAsset, setReissueAsset] = useState<Asset | null>(null)
+  const [detailTab, setDetailTab] = useState<'info' | 'history'>('info')
+  const [issuanceHistory, setIssuanceHistory] = useState<any[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
   // Setup options for Quick Add / Quick Edit dropdowns
   const [offices, setOffices] = useState<SetupRecord[]>([])
   const [locations, setLocations] = useState<SetupRecord[]>([])
@@ -344,8 +351,20 @@ export function AssetPage() {
 
   async function openView(id: number) {
     setMessage(null)
-    try { setViewAsset(await assetService.show(id)) }
-    catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to load asset details.') }
+    setDetailTab('info')
+    setIssuanceHistory([])
+    try {
+      const assetData = await assetService.show(id)
+      setViewAsset(assetData)
+      
+      setLoadingHistory(true)
+      const historyData = await assetService.getIssuanceHistory(id)
+      setIssuanceHistory(historyData)
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Unable to load asset details.')
+    } finally {
+      setLoadingHistory(false)
+    }
   }
 
   async function openEdit(id: number) {
@@ -871,45 +890,139 @@ export function AssetPage() {
         title="Asset Details"
         onClose={() => setViewAsset(null)}
         footer={
-          viewAsset?.issued_to ? (
+          viewAsset ? (
             <div className="flex items-center justify-between w-full">
-              <span className="text-xs text-slate-500">Issued to: <strong>{viewAsset.issued_to}</strong></span>
-              <Button
-                size="sm"
-                onClick={() => {
-                  setPrintIssuanceId(viewAsset.id)
-                  setViewAsset(null)
-                }}
-              >
-                <Printer size={14} className="mr-1.5" /> Print Issuance Receipt (PAR)
-              </Button>
+              <div>
+                {viewAsset.issued_to &&
+                  hasAnyRole(user, ['Super Administrator', 'System Administrator', 'Property Custodian', 'Inventory Officer']) &&
+                  viewAsset.status !== 'BORROWED' &&
+                  viewAsset.status !== 'RESERVED' &&
+                  viewAsset.status !== 'MAINTENANCE' &&
+                  !['RETIRED', 'DISPOSED'].includes(viewAsset.status) && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setReissueAsset(viewAsset)
+                        setViewAsset(null)
+                      }}
+                    >
+                      Re-Issue Asset
+                    </Button>
+                  )}
+              </div>
+              {viewAsset.issued_to && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setPrintIssuanceId(viewAsset.id)
+                    setViewAsset(null)
+                  }}
+                >
+                  <Printer size={14} className="mr-1.5" /> Print Issuance Receipt (PAR)
+                </Button>
+              )}
             </div>
           ) : null
         }
       >
         {viewAsset && (
-          <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            {[
-              { label: 'Asset Number', value: viewAsset.asset_number, mono: true },
-              { label: 'Status',       value: <Badge tone={assetStatusTone(viewAsset.status)}>{assetStatusLabel(viewAsset.status)}</Badge> },
-              { label: 'Name',         value: viewAsset.name },
-              { label: 'Category',     value: viewAsset.category ?? '—' },
-              { label: 'Office',       value: viewAsset.office ?? '—' },
-              { label: 'Location',     value: viewAsset.location ?? '—' },
-              { label: 'Model',        value: viewAsset.model ?? '—' },
-              { label: 'Condition',    value: viewAsset.condition_status ?? '—' },
-              { label: 'Description',  value: viewAsset.description ?? '—', full: true },
-              { label: 'Remarks',      value: viewAsset.remarks ?? '—',     full: true },
-              { label: 'Issued To',    value: viewAsset.issued_to ?? '—' },
-              { label: 'Issued By',    value: viewAsset.issued_by_name ?? '—' },
-              { label: 'Date Issued',  value: viewAsset.date_issued ?? '—', full: true },
-            ].map((item) => (
-              <div key={item.label} className={item.full ? 'sm:col-span-2' : ''}>
-                <dt className="text-[11px] font-bold uppercase tracking-wide text-[#9CA3AF]">{item.label}</dt>
-                <dd className={`mt-0.5 font-medium text-[#1F2937] ${item.mono ? 'font-mono text-xs' : 'text-[14px]'}`}>{item.value}</dd>
+          <div className="space-y-4">
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200">
+              <button
+                type="button"
+                className={`flex-1 pb-2.5 text-center text-sm font-semibold border-b-2 transition-all ${
+                  detailTab === 'info'
+                    ? 'border-[#0D47A1] text-[#0D47A1]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('info')}
+              >
+                General Info
+              </button>
+              <button
+                type="button"
+                className={`flex-1 pb-2.5 text-center text-sm font-semibold border-b-2 transition-all ${
+                  detailTab === 'history'
+                    ? 'border-[#0D47A1] text-[#0D47A1]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('history')}
+              >
+                Issuance History
+              </button>
+            </div>
+
+            {detailTab === 'info' ? (
+              <dl className="grid gap-4 text-sm sm:grid-cols-2 mt-2">
+                {[
+                  { label: 'Asset Number', value: viewAsset.asset_number, mono: true },
+                  { label: 'Status',       value: <Badge tone={assetStatusTone(viewAsset.status)}>{assetStatusLabel(viewAsset.status)}</Badge> },
+                  { label: 'Name',         value: viewAsset.name },
+                  { label: 'Category',     value: viewAsset.category ?? '—' },
+                  { label: 'Office',       value: viewAsset.office ?? '—' },
+                  { label: 'Location',     value: viewAsset.location ?? '—' },
+                  { label: 'Model',        value: viewAsset.model ?? '—' },
+                  { label: 'Condition',    value: viewAsset.condition_status ?? '—' },
+                  { label: 'Description',  value: viewAsset.description ?? '—', full: true },
+                  { label: 'Remarks',      value: viewAsset.remarks ?? '—',     full: true },
+                  { label: 'Issued To',    value: viewAsset.issued_to ?? '—' },
+                  { label: 'Issued By',    value: viewAsset.issued_by_name ?? '—' },
+                  { label: 'Date Issued',  value: viewAsset.date_issued ?? '—', full: true },
+                ].map((item) => (
+                  <div key={item.label} className={item.full ? 'sm:col-span-2' : ''}>
+                    <dt className="text-[11px] font-bold uppercase tracking-wide text-[#9CA3AF]">{item.label}</dt>
+                    <dd className={`mt-0.5 font-medium text-[#1F2937] ${item.mono ? 'font-mono text-xs' : 'text-[14px]'}`}>{item.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <div className="mt-2 space-y-4">
+                {loadingHistory ? (
+                  <div className="flex justify-center py-8">
+                    <Spinner label="Loading history logs..." />
+                  </div>
+                ) : issuanceHistory.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-500 italic">
+                    No re-issuance history logs recorded for this asset.
+                  </div>
+                ) : (
+                  <div className="relative border-l border-slate-200 ml-4 pl-6 space-y-6 py-2">
+                    {issuanceHistory.map((h, idx) => (
+                      <div key={h.id || idx} className="relative">
+                        {/* Dot */}
+                        <span className="absolute -left-[31px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white border-2 border-[#0D47A1]">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#0D47A1]" />
+                        </span>
+                        
+                        <div className="text-[11px] font-semibold text-slate-400">{h.transfer_date}</div>
+                        <div className="mt-0.5 text-sm font-medium text-slate-800">
+                          Accountability reassigned to <strong className="text-[#0D47A1]">{h.new_employee?.full_name || h.new_employee || 'N/A'}</strong>
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          Previous Holder: {h.previous_employee?.full_name || h.previous_employee || 'N/A'}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          Authorized by: {h.officer?.full_name || h.officer || 'N/A'}
+                        </div>
+                        {h.reason && (
+                          <div className="mt-1.5 text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg p-2 max-w-md">
+                            <strong>Reason:</strong> {h.reason}
+                          </div>
+                        )}
+                        {h.remarks && (
+                          <div className="mt-1 text-[11px] text-slate-400 italic">
+                            Remarks: {h.remarks}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </dl>
+            )}
+          </div>
         )}
       </Modal>
 
@@ -1251,6 +1364,16 @@ export function AssetPage() {
         targetId={printIssuanceId}
         title="Property Acknowledgement Receipt (PAR)"
       />
+
+      {/* Asset Re-Issuance Wizard Modal */}
+      {reissueAsset && (
+        <ReissueAssetModal
+          open={reissueAsset !== null}
+          onClose={() => setReissueAsset(null)}
+          asset={reissueAsset}
+          onSuccess={() => void load(page)}
+        />
+      )}
     </div>
   )
 }

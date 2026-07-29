@@ -35,6 +35,7 @@ class DashboardService
         $borrowed = (clone $assetQuery)->where('status', AssetStatus::BORROWED)->count();
         $reserved = (clone $assetQuery)->where('status', AssetStatus::RESERVED)->count();
         $maintenance = (clone $assetQuery)->where('status', AssetStatus::MAINTENANCE)->count();
+        $reissuedThisMonth = \App\Modules\Asset\Models\AssetIssuanceHistory::whereMonth('transfer_date', now()->month)->whereYear('transfer_date', now()->year)->count();
 
         $inventoryBase = InventoryItem::query();
         
@@ -100,6 +101,7 @@ class DashboardService
                 'borrowed' => $borrowed,
                 'reserved' => $reserved,
                 'maintenance' => $maintenance,
+                'reissued_this_month' => $reissuedThisMonth,
             ],
             'inventory' => [
                 'total' => $inventoryTotal,

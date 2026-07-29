@@ -8,12 +8,13 @@ import {
   type InventoryReportItem,
   type LowStockReportItem,
   type UserActivityReportItem,
+  type ReissuanceReportItem,
 } from '@/services/reportService'
 import { borrowingStatusLabel, inventoryStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
 import { Printer, FileSpreadsheet, FileCode } from 'lucide-react'
 
-type ReportType = 'assets' | 'borrowings' | 'overdue' | 'low_stock' | 'inventory' | 'user_activity'
+type ReportType = 'assets' | 'borrowings' | 'overdue' | 'low_stock' | 'inventory' | 'user_activity' | 'reissuances'
 
 const TABS: { key: ReportType; label: string }[] = [
   { key: 'assets',        label: 'Assets' },
@@ -22,6 +23,7 @@ const TABS: { key: ReportType; label: string }[] = [
   { key: 'inventory',     label: 'Stock Inventory' },
   { key: 'low_stock',     label: 'Low Stock' },
   { key: 'user_activity', label: 'User Activity' },
+  { key: 'reissuances',   label: 'Re-Issuances' },
 ]
 
 export function ReportPage() {
@@ -43,6 +45,7 @@ export function ReportPage() {
         case 'inventory':     result = await reportService.getInventory(); break
         case 'low_stock':     result = await reportService.getLowStock(); break
         case 'user_activity': result = await reportService.getUserActivity(); break
+        case 'reissuances':   result = await reportService.getReissuances(); break
       }
       setData(result)
     } catch (e: unknown) {
@@ -118,6 +121,16 @@ export function ReportPage() {
     { key: 'date', header: 'Date', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.date}</span> },
   ]
 
+  const reissuanceColumns: Column<ReissuanceReportItem>[] = [
+    { key: 'asset_number',      header: 'Asset No.',       render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number}</span> },
+    { key: 'asset_name',        header: 'Asset Name',      render: (r) => <span className="font-medium text-[#1F2937]">{r.asset_name}</span> },
+    { key: 'previous_employee', header: 'From (Previous)', render: (r) => r.previous_employee },
+    { key: 'new_employee',      header: 'To (New)',        render: (r) => <span className="font-semibold text-[#1565C0]">{r.new_employee}</span> },
+    { key: 'transferred_by',   header: 'Transferred By',  render: (r) => r.transferred_by },
+    { key: 'transfer_date',    header: 'Date',            render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.transfer_date}</span> },
+    { key: 'reason',           header: 'Reason',          render: (r) => <span className="text-xs text-slate-600 line-clamp-1 max-w-[200px]">{r.reason || '—'}</span> },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -178,6 +191,8 @@ export function ReportPage() {
           <Table columns={inventoryColumns} rows={data as InventoryReportItem[]} rowKey={(r) => r.id} />
         ) : reportType === 'low_stock' ? (
           <Table columns={lowStockColumns} rows={data as LowStockReportItem[]} rowKey={(r) => r.id} />
+        ) : reportType === 'reissuances' ? (
+          <Table columns={reissuanceColumns} rows={data as ReissuanceReportItem[]} rowKey={(r) => r.id} />
         ) : (
           <Table columns={userActivityColumns} rows={data as UserActivityReportItem[]} rowKey={(r) => r.id} />
         )}

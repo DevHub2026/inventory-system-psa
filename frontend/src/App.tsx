@@ -17,6 +17,7 @@ import { RolesPage } from '@/pages/RolesPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { DevelopersPage } from '@/pages/DevelopersPage'
 import { SystemSetupPage } from '@/pages/SystemSetupPage'
+import { WorkflowsPage } from '@/pages/WorkflowsPage'
 import LoginPage from '@/pages/LoginPage'
 import { UsersPage } from '@/pages/UsersPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
@@ -52,6 +53,7 @@ function App() {
             <Route path="/roles" element={<RolesPage />} />
             <Route path="/permissions" element={<PermissionsPage />} />
             <Route path="/system-setup" element={<SystemSetupPage />} />
+            <Route path="/workflows" element={<WorkflowsPage />} />
             <Route path="/document-templates" element={<DocumentTemplatesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/developers" element={<DevelopersPage />} />
