@@ -10,16 +10,18 @@ enum WorkflowModuleType: string
     case ASSET_REISSUANCE = 'asset_reissuance';
     case CLEARANCE_PROCESSING = 'clearance_processing';
     case MAINTENANCE_REQUEST = 'maintenance_request';
+    case LOST_ASSET_REPORT = 'lost_asset_report';
 
     public function label(): string
     {
         return match ($this) {
-            self::BORROW_REQUEST => 'Borrow Request',
-            self::BORROW_EXTENSION => 'Borrow Extension Request',
-            self::ASSET_ISSUANCE => 'Asset Issuance',
-            self::ASSET_REISSUANCE => 'Asset Re-Issuance',
+            self::BORROW_REQUEST      => 'Borrow Request',
+            self::BORROW_EXTENSION    => 'Borrow Extension Request',
+            self::ASSET_ISSUANCE      => 'Asset Issuance',
+            self::ASSET_REISSUANCE    => 'Asset Re-Issuance',
             self::CLEARANCE_PROCESSING => 'Clearance Processing',
             self::MAINTENANCE_REQUEST => 'Maintenance Request',
+            self::LOST_ASSET_REPORT   => 'Lost Asset Report',
         };
     }
 

@@ -331,6 +331,7 @@ export type WorkflowModuleType =
   | 'asset_reissuance'
   | 'clearance_processing'
   | 'maintenance_request'
+  | 'lost_asset_report'
 
 export type ApprovalType = 'single' | 'any' | 'all'
 
@@ -428,3 +429,136 @@ export interface WorkflowAuditLog {
   user_agent?: string | null
   created_at: string
 }
+
+export interface QrScanHistory {
+  id: number
+  asset_id: number
+  user_id?: number | null
+  action_performed: string
+  device?: string | null
+  platform?: string | null
+  browser?: string | null
+  ip_address?: string | null
+  scanned_at: string
+  asset?: Asset
+  user?: User
+}
+
+export interface LostAssetReport {
+  id: number
+  asset_id: number
+  asset_name?: string
+  asset_number?: string
+  reporter_id: number
+  reporter_name?: string
+  description: string
+  last_known_location?: string | null
+  date_lost?: string | null
+  remarks?: string | null
+  status: string
+  workflow_status?: string | null
+  current_level_order?: number | null
+  created_at: string
+}
+
+export interface AssetContext {
+  asset: {
+    id: number
+    asset_number: string
+    name: string
+    description?: string | null
+    model?: string | null
+    status: AssetStatus
+    condition_status?: string | null
+    psa_qr_identifier?: string | null
+    category?: { id: number; name: string } | null
+    manufacturer?: { id: number; name: string } | null
+    office?: { id: number; name: string } | null
+    location?: { id: number; name: string } | null
+    issued_to?: string | null
+    issued_to_user_id?: number | null
+    issued_by_name?: string | null
+    issued_to_name?: string | null
+    date_issued?: string | null
+    created_at?: string | null
+    updated_at?: string | null
+  }
+  active_borrowing?: {
+    id: number
+    user_name?: string
+    borrow_date?: string
+    due_date?: string
+    status: string
+  } | null
+  my_active_borrowing?: {
+    id: number
+    due_date?: string
+    status: string
+  } | null
+  pending_reservation?: {
+    id: number
+    user_name?: string
+    start_date?: string
+    end_date?: string
+    workflow_status?: string | null
+    current_level_order?: number | null
+  } | null
+  my_pending_reservation?: {
+    id: number
+    status: string
+    workflow_status?: string | null
+  } | null
+  my_pending_extension?: {
+    id: number
+    status: string
+  } | null
+  active_maintenance?: {
+    id: number
+    type: string
+    status: string
+  } | null
+  my_pending_lost_report?: {
+    id: number
+    status: string
+  } | null
+  actions: {
+    can_request_borrow: boolean
+    can_request_extension: boolean
+    can_request_reissuance: boolean
+    can_report_damage: boolean
+    can_report_lost: boolean
+  }
+  history: {
+    borrow_history: Array<{
+      id: number
+      user_name?: string
+      borrow_date?: string
+      due_date?: string
+      returned_at?: string | null
+      status: string
+    }>
+    my_reservation_history: Array<{
+      id: number
+      status: string
+      start_date?: string
+      end_date?: string
+      created_at?: string
+      workflow_status?: string | null
+    }>
+    maintenance_history: Array<{
+      id: number
+      type: string
+      status: string
+      description?: string | null
+      created_at?: string
+    }>
+    lost_report_history: Array<{
+      id: number
+      status: string
+      description: string
+      date_lost?: string | null
+      created_at?: string
+    }>
+  }
+}
+

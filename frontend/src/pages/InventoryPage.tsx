@@ -10,9 +10,8 @@ import {
   type CreateInventoryItemPayload,
   type UpdateInventoryItemPayload,
 } from '@/services/inventoryService'
-import { setupService, type SetupRecord } from '@/services/setupService'
 import { api, unwrapData } from '@/services/api'
-import type { InventoryItem, StockMovement } from '@/types'
+import type { ApiResponse, InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { InventoryImportWizard } from '@/components/InventoryImportWizard'
 import { notifyDataChanged } from '@/utils/dataRefresh'
@@ -417,12 +416,6 @@ export function InventoryPage() {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [wizardOpen,     setWizardOpen]     = useState(false)
 
-  // Setup options for SetupDropdowns
-  const [offices, setOffices]                 = useState<SetupRecord[]>([])
-  const [locations, setLocations]             = useState<SetupRecord[]>([])
-  const [assetCategories, setAssetCategories] = useState<SetupRecord[]>([])
-  const [manufacturers, setManufacturers]     = useState<SetupRecord[]>([])
-
   // Live SKU validation state
   const [codeValidation, setCodeValidation]   = useState<{ exists: boolean; message: string } | null>(null)
 
@@ -437,37 +430,21 @@ export function InventoryPage() {
     track_as_asset: true, type: 'non_expendable',
     asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
   })
-
-  const loadSetupOptions = useCallback(async () => {
-    try {
-      const [offs, locs, cats, mans] = await Promise.all([
-        setupService.list('offices'),
-        setupService.list('locations'),
-        setupService.list('asset-categories'),
-        setupService.list('manufacturers'),
-      ])
-      setOffices(offs)
-      setLocations(locs)
-      setAssetCategories(cats)
-      setManufacturers(mans)
-    } catch { /* best effort */ }
-  }, [])
-
-  useEffect(() => {
-    void loadSetupOptions()
-  }, [loadSetupOptions])
-
-  const validateCodeLive = useCallback(async (code: string, currentItemId?: number) => {
-    if (!code.trim()) { setCodeValidation(null); return }
-    try {
-      const { data } = await api.get('/assets/validate-code', {
-        params: { code: code.trim(), ignore_id: currentItemId }
-      })
-      setCodeValidation(unwrapData(data))
-    } catch {
-      setCodeValidation(null)
+    useEffect(() => {
+    const validateCode = async () => {
+      try {
+        const { data } = await api.get<ApiResponse<{ exists: boolean; message: string }>>('/inventory/validate-sku', {
+          params: { sku: formData.sku },
+        });
+        setCodeValidation(unwrapData(data));
+      } catch {
+        setCodeValidation(null);
+      }
+    };
+    if (formData.sku) {
+      void validateCode();
     }
-  }, [])
+  }, [formData.sku]);
 
   // Load table rows — pg=1 resets list, pg>1 appends (infinite scroll)
   const loadInventory = useCallback(async (pg = 1) => {
@@ -553,7 +530,6 @@ export function InventoryPage() {
   const handleCreate = () => {
     setEditingItem(null)
     setCodeValidation(null)
-    void loadSetupOptions()
     setFormData({
       name: '', sku: '', quantity: 0, unit: '', reorder_level: 0,
       track_as_asset: activeTab !== 'expendable',
@@ -566,7 +542,6 @@ export function InventoryPage() {
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item)
     setCodeValidation(null)
-    void loadSetupOptions()
     setFormData({
       name: item.name,
       sku: item.sku ?? '',

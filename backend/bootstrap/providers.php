@@ -9,8 +9,10 @@ use App\Modules\Dashboard\Providers\DashboardServiceProvider;
 use App\Modules\Department\Providers\DepartmentServiceProvider;
 use App\Modules\Import\Providers\ImportServiceProvider;
 use App\Modules\Inventory\Providers\InventoryServiceProvider;
+use App\Modules\LostAssetReport\Providers\LostAssetReportServiceProvider;
 use App\Modules\Maintenance\Providers\MaintenanceServiceProvider;
 use App\Modules\Notification\Providers\NotificationServiceProvider;
+use App\Modules\QrScan\Providers\QrScanServiceProvider;
 use App\Modules\Report\Providers\ReportServiceProvider;
 use App\Modules\Reservation\Providers\ReservationServiceProvider;
 use App\Modules\SystemSetup\Providers\SystemSetupServiceProvider;
@@ -35,4 +37,6 @@ return [
     NotificationServiceProvider::class,
     SystemSetupServiceProvider::class,
     App\Modules\Workflow\Providers\WorkflowServiceProvider::class,
+    QrScanServiceProvider::class,
+    LostAssetReportServiceProvider::class,
 ];
