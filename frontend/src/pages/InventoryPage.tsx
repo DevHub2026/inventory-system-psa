@@ -10,12 +10,8 @@ import {
   type CreateInventoryItemPayload,
   type UpdateInventoryItemPayload,
 } from '@/services/inventoryService'
-<<<<<<< HEAD
-import type { InventoryItem, StockMovement } from '@/types'
-=======
 import { api, unwrapData } from '@/services/api'
 import type { ApiResponse, InventoryItem, StockMovement } from '@/types'
->>>>>>> 97b32359c7a5ed3c8f37f71d67bef910f9357e1b
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { InventoryImportWizard } from '@/components/InventoryImportWizard'
 import { notifyDataChanged } from '@/utils/dataRefresh'
@@ -434,24 +430,22 @@ export function InventoryPage() {
     track_as_asset: true, type: 'non_expendable',
     asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
   })
-<<<<<<< HEAD
-=======
-    useEffect(() => {
+
+  useEffect(() => {
     const validateCode = async () => {
       try {
         const { data } = await api.get<ApiResponse<{ exists: boolean; message: string }>>('/inventory/validate-sku', {
           params: { sku: formData.sku },
-        });
-        setCodeValidation(unwrapData(data));
+        })
+        setCodeValidation(unwrapData(data))
       } catch {
-        setCodeValidation(null);
+        setCodeValidation(null)
       }
-    };
-    if (formData.sku) {
-      void validateCode();
     }
-  }, [formData.sku]);
->>>>>>> 97b32359c7a5ed3c8f37f71d67bef910f9357e1b
+    if (formData.sku) {
+      void validateCode()
+    }
+  }, [formData.sku])
 
   // Load table rows — pg=1 resets list, pg>1 appends (infinite scroll)
   const loadInventory = useCallback(async (pg = 1) => {
