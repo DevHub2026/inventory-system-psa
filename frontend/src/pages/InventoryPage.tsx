@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search } from 'lucide-react'
+import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode } from 'lucide-react'
 import {
   Alert, Button, EmptyState, Input,
-  Modal, Spinner,
+  Modal, Spinner, Badge, Card,
 } from '@/components/ui'
 import {
   inventoryService,

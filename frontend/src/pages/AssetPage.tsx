@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ScanLine, CheckCircle2, XCircle, Printer } from 'lucide-react'
 import {
-  Alert, Badge, Button, ConfirmDialog, Dropdown, SetupDropdown, EmptyState,
-  Input, Modal, Pagination, SearchBar, Spinner, Table, type Column,
+  ScanLine, CheckCircle2, XCircle, Printer, Search, Filter,
+  Eye, QrCode as QrIcon, Edit3, Trash2, ArrowUpRight, RotateCcw,
+  Package, Wrench, Clock,
+} from 'lucide-react'
+import {
+  Alert, Badge, Button, ConfirmDialog, SetupDropdown, EmptyState,
+  Input, Modal, Pagination, Spinner, Card,
 } from '@/components/ui'
-import { PageHeader } from '@/components/PageHeader'
 import { assetService, type UpdateAssetPayload } from '@/services/assetService'
 import { setupService, type SetupRecord } from '@/services/setupService'
 import { api, unwrapData } from '@/services/api'
@@ -34,6 +37,197 @@ const TEXTAREA_CLS =
   'focus:border-[#0D47A1] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/15'
 
 const LABEL_CLS = 'mb-1.5 block text-[13px] font-medium text-[#1F2937]'
+
+// ─── Color palette for summary cards ──────────────────────────────────────────
+const colors = {
+  blue:    { bg: '#EFF6FF', text: '#1E40AF', border: '#BFDBFE', icon: '#2563EB' },
+  green:   { bg: '#F0FDF4', text: '#166534', border: '#BBF7D0', icon: '#16A34A' },
+  amber:   { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A', icon: '#D97706' },
+  red:     { bg: '#FEF2F2', text: '#DC2626', border: '#FECACA', icon: '#EF4444' },
+  violet:  { bg: '#FAF5FF', text: '#7C3AED', border: '#DDD6FE', icon: '#8B5CF6' },
+  gray:    { bg: '#F8FAFC', text: '#475569', border: '#E2E8F0', icon: '#94A3B8' },
+}
+
+// ─── Summary Card ──────────────────────────────────────────────────────────────
+function SummaryCard({
+  icon, color, label, value, onClick, active,
+}: {
+  icon: React.ReactNode
+  color: typeof colors.blue
+  label: string
+  value: number
+  onClick?: () => void
+  active?: boolean
+}) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        flex: '1 1 0', minWidth: 180,
+        background: '#fff',
+        borderRadius: 14,
+        border: `1px solid ${active ? color.icon : '#E2E8F0'}`,
+        boxShadow: hovered ? '0 4px 16px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.04)',
+        padding: '18px 20px',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'box-shadow 0.2s, border-color 0.2s',
+        display: 'flex', alignItems: 'center', gap: 14,
+      }}
+    >
+      <div style={{
+        width: 44, height: 44, borderRadius: 12,
+        background: color.bg, border: `1px solid ${color.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        {icon}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 24, fontWeight: 800, color: '#0F172A', lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>
+          {value}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Action Cell ───────────────────────────────────────────────────────────────
+interface ActionCellProps {
+  asset: Asset
+  canManageAssets: boolean
+  canCompleteBorrowing: boolean
+  onView: () => void
+  onQrLabel: () => void
+  onEdit: () => void
+  onDelete: () => void
+  onBorrow: () => void
+  onReserve: () => void
+  onReturn: () => void
+}
+
+function ActionCell({
+  asset, canManageAssets, canCompleteBorrowing,
+  onView, onQrLabel, onEdit, onDelete, onBorrow, onReserve, onReturn,
+}: ActionCellProps) {
+  const [openMenu, setOpenMenu] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenu(false)
+      }
+    }
+    if (openMenu) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [openMenu])
+
+  const iconBtn = (
+    icon: React.ReactNode,
+    label: string,
+    onClick: () => void,
+    variant: 'primary' | 'secondary' | 'success' | 'danger' = 'secondary'
+  ) => {
+    const v = variant === 'primary'
+      ? { bg: '#1E40AF', color: '#fff', border: '#1E40AF', hoverBg: '#1D4ED8' }
+      : variant === 'success'
+        ? { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0', hoverBg: '#DCFCE7' }
+        : variant === 'danger'
+          ? { bg: '#FEF2F2', color: '#DC2626', border: '#FECACA', hoverBg: '#FEE2E2' }
+          : { bg: '#fff', color: '#475569', border: '#D1D5DB', hoverBg: '#F1F5F9' }
+    return (
+      <button
+        onClick={onClick}
+        title={label}
+        style={{
+          height: 32, width: 32, padding: 0,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          border: `1px solid ${v.border}`,
+          borderRadius: 8,
+          background: v.bg,
+          color: v.color,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          transition: 'all 0.15s',
+        }}
+      >
+        {icon}
+      </button>
+    )
+  }
+
+  const menuItem = (icon: React.ReactNode, label: string, onClick: () => void, variant: 'normal' | 'danger' = 'normal') => (
+    <button
+      onClick={() => { onClick(); setOpenMenu(false) }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+        padding: '8px 12px', border: 'none', background: 'transparent',
+        color: variant === 'danger' ? '#DC2626' : '#1E293B',
+        fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+        fontFamily: 'inherit', borderRadius: 6,
+        transition: 'background 0.1s',
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+    >
+      {icon}
+      <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
+    </button>
+  )
+
+  // Determine primary action based on status
+  const primaryAction = asset.status === 'AVAILABLE' && canCompleteBorrowing
+    ? iconBtn(<ArrowUpRight size={14} />, 'Borrow', onBorrow, 'primary')
+    : asset.status === 'BORROWED' && canCompleteBorrowing
+      ? iconBtn(<RotateCcw size={14} />, 'Return', onReturn, 'success')
+      : null
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+      {/* Primary action */}
+      {primaryAction}
+
+      {/* More actions dropdown */}
+      <div ref={menuRef} style={{ position: 'relative' }}>
+        {iconBtn(
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
+          </svg>,
+          'More actions',
+          () => setOpenMenu(!openMenu),
+        )}
+
+        {openMenu && (
+          <div style={{
+            position: 'absolute', right: 0, top: '100%', marginTop: 4,
+            background: '#fff', border: '1px solid #E2E8F0',
+            borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            padding: 6, zIndex: 50, minWidth: 160,
+          }}>
+            {menuItem(<Eye size={14} />, 'View Details', onView)}
+            {menuItem(<QrIcon size={14} />, 'QR Label', onQrLabel)}
+            {asset.status === 'AVAILABLE' && menuItem(<Clock size={14} />, 'Request Borrow', onReserve)}
+            {canManageAssets && menuItem(<Edit3 size={14} />, 'Edit Asset', onEdit)}
+            {canManageAssets && (
+              <>
+                <div style={{ height: 1, background: '#F1F5F9', margin: '4px 0' }} />
+                {menuItem(<Trash2 size={14} />, 'Archive', onDelete, 'danger')}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export function AssetPage() {
   const { user } = useAuth()
@@ -68,6 +262,9 @@ export function AssetPage() {
 
   // Printable issuance receipt
   const [printIssuanceId, setPrintIssuanceId] = useState<number | null>(null)
+
+  // Summary counts
+  const [summary, setSummary] = useState({ available: 0, borrowed: 0, reserved: 0, maintenance: 0, total: 0 })
 
   // Setup options for Quick Add / Quick Edit dropdowns
   const [offices, setOffices] = useState<SetupRecord[]>([])
@@ -128,6 +325,23 @@ export function AssetPage() {
     }
   }
 
+  // Load summary counts
+  const loadSummary = useCallback(async () => {
+    try {
+      const all = await assetService.list({ per_page: 9999 })
+      const count = (s: AssetStatus) => all.items.filter((a) => a.status === s).length
+      setSummary({
+        available: count('AVAILABLE'),
+        borrowed: count('BORROWED'),
+        reserved: count('RESERVED'),
+        maintenance: count('MAINTENANCE'),
+        total: all.meta.total,
+      })
+    } catch { /* best effort */ }
+  }, [])
+
+  useEffect(() => { void loadSummary() }, [loadSummary])
+
   async function openView(id: number) {
     setMessage(null)
     try { setViewAsset(await assetService.show(id)) }
@@ -187,6 +401,7 @@ export function AssetPage() {
       setEditAsset(null)
       setMessage('Asset updated successfully.')
       await load(page)
+      void loadSummary()
     } catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to update asset.') }
     finally { setSaving(false) }
   }
@@ -201,108 +416,325 @@ export function AssetPage() {
   useEffect(() => onDataChanged((scope) => {
     if (affectsScope(scope, 'assets') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
       void load(page)
+      void loadSummary()
       if (viewAsset) void openView(viewAsset.id)
       if (qrAsset)   void openQrLabel(qrAsset.id)
     }
   }), [page, search, status, viewAsset?.id, qrAsset?.id])
 
-  const columns: Column<Asset>[] = useMemo(() => [
-    { key: 'asset_number', header: 'Asset No.',  render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number}</span> },
-    { key: 'name',         header: 'Name',       render: (r) => <span className="font-medium text-[#1F2937]">{r.name}</span> },
-    { key: 'category',     header: 'Category',   render: (r) => r.category ?? '—' },
-    { key: 'status',       header: 'Status',     render: (r) => <Badge tone={assetStatusTone(r.status)}>{assetStatusLabel(r.status)}</Badge> },
-    { key: 'location',     header: 'Location',   render: (r) => r.location ?? '—' },
-    {
-      key: 'actions', header: 'Actions',
-      render: (r) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
-          {/* Info actions */}
-          <Button size="sm" variant="ghost" onClick={() => void openView(r.id)}>View</Button>
-          <Button size="sm" variant="ghost" onClick={() => void openQrLabel(r.id)}>QR Label</Button>
+  // ── Table styles ─────────────────────────────────────────────────────────────
+  const th: React.CSSProperties = {
+    padding: '10px 16px',
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#94A3B8',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.07em',
+    background: '#FAFBFC',
+    borderBottom: '1px solid #E2E8F0',
+    textAlign: 'left' as const,
+    whiteSpace: 'nowrap' as const,
+  }
 
-          {/* Divider */}
-          <span style={{ width: 1, height: 20, background: '#e2e8f0', flexShrink: 0 }} />
-
-          {/* Edit */}
-          {canManageAssets && (
-            <Button size="sm" variant="secondary" onClick={() => void openEdit(r.id)}>Edit</Button>
-          )}
-
-          {/* Status-based primary action */}
-          {r.status === 'AVAILABLE' && canCompleteBorrowing && (
-            <Button size="sm" variant="primary" onClick={() => setBorrowId(r.id)}>Borrow</Button>
-          )}
-          {r.status === 'AVAILABLE' && (
-            <Button size="sm" variant="outline" onClick={() => setReserveId(r.id)}>Request</Button>
-          )}
-          {r.status === 'BORROWED' && canCompleteBorrowing && (
-            <Button size="sm" variant="success" onClick={() => setReturnId(r.id)}>Return</Button>
-          )}
-
-          {/* Danger */}
-          {canManageAssets && (
-            <Button size="sm" variant="danger" onClick={() => setDeleteId(r.id)}>Delete</Button>
-          )}
-        </div>
-      ),
-    },
-  ], [canManageAssets, canCompleteBorrowing])
+  const td: React.CSSProperties = {
+    padding: '14px 16px',
+    fontSize: 13.5,
+    color: '#374151',
+    borderBottom: '1px solid #F1F5F9',
+    verticalAlign: 'middle',
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <PageHeader
-        title="Assets"
-        subtitle="Search, scan, borrow, and view PSA-tracked assets."
-        actions={
-          <Button onClick={() => setScannerOpen(true)}>
-            <ScanLine className="h-4 w-4" />
-            Scan Asset QR
-          </Button>
-        }
-      />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 32 }}>
 
+      {/* ── Header ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 16,
+      }}>
+        <div>
+          <h1 style={{
+            margin: 0,
+            fontSize: 26,
+            fontWeight: 800,
+            color: '#0F172A',
+            letterSpacing: '-0.03em',
+            lineHeight: 1.2,
+          }}>
+            Assets
+          </h1>
+          <p style={{ margin: '6px 0 0', fontSize: 14, color: '#64748B', lineHeight: 1.4 }}>
+            Search, scan, borrow, and view PSA-tracked assets.
+          </p>
+        </div>
+
+        <Button onClick={() => setScannerOpen(true)}>
+          <ScanLine size={16} />
+          Scan Asset QR
+        </Button>
+      </div>
+
+      {/* Alert message */}
       {message && <Alert tone="info" onClose={() => setMessage(null)}>{message}</Alert>}
 
-      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+      {/* ── Summary cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+        <SummaryCard
+          icon={<Package size={20} style={{ color: colors.blue.icon }} />}
+          color={colors.blue}
+          label="Total Assets"
+          value={summary.total}
+          onClick={() => { setStatus(''); void load(1) }}
+          active={status === ''}
+        />
+        <SummaryCard
+          icon={<CheckCircle2 size={20} style={{ color: colors.green.icon }} />}
+          color={colors.green}
+          label="Available"
+          value={summary.available}
+          onClick={() => { setStatus('AVAILABLE'); void load(1) }}
+          active={status === 'AVAILABLE'}
+        />
+        <SummaryCard
+          icon={<ArrowUpRight size={20} style={{ color: colors.amber.icon }} />}
+          color={colors.amber}
+          label="Borrowed"
+          value={summary.borrowed}
+          onClick={() => { setStatus('BORROWED'); void load(1) }}
+          active={status === 'BORROWED'}
+        />
+        <SummaryCard
+          icon={<Clock size={20} style={{ color: colors.violet.icon }} />}
+          color={colors.violet}
+          label="Reserved"
+          value={summary.reserved}
+          onClick={() => { setStatus('RESERVED'); void load(1) }}
+          active={status === 'RESERVED'}
+        />
+        <SummaryCard
+          icon={<Wrench size={20} style={{ color: colors.red.icon }} />}
+          color={colors.red}
+          label="Maintenance"
+          value={summary.maintenance}
+          onClick={() => { setStatus('MAINTENANCE'); void load(1) }}
+          active={status === 'MAINTENANCE'}
+        />
+      </div>
+
+      {/* ── Table card ── */}
+      <Card noPadding>
         {/* Toolbar */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottom: '1px solid #f1f5f9', padding: '14px 20px' }}>
-          <SearchBar
-            placeholder="Search assets…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') void load(1) }}
-          />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <Dropdown
-              options={[
-                { label: 'Available',   value: 'AVAILABLE' },
-                { label: 'Borrowed',    value: 'BORROWED' },
-                { label: 'Reserved',    value: 'RESERVED' },
-                { label: 'Maintenance', value: 'MAINTENANCE' },
-              ]}
-              placeholder="All statuses"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
+        <div style={{
+          display: 'flex', gap: 10, alignItems: 'center',
+          padding: '12px 20px',
+          borderBottom: '1px solid #E2E8F0',
+          background: '#fff',
+        }}>
+          {/* Search */}
+          <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
+            <Search size={14} style={{
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+              color: '#94A3B8', pointerEvents: 'none',
+            }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void load(1) }}
+              placeholder="Search by asset number, name, or category..."
+              style={{
+                width: '100%', height: 38, paddingLeft: 34, paddingRight: 14,
+                borderRadius: 10, border: '1.5px solid #E2E8F0',
+                fontSize: 13.5, color: '#1E293B', outline: 'none',
+                boxSizing: 'border-box', fontFamily: 'inherit',
+                background: '#F8FAFC',
+                transition: 'border-color 0.15s, background 0.15s',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#93C5FD'
+                e.currentTarget.style.background = '#fff'
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#E2E8F0'
+                e.currentTarget.style.background = '#F8FAFC'
+              }}
             />
-            <Button variant="secondary" onClick={() => void load(1)}>Search</Button>
           </div>
+
+          {/* Status filter */}
+          <select
+            value={status}
+            onChange={(e) => { setStatus(e.target.value); void load(1) }}
+            style={{
+              height: 38, paddingInline: '12px 32px', borderRadius: 10,
+              border: '1.5px solid #E2E8F0', fontSize: 13, color: status ? '#1E293B' : '#94A3B8',
+              background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 12px center`,
+              backgroundSize: '10px 6px',
+              appearance: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              outline: 'none', flexShrink: 0,
+              transition: 'border-color 0.15s',
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = '#93C5FD' }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = '#E2E8F0' }}
+          >
+            <option value="">All statuses</option>
+            <option value="AVAILABLE">Available</option>
+            <option value="BORROWED">Borrowed</option>
+            <option value="RESERVED">Reserved</option>
+            <option value="MAINTENANCE">Maintenance</option>
+            <option value="UNAVAILABLE">Unavailable</option>
+            <option value="RETIRED">Retired</option>
+            <option value="DISPOSED">Disposed</option>
+          </select>
+
+          {/* Search button */}
+          <button
+            onClick={() => void load(1)}
+            style={{
+              height: 38, paddingInline: 14, borderRadius: 10,
+              border: '1.5px solid #E2E8F0', background: '#F8FAFC',
+              fontSize: 13, fontWeight: 600, color: '#374151',
+              cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              transition: 'background 0.12s',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
+          >
+            <Filter size={14} />
+            Filter
+          </button>
         </div>
 
         {/* Table */}
-        {loading ? (
-          <div className="flex items-center justify-center py-16"><Spinner /></div>
-        ) : (
-          <>
-            <Table
-              columns={columns} rows={rows} rowKey={(r) => r.id}
-              empty={<div className="py-16"><EmptyState title="No assets found" description="Try another search term or clear the status filter." /></div>}
-            />
-            <div style={{ borderTop: '1px solid #f1f5f9', padding: '10px 20px' }}>
-              <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void load(p)} />
+        <div style={{ overflowX: 'auto' }}>
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+              <Spinner />
             </div>
-          </>
-        )}
-      </div>
+          ) : rows.length === 0 ? (
+            <div style={{ padding: '80px 0' }}>
+              <EmptyState
+                title="No assets found"
+                description="Try another search term or clear the status filter."
+              />
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
+              <colgroup>
+                <col style={{ width: 140 }} />
+                <col style={{ minWidth: 200 }} />
+                <col style={{ width: 160 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 140 }} />
+                <col style={{ width: 120 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th style={th}>Asset No.</th>
+                  <th style={th}>Name</th>
+                  <th style={th}>Category</th>
+                  <th style={th}>Status</th>
+                  <th style={th}>Location</th>
+                  <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, idx) => (
+                  <tr
+                    key={r.id}
+                    style={{
+                      background: idx % 2 === 0 ? '#fff' : '#FAFBFC',
+                      transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F1F5F9' }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? '#fff' : '#FAFBFC'
+                    }}
+                  >
+                    {/* Asset No. */}
+                    <td style={td}>
+                      <code style={{
+                        fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                        fontSize: 11.5, color: '#475569',
+                        background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                        display: 'inline-block',
+                      }}>
+                        {r.asset_number}
+                      </code>
+                    </td>
+
+                    {/* Name */}
+                    <td style={td}>
+                      <div>
+                        <span style={{ fontWeight: 600, color: '#0F172A', fontSize: 13.5 }}>
+                          {r.name}
+                        </span>
+                        {r.description && (
+                          <div style={{
+                            fontSize: 11.5, color: '#9CA3AF', marginTop: 2,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            maxWidth: 300,
+                          }}>
+                            {r.description}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Category */}
+                    <td style={td}>
+                      <span style={{ color: '#64748B', fontSize: 13 }}>
+                        {r.category ?? '—'}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td style={td}>
+                      <Badge tone={assetStatusTone(r.status)}>
+                        {assetStatusLabel(r.status)}
+                      </Badge>
+                    </td>
+
+                    {/* Location */}
+                    <td style={td}>
+                      <span style={{ color: '#64748B', fontSize: 13 }}>
+                        {r.location ?? '—'}
+                      </span>
+                    </td>
+
+                    {/* Actions */}
+                    <td style={{
+                      ...td, textAlign: 'right' as const,
+                      paddingRight: 20, paddingTop: 10, paddingBottom: 10,
+                    }}>
+                      <ActionCell
+                        asset={r}
+                        canManageAssets={canManageAssets}
+                        canCompleteBorrowing={canCompleteBorrowing}
+                        onView={() => void openView(r.id)}
+                        onQrLabel={() => void openQrLabel(r.id)}
+                        onEdit={() => void openEdit(r.id)}
+                        onDelete={() => setDeleteId(r.id)}
+                        onBorrow={() => setBorrowId(r.id)}
+                        onReserve={() => setReserveId(r.id)}
+                        onReturn={() => setReturnId(r.id)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Pagination */}
+        <div style={{ borderTop: '1px solid #F1F5F9', padding: '10px 20px' }}>
+          <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void load(p)} />
+        </div>
+      </Card>
 
       {/* ── Dialogs ── */}
       <ConfirmDialog
@@ -312,7 +744,7 @@ export function AssetPage() {
         onCancel={() => setDeleteId(null)}
         onConfirm={() => {
           if (deleteId === null) return
-          void assetService.remove(deleteId).then(() => { setDeleteId(null); setMessage('Asset archived.'); void load(page) })
+          void assetService.remove(deleteId).then(() => { setDeleteId(null); setMessage('Asset archived.'); void load(page); void loadSummary() })
         }}
       />
 
@@ -337,6 +769,7 @@ export function AssetPage() {
             setMessage('Item returned successfully.')
             notifyDataChanged('all')
             void load(page)
+            void loadSummary()
           })
         }}
       />
@@ -366,6 +799,7 @@ export function AssetPage() {
             setMessage('Item borrowed successfully. Your receipt is ready.')
             notifyDataChanged('all')
             void load(page)
+            void loadSummary()
           })
         }}
       />
@@ -423,12 +857,13 @@ export function AssetPage() {
               setMessage('Borrow request sent successfully. Present the receipt QR/reference to staff for approval.')
               notifyDataChanged('all')
               void load(page)
+              void loadSummary()
             })
         }}
       />
 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
-      <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onCompleted={() => void load(page)} />
+      <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onCompleted={() => { void load(page); void loadSummary() }} />
 
       {/* ── View Asset ── */}
       <Modal

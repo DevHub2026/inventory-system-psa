@@ -3,78 +3,31 @@
  * To add a new developer, push a new object into this array.
  */
 
-export interface Developer {
+export interface TeamMember {
   id: string
   name: string
-  role: string
-  roleTags: string[]
   avatar?: string
-  /** Short personal introduction paragraph */
-  introduction: string
-  modules: string[]
-  /** Accent colour used for the card top-bar and avatar ring */
-  accent: string
 }
 
-const developers: Developer[] = [
+/** Combined team introduction — one description for the whole team */
+export const teamDescription =
+  'This system was developed by three Computer Science students from Ramon Magsaysay Memorial Colleges, Inc. (RMMC) – College of Information Technology Education during their On-the-Job Training (OJT) at the Philippine Statistics Authority (PSA) Region XII. As part of their learning experience, they worked closely together to design and build a practical inventory management system that supports asset tracking, borrowing, maintenance scheduling, and inventory reporting. Through teamwork, continuous learning, and guidance from their mentors, they were able to create a solution that they hope will make everyday office processes more organized and efficient.'
+
+export const teamMembers: TeamMember[] = [
   {
     id: 'marc',
     name: 'Marc Andrei B. Abregana',
-    role: 'Backend Developer',
-    roleTags: [],
     avatar: '/src/assets/marc-abregana.png',
-    accent: '#1E40AF',
-    introduction:
-      'A Computer Science student from Ramon Magsaysay Memorial Colleges, Inc. (RMMC) with a passion for programming and web development. During his On-the-Job Training (OJT) at the Philippine Statistics Authority (PSA) Region XII, he enjoyed building user-friendly features, learning from real-world projects, and working alongside his teammates to create a reliable and efficient inventory management system.',
-    modules: [
-      'Dashboard',
-      'Assets',
-      'Reservations',
-      'Borrowings',
-      'Inventory',
-      'Maintenance',
-      'Reports',
-      'Notifications',
-    ],
   },
   {
     id: 'carl',
     name: 'Jay Carl M. Presbetero',
-    role: 'Frontend Developer',
-    roleTags: [],
     avatar: '/src/assets/jaycarl-presbetero.jpg',
-    accent: '#0E7490',
-    introduction:
-      'A Computer Science student from Ramon Magsaysay Memorial Colleges, Inc. (RMMC) who developed his programming skills during his On-the-Job Training (OJT) at the Philippine Statistics Authority (PSA) Region XII. He enjoys building responsive web applications, solving problems through code, and continuously learning new technologies to create better user experiences.',
-    modules: [
-      'Dashboard UI',
-      'Asset UI',
-      'Reservation UI',
-      'Borrowing UI',
-      'Inventory UI',
-      'Maintenance UI',
-      'Reports UI',
-      'Shared Components',
-    ],
   },
   {
     id: 'eman',
     name: 'Eman Jayson B. Costan',
-    role: 'Full-Stack Developer',
-    roleTags: [],
     avatar: '/src/assets/eman-costan.jpg',
-    accent: '#6D28D9',
-    introduction:
-      'A Computer Science student from Ramon Magsaysay Memorial Colleges, Inc. (RMMC) with a passion for programming and web development. During his On-the-Job Training (OJT) at the Philippine Statistics Authority (PSA) Region XII, he enjoyed building user-friendly features and learning from real-world projects alongside his teammates to create a reliable and efficient inventory management system.',
-    modules: [
-      'Login',
-      'Logout',
-      'Profile',
-      'Users',
-      'Roles',
-      'Permissions',
-    ],
   },
 ]
 
-export default developers
