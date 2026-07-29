@@ -190,7 +190,7 @@ export function NonExpendableInventoryPage() {
         Back to Inventory
       </button>
 
-      <PageHeader title="Non-Expendable Inventory" subtitle="Manage durable assets and items with long-term value that are not consumed in use." actions={<Button onClick={handleCreate}>Add Item</Button>} />
+      <PageHeader title="Property, Plant & Equipment (PPE)" subtitle="Manage durable assets and items with long-term value that are not consumed in use." actions={<Button onClick={handleCreate}>Add Item</Button>} />
 
       {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
@@ -204,7 +204,7 @@ export function NonExpendableInventoryPage() {
           <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : (
           <>
-            <Table columns={columns} rows={rows} rowKey={(r) => r.id} empty={<div className="py-16"><EmptyState title="No non-expendable items found" description="Add durable assets such as computers, furniture, and equipment." /></div>} />
+            <Table columns={columns} rows={rows} rowKey={(r) => r.id} empty={<div className="py-16"><EmptyState title="No PPE items found" description="Add durable assets such as computers, furniture, and equipment." /></div>} />
             <div className="border-t border-[#E5E7EB] px-5 py-3">
               <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void loadInventory(p)} />
             </div>

@@ -278,8 +278,8 @@ export function AdminDashboard() {
 
   const inventoryCards = [
     { label: 'Total Inventory Items', value: inventory?.total ?? 0, description: 'Tracked stock items', icon: Package, tone: 'blue' as const },
-    { label: 'Expendable Items', value: inventory?.expendable ?? 0, description: 'Consumable stock', icon: PackageMinus, tone: 'amber' as const },
-    { label: 'Non-Expendable Items', value: inventory?.non_expendable ?? 0, description: 'Reusable stock', icon: Boxes, tone: 'green' as const },
+    { label: 'Semi-Expendable (SE)', value: inventory?.expendable ?? 0, description: 'Consumable stock', icon: PackageMinus, tone: 'amber' as const },
+    { label: 'Property, Plant & Equipment (PPE)', value: inventory?.non_expendable ?? 0, description: 'Reusable stock', icon: Boxes, tone: 'green' as const },
     { label: 'Low Stock', value: inventory?.low_stock ?? 0, description: 'At or below reorder', icon: PackageMinus, tone: 'amber' as const },
     { label: 'Out of Stock', value: inventory?.out_of_stock ?? 0, description: 'Zero quantity', icon: PackageX, tone: 'red' as const },
   ]
