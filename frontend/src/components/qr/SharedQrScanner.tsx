@@ -3,8 +3,8 @@ import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser'
 import { Camera, QrCode, Search, RefreshCw, AlertTriangle } from 'lucide-react'
 import { Button, Input, Modal, Spinner, Card } from '@/components/ui'
 import { qrService } from '@/services/qrService'
-import type { AssetContext } from '@/types'
-import { ScannedAssetResultModal } from '@/components/qr/ScannedAssetResultModal'
+import type { QrContext } from '@/types'
+import { ScannedQrResultModal } from '@/components/qr/ScannedQrResultModal'
 
 interface SharedQrScannerProps {
   open: boolean
@@ -40,7 +40,7 @@ export function SharedQrScanner({
   const [status, setStatus] = useState<ScannerStatus>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [manualCode, setManualCode] = useState('')
-  const [resolvedContext, setResolvedContext] = useState<AssetContext | null>(null)
+  const [resolvedContext, setResolvedContext] = useState<QrContext | null>(null)
   const [showResultModal, setShowResultModal] = useState(false)
 
   const stopCamera = () => {
@@ -70,7 +70,7 @@ export function SharedQrScanner({
     setErrorMessage(null)
 
     try {
-      const context = await qrService.resolveAsset(value, scanSource)
+      const context = await qrService.resolveQr(value, scanSource)
       setResolvedContext(context)
       setShowResultModal(true)
       setStatus('idle')
@@ -238,12 +238,12 @@ export function SharedQrScanner({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <QrCode className="w-5 h-5 text-blue-700" />
-            <h1 className="text-lg font-bold text-slate-900">Scan Asset QR Code</h1>
+            <h1 className="text-lg font-bold text-slate-900">Scan QR Code</h1>
           </div>
         </div>
         {scannerContent}
 
-        <ScannedAssetResultModal
+        <ScannedQrResultModal
           open={showResultModal}
           onClose={() => setShowResultModal(false)}
           context={resolvedContext}
@@ -259,11 +259,11 @@ export function SharedQrScanner({
 
   return (
     <>
-      <Modal open={open && !showResultModal} onClose={onClose} title="Scan Asset QR Code" maxWidth="max-w-md">
+      <Modal open={open && !showResultModal} onClose={onClose} title="Scan QR Code" maxWidth="max-w-md">
         {scannerContent}
       </Modal>
 
-      <ScannedAssetResultModal
+      <ScannedQrResultModal
         open={showResultModal}
         onClose={() => {
           setShowResultModal(false)

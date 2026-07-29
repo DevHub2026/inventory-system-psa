@@ -16,8 +16,40 @@ class QrScanController extends Controller
     public function __construct(private readonly QrScanService $qrScanService) {}
 
     /**
+     * GET /api/v1/qr/resolve/{identifier}
+     * Centralized QR resolution endpoint.
+     * Detects QR type (ASSET, BORROWING_RECEIPT, RETURN_RECEIPT, UNKNOWN)
+     * and returns normalized role-aware context with available actions.
+     */
+    public function resolve(Request $request, string $identifier): JsonResponse
+    {
+        $context = $this->qrScanService->resolveQrIdentifier($identifier, $request->user());
+
+        if ($context['qr_type'] === 'UNKNOWN') {
+            $status = match ($context['error'] ?? '') {
+                'empty' => 422,
+                'not_found' => 404,
+                default => 422,
+            };
+
+            return $this->error($context['message'] ?? 'Unrecognized QR code.', null, $status);
+        }
+
+        // Record scan for asset QRs
+        if ($context['qr_type'] === 'ASSET' && isset($context['asset']['id'])) {
+            $asset = Asset::find($context['asset']['id']);
+            if ($asset) {
+                $scanSource = $request->query('scan_source') ?? $request->input('scan_source') ?? 'sidebar_scanner';
+                $this->qrScanService->recordScan($asset, $request->user(), 'VIEW', $request, $scanSource);
+            }
+        }
+
+        return $this->success($context, 'QR context resolved successfully.');
+    }
+
+    /**
      * GET /api/v1/qr/asset/{identifier}
-     * Resolve a PSA QR identifier to full asset context.
+     * Legacy: Resolve a PSA QR identifier to full asset context.
      */
     public function resolveAsset(Request $request, string $identifier): JsonResponse
     {

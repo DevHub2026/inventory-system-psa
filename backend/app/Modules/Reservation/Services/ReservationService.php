@@ -79,7 +79,10 @@ class ReservationService
             // Execute Workflow Engine Approval Step
             $reservation = $this->workflowEngineService->approveCurrentLevel($reservation, $authorizer, $remarks);
 
-            // If workflow is fully approved, transition main reservation status
+            // If the workflow is fully approved, transition the main reservation status.
+            // Assets stay RESERVED (not AVAILABLE) — they are held for release.
+            // They are only freed to AVAILABLE when the borrowing is created (release)
+            // or when the reservation is rejected/cancelled.
             if ($reservation->workflow_status === 'APPROVED') {
                 $reservation->update([
                     'status' => 'APPROVED',
@@ -87,7 +90,8 @@ class ReservationService
                     'authorized_at' => now(),
                 ]);
 
-                $reservation->assets()->update(['status' => AssetStatus::AVAILABLE->value]);
+                // Keep assets in RESERVED status — they are spoken for until physically released.
+                // Do NOT update asset status here.
 
                 if ($reservation->user_id) {
                     $this->notificationService->notifyUser(

@@ -95,4 +95,15 @@ export const borrowingService = {
     const { data } = await api.post<ApiResponse<BackendBorrowing>>(`/borrowings/${borrowingId}/return`, { remarks: notes })
     return mapBorrowing(unwrapData(data))
   },
+
+  /**
+   * Release an approved reservation — creates the Borrowing record.
+   * Calls POST /assets/scan with the reservation receipt identifier.
+   */
+  async releaseFromReservation(reservationId: number): Promise<Borrowing> {
+    const { data } = await api.post<ApiResponse<BackendBorrowing>>('/assets/scan', {
+      value: `PSA-RES-${reservationId}`,
+    })
+    return mapBorrowing(unwrapData(data))
+  },
 }

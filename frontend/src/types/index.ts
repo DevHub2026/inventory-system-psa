@@ -461,6 +461,89 @@ export interface LostAssetReport {
   created_at: string
 }
 
+/* ── Phase 7 — QR Scan Role-Based Types ── */
+
+export type QrType = 'ASSET' | 'BORROWING_RECEIPT' | 'RETURN_RECEIPT' | 'UNKNOWN'
+
+export type AvailableAction =
+  | 'VIEW_ASSET_DETAILS'
+  | 'REQUEST_BORROW'
+  | 'REPORT_DAMAGE'
+  | 'REPORT_LOST'
+  | 'APPROVE_RELEASE'
+  | 'APPROVE_REQUEST'
+  | 'RELEASE_ASSET'
+  | 'RETURN_ASSET'
+  | 'VIEW_BORROWING_STATUS'
+
+export interface QrContext {
+  qr_type: QrType
+  error?: string | null
+  message?: string | null
+  asset?: Asset | null
+  reservation?: {
+    id: number
+    requester_name?: string
+    employee_number?: string | null
+    department?: string | null
+    office?: string | null
+    asset_name?: string
+    asset_number?: string
+    requested_date?: string
+    expected_return_date?: string | null
+    status: string
+    workflow_status?: string | null
+    current_level_order?: number | null
+    remarks?: string | null
+    authorized_by_name?: string | null
+    authorized_at?: string | null
+  } | null
+  borrowing?: {
+    id: number
+    borrower_name?: string
+    employee_number?: string | null
+    department?: string | null
+    office?: string | null
+    asset_name?: string
+    asset_number?: string
+    requested_date?: string
+    borrowed_at?: string | null
+    due_date?: string | null
+    returned_at?: string | null
+    status: string
+    remarks?: string | null
+    authorized_by_name?: string | null
+    authorized_at?: string | null
+  } | null
+  my_active_borrowing?: {
+    id: number
+    due_date?: string
+    status: string
+  } | null
+  my_pending_reservation?: {
+    id: number
+    status: string
+  } | null
+  active_maintenance?: {
+    id: number
+    type: string
+    status: string
+  } | null
+  my_pending_lost_report?: {
+    id: number
+    status: string
+  } | null
+  asset_status?: string | null
+  borrowing_status?: string | null
+  workflow_status?: string | null
+  is_owner?: boolean
+  user_permissions?: {
+    is_admin: boolean
+    is_employee: boolean
+  }
+  available_actions: AvailableAction[]
+}
+
 export interface AssetContext {
   asset: {
     id: number
@@ -561,4 +644,3 @@ export interface AssetContext {
     }>
   }
 }
-

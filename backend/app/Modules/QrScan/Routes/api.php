@@ -6,7 +6,11 @@ use App\Modules\QrScan\Controllers\QrScanController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function (): void {
-    // Resolve asset by QR identifier (records VIEW scan)
+    // Centralized QR resolution (detects ASSET, BORROWING_RECEIPT, RETURN_RECEIPT, UNKNOWN)
+    Route::get('qr/resolve/{identifier}', [QrScanController::class, 'resolve'])
+        ->where('identifier', '.*');
+
+    // Legacy: Resolve asset by QR identifier (records VIEW scan)
     Route::get('qr/asset/{identifier}', [QrScanController::class, 'resolveAsset'])
         ->where('identifier', '.*');
 
