@@ -123,6 +123,28 @@ class WorkflowSeeder extends Seeder
                     ],
                 ],
             ],
+            [
+                'name' => 'Lost Asset Report Review',
+                'module_type' => WorkflowModuleType::LOST_ASSET_REPORT->value,
+                'description' => 'Approval workflow for employee-submitted lost asset reports.',
+                'is_active' => true,
+                'approval_levels' => [
+                    [
+                        'level_order' => 1,
+                        'name' => 'Property Custodian Review',
+                        'roles' => ['Property Custodian', 'System Administrator', 'Super Administrator'],
+                        'approval_type' => 'any',
+                        'is_enabled' => true,
+                    ],
+                    [
+                        'level_order' => 2,
+                        'name' => 'Department Head Confirmation',
+                        'roles' => ['Department Head', 'System Administrator', 'Super Administrator'],
+                        'approval_type' => 'any',
+                        'is_enabled' => true,
+                    ],
+                ],
+            ],
         ];
 
         foreach ($defaultWorkflows as $data) {

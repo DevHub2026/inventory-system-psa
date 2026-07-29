@@ -18,6 +18,9 @@ import { SettingsPage } from '@/pages/SettingsPage'
 import { DevelopersPage } from '@/pages/DevelopersPage'
 import { SystemSetupPage } from '@/pages/SystemSetupPage'
 import { WorkflowsPage } from '@/pages/WorkflowsPage'
+import { QRScannerPage } from '@/pages/QRScannerPage'
+import { EmployeeAssetPage } from '@/pages/EmployeeAssetPage'
+import { QRScanHistoryPage } from '@/pages/QRScanHistoryPage'
 import LoginPage from '@/pages/LoginPage'
 import { UsersPage } from '@/pages/UsersPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
@@ -39,6 +42,10 @@ function App() {
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
 
         <Route element={<ProtectedRoute />}>
+          {/* Mobile standalone Employee QR routes */}
+          <Route path="/qr" element={<QRScannerPage />} />
+          <Route path="/qr/:identifier" element={<EmployeeAssetPage />} />
+
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/assets" element={<AssetPage />} />
@@ -54,6 +61,7 @@ function App() {
             <Route path="/permissions" element={<PermissionsPage />} />
             <Route path="/system-setup" element={<SystemSetupPage />} />
             <Route path="/workflows" element={<WorkflowsPage />} />
+            <Route path="/qr-scan-history" element={<QRScanHistoryPage />} />
             <Route path="/document-templates" element={<DocumentTemplatesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/developers" element={<DevelopersPage />} />
