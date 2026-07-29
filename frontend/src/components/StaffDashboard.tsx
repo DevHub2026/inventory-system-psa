@@ -6,7 +6,7 @@ import {
 } from '@/components/ui'
 import { DashboardStatCard } from '@/components/DashboardStatCard'
 import { PageHeader } from '@/components/PageHeader'
-import { AssetQrScanner } from '@/components/AssetQrScanner'
+import { SharedQrScanner } from '@/components/qr/SharedQrScanner'
 import { assetService } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
@@ -126,7 +126,6 @@ export function StaffDashboard() {
   const [message,                setMessage]                = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [qrCode,                 setQrCode]                 = useState('')
   const [scannerOpen,            setScannerOpen]            = useState(false)
-  const [scannerMode,            setScannerMode]            = useState<'transaction' | 'authorize'>('transaction')
 
   const loadData = async () => {
     setLoading(true)
@@ -286,18 +285,14 @@ export function StaffDashboard() {
             <QrCodeIcon size={16} style={{ marginRight: 6 }} />
             Scan
           </Button>
-          <Button variant="secondary" onClick={() => { setScannerMode('authorize'); setScannerOpen(true) }}>
-            <Camera size={16} style={{ marginRight: 6 }} />
-            Scan to Borrow
-          </Button>
-          <Button variant="secondary" onClick={() => { setScannerMode('transaction'); setScannerOpen(true) }}>
+          <Button variant="secondary" onClick={() => setScannerOpen(true)}>
             <Camera size={16} style={{ marginRight: 6 }} />
             Scan to Borrow/Return
           </Button>
         </div>
       </div>
 
-      <AssetQrScanner open={scannerOpen} mode={scannerMode} onClose={() => setScannerOpen(false)} onCompleted={loadData} />
+      <SharedQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} scanSource="sidebar_scanner" mode="modal" onCompleted={loadData} />
 
       {/* Pending + Active */}
       <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(2, 1fr)' }}>

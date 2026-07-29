@@ -1,4 +1,4 @@
-import { api, unwrapData } from '@/services/api'
+import { api, unwrapData, unwrapPaginated } from '@/services/api'
 import type { ApiResponse, LostAssetReport, Paginated } from '@/types'
 
 export interface CreateLostAssetReportPayload {
@@ -16,7 +16,7 @@ export const lostAssetService = {
 
   async list(params?: Record<string, unknown>): Promise<Paginated<LostAssetReport>> {
     const { data } = await api.get<ApiResponse<Paginated<LostAssetReport>>>('/lost-asset-reports', { params })
-    return unwrapData(data)
+    return unwrapPaginated(data)
   },
 
   async myReports(assetId?: number): Promise<LostAssetReport[]> {

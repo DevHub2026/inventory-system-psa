@@ -25,6 +25,8 @@ import LoginPage from '@/pages/LoginPage'
 import { UsersPage } from '@/pages/UsersPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+
 function App() {
   const { user, loading } = useAuth()
 
@@ -37,41 +39,43 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
 
-        <Route element={<ProtectedRoute />}>
-          {/* Mobile standalone Employee QR routes */}
-          <Route path="/qr" element={<QRScannerPage />} />
-          <Route path="/qr/:identifier" element={<EmployeeAssetPage />} />
+          <Route element={<ProtectedRoute />}>
+            {/* Mobile standalone Employee QR routes */}
+            <Route path="/qr" element={<QRScannerPage />} />
+            <Route path="/qr/:identifier" element={<EmployeeAssetPage />} />
 
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/assets" element={<AssetPage />} />
-            <Route path="/reservations" element={<ReservationPage />} />
-            <Route path="/borrowings" element={<BorrowingPage />} />
-            <Route path="/borrowings/:id" element={<BorrowingDetailsPage />} />
-            <Route path="/extension-requests" element={<ExtensionRequestsPage />} />
-            <Route path="/inventory" element={<InventoryPage />} />
-            <Route path="/maintenance" element={<MaintenancePage />} />
-            <Route path="/reports" element={<ReportPage />} />
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/roles" element={<RolesPage />} />
-            <Route path="/permissions" element={<PermissionsPage />} />
-            <Route path="/system-setup" element={<SystemSetupPage />} />
-            <Route path="/workflows" element={<WorkflowsPage />} />
-            <Route path="/qr-scan-history" element={<QRScanHistoryPage />} />
-            <Route path="/document-templates" element={<DocumentTemplatesPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/developers" element={<DevelopersPage />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route element={<AppLayout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/assets" element={<AssetPage />} />
+              <Route path="/reservations" element={<ReservationPage />} />
+              <Route path="/borrowings" element={<BorrowingPage />} />
+              <Route path="/borrowings/:id" element={<BorrowingDetailsPage />} />
+              <Route path="/extension-requests" element={<ExtensionRequestsPage />} />
+              <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/maintenance" element={<MaintenancePage />} />
+              <Route path="/reports" element={<ReportPage />} />
+              <Route path="/users" element={<UsersPage />} />
+              <Route path="/roles" element={<RolesPage />} />
+              <Route path="/permissions" element={<PermissionsPage />} />
+              <Route path="/system-setup" element={<SystemSetupPage />} />
+              <Route path="/workflows" element={<WorkflowsPage />} />
+              <Route path="/qr-scan-history" element={<QRScanHistoryPage />} />
+              <Route path="/document-templates" element={<DocumentTemplatesPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/developers" element={<DevelopersPage />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            </Route>
           </Route>
-        </Route>
 
-        <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }
 

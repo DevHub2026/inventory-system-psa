@@ -42,8 +42,8 @@ export function WorkflowsPage() {
           is_archived: showArchived ? 1 : 0,
         }),
       ])
-      setModules(mRes.modules)
-      setWorkflows(wRes.items)
+      setModules(mRes?.modules ?? [])
+      setWorkflows(wRes?.items ?? [])
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load workflows.' })
     } finally {

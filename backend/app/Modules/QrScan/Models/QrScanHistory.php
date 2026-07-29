@@ -21,6 +21,7 @@ class QrScanHistory extends Model
         'device',
         'platform',
         'browser',
+        'scan_source',
         'ip_address',
         'scanned_at',
     ];

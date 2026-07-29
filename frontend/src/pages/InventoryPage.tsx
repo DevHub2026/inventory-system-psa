@@ -10,8 +10,8 @@ import {
   type CreateInventoryItemPayload,
   type UpdateInventoryItemPayload,
 } from '@/services/inventoryService'
-import type { InventoryItem, StockMovement } from '@/types'
-
+import { api, unwrapData } from '@/services/api'
+import type { ApiResponse, InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { InventoryImportWizard } from '@/components/InventoryImportWizard'
 import { notifyDataChanged } from '@/utils/dataRefresh'
@@ -431,6 +431,21 @@ export function InventoryPage() {
     asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
   })
 
+  useEffect(() => {
+    const validateCode = async () => {
+      try {
+        const { data } = await api.get<ApiResponse<{ exists: boolean; message: string }>>('/inventory/validate-sku', {
+          params: { sku: formData.sku },
+        })
+        setCodeValidation(unwrapData(data))
+      } catch {
+        setCodeValidation(null)
+      }
+    }
+    if (formData.sku) {
+      void validateCode()
+    }
+  }, [formData.sku])
 
   // Load table rows — pg=1 resets list, pg>1 appends (infinite scroll)
   const loadInventory = useCallback(async (pg = 1) => {

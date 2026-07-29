@@ -87,15 +87,59 @@ class AssetIdentifierService
 
     public function findByValue(string $value): ?AssetIdentifier
     {
-        return AssetIdentifier::query()
+        $candidates = $this->candidateValues($value);
+
+        $identifier = AssetIdentifier::query()
             ->with('asset')
-            ->whereIn('identifier_value', $this->candidateValues($value))
+            ->whereIn('identifier_value', $candidates)
             ->first();
+
+        if ($identifier) {
+            return $identifier;
+        }
+
+        // Direct Asset fallback lookup by asset_number or psa_qr_identifier
+        $asset = \App\Modules\Asset\Models\Asset::query()
+            ->whereIn('asset_number', $candidates)
+            ->orWhereIn('psa_qr_identifier', $candidates)
+            ->first();
+
+        if (! $asset) {
+            foreach ($candidates as $cand) {
+                if (is_numeric($cand)) {
+                    $asset = \App\Modules\Asset\Models\Asset::find((int) $cand);
+                    if ($asset) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($asset) {
+            $existing = AssetIdentifier::query()
+                ->where('asset_id', $asset->id)
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
+
+            $newIdentifier = new AssetIdentifier();
+            $newIdentifier->asset_id = $asset->id;
+            $newIdentifier->identifier_type = IdentifierType::PSA_QR;
+            $newIdentifier->identifier_value = $asset->psa_qr_identifier ?? $asset->asset_number;
+            $newIdentifier->is_primary = true;
+            $newIdentifier->setRelation('asset', $asset);
+
+            return $newIdentifier;
+        }
+
+        return null;
     }
 
     /**
-     * Accept the official stored PSA QR value and common unpadded scan input
-     * without changing the permanent identifier stored in the database.
+     * Accept official stored PSA QR value, pipe-separated payload strings,
+     * direct asset numbers, and common unpadded scan inputs.
      */
     public function candidateValues(string $value): array
     {
@@ -106,17 +150,24 @@ class AssetIdentifierService
         }
 
         $candidates = [$value];
-        $reference = strtok($value, '|') ?: $value;
 
-        if ($reference !== $value) {
-            $candidates[] = $reference;
+        if (str_contains($value, '|')) {
+            $parts = explode('|', $value);
+            foreach ($parts as $part) {
+                $trimmed = trim($part);
+                if ($trimmed !== '') {
+                    $candidates[] = $trimmed;
+                }
+            }
         }
 
-        if (preg_match('/^PSA-ASSET-(\d+)$/i', $reference, $matches) === 1) {
-            $assetId = (int) $matches[1];
-
-            if ($assetId > 0) {
-                $candidates[] = 'PSA-ASSET-'.str_pad((string) $assetId, 6, '0', STR_PAD_LEFT);
+        foreach (array_values($candidates) as $cand) {
+            if (preg_match('/^PSA-ASSET-(\d+)$/i', $cand, $matches) === 1) {
+                $assetId = (int) $matches[1];
+                if ($assetId > 0) {
+                    $candidates[] = 'PSA-ASSET-'.str_pad((string) $assetId, 6, '0', STR_PAD_LEFT);
+                    $candidates[] = (string) $assetId;
+                }
             }
         }
 

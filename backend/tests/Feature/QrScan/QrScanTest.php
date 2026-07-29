@@ -126,4 +126,48 @@ class QrScanTest extends TestCase
                 'success' => true,
             ]);
     }
+
+    public function test_resolving_asset_with_structured_pipe_payload_and_scan_source(): void
+    {
+        $response = $this->withToken($this->employeeToken)
+            ->getJson('/api/v1/qr/asset/PSA-RES-7%7CPSA-ASSET-009999%7C3?scan_source=assets_page_scanner');
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'asset' => [
+                        'id' => $this->asset->id,
+                    ],
+                ],
+            ]);
+
+        $this->assertDatabaseHas('qr_scan_histories', [
+            'asset_id' => $this->asset->id,
+            'user_id' => $this->employee->id,
+            'scan_source' => 'assets_page_scanner',
+        ]);
+    }
+
+    public function test_resolving_asset_with_direct_asset_number(): void
+    {
+        $response = $this->withToken($this->employeeToken)
+            ->getJson('/api/v1/qr/asset/AST-9999?scan_source=sidebar_scanner');
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'asset' => [
+                        'id' => $this->asset->id,
+                    ],
+                ],
+            ]);
+
+        $this->assertDatabaseHas('qr_scan_histories', [
+            'asset_id' => $this->asset->id,
+            'user_id' => $this->employee->id,
+            'scan_source' => 'sidebar_scanner',
+        ]);
+    }
 }
