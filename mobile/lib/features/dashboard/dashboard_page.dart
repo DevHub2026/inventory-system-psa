@@ -135,76 +135,216 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.cardColor,
-              borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-              border: Border.all(color: AppTheme.borderColor),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.shadowColor,
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
+          // Page Header
+          _buildPageHeader(),
+          const SizedBox(height: AppTheme.space6),
+
+          // Stat cards
+          _buildStatCards(stats),
+          const SizedBox(height: AppTheme.space6),
+
+          // Quick Actions Panel
+          _buildQuickActionsPanel(),
+          const SizedBox(height: AppTheme.space6),
+
+          // Recent Activity Panel
+          if (_recentActivity.isNotEmpty) _buildRecentActivityPanel(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Employee Dashboard',
+          style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                fontSize: AppTheme.textSectionTitle,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+        ),
+        const SizedBox(height: AppTheme.space2),
+        Text(
+          'Welcome back. Here is your asset activity overview.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCards(DashboardStats stats) {
+    final statCards = [
+      {
+        'label': 'My Borrow Requests',
+        'value': stats.pendingBorrowRequests.toString(),
+        'description': 'Requests you submitted',
+        'icon': Icons.content_paste_outlined,
+        'tone': 'blue',
+      },
+      {
+        'label': 'My Borrowed Items',
+        'value': stats.borrowedAssets.toString(),
+        'description': 'Items currently borrowed',
+        'icon': Icons.inventory_2_outlined,
+        'tone': 'green',
+      },
+      {
+        'label': 'Due Soon',
+        'value': stats.pendingReturns.toString(),
+        'description': 'Active items to monitor',
+        'icon': Icons.calendar_today_outlined,
+        'tone': 'amber',
+      },
+      {
+        'label': 'Overdue',
+        'value': '0',
+        'description': 'Items needing return',
+        'icon': Icons.warning_amber_outlined,
+        'tone': 'red',
+      },
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: AppTheme.space4,
+        crossAxisSpacing: AppTheme.space4,
+        childAspectRatio: 1.3,
+      ),
+      itemCount: statCards.length,
+      itemBuilder: (context, index) {
+        final card = statCards[index];
+        return PsaStatCard(
+          label: card['label'] as String,
+          value: card['value'] as String,
+          description: card['description'] as String,
+          icon: card['icon'] as IconData,
+          tone: card['tone'] as String,
+        );
+      },
+    );
+  }
+
+  Widget _buildQuickActionsPanel() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.borderColor),
+        boxShadow: AppTheme.shadowSm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Panel Header
+          Padding(
+            padding: const EdgeInsets.all(AppTheme.space4),
+            child: Text(
+              'Quick Actions',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                
+                letterSpacing: 0.10,
+                color: AppTheme.textMuted,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(AppTheme.space4),
+            child: Column(
+              children: [
+                _buildQuickActionButton(
+                  icon: Icons.qr_code_scanner,
+                  title: 'Scan Asset QR Code',
+                  onTap: () => widget.onNavigate?.call(2),
+                ),
+                const SizedBox(height: AppTheme.space2),
+                _buildQuickActionButton(
+                  icon: Icons.history,
+                  title: 'View Borrowing Records',
+                  onTap: () => widget.onNavigate?.call(3),
+                ),
+                const SizedBox(height: AppTheme.space2),
+                _buildQuickActionButton(
+                  icon: Icons.inventory_2_outlined,
+                  title: 'Browse Available Assets',
+                  onTap: () => widget.onNavigate?.call(1),
+                ),
+                const SizedBox(height: AppTheme.space2),
+                _buildQuickActionButton(
+                  icon: Icons.person_outline,
+                  title: 'My Profile Settings',
+                  onTap: () => widget.onNavigate?.call(4),
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 18),
+        label: Text(title),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
+          alignment: Alignment.centerLeft,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentActivityPanel() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.borderColor),
+        boxShadow: AppTheme.shadowSm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Panel Header
+          Padding(
+            padding: const EdgeInsets.all(AppTheme.space4),
             child: Row(
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppTheme.psaYellow,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0x66FFD400),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      StringUtils.getInitials(widget.user.fullName),
-                      style: const TextStyle(
-                        color: AppTheme.primaryColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.user.fullName,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                        'Recent Activity',
+                        style: TextStyle(
+                          fontSize: AppTheme.textCardTitle,
+                          fontWeight: FontWeight.w600,
                           color: AppTheme.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        widget.user.employeeNumber != null && widget.user.employeeNumber!.isNotEmpty
-                            ? 'ID: ${widget.user.employeeNumber}'
-                            : widget.user.email,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        widget.user.department?.name ?? 'PSA Staff',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.textMuted,
+                        'Your recent asset interactions',
+                        style: TextStyle(
+                          fontSize: AppTheme.textSmall, color: AppTheme.textMuted,
                         ),
                       ),
                     ],
@@ -213,111 +353,15 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          const PsaSectionLabel(label: 'Summary Overview'),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.3,
+          const Divider(height: 1),
+          Column(
             children: [
-              PsaStatCard(
-                label: 'Total Assets',
-                value: stats.totalAssets.toString(),
-                description: 'All registered assets',
-                icon: Icons.inventory_2_outlined,
-                tone: 'blue',
-              ),
-              PsaStatCard(
-                label: 'Available',
-                value: stats.availableAssets.toString(),
-                description: 'Ready for use',
-                icon: Icons.check_circle_outline,
-                tone: 'green',
-              ),
-              PsaStatCard(
-                label: 'Borrowed',
-                value: stats.borrowedAssets.toString(),
-                description: 'Currently in use',
-                icon: Icons.archive_outlined,
-                tone: 'amber',
-              ),
-              PsaStatCard(
-                label: 'Damaged',
-                value: stats.damagedAssets.toString(),
-                description: 'Needs repair',
-                icon: Icons.warning_amber_outlined,
-                tone: 'red',
-              ),
-              PsaStatCard(
-                label: 'Pending Requests',
-                value: stats.pendingBorrowRequests.toString(),
-                description: 'Awaiting approval',
-                icon: Icons.schedule_outlined,
-                tone: 'amber',
-              ),
-              PsaStatCard(
-                label: 'Overdue',
-                value: stats.pendingReturns.toString(),
-                description: 'Past due date',
-                icon: Icons.warning_amber_outlined,
-                tone: 'red',
-              ),
+              for (int i = 0; i < _recentActivity.length && i < 5; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                _buildActivityTile(_recentActivity[i]),
+              ],
             ],
           ),
-          const SizedBox(height: 24),
-          const PsaSectionLabel(label: 'Quick Actions'),
-          _buildQuickActionCard(
-            context,
-            icon: Icons.qr_code_scanner,
-            iconBg: AppTheme.primaryPale,
-            iconColor: AppTheme.primaryColor,
-            title: 'Scan Asset QR Code',
-            subtitle: 'Scan physical tag to view or update asset status',
-            onTap: () => widget.onNavigate?.call(2),
-          ),
-          const SizedBox(height: 10),
-          _buildQuickActionCard(
-            context,
-            icon: Icons.history,
-            iconBg: const Color(0xFFF0FDF4),
-            iconColor: AppTheme.successColor,
-            title: 'View Borrowing Records',
-            subtitle: 'Check history and active borrowing status',
-            onTap: () => widget.onNavigate?.call(3),
-          ),
-          const SizedBox(height: 10),
-          _buildQuickActionCard(
-            context,
-            icon: Icons.inventory_2_outlined,
-            iconBg: const Color(0xFFFFFBEB),
-            iconColor: AppTheme.warningColor,
-            title: 'Browse Assets',
-            subtitle: 'View all available office assets and equipment',
-            onTap: () => widget.onNavigate?.call(1),
-          ),
-          const SizedBox(height: 24),
-          if (_recentActivity.isNotEmpty) ...[
-            const PsaSectionLabel(label: 'Recent Activity'),
-            Container(
-              decoration: BoxDecoration(
-                color: AppTheme.cardColor,
-                borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                border: Border.all(color: AppTheme.borderColor),
-              ),
-              child: Column(
-                children: [
-                  for (int i = 0; i < _recentActivity.length && i < 5; i++) ...[
-                    if (i > 0) const Divider(height: 1, indent: 56),
-                    _buildActivityTile(_recentActivity[i]),
-                  ],
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 24),
         ],
       ),
     );
@@ -325,7 +369,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildActivityTile(ActivityItem item) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4, vertical: AppTheme.space3),
       child: Row(
         children: [
           Container(
@@ -333,11 +377,11 @@ class _DashboardPageState extends State<DashboardPage> {
             height: 36,
             decoration: BoxDecoration(
               color: AppTheme.primaryPale,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             ),
             child: const Icon(Icons.history, size: 18, color: AppTheme.primaryColor),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppTheme.space3),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,7 +398,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppTheme.space2),
           Text(
             DateFormatter.timeAgo(item.createdAt),
             style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
@@ -363,77 +407,5 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
-
-  Widget _buildQuickActionCard(
-    BuildContext context, {
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppTheme.borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.shadowColor,
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, size: 22, color: iconColor),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
+

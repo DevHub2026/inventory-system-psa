@@ -20,14 +20,29 @@ class DashboardStats {
   });
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
+    // Backend returns nested structure + flat aliases
+    // Handle both formats for compatibility
+    
+    // Try nested 'assets' group first, fallback to flat structure
+    final assetsGroup = json['assets'] as Map<String, dynamic>?;
+    final borrowingsGroup = json['borrowings'] as Map<String, dynamic>?;
+    
     return DashboardStats(
-      totalAssets: json['total_assets'] as int? ?? 0,
-      availableAssets: json['available_assets'] as int? ?? 0,
-      borrowedAssets: json['borrowed_assets'] as int? ?? 0,
-      damagedAssets: json['damaged_assets'] as int? ?? 0,
-      pendingBorrowRequests: json['pending_borrow_requests'] as int? ?? 0,
-      pendingReturns: json['pending_returns'] as int? ?? 0,
+      totalAssets: _parseInt(assetsGroup?['total'] ?? json['total_assets']),
+      availableAssets: _parseInt(assetsGroup?['available'] ?? json['available']),
+      borrowedAssets: _parseInt(assetsGroup?['borrowed'] ?? json['borrowed']),
+      damagedAssets: _parseInt(assetsGroup?['maintenance'] ?? json['maintenance'] ?? 0),
+      pendingBorrowRequests: _parseInt(borrowingsGroup?['pending_requests'] ?? json['pending_borrow_requests'] ?? 0),
+      pendingReturns: _parseInt(assetsGroup?['borrowed'] ?? json['borrowed'] ?? 0), // Overdue = borrowed
     );
+  }
+
+  /// Parse int from dynamic value (handles String, int, or null)
+  static int _parseInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }
 
@@ -50,13 +65,28 @@ class ActivityItem {
 
   factory ActivityItem.fromJson(Map<String, dynamic> json) {
     return ActivityItem(
-      id: json['id'] as int,
-      type: json['type'] as String,
-      description: json['description'] as String,
-      userName: json['user_name'] as String?,
+      id: _parseActivityId(json['id']),
+      type: json['module'] as String? ?? json['type'] as String? ?? 'activity',
+      description: json['action'] as String? ?? json['description'] as String? ?? 'Activity',
+      userName: json['user'] as String? ?? json['user_name'] as String?,
       assetName: json['asset_name'] as String?,
       createdAt: json['created_at'] as String,
     );
+  }
+
+  /// Parse activity ID from dynamic value (handles String like 'borrowing-20' or int)
+  static int _parseActivityId(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) {
+      // Handle format like 'borrowing-20' or 'reservation-15'
+      final match = RegExp(r'-(\d+)$').firstMatch(value);
+      if (match != null) {
+        return int.tryParse(match.group(1)!) ?? 0;
+      }
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
   }
 }
 

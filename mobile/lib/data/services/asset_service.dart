@@ -31,7 +31,8 @@ class AssetService {
       );
 
       if (response.statusCode == 200) {
-        final items = response.data['data'] as List<dynamic>;
+        final data = response.data['data'];
+        final items = data['items'] as List<dynamic>;
         return items.map((e) => Asset.fromJson(e as Map<String, dynamic>)).toList();
       } else {
         throw Exception('Failed to fetch assets');
@@ -106,6 +107,65 @@ class AssetService {
       }
     } on DioException catch (e) {
       throw ApiErrorHandler.handleDioError(e);
+    }
+  }
+
+  /// Create new asset (Admin only)
+  Future<Asset> createAsset(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post(AppConstants.assets, data: data);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return Asset.fromJson(response.data['data']);
+      } else {
+        throw Exception('Failed to create asset');
+      }
+    } on DioException catch (e) {
+      throw ApiErrorHandler.handleDioError(e);
+    }
+  }
+
+  /// Update asset (Admin only)
+  Future<Asset> updateAsset(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.put('${AppConstants.assets}/$id', data: data);
+
+      if (response.statusCode == 200) {
+        return Asset.fromJson(response.data['data']);
+      } else {
+        throw Exception('Failed to update asset');
+      }
+    } on DioException catch (e) {
+      throw ApiErrorHandler.handleDioError(e);
+    }
+  }
+
+  /// Delete/Archive asset (Admin only)
+  Future<void> deleteAsset(int id) async {
+    try {
+      final response = await _dio.delete('${AppConstants.assets}/$id');
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Failed to delete asset');
+      }
+    } on DioException catch (e) {
+      throw ApiErrorHandler.handleDioError(e);
+    }
+  }
+
+  /// Get issuance history for an asset
+  Future<List<Map<String, dynamic>>> getIssuanceHistory(int assetId) async {
+    try {
+      final response = await _dio.get('${AppConstants.assets}/$assetId/issuance-history');
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'] as List<dynamic>?;
+        return data?.cast<Map<String, dynamic>>() ?? [];
+      } else {
+        return [];
+      }
+    } on DioException {
+      return [];
     }
   }
 }

@@ -29,6 +29,9 @@ class User {
 
   String get fullName => '$firstName $middleName $lastName'.trim();
 
+  /// Returns the primary role name (e.g. 'admin', 'staff', 'employee')
+  String? get role => roles?.isNotEmpty == true ? roles!.first.name : null;
+
   factory User.fromJson(Map<String, dynamic>
  json) {
     return User(

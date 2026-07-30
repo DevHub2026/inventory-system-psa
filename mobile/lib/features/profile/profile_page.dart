@@ -66,42 +66,64 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NotificationsPage()),
+      backgroundColor: AppTheme.backgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Page Header
+            _buildPageHeader(),
+            // Body
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _loadProfile,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(AppTheme.space4),
+                  child: Column(
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: AppTheme.space4),
+                      if (!_loading && _profileData != null) ...[
+                        _buildStats(),
+                        const SizedBox(height: AppTheme.space4),
+    ],
+                      _buildInfoSection(),
+                      const SizedBox(height: AppTheme.space4),
+                      _buildActions(),
+                      const SizedBox(height: AppTheme.space6),
+                    ],
+                  ),
+                ),
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageHeader() {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.space4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'My Profile',
+            style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                  fontSize: AppTheme.textSectionTitle,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadProfile,
+          const SizedBox(height: AppTheme.space2),
+          Text(
+            'View and manage your account information.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.textSecondary,
+                ),
           ),
         ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadProfile,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 16),
-              if (!_loading && _profileData != null) ...[
-                _buildStats(),
-                const SizedBox(height: 16),
-              ],
-              _buildInfoSection(),
-              const SizedBox(height: 16),
-              _buildActions(),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -109,11 +131,12 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildHeader() {
     final u = widget.user;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppTheme.space5),
       decoration: BoxDecoration(
         color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         border: Border.all(color: AppTheme.borderColor),
+        boxShadow: AppTheme.shadowSm,
       ),
       child: Row(
         children: [
@@ -123,9 +146,13 @@ class _ProfilePageState extends State<ProfilePage> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppTheme.psaYellow,
-              boxShadow: [BoxShadow(
+              boxShadow: [
+                BoxShadow(
                   color: AppTheme.psaYellow.withValues(alpha: 0.4),
-                  blurRadius: 12, spreadRadius: 2)],
+                  blurRadius: 12,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: Center(
               child: Text(
@@ -138,25 +165,36 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppTheme.space4),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(u.fullName,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary)),
-                const SizedBox(height: 4),
+                Text(
+                  u.fullName,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: AppTheme.space1),
                 if (u.employeeNumber != null)
-                  Text('ID: ${u.employeeNumber}',
-                      style: const TextStyle(fontSize: 12, fontFamily: 'monospace',
-                          color: AppTheme.textSecondary)),
-                const SizedBox(height: 4),
+                  Text(
+                    'ID: ${u.employeeNumber}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                const SizedBox(height: AppTheme.space1),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
                     color: u.status?.toLowerCase() == 'active'
-                        ? const Color(0xFFF0FDF4) : const Color(0xFFFFFBEB),
+                        ? const Color(0xFFF0FDF4)
+                        : const Color(0xFFFFFBEB),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: u.status?.toLowerCase() == 'active'
@@ -170,7 +208,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: u.status?.toLowerCase() == 'active'
-                          ? AppTheme.successColor : AppTheme.warningColor,
+                          ? AppTheme.successColor
+                          : AppTheme.warningColor,
                     ),
                   ),
                 ),
@@ -187,12 +226,12 @@ class _ProfilePageState extends State<ProfilePage> {
     return Row(
       children: [
         _statChip('Borrowed', '${stats['currently_borrowed'] ?? 0}', AppTheme.primaryColor),
-        const SizedBox(width: 8),
-        _statChip('Total', '${stats['total_borrowed'] ?? 0}', const Color(0xFF0F766E)),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppTheme.space2),
+        _statChip('Total', '${stats['total_borrowed'] ?? 0}', AppTheme.tealColor),
+        const SizedBox(width: AppTheme.space2),
         _statChip('Returned', '${stats['returned'] ?? 0}', AppTheme.successColor),
-        const SizedBox(width: 8),
-        _statChip('Overdue', '${stats['overdue'] ?? 0}', AppTheme.errorColor),
+        const SizedBox(width: AppTheme.space2),
+        _statChip('Overdue', '${stats['overdue'] ?? 0}', AppTheme.dangerColor),
       ],
     );
   }
@@ -200,20 +239,27 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _statChip(String label, String value, Color color) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Column(
           children: [
-            Text(value,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
+            Text(
+              value,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color),
+            ),
             const SizedBox(height: 2),
-            Text(label,
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
-                    color: color.withValues(alpha: 0.8))),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: color.withValues(alpha: 0.8),
+              ),
+            ),
           ],
         ),
       ),
@@ -225,17 +271,23 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         border: Border.all(color: AppTheme.borderColor),
+        boxShadow: AppTheme.shadowSm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 14, 16, 8),
-            child: Text('Account Information',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-                    color: AppTheme.textSecondary)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppTheme.space4, AppTheme.space3, AppTheme.space4, AppTheme.space2),
+            child: Text(
+              'Account Information',
+              style: TextStyle(
+                fontSize: AppTheme.textCardTitle,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+              ),
+            ),
           ),
           const Divider(height: 1),
           _row('Full Name', u.fullName),
@@ -256,26 +308,35 @@ class _ProfilePageState extends State<ProfilePage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4, vertical: AppTheme.space3),
           child: Row(
             children: [
               SizedBox(
                 width: 110,
-                child: Text(label,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                        color: AppTheme.textMuted, letterSpacing: 0.3)),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textMuted,
+                    letterSpacing: 0.3,
+                  ),
+                ),
               ),
               Expanded(
                 child: Text(
                   value?.isNotEmpty == true ? value! : '—',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
-                      color: AppTheme.textPrimary),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
               ),
             ],
           ),
         ),
-        if (!last) const Divider(height: 1, indent: 16, endIndent: 16),
+        if (!last) const Divider(height: 1, indent: AppTheme.space4, endIndent: AppTheme.space4),
       ],
     );
   }
@@ -284,8 +345,9 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         border: Border.all(color: AppTheme.borderColor),
+        boxShadow: AppTheme.shadowSm,
       ),
       child: Column(
         children: [
@@ -320,7 +382,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _actionTile(
             icon: Icons.logout,
             label: 'Sign Out',
-            color: AppTheme.errorColor,
+            color: AppTheme.dangerColor,
             onTap: _logout,
           ),
         ],
@@ -337,9 +399,9 @@ class _ProfilePageState extends State<ProfilePage> {
     final c = color ?? AppTheme.textPrimary;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4, vertical: AppTheme.space3),
         child: Row(
           children: [
             Container(
@@ -347,13 +409,21 @@ class _ProfilePageState extends State<ProfilePage> {
               height: 36,
               decoration: BoxDecoration(
                 color: c.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               ),
               child: Icon(icon, size: 18, color: c),
             ),
-            const SizedBox(width: 14),
-            Expanded(child: Text(label,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: c))),
+            const SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: c,
+                ),
+              ),
+            ),
             Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
           ],
         ),

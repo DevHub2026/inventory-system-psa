@@ -143,6 +143,12 @@ class _QrScannerPageState extends State<QrScannerPage> with WidgetsBindingObserv
         title: const Text('Scan Asset QR Code'),
         backgroundColor: Colors.black54,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+        ),
         actions: [
           IconButton(
             icon: Icon(_torchOn ? Icons.flash_on : Icons.flash_off, color: Colors.white),
@@ -184,43 +190,54 @@ class _QrScannerPageState extends State<QrScannerPage> with WidgetsBindingObserv
   }
 
   Widget _buildOverlay() {
+    // Calculate responsive frame size (75% of screen width, max 280px)
+    final screenWidth = MediaQuery.of(context).size.width;
+    final frameSize = (screenWidth * 0.75).clamp(200.0, 280.0);
+
     return CustomPaint(
-      painter: _ScanOverlayPainter(),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Spacer(flex: 2),
-          // Hint text
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(20),
+      painter: _ScanOverlayPainter(frameSize: frameSize),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Hint text
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                _scanning ? 'Align QR code within the frame' : 'Processing…',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
-            child: Text(
-              _scanning ? 'Align QR code within the frame' : 'Processing…',
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+            const SizedBox(height: 16),
+            // Scan frame - centered and responsive
+            SizedBox(
+              width: frameSize,
+              height: frameSize,
+              child: CustomPaint(painter: _CornerPainter()),
             ),
-          ),
-          const SizedBox(height: 16),
-          // Scan frame
-          SizedBox(
-            width: 260,
-            height: 260,
-            child: CustomPaint(painter: _CornerPainter()),
-          ),
-          const Spacer(flex: 3),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
 class _ScanOverlayPainter extends CustomPainter {
+  final double frameSize;
+
+  _ScanOverlayPainter({required this.frameSize});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = const Color(0x88000000);
-    const frameSize = 260.0;
     final cx = size.width / 2;
     final cy = size.height / 2;
     final frameLeft = cx - frameSize / 2;

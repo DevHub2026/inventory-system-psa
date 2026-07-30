@@ -7,15 +7,7 @@ import { Badge, Button, Input, Modal, Spinner } from '@/components/ui'
 import { assetService } from '@/services/assetService'
 
 import type { Asset, Borrowing } from '@/types'
-<<<<<<< HEAD
-
-import { borrowingStatusLabel } from '@/utils/displayLabels'
-
-import { assetStatusTone } from '@/utils/statusTone'
-
-=======
 import { borrowingStatusLabel, getEffectiveAssetStatus } from '@/utils/displayLabels'
->>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
 import { notifyDataChanged } from '@/utils/dataRefresh'
 
 
@@ -578,11 +570,6 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
                 { label: 'Name',         value: asset.name },
                 { label: 'Asset Number', value: asset.asset_number, mono: true },
                 { label: 'PSA QR ID',    value: asset.psa_qr_identifier ?? scannedValue, mono: true },
-<<<<<<< HEAD
-
-                { label: 'Status',       value: <Badge tone={assetStatusTone(asset.status)}>{asset.status}</Badge> },
-
-=======
                 { label: 'Status', value: (() => {
                     const eff = getEffectiveAssetStatus(asset)
                     return (
@@ -594,7 +581,6 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
                       </div>
                     )
                   })() },
->>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
                 { label: 'Office',       value: asset.office ?? '—' },
 
                 { label: 'Location',     value: asset.location ?? '—' },
