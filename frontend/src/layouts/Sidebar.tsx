@@ -147,12 +147,12 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
           boxSizing: 'border-box',
         }}>
           <div style={{
-            display: 'grid', width: 36, height: 36, flexShrink: 0,
-            placeItems: 'center', borderRadius: 10,
-            background: 'rgba(255,255,255,0.15)',
-            border: '1px solid rgba(255,255,255,0.10)',
+            display: 'grid', width: 44, height: 44, flexShrink: 0,
+            placeItems: 'center', borderRadius: '50%',
+            background: 'transparent',
+            border: 'none',
           }}>
-            <img src={logo} alt="PSA" style={{ width: 20, height: 20, objectFit: 'contain' }} />
+            <img src={logo} alt="PSA" style={{ width: 40, height: 40, objectFit: 'contain' }} />
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#ffffff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

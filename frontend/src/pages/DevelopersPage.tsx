@@ -64,16 +64,16 @@ function TeamAvatar({ member }: { member: TeamMember }) {
 }
 
 // ─── Institution Logo ─────────────────────────────────────────────────────────
-function InstLogo({ src, fallback, name }: { src?: string; fallback: string; name: string }) {
+function InstLogo({ src, fallback, name, size = 64 }: { src?: string; fallback: string; name: string; size?: number }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       width: 88, height: 88, borderRadius: 16,
-      background: '#FAFBFC', border: '1px solid #F1F5F9',
+      background: 'transparent', border: 'none',
       transition: 'box-shadow 0.2s, border-color 0.2s',
     }}>
       {src ? (
-        <img src={src} alt={name} style={{ width: 64, height: 64, objectFit: 'contain' }} />
+        <img src={src} alt={name} style={{ width: size, height: size, objectFit: 'contain', background: 'transparent' }} />
       ) : (
         <span style={{ fontSize: 14, fontWeight: 900, color: '#94A3B8' }}>{fallback}</span>
       )}
@@ -125,7 +125,7 @@ export function DevelopersPage() {
           {/* Institution logos row */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginBottom: 28, flexWrap: 'wrap' }}>
             <InstLogo src={rmmcLogo} fallback="RMMC" name="Ramon Magsaysay Memorial Colleges" />
-            <InstLogo src={psaLogo} fallback="PSA" name="Philippine Statistics Authority" />
+            <InstLogo src={psaLogo} fallback="PSA" name="Philippine Statistics Authority" size={80} />
             <InstLogo src={citeLogo} fallback="CITE" name="College of Information Technology Education" />
           </div>
 

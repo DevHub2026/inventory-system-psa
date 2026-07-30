@@ -119,7 +119,7 @@ export function TemplatePreview({ template }: TemplatePreviewProps) {
           {/* ── Document header ── */}
           <div style={{ borderBottom: '1.5px solid #374151', paddingBottom: 10, marginBottom: 14, textAlign: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 6 }}>
-              <img src={logo} alt="Logo" style={{ width: 36, height: 36, objectFit: 'contain' }}/>
+              <img src={logo} alt="Logo" style={{ width: 56, height: 56, objectFit: 'contain', background: 'transparent' }}/>
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontWeight: 800, letterSpacing: '0.04em', color: '#0F172A', lineHeight: 1.2, fontSize: `${Math.max(9, fontSize - 1)}px` }}>
                   {orgName}
