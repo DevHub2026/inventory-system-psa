@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { BrowserQRCodeSvgWriter } from '@zxing/browser'
-import DOMPurify from 'dompurify'
 import { cn } from '@/utils/cn'
 
 interface QrCodeProps {

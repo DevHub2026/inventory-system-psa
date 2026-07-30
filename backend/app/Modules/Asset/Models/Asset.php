@@ -48,11 +48,8 @@ class Asset extends Model
             'condition_status' => ConditionStatus::class,
             'purchase_date' => 'date',
             'warranty_until' => 'date',
-<<<<<<< HEAD
             'insurance_expiration_date' => 'date',
-=======
             'date_issued' => 'date',
->>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
             'purchase_cost' => 'decimal:2',
         ];
     }
