@@ -18,11 +18,15 @@ import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
 import { SharedQrScanner } from '@/components/qr/SharedQrScanner'
 import { QrCode } from '@/components/QrCode'
 import type { Asset, AssetStatus } from '@/types'
-import { isAdmin, isStaff, hasAnyRole } from '@/utils/roleHelpers'
 import { getEffectiveAssetStatus } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 import { GenerateDocumentModal } from '@/components/documents/GenerateDocumentModal'
 import { ReissueAssetModal } from '@/components/assets/ReissueAssetModal'
+import { PermanentIssueModal } from '@/components/issuance/PermanentIssueModal'
+import { IssuanceUserSearchSelect } from '@/components/issuance/IssuanceUserSearchSelect'
+import { permanentIssuanceService } from '@/services/permanentIssuanceService'
+import type { IssuanceUserSummary } from '@/types/permanentIssuance'
+import { canManageIssuance, isAdmin, isStaff } from '@/utils/roleHelpers'
 
 
 /* ── shared select / textarea style ── */
@@ -37,6 +41,14 @@ const TEXTAREA_CLS =
   'focus:border-[#0D47A1] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/15'
 
 const LABEL_CLS = 'mb-1.5 block text-[13px] font-medium text-[#1F2937]'
+
+function hasPermanentHolder(asset: Asset): boolean {
+  return Boolean(asset.issued_to_user_id || asset.issued_to)
+}
+
+function canPermanentIssueAsset(asset: Asset): boolean {
+  return !['BORROWED', 'RESERVED', 'MAINTENANCE', 'RETIRED', 'DISPOSED'].includes(asset.status)
+}
 
 // ─── Color palette for summary cards ──────────────────────────────────────────
 const colors = {
@@ -101,6 +113,7 @@ function SummaryCard({
 interface ActionCellProps {
   asset: Asset
   canManageAssets: boolean
+  canManageIssuance: boolean
   canCompleteBorrowing: boolean
   onView: () => void
   onQrLabel: () => void
@@ -110,11 +123,12 @@ interface ActionCellProps {
   onReserve: () => void
   onReturn: () => void
   onRelease: () => void
+  onPermanentIssue: () => void
 }
 
 function ActionCell({
-  asset, canManageAssets, canCompleteBorrowing,
-  onView, onQrLabel, onEdit, onDelete, onBorrow, onReserve, onReturn, onRelease,
+  asset, canManageAssets, canManageIssuance, canCompleteBorrowing,
+  onView, onQrLabel, onEdit, onDelete, onBorrow, onReserve, onReturn, onRelease, onPermanentIssue,
 }: ActionCellProps) {
   const [openMenu, setOpenMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -217,6 +231,9 @@ function ActionCell({
             {menuItem(<QrIcon size={14} />, 'QR Label', onQrLabel)}
             {asset.status === 'AVAILABLE' && menuItem(<Clock size={14} />, 'Request Borrow', onReserve)}
             {asset.status === 'RESERVED' && asset.reservation_context?.status === 'APPROVED' && canCompleteBorrowing && menuItem(<Send size={14} />, 'Release Asset', onRelease)}
+            {canManageIssuance && !hasPermanentHolder(asset) && canPermanentIssueAsset(asset) && (
+              menuItem(<Package size={14} />, 'Permanent Issue', onPermanentIssue)
+            )}
             {canManageAssets && menuItem(<Edit3 size={14} />, 'Edit Asset', onEdit)}
             {canManageAssets && (
               <>
@@ -235,6 +252,7 @@ export function AssetPage() {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const canManageAssets     = isAdmin(user)
+  const canIssueAssets      = canManageIssuance(user)
   const canCompleteBorrowing = isAdmin(user) || isStaff(user)
 
   const [rows,      setRows]      = useState<Asset[]>([])
@@ -261,7 +279,12 @@ export function AssetPage() {
   const [qrAsset,    setQrAsset]    = useState<Asset | null>(null)
   const [scannerOpen,setScannerOpen]= useState(false)
   const [editAsset,  setEditAsset]  = useState<Asset | null>(null)
+  const [issueAsset, setIssueAsset] = useState<Asset | null>(null)
   const [saving,     setSaving]     = useState(false)
+  const [issuing,    setIssuing]    = useState(false)
+  const [issueUserId, setIssueUserId] = useState<number | null>(null)
+  const [issueUser, setIssueUser] = useState<IssuanceUserSummary | null>(null)
+  const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10))
 
   // Printable issuance receipt
   const [printIssuanceId, setPrintIssuanceId] = useState<number | null>(null)
@@ -285,9 +308,8 @@ export function AssetPage() {
   const [codeValidation, setCodeValidation] = useState<{ exists: boolean; message: string } | null>(null)
 
   const [editForm,   setEditForm]   = useState<UpdateAssetPayload>({
-    asset_number: '', name: '', description: '', model: '', status: 'AVAILABLE', condition_status: '', remarks: '',
+    asset_number: '', property_number: '', name: '', description: '', model: '', status: 'AVAILABLE', condition_status: '', remarks: '',
     asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null,
-    issued_to: '', date_issued: '',
   })
 
   const loadSetupOptions = useCallback(async () => {
@@ -379,6 +401,7 @@ export function AssetPage() {
       setEditAsset(a)
       setEditForm({
         asset_number: a.asset_number,
+        property_number: a.property_number ?? '',
         name: a.name,
         description: a.description ?? '',
         asset_category_id: a.asset_category_id ?? null,
@@ -389,9 +412,18 @@ export function AssetPage() {
         status: a.status,
         condition_status: a.condition_status ?? '',
         remarks: a.remarks ?? '',
-        issued_to: a.issued_to ?? '',
-        date_issued: a.date_issued ?? '',
       })
+      setIssueUserId(a.issued_to_user_id ?? null)
+      setIssueUser(a.issued_to_user ? {
+        id: a.issued_to_user.id,
+        full_name: a.issued_to_user.full_name,
+        employee_number: a.issued_to_user.employee_number,
+        email: a.issued_to_user.email ?? undefined,
+        department: a.issued_to_user.department ? { id: 0, name: a.issued_to_user.department } : null,
+        office: a.issued_to_user.office ? { id: 0, name: a.issued_to_user.office } : null,
+        roles: a.issued_to_user.roles?.map((name, index) => ({ id: index, name })) ?? [],
+      } : null)
+      setIssueDate(a.date_issued ?? new Date().toISOString().slice(0, 10))
     } catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to load asset for editing.') }
   }
 
@@ -407,20 +439,35 @@ export function AssetPage() {
       setMessage('Please fix the duplicate Item Code before saving.')
       return
     }
+    const shouldIssue =
+      !hasPermanentHolder(editAsset) &&
+      issueUserId !== null &&
+      Boolean(issueDate)
+
     setSaving(true); setMessage(null)
     try {
       await assetService.update(editAsset.id, {
         ...editForm,
         asset_number: editForm.asset_number?.trim() || undefined,
+        property_number: editForm.property_number?.trim() || null,
         description: editForm.description || null,
         model: editForm.model || null,
         condition_status: editForm.condition_status || null,
         remarks: editForm.remarks || null,
-        issued_to: editForm.issued_to || null,
-        date_issued: editForm.date_issued || null,
       })
+
+      if (shouldIssue) {
+        await permanentIssuanceService.assignPermanentIssue(editAsset.id, {
+          issued_to_user_id: issueUserId!,
+          date_issued: issueDate,
+        })
+        notifyDataChanged('assets')
+        setMessage('Asset updated and permanently issued successfully.')
+      } else {
+        setMessage('Asset updated successfully.')
+      }
+
       setEditAsset(null)
-      setMessage('Asset updated successfully.')
       await load(page)
       void loadSummary()
     } catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to update asset.') }
@@ -646,18 +693,22 @@ export function AssetPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
               <colgroup>
                 <col style={{ width: 140 }} />
+                <col style={{ width: 140 }} />
                 <col style={{ minWidth: 200 }} />
                 <col style={{ width: 160 }} />
                 <col style={{ width: 120 }} />
+                <col style={{ width: 180 }} />
                 <col style={{ width: 140 }} />
                 <col style={{ width: 120 }} />
               </colgroup>
               <thead>
                 <tr>
-                  <th style={th}>Asset No.</th>
+                  <th style={th}>Asset Number</th>
+                  <th style={th}>Property Number</th>
                   <th style={th}>Name</th>
                   <th style={th}>Category</th>
                   <th style={th}>Status</th>
+                  <th style={th}>Accountability</th>
                   <th style={th}>Location</th>
                   <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20 }}>Actions</th>
                 </tr>
@@ -675,7 +726,7 @@ export function AssetPage() {
                       (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? '#fff' : '#FAFBFC'
                     }}
                   >
-                    {/* Asset No. */}
+                    {/* Asset Number */}
                     <td style={td}>
                       <code style={{
                         fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
@@ -685,6 +736,22 @@ export function AssetPage() {
                       }}>
                         {r.asset_number}
                       </code>
+                    </td>
+
+                    {/* Property Number */}
+                    <td style={td}>
+                      {r.property_number ? (
+                        <code style={{
+                          fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                          fontSize: 11.5, color: '#475569',
+                          background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                          display: 'inline-block',
+                        }}>
+                          {r.property_number}
+                        </code>
+                      ) : (
+                        <span style={{ color: '#94A3B8' }}>—</span>
+                      )}
                     </td>
 
                     {/* Name */}
@@ -727,6 +794,22 @@ export function AssetPage() {
                       })()}
                     </td>
 
+                    {/* Accountability */}
+                    <td style={td}>
+                      <span style={{ color: '#64748B', fontSize: 13 }}>
+                        {r.issued_to_user?.full_name
+                          ? `Issued to ${r.issued_to_user.full_name}`
+                          : r.issued_to
+                            ? `Issued to ${r.issued_to}`
+                            : 'Unassigned'}
+                      </span>
+                      {r.is_unlinked_holder && (
+                        <div style={{ fontSize: 11.5, color: '#B45309', marginTop: 2 }}>
+                          Legacy unlinked holder
+                        </div>
+                      )}
+                    </td>
+
                     {/* Location */}
                     <td style={td}>
                       <span style={{ color: '#64748B', fontSize: 13 }}>
@@ -742,6 +825,7 @@ export function AssetPage() {
                       <ActionCell
                         asset={r}
                         canManageAssets={canManageAssets}
+                        canManageIssuance={canIssueAssets}
                         canCompleteBorrowing={canCompleteBorrowing}
                         onView={() => void openView(r.id)}
                         onQrLabel={() => void openQrLabel(r.id)}
@@ -751,6 +835,7 @@ export function AssetPage() {
                         onReserve={() => setReserveId(r.id)}
                         onReturn={() => setReturnId(r.id)}
                         onRelease={() => r.reservation_context ? setReleaseAsset(r) : null}
+                        onPermanentIssue={() => setIssueAsset(r)}
                       />
                     </td>
                   </tr>
@@ -931,10 +1016,21 @@ export function AssetPage() {
         onClose={() => setViewAsset(null)}
         footer={
           viewAsset ? (
-            <div className="flex items-center justify-between w-full">
-              <div>
-                {viewAsset.issued_to &&
-                  hasAnyRole(user, ['Super Administrator', 'System Administrator', 'Property Custodian', 'Inventory Officer']) &&
+            <div className="flex items-center justify-between w-full gap-3">
+              <div className="flex flex-wrap gap-2">
+                {canIssueAssets && viewAsset && !hasPermanentHolder(viewAsset) && canPermanentIssueAsset(viewAsset) && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setIssueAsset(viewAsset)
+                      setViewAsset(null)
+                    }}
+                  >
+                    Permanent Issue
+                  </Button>
+                )}
+                {viewAsset && hasPermanentHolder(viewAsset) &&
+                  canIssueAssets &&
                   viewAsset.status !== 'BORROWED' &&
                   viewAsset.status !== 'RESERVED' &&
                   viewAsset.status !== 'MAINTENANCE' &&
@@ -946,11 +1042,11 @@ export function AssetPage() {
                         setViewAsset(null)
                       }}
                     >
-                      Re-Issue Asset
+                      Re-Issue / Transfer
                     </Button>
                   )}
               </div>
-              {viewAsset.issued_to && (
+              {viewAsset && hasPermanentHolder(viewAsset) && (
                 <Button
                   size="sm"
                   variant="secondary"
@@ -998,6 +1094,7 @@ export function AssetPage() {
               <dl className="grid gap-4 text-sm sm:grid-cols-2 mt-2">
                 {[
                   { label: 'Asset Number', value: viewAsset.asset_number, mono: true },
+                  { label: 'Property Number', value: viewAsset.property_number ?? '—', mono: true },
                   { label: 'Status', value: (() => {
                     const eff = getEffectiveAssetStatus(viewAsset)
                     return (
@@ -1022,9 +1119,10 @@ export function AssetPage() {
                   { label: 'Condition',    value: viewAsset.condition_status ?? '—' },
                   { label: 'Description',  value: viewAsset.description ?? '—', full: true },
                   { label: 'Remarks',      value: viewAsset.remarks ?? '—',     full: true },
-                  { label: 'Issued To',    value: viewAsset.issued_to ?? '—' },
-                  { label: 'Issued By',    value: viewAsset.issued_by_name ?? '—' },
-                  { label: 'Date Issued',  value: viewAsset.date_issued ?? '—', full: true },
+                  { label: 'Accountable To', value: viewAsset.issued_to_user?.full_name ?? viewAsset.issued_to ?? '—' },
+                  { label: 'Employee No.', value: viewAsset.issued_to_user?.employee_number ?? (viewAsset.is_unlinked_holder ? 'Unlinked record' : '—') },
+                  { label: 'Issued By', value: viewAsset.issued_by_name ?? '—' },
+                  { label: 'Date Issued', value: viewAsset.date_issued ?? '—', full: true },
                 ].map((item) => (
                   <div key={item.label} className={item.full ? 'sm:col-span-2' : ''}>
                     <dt className="text-[11px] font-bold uppercase tracking-wide text-[#9CA3AF]">{item.label}</dt>
@@ -1203,7 +1301,7 @@ export function AssetPage() {
           <div>
             <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">1. Basic Information</p>
             <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <Input
                   label="Item Name"
                   value={editForm.name ?? ''}
@@ -1237,6 +1335,16 @@ export function AssetPage() {
                       </div>
                     )}
                   </div>
+                </div>
+                <div>
+                  <label className={LABEL_CLS}>Property Number</label>
+                  <input
+                    type="text"
+                    className={SELECT_CLS}
+                    value={editForm.property_number ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, property_number: e.target.value })}
+                    placeholder="e.g. PROP-2026-001"
+                  />
                 </div>
               </div>
 
@@ -1350,8 +1458,6 @@ export function AssetPage() {
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value as AssetStatus })}
                   >
                     <option value="AVAILABLE">Available</option>
-                    <option value="RESERVED">Reserved</option>
-                    <option value="BORROWED">Borrowed</option>
                     <option value="MAINTENANCE">Maintenance</option>
                     <option value="UNAVAILABLE">Unavailable</option>
                     <option value="RETIRED">Retired</option>
@@ -1363,26 +1469,70 @@ export function AssetPage() {
           </div>
 
           {/* Section 4: Permanent Issuance Information */}
-          <div>
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">4. Permanent Issuance Information</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                label="Issued To"
-                value={editForm.issued_to ?? ''}
-                onChange={(e) => setEditForm({ ...editForm, issued_to: e.target.value })}
-                placeholder="Full Name / Accountable Officer"
-              />
-              <div>
-                <label className={LABEL_CLS}>Date Issued</label>
-                <input
-                  type="date"
-                  className={SELECT_CLS}
-                  value={editForm.date_issued ?? ''}
-                  onChange={(e) => setEditForm({ ...editForm, date_issued: e.target.value })}
-                />
-              </div>
+          {editAsset && (
+            <div>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">4. Permanent Issuance Information</p>
+              {hasPermanentHolder(editAsset) ? (
+                <div className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-4 space-y-2">
+                  <p className="text-sm font-semibold text-[#0F172A]">
+                    Accountable To: {editAsset.issued_to_user?.full_name ?? editAsset.issued_to ?? '—'}
+                  </p>
+                  {editAsset.is_unlinked_holder && (
+                    <p className="text-xs text-amber-700">This record uses a legacy unlinked holder name.</p>
+                  )}
+                  <p className="text-sm text-[#64748B]">
+                    To transfer accountability, close edit and use <strong>Re-Issue / Transfer</strong> from Asset Details.
+                  </p>
+                </div>
+              ) : canIssueAssets ? (
+                <div className="space-y-3 rounded-xl border border-[#E5E7EB] p-4">
+                  <IssuanceUserSearchSelect
+                    value={issueUserId}
+                    initialUser={issueUser}
+                    onChange={(userId, user) => {
+                      setIssueUserId(userId)
+                      setIssueUser(user)
+                    }}
+                  />
+                  <div>
+                    <label className={LABEL_CLS}>Date Issued</label>
+                    <input
+                      type="date"
+                      className={SELECT_CLS}
+                      value={issueDate}
+                      onChange={(e) => setIssueDate(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    disabled={issuing || !issueUserId}
+                    onClick={() => {
+                      if (!editAsset || !issueUserId) return
+                      setIssuing(true)
+                      void permanentIssuanceService.assignPermanentIssue(editAsset.id, {
+                        issued_to_user_id: issueUserId,
+                        date_issued: issueDate,
+                      }).then(async () => {
+                        setMessage('Asset permanently issued successfully.')
+                        notifyDataChanged('assets')
+                        const refreshed = await assetService.show(editAsset.id)
+                        setEditAsset(refreshed)
+                      }).catch((e: unknown) => {
+                        setMessage(e instanceof Error ? e.message : 'Unable to issue asset.')
+                      }).finally(() => setIssuing(false))
+                    }}
+                  >
+                    {issuing ? 'Issuing…' : 'Issue Asset'}
+                  </Button>
+                  <p className="text-xs text-[#94A3B8]">
+                    Select an accountable employee and click <strong>Issue Asset</strong>, or use <strong>Save Changes</strong> to update the asset and issue in one step.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-[#64748B]">No permanent holder assigned.</p>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Section 5: Audit Information */}
           {editAsset && (
@@ -1426,6 +1576,20 @@ export function AssetPage() {
           onClose={() => setReissueAsset(null)}
           asset={reissueAsset}
           onSuccess={() => void load(page)}
+        />
+      )}
+
+      {issueAsset && (
+        <PermanentIssueModal
+          open={issueAsset !== null}
+          onClose={() => setIssueAsset(null)}
+          asset={issueAsset}
+          onSuccess={() => {
+            setMessage('Asset permanently issued successfully.')
+            notifyDataChanged('assets')
+            void load(page)
+            void loadSummary()
+          }}
         />
       )}
     </div>

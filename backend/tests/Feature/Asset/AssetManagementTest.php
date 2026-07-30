@@ -95,7 +95,10 @@ class AssetManagementTest extends TestCase
 
     public function test_admin_can_view_asset(): void
     {
-        $asset = Asset::factory()->create();
+        $asset = Asset::factory()->create([
+            'asset_number' => 'AST-100',
+            'property_number' => 'PROP-100',
+        ]);
 
         $response = $this->actingAs($this->admin)
             ->getJson("/api/v1/assets/{$asset->id}");
@@ -106,8 +109,52 @@ class AssetManagementTest extends TestCase
                 'data' => [
                     'id' => $asset->id,
                     'asset_number' => $asset->asset_number,
+                    'property_number' => $asset->property_number,
                 ]
             ]);
+    }
+
+    public function test_asset_search_matches_property_number_without_copying_asset_number(): void
+    {
+        $matching = Asset::factory()->create([
+            'asset_number' => 'AST-SEARCH-1',
+            'property_number' => 'PROP-SEARCH-1',
+            'name' => 'Searchable Asset',
+        ]);
+
+        Asset::factory()->create([
+            'asset_number' => 'AST-SEARCH-2',
+            'property_number' => null,
+            'name' => 'Different Asset',
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson('/api/v1/assets?search=PROP-SEARCH-1');
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data.items'));
+        $this->assertSame($matching->id, $response->json('data.items.0.id'));
+        $this->assertSame('AST-SEARCH-1', $response->json('data.items.0.asset_number'));
+        $this->assertSame('PROP-SEARCH-1', $response->json('data.items.0.property_number'));
+    }
+
+    public function test_asset_update_cannot_set_workflow_owned_statuses_manually(): void
+    {
+        $asset = Asset::factory()->create([
+            'status' => AssetStatus::AVAILABLE->value,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->putJson("/api/v1/assets/{$asset->id}", [
+                'status' => AssetStatus::BORROWED->value,
+            ]);
+
+        $response->assertStatus(422);
+        $this->assertStringContainsString('cannot be set manually', (string) $response->json('message'));
+        $this->assertDatabaseHas('assets', [
+            'id' => $asset->id,
+            'status' => AssetStatus::AVAILABLE->value,
+        ]);
     }
 
     public function test_admin_can_update_asset(): void

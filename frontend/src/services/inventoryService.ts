@@ -9,6 +9,9 @@ export interface CreateInventoryItemPayload {
   name: string
   sku?: string
   type?: 'non_expendable' | 'expendable'
+  classification?: 'PPE' | 'SE' | 'SUPPLY'
+  item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY'
+  classification_reason?: string
   quantity: number
   unit: string
   reorder_level?: number
@@ -20,6 +23,9 @@ export interface UpdateInventoryItemPayload {
   name?: string
   sku?: string
   type?: 'non_expendable' | 'expendable'
+  classification?: 'PPE' | 'SE' | 'SUPPLY'
+  item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY'
+  classification_reason?: string
   quantity?: number
   unit?: string
   reorder_level?: number
@@ -33,6 +39,7 @@ export interface InventoryFilters {
   search?: string
   status?: string
   type?: 'non_expendable' | 'expendable'
+  classification?: 'PPE' | 'SE' | 'SUPPLY'
   low_stock?: boolean
 }
 

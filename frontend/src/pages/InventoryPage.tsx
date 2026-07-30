@@ -22,7 +22,7 @@ function movementTypeLabel(t: string) {
   return ({ stock_in: 'Stock Added', stock_out: 'Stock Removed', adjustment: 'Quantity Corrected' }[t] ?? t)
 }
 
-type TabKey = 'all' | 'non_expendable' | 'expendable'
+type TabKey = 'all' | 'ppe' | 'se' | 'supply'
 
 interface SummaryData {
   nonExp: { total: number; in_use: number; available: number; maintenance: number }
@@ -87,7 +87,7 @@ function SummaryCard({ data, onNavigate }: { data: SummaryData; onNavigate: (tab
       {/* PPE Card */}
       <SummaryCardInner
         style={cardStyle}
-        onClick={() => onNavigate('non_expendable')}
+        onClick={() => onNavigate('ppe')}
         icon={<Monitor size={22} style={{ color: colors.blue.icon }} />}
         color={colors.blue}
         title="Property, Plant & Equipment"
@@ -104,11 +104,11 @@ function SummaryCard({ data, onNavigate }: { data: SummaryData; onNavigate: (tab
       {/* SE Card */}
       <SummaryCardInner
         style={cardStyle}
-        onClick={() => onNavigate('expendable')}
+        onClick={() => onNavigate('se')}
         icon={<Package size={22} style={{ color: colors.green.icon }} />}
         color={colors.green}
         title="Semi-Expendable"
-        subtitle="SE — Consumable Items"
+        subtitle="SE — Accountable Property"
         total={data.exp.total}
         totalLabel="Total Items"
         stats={[
@@ -190,8 +190,9 @@ function SummaryCardInner({
 function Tabs({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => void }) {
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'all',           label: 'All Items' },
-    { key: 'non_expendable',label: 'PPE (Durable Assets)' },
-    { key: 'expendable',    label: 'SE (Consumables)' },
+    { key: 'ppe',           label: 'PPE' },
+    { key: 'se',            label: 'Semi-Expendable' },
+    { key: 'supply',        label: 'Supply' },
   ]
   return (
     <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E2E8F0', background: '#FAFBFC' }}>
@@ -427,7 +428,7 @@ export function InventoryPage() {
     description?: string
   }>({
     name: '', sku: '', quantity: 0, unit: '', reorder_level: 0,
-    track_as_asset: true, type: 'non_expendable',
+    track_as_asset: true, type: 'non_expendable', classification: 'PPE', item_nature: 'ACCOUNTABLE_PROPERTY',
     asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
   })
 
@@ -451,12 +452,21 @@ export function InventoryPage() {
   const loadInventory = useCallback(async (pg = 1) => {
     if (pg === 1) setLoading(true); else setLoadingMore(true)
     try {
+      const classification =
+        activeTab === 'all'
+          ? undefined
+          : activeTab === 'ppe'
+            ? 'PPE'
+            : activeTab === 'se'
+              ? 'SE'
+              : 'SUPPLY'
+
       const result = await inventoryService.list({
         page: pg,
         per_page: 20,
         search: search || undefined,
         status: statusFilter || undefined,
-        type: activeTab === 'all' ? undefined : activeTab as 'non_expendable' | 'expendable',
+        classification,
       })
       setRows(prev => pg === 1 ? result.items : [...prev, ...result.items])
       setPage(result.meta.current_page)
@@ -472,25 +482,25 @@ export function InventoryPage() {
   // Load summary counts — fires once and on explicit refresh only
   const loadSummary = useCallback(async () => {
     try {
-      const [ne, ex, neAll, exAll] = await Promise.all([
-        inventoryService.list({ type: 'non_expendable', per_page: 1 }),
-        inventoryService.list({ type: 'expendable',    per_page: 1 }),
-        inventoryService.list({ type: 'non_expendable', per_page: 100 }),
-        inventoryService.list({ type: 'expendable',    per_page: 100 }),
+      const [ppe, se, ppeAll, seAll] = await Promise.all([
+        inventoryService.list({ classification: 'PPE', per_page: 1 }),
+        inventoryService.list({ classification: 'SE', per_page: 1 }),
+        inventoryService.list({ classification: 'PPE', per_page: 100 }),
+        inventoryService.list({ classification: 'SE', per_page: 100 }),
       ])
       const count = (arr: InventoryItem[], s: string) => arr.filter((i) => i.status === s).length
       setSummary({
         nonExp: {
-          total:       ne.meta.total,
-          in_use:      count(neAll.items, 'IN_USE'),
-          available:   count(neAll.items, 'IN_STOCK'),
-          maintenance: count(neAll.items, 'UNDER_MAINTENANCE'),
+          total:       ppe.meta.total,
+          in_use:      count(ppeAll.items, 'IN_USE'),
+          available:   count(ppeAll.items, 'IN_STOCK'),
+          maintenance: count(ppeAll.items, 'UNDER_MAINTENANCE'),
         },
         exp: {
-          total:        ex.meta.total,
-          in_stock:     count(exAll.items, 'IN_STOCK'),
-          low_stock:    count(exAll.items, 'LOW_STOCK'),
-          out_of_stock: count(exAll.items, 'OUT_OF_STOCK'),
+          total:        se.meta.total,
+          in_stock:     count(seAll.items, 'IN_STOCK'),
+          low_stock:    count(seAll.items, 'LOW_STOCK'),
+          out_of_stock: count(seAll.items, 'OUT_OF_STOCK'),
         },
       })
     } catch { /* summary is best-effort */ }
@@ -533,8 +543,16 @@ export function InventoryPage() {
     setCodeValidation(null)
     setFormData({
       name: '', sku: '', quantity: 0, unit: '', reorder_level: 0,
-      track_as_asset: activeTab !== 'expendable',
-      type: activeTab === 'all' ? 'non_expendable' : activeTab as 'non_expendable' | 'expendable',
+      track_as_asset: activeTab !== 'supply',
+      classification: activeTab === 'all'
+        ? 'PPE'
+        : activeTab === 'ppe'
+          ? 'PPE'
+          : activeTab === 'se'
+            ? 'SE'
+            : 'SUPPLY',
+      item_nature: activeTab === 'supply' ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY',
+      type: activeTab === 'supply' ? 'expendable' : 'non_expendable',
       asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
     })
     setModalOpen(true)
@@ -550,6 +568,8 @@ export function InventoryPage() {
       unit: item.unit,
       reorder_level: item.reorder_level || 0,
       track_as_asset: Boolean(item.asset_id),
+      classification: (item.classification as 'PPE' | 'SE' | 'SUPPLY') ?? ((item.type === 'expendable') ? 'SUPPLY' : 'PPE'),
+      item_nature: (item.item_nature as 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY') ?? ((item.type === 'expendable') ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY'),
       type: (item.type as 'non_expendable' | 'expendable') ?? 'non_expendable',
       asset_category_id: item.asset_category_id ?? null,
       manufacturer_id: item.manufacturer_id ?? null,
@@ -624,16 +644,22 @@ export function InventoryPage() {
   // ── Export modal state ─────────────────────────────────────────────────────
   const [exportModalOpen,  setExportModalOpen]  = useState(false)
   const [exportFormat,     setExportFormat]     = useState<'xlsx' | 'csv' | 'json'>('xlsx')
-  const [exportScope,      setExportScope]      = useState<'all' | 'non_expendable' | 'expendable'>('all')
+  const [exportScope,      setExportScope]      = useState<'all' | 'ppe' | 'se' | 'supply'>('all')
   const [exporting,        setExporting]        = useState(false)
 
   const handleExport = async () => {
     setExporting(true)
     try {
-      const scopeFilter = exportScope === 'all' ? undefined : exportScope as 'non_expendable' | 'expendable'
+      const scopeFilter = exportScope === 'all'
+        ? undefined
+        : exportScope === 'ppe'
+          ? 'PPE'
+          : exportScope === 'se'
+            ? 'SE'
+            : 'SUPPLY'
 
       if (exportFormat === 'json') {
-        const result = await inventoryService.list({ per_page: 9999, search: search || undefined, type: scopeFilter })
+        const result = await inventoryService.list({ per_page: 9999, search: search || undefined, classification: scopeFilter })
         const json = JSON.stringify(result.items, null, 2)
         const blob = new Blob([json], { type: 'application/json' })
         const url  = URL.createObjectURL(blob)
@@ -643,8 +669,8 @@ export function InventoryPage() {
         document.body.appendChild(a); a.click(); document.body.removeChild(a)
         URL.revokeObjectURL(url)
       } else if (exportFormat === 'csv') {
-        const result = await inventoryService.list({ per_page: 9999, search: search || undefined, type: scopeFilter })
-        const headers = ['id', 'name', 'type', 'sku', 'asset_number', 'quantity', 'unit', 'status', 'reorder_level', 'remarks']
+        const result = await inventoryService.list({ per_page: 9999, search: search || undefined, classification: scopeFilter })
+        const headers = ['id', 'name', 'type', 'classification', 'sku', 'property_number', 'asset_number', 'accountability', 'quantity', 'unit', 'status', 'reorder_level', 'remarks']
         const lines   = [headers.join(',')]
         for (const item of result.items) {
           const itemMap = item as unknown as Record<string, unknown>
@@ -664,7 +690,7 @@ export function InventoryPage() {
         document.body.appendChild(a); a.click(); document.body.removeChild(a)
         URL.revokeObjectURL(url)
       } else {
-        const blob = await inventoryService.downloadExport({ search: search || undefined, status: statusFilter || undefined, type: scopeFilter })
+        const blob = await inventoryService.downloadExport({ search: search || undefined, status: statusFilter || undefined, classification: scopeFilter })
         const url  = URL.createObjectURL(blob)
         const a    = document.createElement('a')
         a.href     = url
@@ -737,7 +763,7 @@ export function InventoryPage() {
             Import
           </Button>
           <Button variant="secondary" size="sm" onClick={() => {
-            setExportScope(activeTab === 'all' ? 'all' : activeTab as 'non_expendable' | 'expendable')
+            setExportScope(activeTab === 'all' ? 'all' : activeTab)
             setExportModalOpen(true)
           }}>
             <Download size={14} />
@@ -873,6 +899,8 @@ export function InventoryPage() {
               <colgroup>
                 <col style={{ minWidth: 200 }} />
                 <col style={{ width: 160 }} />
+                <col style={{ width: 160 }} />
+                <col style={{ width: 170 }} />
                 <col style={{ width: 72 }} />
                 <col style={{ width: 80 }} />
                 <col style={{ width: 110 }} />
@@ -881,7 +909,9 @@ export function InventoryPage() {
               <thead>
                 <tr>
                   <th style={th}>Item</th>
-                  <th style={th}>Code / Asset No.</th>
+                  <th style={th}>Property Number</th>
+                  <th style={th}>Asset Number</th>
+                  <th style={th}>Accountability</th>
                   <th style={{ ...th, textAlign: 'center' as const }}>Qty</th>
                   <th style={th}>Unit</th>
                   <th style={th}>Status</th>
@@ -911,8 +941,8 @@ export function InventoryPage() {
                         }}>
                           {r.name}
                         </span>
-                        <Badge tone={r.type === 'non_expendable' ? 'blue' : 'green'}>
-                          {r.type === 'non_expendable' ? 'PPE' : 'SE'}
+                        <Badge tone={r.classification === 'SUPPLY' ? 'yellow' : r.classification === 'SE' ? 'green' : 'blue'}>
+                          {r.classification ?? (r.type === 'expendable' ? 'SUPPLY' : 'PPE')}
                         </Badge>
                       </div>
                       {r.remarks && (
@@ -926,9 +956,11 @@ export function InventoryPage() {
                       )}
                     </td>
 
-                    {/* Code */}
+                    {/* Property Number */}
                     <td style={td}>
-                      {(r.asset_number ?? r.sku) ? (
+                      {r.classification === 'SUPPLY' ? (
+                        <span style={{ color: '#CBD5E1' }}>—</span>
+                      ) : r.property_number ? (
                         <code style={{
                           fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
                           fontSize: 11.5, color: '#475569',
@@ -936,10 +968,41 @@ export function InventoryPage() {
                           display: 'inline-block', maxWidth: 160,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>
-                          {r.asset_number ?? r.sku}
+                          {r.property_number}
                         </code>
                       ) : (
                         <span style={{ color: '#CBD5E1' }}>—</span>
+                      )}
+                    </td>
+
+                    {/* Asset Number */}
+                    <td style={td}>
+                      {r.classification === 'SUPPLY' ? (
+                        <span style={{ color: '#CBD5E1' }}>—</span>
+                      ) : r.asset_number ? (
+                        <code style={{
+                          fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                          fontSize: 11.5, color: '#475569',
+                          background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                          display: 'inline-block', maxWidth: 160,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {r.asset_number}
+                        </code>
+                      ) : (
+                        <span style={{ color: '#CBD5E1' }}>—</span>
+                      )}
+                    </td>
+
+                    {/* Accountability */}
+                    <td style={td}>
+                      <span style={{ color: '#64748B', fontSize: 13 }}>
+                        {r.classification === 'SUPPLY' ? '—' : (r.accountability ?? '—')}
+                      </span>
+                      {r.is_unlinked_holder && (
+                        <div style={{ fontSize: 11.5, color: '#B45309', marginTop: 2 }}>
+                          Legacy unlinked holder
+                        </div>
                       )}
                     </td>
 
@@ -1014,12 +1077,18 @@ export function InventoryPage() {
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Inventory Type</div>
             <div style={{ display: 'flex', gap: 10 }}>
-              {(['non_expendable', 'expendable'] as const).map((t) => {
-                const active = formData.type === t
+              {(['PPE', 'SE', 'SUPPLY'] as const).map((c) => {
+                const active = formData.classification === c
                 return (
-                  <button key={t} type="button" onClick={() => setFormData({ ...formData, type: t, track_as_asset: t === 'non_expendable' })}
+                  <button key={c} type="button" onClick={() => setFormData({
+                    ...formData,
+                    classification: c,
+                    item_nature: c === 'SUPPLY' ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY',
+                    track_as_asset: c !== 'SUPPLY',
+                    type: c === 'SUPPLY' ? 'expendable' : 'non_expendable',
+                  })}
                     style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`, background: active ? '#EFF6FF' : '#fff', color: active ? '#1E40AF' : '#64748B', fontWeight: active ? 700 : 500, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
-                    {t === 'non_expendable' ? 'Non-Expendable' : 'Expendable'}
+                    {c}
                   </button>
                 )
               })}
@@ -1275,9 +1344,10 @@ export function InventoryPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {([
-                { value: 'all',            label: 'All Items',               desc: 'Export both PPE and SE items' },
-                { value: 'non_expendable', label: 'PPE (Durable Assets)',    desc: 'Computers, equipment, furniture, and other durable assets' },
-                { value: 'expendable',     label: 'SE (Consumables)',        desc: 'Paper, toner, pens, supplies, and other consumable items' },
+                { value: 'all',    label: 'All Items',            desc: 'Export PPE, SE, and Supply records' },
+                { value: 'ppe',    label: 'PPE',                  desc: 'Accountable property with value threshold at or above ₱50,000' },
+                { value: 'se',     label: 'Semi-Expendable',      desc: 'Accountable property below ₱50,000' },
+                { value: 'supply', label: 'Supply',               desc: 'Consumable stock items' },
               ] as const).map((opt) => {
                 const active = exportScope === opt.value
                 return (
@@ -1323,7 +1393,7 @@ export function InventoryPage() {
             fontSize: 12.5, color: '#64748B', lineHeight: 1.5,
           }}>
             Will export <strong style={{ color: '#0F172A' }}>
-              {exportScope === 'all' ? 'all' : exportScope === 'non_expendable' ? 'PPE' : 'SE'} inventory items
+              {exportScope === 'all' ? 'all' : exportScope.toUpperCase()} inventory items
             </strong> as a <strong style={{ color: '#0F172A' }}>.{exportFormat}</strong> file.
             {search && <> Filtered by search: <em>"{search}"</em>.</>}
           </div>

@@ -5,6 +5,7 @@ namespace Tests\Feature\Inventory;
 use App\Enums\UserRole;
 use App\Models\Role;
 use App\Models\User;
+use App\Modules\Asset\Models\Asset;
 use App\Modules\Inventory\Models\InventoryItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -255,6 +256,140 @@ class InventoryManagementTest extends TestCase
         $data = $response->json('data.items');
         $this->assertCount(1, $data);
         $this->assertEquals('Toner Cartridge', $data[0]['name']);
+    }
+
+    public function test_inventory_returns_linked_property_and_asset_numbers_independently_for_accountable_items(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $created = $this->withToken($token)
+            ->postJson('/api/v1/inventory', [
+                'name' => 'Office Laptop',
+                'sku' => 'INV-LAP-001',
+                'quantity' => 1,
+                'unit' => 'unit',
+                'classification' => 'PPE',
+                'item_nature' => 'ACCOUNTABLE_PROPERTY',
+                'track_as_asset' => true,
+            ])
+            ->assertCreated()
+            ->decodeResponseJson()['data'];
+
+        $assetId = $created['asset_id'];
+        $asset = Asset::query()->findOrFail($assetId);
+        $asset->update([
+            'property_number' => 'PROP-LAP-001',
+            'issued_to' => 'Legacy Holder',
+        ]);
+
+        $response = $this->withToken($token)->getJson('/api/v1/inventory');
+
+        $response->assertOk()
+            ->assertJsonPath('data.items.0.classification', 'PPE')
+            ->assertJsonPath('data.items.0.asset_number', $asset->asset_number)
+            ->assertJsonPath('data.items.0.property_number', 'PROP-LAP-001')
+            ->assertJsonPath('data.items.0.accountability', 'Issued to Legacy Holder')
+            ->assertJsonPath('data.items.0.is_unlinked_holder', true);
+    }
+
+    public function test_inventory_classification_filter_returns_only_matching_records(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $this->withToken($token)->postJson('/api/v1/inventory', [
+            'name' => 'Desktop Computer',
+            'sku' => 'INV-PPE-001',
+            'quantity' => 1,
+            'unit' => 'unit',
+            'classification' => 'PPE',
+            'item_nature' => 'ACCOUNTABLE_PROPERTY',
+            'track_as_asset' => true,
+        ])->assertCreated();
+
+        $this->withToken($token)->postJson('/api/v1/inventory', [
+            'name' => 'Cabinet',
+            'sku' => 'INV-SE-001',
+            'quantity' => 2,
+            'unit' => 'unit',
+            'classification' => 'SE',
+            'item_nature' => 'ACCOUNTABLE_PROPERTY',
+            'track_as_asset' => false,
+        ])->assertCreated();
+
+        $this->withToken($token)->postJson('/api/v1/inventory', [
+            'name' => 'Bond Paper',
+            'sku' => 'INV-SUP-001',
+            'quantity' => 50,
+            'unit' => 'ream',
+            'classification' => 'SUPPLY',
+            'item_nature' => 'CONSUMABLE_SUPPLY',
+            'track_as_asset' => false,
+        ])->assertCreated();
+
+        $this->withToken($token)
+            ->getJson('/api/v1/inventory?classification=PPE')
+            ->assertOk();
+        $this->assertSame(['Desktop Computer'], array_column($this->withToken($token)->getJson('/api/v1/inventory?classification=PPE')->json('data.items'), 'name'));
+
+        $this->assertSame(['Cabinet'], array_column($this->withToken($token)->getJson('/api/v1/inventory?classification=SE')->json('data.items'), 'name'));
+        $this->assertSame(['Bond Paper'], array_column($this->withToken($token)->getJson('/api/v1/inventory?classification=SUPPLY')->json('data.items'), 'name'));
+    }
+
+    public function test_supply_records_do_not_enter_asset_accountability_workflow(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/inventory', [
+                'name' => 'Staples',
+                'sku' => 'INV-SUP-ACC-001',
+                'quantity' => 5,
+                'unit' => 'box',
+                'classification' => 'SUPPLY',
+                'item_nature' => 'CONSUMABLE_SUPPLY',
+                'track_as_asset' => false,
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.classification', 'SUPPLY')
+            ->assertJsonPath('data.asset_id', null)
+            ->assertJsonPath('data.asset_number', null)
+            ->assertJsonPath('data.property_number', null)
+            ->assertJsonPath('data.accountability', '—');
+    }
+
+    public function test_linked_accountable_inventory_item_cannot_be_reclassified_as_supply(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $created = $this->withToken($token)
+            ->postJson('/api/v1/inventory', [
+                'name' => 'Projector',
+                'sku' => 'INV-PROJ-001',
+                'quantity' => 1,
+                'unit' => 'unit',
+                'classification' => 'PPE',
+                'item_nature' => 'ACCOUNTABLE_PROPERTY',
+                'track_as_asset' => true,
+            ])
+            ->assertCreated()
+            ->decodeResponseJson()['data'];
+
+        $this->withToken($token)
+            ->putJson('/api/v1/inventory/'.$created['id'], [
+                'name' => 'Projector',
+                'sku' => 'INV-PROJ-001',
+                'quantity' => 1,
+                'unit' => 'unit',
+                'classification' => 'SUPPLY',
+                'item_nature' => 'CONSUMABLE_SUPPLY',
+                'track_as_asset' => false,
+            ])
+            ->assertStatus(422);
     }
 
     public function test_authenticated_user_can_adjust_inventory_quantity_with_reason(): void

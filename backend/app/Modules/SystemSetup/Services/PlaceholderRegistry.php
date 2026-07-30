@@ -54,8 +54,9 @@ class PlaceholderRegistry
             // Asset
             self::def('asset_name', 'Asset Name', 'Official name of the asset.', 'Asset', $assetDocs, 'assets.name'),
             self::def('asset_description', 'Asset Description', 'Description of the asset.', 'Asset', $assetDocs, 'assets.description'),
-            self::def('asset_code', 'Asset Code', 'System asset number (legacy token).', 'Asset', $assetDocs, 'assets.asset_number', aliases: ['property_number']),
-            self::def('property_number', 'Property Number', 'Property / inventory number (alias of asset_code).', 'Asset', $assetDocs, 'assets.asset_number or asset_identifiers PROPERTY_NUMBER', aliases: ['asset_code']),
+            self::def('asset_code', 'Asset Code', 'Legacy alias of asset number for backward compatibility.', 'Asset', $assetDocs, 'assets.asset_number'),
+            self::def('asset_number', 'Asset Number', 'Primary system asset number.', 'Asset', $assetDocs, 'assets.asset_number'),
+            self::def('property_number', 'Property Number', 'Independent property number field.', 'Asset', $assetDocs, 'assets.property_number'),
             self::def('serial_number', 'Serial Number', 'Serial number from asset identifiers.', 'Asset', $assetDocs, 'asset_identifiers where type=SERIAL_NUMBER'),
             self::def('asset_category', 'Asset Category', 'Asset category name.', 'Asset', $assetDocs, 'asset_categories.name', aliases: ['category']),
             self::def('category', 'Category', 'Legacy alias for asset category.', 'Asset', $assetDocs, 'asset_categories.name', aliases: ['asset_category']),

@@ -88,7 +88,8 @@ class UserProfileController extends Controller
     /**
      * GET /api/v1/users/{user}/issued-assets
      *
-     * Returns assets currently issued (status = BORROWED / OVERDUE) to this user.
+     * Returns assets currently borrowed (status = BORROWED / OVERDUE) to this user.
+     * For permanent/accountable issuances use GET /api/v1/permanent-issuances/users/{user}/assets.
      */
     public function issuedAssets(Request $request, User $user): JsonResponse
     {
@@ -127,7 +128,10 @@ class UserProfileController extends Controller
         if ($search = trim((string) $request->query('search', ''))) {
             $like = '%'.$search.'%';
             $query->where(function ($q) use ($like) {
-                $q->whereHas('asset', fn ($a) => $a->where('name', 'like', $like)->orWhere('asset_number', 'like', $like))
+                $q->whereHas('asset', fn ($a) => $a
+                    ->where('name', 'like', $like)
+                    ->orWhere('asset_number', 'like', $like)
+                    ->orWhere('property_number', 'like', $like))
                   ->orWhereHas('asset.identifiers', fn ($ai) => $ai->where('identifier_value', 'like', $like));
             });
         }
@@ -190,6 +194,7 @@ class UserProfileController extends Controller
             'asset_id'         => $b->asset_id,
             'asset_name'       => $b->asset?->name,
             'asset_number'     => $b->asset?->asset_number,
+            'property_number'  => $b->asset?->property_number,
             'asset_code'       => $b->asset?->asset_number,
             'category'         => $b->asset?->category?->name,
             'status'           => $b->status,

@@ -84,11 +84,13 @@ export function ReportPage() {
   )
 
   const assetColumns: Column<AssetReportItem>[] = [
-    { key: 'asset_number', header: 'ASSET NO.',  render: (r) => mono(r.asset_number) },
-    { key: 'name',         header: 'NAME',       render: (r) => bold(r.name) },
-    { key: 'category',     header: 'CATEGORY',   render: (r) => <span style={{ fontSize: 13, color: '#475569' }}>{r.category}</span> },
-    { key: 'status',       header: 'STATUS',     render: (r) => inventoryStatusLabel(r.status) },
-    { key: 'location',     header: 'LOCATION',   render: (r) => <span style={{ fontSize: 13, color: '#475569' }}>{r.location}</span> },
+    { key: 'property_number', header: 'Property Number', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.property_number ?? '—'}</span> },
+    { key: 'asset_number', header: 'Asset Number', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number}</span> },
+    { key: 'name', header: 'Name', render: (r) => <span className="font-medium text-[#1F2937]">{r.name}</span> },
+    { key: 'category', header: 'Category', render: (r) => r.category },
+    { key: 'status', header: 'Status', render: (r) => inventoryStatusLabel(r.status) },
+    { key: 'accountability', header: 'Accountability', render: (r) => r.accountability ?? 'Unassigned' },
+    { key: 'location', header: 'Location', render: (r) => r.location },
   ]
 
   const borrowingColumns: Column<BorrowingReportItem>[] = [

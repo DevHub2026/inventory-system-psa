@@ -22,7 +22,7 @@ import {
   History,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { isAdmin, isStaff, isEmployee } from '@/utils/roleHelpers'
+import { isAdmin, isStaff, isEmployee, canManageIssuance } from '@/utils/roleHelpers'
 import { displayName } from '@/types'
 import logo from '@/assets/logo.png'
 
@@ -32,7 +32,7 @@ const allLinks = [
   { to: '/assets',                 label: 'Assets',                 icon: Boxes,               roles: ['admin', 'staff', 'employee'] },
   { to: '/reservations',           label: 'Borrow Requests',        icon: ClipboardList,       roles: ['admin', 'staff', 'employee'] },
   { to: '/borrowings',             label: 'Borrowed Items',         icon: HandCoins,           roles: ['admin', 'staff', 'employee'] },
-  { to: '/issued-assets',          label: 'Issued Assets',         icon: Briefcase,           roles: ['admin', 'staff'] },
+  { to: '/issued-assets',          label: 'Issued Assets',         icon: Briefcase,           roles: ['admin', 'staff', 'employee'] },
   { to: '/extension-requests',     label: 'Extension Requests',     icon: CalendarClock,       roles: ['admin', 'staff'] },
   { to: '/inventory',              label: 'Inventory',              icon: Package,             roles: ['admin', 'staff'] },
   { to: '/maintenance',            label: 'Maintenance',            icon: Wrench,              roles: ['admin', 'staff'] },
@@ -70,14 +70,33 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
   const navigate = useNavigate()
 
   const getVisibleLinks = () => {
-    if (isAdmin(user))    return allLinks
-    if (isStaff(user))    return allLinks.filter((l) => l.roles.includes('staff'))
-    if (isEmployee(user)) return allLinks.filter((l) => l.roles.includes('employee'))
-    return allLinks.filter((l) => l.roles.includes('employee'))
+    let links
+    if (isAdmin(user)) {
+      links = allLinks
+    } else if (isStaff(user)) {
+      links = allLinks.filter((l) => l.roles.includes('staff') || l.roles.includes('employee'))
+    } else if (isEmployee(user)) {
+      links = allLinks.filter((l) => l.roles.includes('employee'))
+    } else {
+      links = allLinks.filter((l) => l.roles.includes('employee'))
+    }
+
+    const seen = new Set<string>()
+    return links.filter((link) => {
+      if (seen.has(link.to)) return false
+      seen.add(link.to)
+      return true
+    })
   }
 
   const visibleLinks = getVisibleLinks()
   const visiblePaths = new Set(visibleLinks.map((l) => l.to))
+  const linkLabel = (link: (typeof allLinks)[number]) => {
+    if (link.to === '/issued-assets' && !canManageIssuance(user)) {
+      return 'My Issued Assets'
+    }
+    return link.label
+  }
   const name         = displayName(user)
   const initials     = name.slice(0, 1).toUpperCase()
 
@@ -236,7 +255,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                                 aria-hidden="true"
                               />
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {link.label}
+                                {linkLabel(link)}
                               </span>
                             </>
                           )}

@@ -21,6 +21,9 @@ class InventoryItem extends Model
     protected $fillable = [
         'asset_id',
         'type',
+        'classification',
+        'item_nature',
+        'classification_reason',
         'name',
         'sku',
         'quantity',

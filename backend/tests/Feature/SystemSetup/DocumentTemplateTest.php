@@ -13,6 +13,7 @@ use App\Modules\Asset\Models\Manufacturer;
 use App\Modules\Asset\Models\Office;
 use App\Modules\AssetCategory\Models\AssetCategory;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
+use App\Modules\Report\Services\DocumentDataResolver;
 use App\Modules\SystemSetup\Models\DocumentTemplate;
 use App\Modules\SystemSetup\Models\DocumentTemplateVersion;
 use App\Modules\SystemSetup\Models\GeneratedDocument;
@@ -319,11 +320,73 @@ class DocumentTemplateTest extends TestCase
     {
         $keys = PlaceholderRegistry::allKeys();
         $this->assertContains('asset_code', $keys);
+        $this->assertContains('asset_number', $keys);
         $this->assertContains('property_number', $keys);
         $this->assertContains('department', $keys);
         $this->assertContains('department_name', $keys);
         $this->assertContains('issued_date', $keys);
         $this->assertContains('date_issued', $keys);
+    }
+
+    public function test_document_data_resolver_prefers_assets_property_number_over_legacy_identifier(): void
+    {
+        $office = Office::query()->create(['name' => 'Resolver Office A', 'code' => 'ROA']);
+        $category = AssetCategory::query()->create(['name' => 'Resolver Category A', 'code' => 'RCA']);
+        $manufacturer = Manufacturer::query()->create(['name' => 'Resolver Maker A']);
+
+        $asset = Asset::query()->create([
+            'asset_number' => 'AST-DOC-001',
+            'property_number' => 'PROP-COLUMN-001',
+            'name' => 'Resolver Asset One',
+            'asset_category_id' => $category->id,
+            'manufacturer_id' => $manufacturer->id,
+            'office_id' => $office->id,
+            'status' => AssetStatus::AVAILABLE->value,
+            'condition_status' => ConditionStatus::GOOD->value,
+        ]);
+
+        AssetIdentifier::query()->create([
+            'asset_id' => $asset->id,
+            'identifier_type' => IdentifierType::PROPERTY_NUMBER->value,
+            'identifier_value' => 'PROP-LEGACY-001',
+            'is_primary' => true,
+        ]);
+
+        $resolved = app(DocumentDataResolver::class)->resolve('issuance', $asset->id);
+
+        $this->assertSame('AST-DOC-001', $resolved['asset_number']);
+        $this->assertSame('AST-DOC-001', $resolved['asset_code']);
+        $this->assertSame('PROP-COLUMN-001', $resolved['property_number']);
+    }
+
+    public function test_document_data_resolver_uses_legacy_property_identifier_only_when_column_is_null(): void
+    {
+        $office = Office::query()->create(['name' => 'Resolver Office B', 'code' => 'ROB']);
+        $category = AssetCategory::query()->create(['name' => 'Resolver Category B', 'code' => 'RCB']);
+        $manufacturer = Manufacturer::query()->create(['name' => 'Resolver Maker B']);
+
+        $asset = Asset::query()->create([
+            'asset_number' => 'AST-DOC-002',
+            'property_number' => null,
+            'name' => 'Resolver Asset Two',
+            'asset_category_id' => $category->id,
+            'manufacturer_id' => $manufacturer->id,
+            'office_id' => $office->id,
+            'status' => AssetStatus::AVAILABLE->value,
+            'condition_status' => ConditionStatus::GOOD->value,
+        ]);
+
+        AssetIdentifier::query()->create([
+            'asset_id' => $asset->id,
+            'identifier_type' => IdentifierType::PROPERTY_NUMBER->value,
+            'identifier_value' => 'PROP-LEGACY-002',
+            'is_primary' => true,
+        ]);
+
+        $resolved = app(DocumentDataResolver::class)->resolve('issuance', $asset->id);
+
+        $this->assertSame('AST-DOC-002', $resolved['asset_number']);
+        $this->assertSame('PROP-LEGACY-002', $resolved['property_number']);
     }
 
     public function test_excel_export_upload_still_works(): void

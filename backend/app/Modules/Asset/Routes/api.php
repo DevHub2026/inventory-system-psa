@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Asset\Controllers\PermanentIssuanceController;
 use App\Modules\Asset\Controllers\AssetController;
 use App\Modules\Asset\Controllers\LocationController;
 use App\Modules\Asset\Controllers\ManufacturerController;
@@ -25,6 +26,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('assets/{asset}/issuance-history', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'history']);
     Route::get('reports/reissuances', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'report']);
     Route::get('reports/reissuances/export', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'export']);
+
+    // Permanent issuance routes
+    Route::get('permanent-issuances/users/search', [PermanentIssuanceController::class, 'searchUsers']);
+    Route::get('permanent-issuances/users', [PermanentIssuanceController::class, 'directoryUsers']);
+    Route::get('permanent-issuances/users/{user}/assets', [PermanentIssuanceController::class, 'userAssets']);
+    Route::post('assets/{asset}/permanent-issue', [PermanentIssuanceController::class, 'assign']);
     
     Route::apiResource('assets', AssetController::class);
 

@@ -29,6 +29,12 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class InventoryService
 {
+    private const CLASSIFICATION_PPE = 'PPE';
+    private const CLASSIFICATION_SE = 'SE';
+    private const CLASSIFICATION_SUPPLY = 'SUPPLY';
+    private const NATURE_ACCOUNTABLE = 'ACCOUNTABLE_PROPERTY';
+    private const NATURE_CONSUMABLE = 'CONSUMABLE_SUPPLY';
+
     public function __construct(
         private readonly NotificationService $notificationService,
         private readonly ?TemplateRenderingService $templateRenderingService = null,
@@ -37,7 +43,10 @@ class InventoryService
     public function export(array $filters = [], string $format = 'xlsx'): string
     {
         $items = InventoryItem::query()
-            ->with(['asset', 'unit', 'manufacturer', 'office', 'location'])
+            ->with(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location'])
+            ->when(! empty($filters['classification']), function ($query) use ($filters) {
+                $query->where('classification', $filters['classification']);
+            })
             ->when(! empty($filters['type']), function ($query) use ($filters) {
                 $query->where('type', $filters['type']);
             })
@@ -83,7 +92,13 @@ class InventoryService
                     $item->reorder_level !== null && $item->quantity <= $item->reorder_level => 'Low Stock',
                     default => 'In Stock',
                 },
-                'linked_asset_no' => $item->asset?->asset_number ?? '',
+                'property_number' => $item->asset?->property_number ?? '',
+                'asset_number' => $item->asset?->asset_number ?? '',
+                'accountability' => $item->asset?->issued_to_user_id
+                    ? 'Issued to '.($item->asset?->issuedToUser?->full_name ?? $item->asset?->issued_to ?? 'N/A')
+                    : ($item->classification === self::CLASSIFICATION_SUPPLY
+                        ? '—'
+                        : (filled($item->asset?->issued_to) ? 'Issued to '.$item->asset?->issued_to : 'Unassigned')),
                 'remarks' => $item->remarks ?? '',
                 'created_at' => $item->created_at?->format('Y-m-d H:i:s') ?? '',
                 'updated_at' => $item->updated_at?->format('Y-m-d H:i:s') ?? '',
@@ -105,7 +120,7 @@ class InventoryService
         $headers = [
             'ID', 'Type', 'Item Name', 'SKU/Code', 'Unit', 'Manufacturer', 
             'Office', 'Location', 'Quantity', 'Reorder Level', 'Status', 
-            'Linked Asset No.', 'Remarks', 'Created At', 'Updated At',
+            'Property Number', 'Asset Number', 'Accountability', 'Remarks', 'Created At', 'Updated At',
         ];
         foreach (array_values($headers) as $i => $header) {
             $sheet->setCellValue(chr(65 + $i).'1', $header);
@@ -132,14 +147,20 @@ class InventoryService
             $sheet->setCellValue('I'.$row, $item->quantity);
             $sheet->setCellValue('J'.$row, $item->reorder_level ?? '');
             $sheet->setCellValue('K'.$row, $status);
-            $sheet->setCellValue('L'.$row, $item->asset?->asset_number ?? '');
-            $sheet->setCellValue('M'.$row, $item->remarks ?? '');
-            $sheet->setCellValue('N'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
-            $sheet->setCellValue('O'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');
+            $sheet->setCellValue('L'.$row, $item->asset?->property_number ?? '');
+            $sheet->setCellValue('M'.$row, $item->asset?->asset_number ?? '');
+            $sheet->setCellValue('N'.$row, $item->classification === self::CLASSIFICATION_SUPPLY
+                ? '—'
+                : ($item->asset?->issued_to_user_id
+                    ? 'Issued to '.($item->asset?->issuedToUser?->full_name ?? $item->asset?->issued_to ?? 'N/A')
+                    : (filled($item->asset?->issued_to) ? 'Issued to '.$item->asset?->issued_to : 'Unassigned')));
+            $sheet->setCellValue('O'.$row, $item->remarks ?? '');
+            $sheet->setCellValue('P'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
+            $sheet->setCellValue('Q'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');
             $row++;
         }
 
-        foreach (range('A', 'O') as $col) {
+        foreach (range('A', 'Q') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -309,7 +330,11 @@ class InventoryService
     }
     public function list(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
-        $query = InventoryItem::query()->with(['asset', 'unit', 'manufacturer', 'office', 'location']);
+        $query = InventoryItem::query()->with(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location']);
+
+        if (! empty($filters['classification'])) {
+            $query->where('classification', $filters['classification']);
+        }
 
         // Filter by inventory type (non_expendable / expendable)
         if (! empty($filters['type'])) {
@@ -349,14 +374,7 @@ class InventoryService
     public function create(array $data, ?User $user = null): InventoryItem
     {
         return DB::transaction(function () use ($data, $user) {
-            $trackAsAsset = (bool) ($data['track_as_asset'] ?? true);
-            unset($data['track_as_asset']);
-
-            // Default type based on track_as_asset if not explicitly provided:
-            // items linked to assets are non_expendable; pure consumables are expendable.
-            if (empty($data['type'])) {
-                $data['type'] = $trackAsAsset ? 'non_expendable' : 'expendable';
-            }
+            [$data, $trackAsAsset] = $this->normalizeClassificationData($data, true);
 
             $item = InventoryItem::create($data);
 
@@ -383,11 +401,22 @@ class InventoryService
 
     public function update(InventoryItem $item, array $data): InventoryItem
     {
-        $trackAsAsset = (bool) ($data['track_as_asset'] ?? false);
-        unset($data['track_as_asset']);
+        $classificationPayload = $data;
+        $classificationPayload['classification'] ??= $item->classification;
+        $classificationPayload['item_nature'] ??= $item->item_nature;
+        $classificationPayload['type'] ??= $item->type;
+        $classificationPayload['track_as_asset'] ??= (bool) $item->asset_id;
+
+        [$data, $trackAsAsset] = $this->normalizeClassificationData($classificationPayload, (bool) $item->asset_id);
 
         if (array_key_exists('quantity', $data) && (int) $data['quantity'] !== (int) $item->quantity) {
             throw new \InvalidArgumentException('Use Correct Stock Quantity to change quantity and provide a reason.');
+        }
+
+        if (($data['classification'] ?? $item->classification) === self::CLASSIFICATION_SUPPLY && $item->asset_id) {
+            throw new \InvalidArgumentException(
+                'Cannot classify this inventory item as Supply while it remains linked to an accountable asset.',
+            );
         }
 
         // Validate type transition: ensure the type value is valid
@@ -557,6 +586,55 @@ class InventoryService
             'status' => $item->quantity > 0 ? AssetStatus::AVAILABLE->value : AssetStatus::UNAVAILABLE->value,
             'remarks' => $item->remarks,
         ]);
+    }
+
+    /**
+     * @return array{0: array<string, mixed>, 1: bool}
+     */
+    private function normalizeClassificationData(array $data, bool $defaultTrackAsAsset): array
+    {
+        $trackAsAsset = (bool) ($data['track_as_asset'] ?? $defaultTrackAsAsset);
+        unset($data['track_as_asset']);
+
+        $classification = strtoupper((string) ($data['classification'] ?? ''));
+        $itemNature = strtoupper((string) ($data['item_nature'] ?? ''));
+        $legacyType = (string) ($data['type'] ?? '');
+
+        if ($classification === '') {
+            if ($legacyType === 'expendable') {
+                $classification = self::CLASSIFICATION_SUPPLY;
+            } elseif ($legacyType === 'non_expendable') {
+                $classification = self::CLASSIFICATION_PPE;
+            } else {
+                $classification = $trackAsAsset ? self::CLASSIFICATION_PPE : self::CLASSIFICATION_SUPPLY;
+            }
+        }
+
+        if (! in_array($classification, [self::CLASSIFICATION_PPE, self::CLASSIFICATION_SE, self::CLASSIFICATION_SUPPLY], true)) {
+            throw new \InvalidArgumentException("Invalid classification '{$classification}'.");
+        }
+
+        if ($itemNature === '') {
+            $itemNature = $classification === self::CLASSIFICATION_SUPPLY
+                ? self::NATURE_CONSUMABLE
+                : self::NATURE_ACCOUNTABLE;
+        }
+
+        if (! in_array($itemNature, [self::NATURE_ACCOUNTABLE, self::NATURE_CONSUMABLE], true)) {
+            throw new \InvalidArgumentException("Invalid item nature '{$itemNature}'.");
+        }
+
+        if ($classification === self::CLASSIFICATION_SUPPLY || $itemNature === self::NATURE_CONSUMABLE) {
+            $trackAsAsset = false;
+            $data['type'] = 'expendable';
+        } else {
+            $data['type'] = 'non_expendable';
+        }
+
+        $data['classification'] = $classification;
+        $data['item_nature'] = $itemNature;
+
+        return [$data, $trackAsAsset];
     }
 
     private function uniqueAssetNumber(string $baseAssetNumber): string

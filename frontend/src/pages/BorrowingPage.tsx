@@ -3,6 +3,7 @@ import { Alert, Badge, Card, EmptyState, Modal, Spinner } from '@/components/ui'
 import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
 import { borrowingService } from '@/services/borrowingService'
 import type { Borrowing } from '@/types'
+import { useAuth } from '@/hooks/useAuth'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
@@ -103,6 +104,7 @@ const td: React.CSSProperties = {
 // ─── page ──────────────────────────────────────────────────────────────────────
 
 export function BorrowingPage() {
+  const { user } = useAuth()
   const [rows,    setRows]    = useState<Borrowing[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -241,6 +243,7 @@ export function BorrowingPage() {
               <tbody>
                 {rows.map((r) => {
                   const canReturn = r.status === 'BORROWED' || r.status === 'ACTIVE' || r.status === 'OVERDUE'
+                  const canRequestExtension = user?.id === r.user_id && canReturn && !r.has_pending_extension
                   return (
                     <tr
                       key={r.id}
@@ -334,6 +337,22 @@ export function BorrowingPage() {
                             </svg>
                             Details
                           </button>
+
+                          {canRequestExtension && (
+                            <button
+                              onClick={() => setSelectedBorrowingId(r.id)}
+                              style={{
+                                height: 28, paddingInline: 10, borderRadius: 6,
+                                border: '1px solid #FDE68A', background: '#FFFBEB',
+                                color: '#B45309', fontSize: 11.5, fontWeight: 600,
+                                cursor: 'pointer', fontFamily: 'inherit',
+                                display: 'inline-flex', alignItems: 'center', gap: 5,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              Request Extension
+                            </button>
+                          )}
 
                           {/* Receipt */}
                           <button

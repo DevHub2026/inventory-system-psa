@@ -4,12 +4,14 @@ import type { ApiResponse } from '@/types'
 export interface AssetReportItem {
   id: number
   asset_number: string
+  property_number?: string | null
   name: string
   category: string
   manufacturer: string
   office: string
   location: string
   status: string
+  accountability?: string | null
   condition: string
   purchase_date: string
   purchase_cost: number

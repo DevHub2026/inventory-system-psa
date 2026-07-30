@@ -9,6 +9,7 @@ interface BackendAsset {
 
   id: number
   asset_number: string
+  property_number?: string | null
   psa_qr_identifier?: string | null
   psa_qr_payload?: string | null
   name: string
@@ -25,6 +26,9 @@ interface BackendAsset {
   purchase_cost?: string | number | null
   warranty_until?: string | null
   issued_to?: string | null
+  issued_to_user_id?: number | null
+  issued_to_user?: Asset['issued_to_user']
+  is_unlinked_holder?: boolean
   issued_by_user_id?: number | null
   date_issued?: string | null
   issued_by_name?: string | null
@@ -43,6 +47,7 @@ interface BackendAsset {
 
 export interface UpdateAssetPayload {
   asset_number?: string
+  property_number?: string | null
   name?: string
   description?: string | null
   asset_category_id?: number | null
@@ -53,9 +58,6 @@ export interface UpdateAssetPayload {
   status?: AssetStatus
   condition_status?: string | null
   remarks?: string | null
-  issued_to?: string | null
-  issued_by_user_id?: number | null
-  date_issued?: string | null
 }
 
 function mapAsset(asset: BackendAsset): Asset {
@@ -68,6 +70,7 @@ function mapAsset(asset: BackendAsset): Asset {
   return {
     id: asset.id,
     asset_number: asset.asset_number,
+    property_number: asset.property_number,
     psa_qr_identifier: asset.psa_qr_identifier,
     psa_qr_payload: asset.psa_qr_payload,
     name: asset.name,
@@ -87,6 +90,9 @@ function mapAsset(asset: BackendAsset): Asset {
     purchase_cost: asset.purchase_cost,
     warranty_until: asset.warranty_until,
     issued_to: asset.issued_to,
+    issued_to_user_id: asset.issued_to_user_id,
+    issued_to_user: asset.issued_to_user,
+    is_unlinked_holder: asset.is_unlinked_holder,
     issued_by_user_id: asset.issued_by_user_id,
     date_issued: asset.date_issued,
     issued_by_name: asset.issued_by_name,
