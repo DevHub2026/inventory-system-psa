@@ -1,35 +1,79 @@
 import { useEffect, useState } from 'react'
-import { PageHeader } from '@/components/PageHeader'
-import { Button, Input, Badge, Table, EmptyState, Spinner, Alert, type Column } from '@/components/ui'
+import { Button, Input, Badge, EmptyState, Spinner, Alert } from '@/components/ui'
 import { workflowService, type ModuleOption } from '@/services/workflowService'
 import type { Workflow } from '@/types'
 import { WorkflowEditorModal } from '@/components/workflows/WorkflowEditorModal'
 import { WorkflowVersionHistoryModal } from '@/components/workflows/WorkflowVersionHistoryModal'
-import {
-  Plus,
-  Search,
-  Copy,
-  Archive,
-  RotateCcw,
-  History,
-  Edit,
-  Power,
-} from 'lucide-react'
+import { Search, Copy, Archive, RotateCcw, History, Edit, Power, Plus } from 'lucide-react'
+import { PageHeader } from '@/components/PageHeader'
 
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const th: React.CSSProperties = {
+  padding: '11px 16px',
+  fontSize: 11,
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.07em',
+  color: '#94A3B8',
+  whiteSpace: 'nowrap',
+  background: '#F8FAFC',
+  borderBottom: '1px solid #E2E8F0',
+  textAlign: 'left',
+}
+
+const td: React.CSSProperties = {
+  padding: '14px 16px',
+  verticalAlign: 'middle',
+  fontSize: 13,
+  color: '#334155',
+  borderBottom: '1px solid #F1F5F9',
+}
+
+// ─── Icon action button ───────────────────────────────────────────────────────
+function IconBtn({
+  icon: Icon, title, onClick,
+  hoverColor = '#475569', hoverBg = '#F1F5F9',
+}: {
+  icon: React.ComponentType<{ size?: number }>
+  title: string
+  onClick: () => void
+  hoverColor?: string
+  hoverBg?: string
+}) {
+  const [hov, setHov] = useState(false)
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        width: 30, height: 30, borderRadius: 7, border: 'none',
+        background: hov ? hoverBg : 'transparent',
+        color: hov ? hoverColor : '#94A3B8',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', transition: 'all 0.12s', flexShrink: 0,
+      }}
+    >
+      <Icon size={14} />
+    </button>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export function WorkflowsPage() {
-  const [workflows, setWorkflows] = useState<Workflow[]>([])
-  const [modules, setModules] = useState<ModuleOption[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [workflows,      setWorkflows]      = useState<Workflow[]>([])
+  const [modules,        setModules]        = useState<ModuleOption[]>([])
+  const [loading,        setLoading]        = useState(true)
+  const [search,         setSearch]         = useState('')
   const [selectedModule, setSelectedModule] = useState('')
-  const [showArchived, setShowArchived] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-
-  const [editorOpen, setEditorOpen] = useState(false)
-  const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null)
-
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const [historyWorkflow, setHistoryWorkflow] = useState<{ id: number; name: string } | null>(null)
+  const [showArchived,   setShowArchived]   = useState(false)
+  const [message,        setMessage]        = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [editorOpen,     setEditorOpen]     = useState(false)
+  const [editingWorkflow,setEditingWorkflow]= useState<Workflow | null>(null)
+  const [historyOpen,    setHistoryOpen]    = useState(false)
+  const [historyWorkflow,setHistoryWorkflow]= useState<{ id: number; name: string } | null>(null)
 
   const loadData = async () => {
     setLoading(true)
@@ -47,263 +91,325 @@ export function WorkflowsPage() {
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load workflows.' })
     } finally {
-      setLoading(false)
-    }
+      setLoading(false) }
   }
 
-  useEffect(() => {
-    void loadData()
-  }, [search, selectedModule, showArchived])
+  useEffect(() => { void loadData() }, [search, selectedModule, showArchived])
 
   const handleDuplicate = async (w: Workflow) => {
     try {
       await workflowService.duplicate(w.id)
-      setMessage({ type: 'success', text: `Workflow "${w.name}" duplicated successfully.` })
+      setMessage({ type: 'success', text: `"${w.name}" duplicated.` })
       await loadData()
     } catch (err: unknown) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to duplicate workflow.' })
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to duplicate.' })
     }
   }
 
   const handleArchiveToggle = async (w: Workflow) => {
     try {
-      if (w.is_archived) {
-        await workflowService.restore(w.id)
-        setMessage({ type: 'success', text: `Workflow "${w.name}" restored.` })
-      } else {
-        await workflowService.archive(w.id)
-        setMessage({ type: 'success', text: `Workflow "${w.name}" archived.` })
-      }
+      w.is_archived ? await workflowService.restore(w.id) : await workflowService.archive(w.id)
+      setMessage({ type: 'success', text: `"${w.name}" ${w.is_archived ? 'restored' : 'archived'}.` })
       await loadData()
     } catch (err: unknown) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to archive/restore workflow.' })
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to update.' })
     }
   }
 
   const handleToggleActive = async (w: Workflow) => {
     try {
       await workflowService.toggleStatus(w.id)
-      setMessage({ type: 'success', text: `Workflow status updated.` })
+      setMessage({ type: 'success', text: 'Workflow status updated.' })
       await loadData()
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to toggle status.' })
     }
   }
 
-  const columns: Column<Workflow>[] = [
-    {
-      key: 'name',
-      header: 'Workflow Name',
-      render: (w) => (
-        <div>
-          <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
-            {w.name}
-            {w.current_version && (
-              <span className="font-mono text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
-                v{w.current_version.version_number}
-              </span>
-            )}
-          </div>
-          <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">{w.description || 'No description'}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'module_type',
-      header: 'Target Module',
-      render: (w) => {
-        const mod = modules.find((m) => m.value === w.module_type)
-        return <Badge tone="blue">{mod?.label || w.module_type}</Badge>
-      },
-    },
-    {
-      key: 'approval_levels',
-      header: 'Sequence',
-      render: (w) => {
-        const levels = w.current_version?.approval_levels || []
-        if (levels.length === 0) return <span className="text-xs text-slate-400 italic">No levels</span>
-        return (
-          <div className="flex items-center gap-1">
-            <span className="font-semibold text-xs text-slate-700">{levels.length} Level(s):</span>
-            <span className="text-xs text-slate-500 truncate max-w-[200px]">
-              {levels.map((l) => l.name).join(' → ')}
-            </span>
-          </div>
-        )
-      },
-    },
-    {
-      key: 'is_active',
-      header: 'Status',
-      render: (w) => {
-        if (w.is_archived) return <Badge tone="gray">Archived</Badge>
-        return w.is_active ? <Badge tone="green">Active</Badge> : <Badge tone="yellow">Inactive</Badge>
-      },
-    },
-    {
-      key: 'updated_at',
-      header: 'Last Modified',
-      render: (w) => (
-        <span className="font-mono text-xs text-slate-500">
-          {new Date(w.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (w) => (
-        <div className="flex items-center gap-1.5 justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              setEditingWorkflow(w)
-              setEditorOpen(true)
-            }}
-            className="p-1.5 text-slate-600 hover:text-blue-700 rounded-lg hover:bg-slate-100 transition-colors"
-            title="Edit Workflow"
-          >
-            <Edit size={16} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setHistoryWorkflow({ id: w.id, name: w.name })
-              setHistoryOpen(true)
-            }}
-            className="p-1.5 text-slate-600 hover:text-blue-700 rounded-lg hover:bg-slate-100 transition-colors"
-            title="Version History"
-          >
-            <History size={16} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => void handleDuplicate(w)}
-            className="p-1.5 text-slate-600 hover:text-emerald-700 rounded-lg hover:bg-slate-100 transition-colors"
-            title="Duplicate"
-          >
-            <Copy size={16} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => void handleToggleActive(w)}
-            className={`p-1.5 rounded-lg transition-colors ${
-              w.is_active ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'
-            }`}
-            title={w.is_active ? 'Disable Workflow' : 'Enable Workflow'}
-          >
-            <Power size={16} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => void handleArchiveToggle(w)}
-            className="p-1.5 text-slate-600 hover:text-red-700 rounded-lg hover:bg-slate-100 transition-colors"
-            title={w.is_archived ? 'Restore' : 'Archive'}
-          >
-            {w.is_archived ? <RotateCcw size={16} /> : <Archive size={16} />}
-          </button>
-        </div>
-      ),
-    },
-  ]
-
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <PageHeader
-          title="Approval Workflows"
-          subtitle="Configure multi-level approval workflows, assigned roles, and version history."
-        />
-        <Button
-          onClick={() => {
-            setEditingWorkflow(null)
-            setEditorOpen(true)
-          }}
-        >
-          <Plus size={16} className="mr-1.5" /> Create Workflow
-        </Button>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* ── Header ── */}
+      <PageHeader
+        title="Approval Workflows"
+        subtitle="Configure multi-level approval workflows and manage versions."
+        actions={
+          <button
+            onClick={() => { setEditingWorkflow(null); setEditorOpen(true) }}
+            style={{
+              height: 38, paddingInline: 18, borderRadius: 10,
+              border: 'none', background: '#1E40AF', color: '#fff',
+              fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              boxShadow: '0 2px 8px rgba(30,64,175,0.25)',
+              transition: 'background 0.1s',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1D3FAB' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1E40AF' }}
+          >
+            <Plus size={15} />
+            Create Workflow
+          </button>
+        }
+      />
 
       {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
-      {/* Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-        <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+      {/* ── Filters ── */}
+      <div style={{
+        background: '#fff', borderRadius: 14,
+        border: '1px solid #E2E8F0',
+        padding: '14px 20px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexWrap: 'wrap', gap: 12,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, flexWrap: 'wrap' }}>
+          {/* Search */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: 320 }}>
+            <Search size={13} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search workflows by name or description..."
-              className="pl-9"
+              placeholder="Search workflows..."
+              style={{ paddingLeft: 32, height: 36, fontSize: 13 } as React.CSSProperties}
             />
           </div>
 
-          <div className="w-56">
-            <select
-              value={selectedModule}
-              onChange={(e) => setSelectedModule(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">All Modules</option>
-              {modules.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Module filter */}
+          <select
+            value={selectedModule}
+            onChange={(e) => setSelectedModule(e.target.value)}
+            style={{
+              height: 36, borderRadius: 10, border: '1px solid #E2E8F0',
+              background: '#fff', padding: '0 12px',
+              fontSize: 13, color: '#374151',
+              outline: 'none', cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <option value="">All Modules</option>
+            {modules.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Show archived */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
           <input
             type="checkbox"
-            id="show-archived"
             checked={showArchived}
             onChange={(e) => setShowArchived(e.target.checked)}
-            className="rounded border-slate-300 text-[#0D47A1]"
+            style={{ width: 15, height: 15, cursor: 'pointer', accentColor: '#1E40AF' }}
           />
-          <label htmlFor="show-archived" className="text-xs font-semibold text-slate-700 cursor-pointer">
-            Show Archived
-          </label>
-        </div>
+          <span style={{ fontSize: 13, color: '#475569', fontWeight: 500 }}>Show archived</span>
+        </label>
       </div>
 
-      {/* Workflow Table */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
+      {/* ── Table ── */}
+      <div style={{
+        background: '#fff', borderRadius: 16,
+        border: '1px solid #E2E8F0', overflow: 'hidden',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+      }}>
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Spinner label="Loading workflow configurations..." />
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '72px 0' }}>
+            <Spinner label="Loading workflows..." />
           </div>
         ) : workflows.length === 0 ? (
-          <div className="py-16">
+          <div style={{ padding: '64px 0' }}>
             <EmptyState
               title="No Workflows Found"
               description="No workflow configurations match your filter parameters."
             />
           </div>
         ) : (
-          <Table columns={columns} rows={workflows} rowKey={(w) => w.id} />
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
+              <colgroup>
+                <col />                           {/* Workflow — flex */}
+                <col style={{ width: 200 }} />   {/* Module */}
+                <col style={{ width: 100 }} />   {/* Levels */}
+                <col style={{ width: 100 }} />   {/* Status */}
+                <col style={{ width: 130 }} />   {/* Updated */}
+                <col style={{ width: 160 }} />   {/* Actions */}
+              </colgroup>
+
+              <thead>
+                <tr>
+                  <th style={th}>Workflow</th>
+                  <th style={th}>Module</th>
+                  <th style={th}>Levels</th>
+                  <th style={th}>Status</th>
+                  <th style={th}>Updated</th>
+                  <th style={{ ...th, textAlign: 'right', paddingRight: 20 }}>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {workflows.map((w) => {
+                  const levels = w.current_version?.approval_levels ?? []
+                  const mod = modules.find((m) => m.value === w.module_type)
+
+                  return (
+                    <tr
+                      key={w.id}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#FAFBFD' }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '' }}
+                    >
+                      {/* Workflow name */}
+                      <td style={td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          {/* Avatar */}
+                          <div style={{
+                            width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                            background: 'linear-gradient(135deg, #1E40AF, #3B82F6)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 13, fontWeight: 800, color: '#fff',
+                          }}>
+                            {w.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'nowrap' }}>
+                              <span style={{ fontWeight: 600, fontSize: 13.5, color: '#0F172A' }}>{w.name}</span>
+                              {w.current_version && (
+                                <span style={{
+                                  fontSize: 10, fontWeight: 700,
+                                  fontFamily: 'ui-monospace, monospace',
+                                  color: '#6D28D9', background: '#F5F3FF',
+                                  border: '1px solid #DDD6FE',
+                                  borderRadius: 4, padding: '1px 6px',
+                                  whiteSpace: 'nowrap',
+                                }}>
+                                  v{w.current_version.version_number}
+                                </span>
+                              )}
+                            </div>
+                            {w.description && (
+                              <div style={{
+                                fontSize: 11.5, color: '#94A3B8', marginTop: 2,
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                maxWidth: 240,
+                              }}>
+                                {w.description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Module */}
+                      <td style={td}>
+                        <Badge tone="blue">{mod?.label || w.module_type}</Badge>
+                      </td>
+
+                      {/* Levels */}
+                      <td style={td}>
+                        {levels.length === 0 ? (
+                          <span style={{ color: '#CBD5E1' }}>—</span>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                              {levels.slice(0, 3).map((l, i) => (
+                                <span key={i} style={{
+                                  width: 22, height: 22, borderRadius: '50%',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: 10, fontWeight: 700,
+                                  marginLeft: i > 0 ? -5 : 0,
+                                  background: i === 0 ? '#1E40AF' : '#F1F5F9',
+                                  color: i === 0 ? '#fff' : '#64748B',
+                                  border: `2px solid #fff`,
+                                  zIndex: 3 - i,
+                                  position: 'relative',
+                                }}>
+                                  {l.level_order}
+                                </span>
+                              ))}
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B' }}>
+                              {levels.length} {levels.length === 1 ? 'level' : 'levels'}
+                            </span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td style={td}>
+                        {w.is_archived
+                          ? <Badge tone="gray">Archived</Badge>
+                          : w.is_active
+                            ? <Badge tone="green">Active</Badge>
+                            : <Badge tone="yellow">Inactive</Badge>
+                        }
+                      </td>
+
+                      {/* Updated */}
+                      <td style={td}>
+                        <span style={{ fontSize: 12.5, color: '#64748B', fontWeight: 500 }}>
+                          {new Date(w.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ ...td, textAlign: 'right', paddingRight: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                          {/* Edit | History | Duplicate group */}
+                          <div style={{
+                            display: 'inline-flex', alignItems: 'center',
+                            border: '1px solid #E2E8F0', borderRadius: 8,
+                            overflow: 'hidden', background: '#F8FAFC',
+                          }}>
+                            <IconBtn icon={Edit}    title="Edit"      onClick={() => { setEditingWorkflow(w); setEditorOpen(true) }} hoverColor="#1E40AF" hoverBg="#EFF6FF" />
+                            <div style={{ width: 1, height: 18, background: '#E2E8F0' }} />
+                            <IconBtn icon={History} title="Version History" onClick={() => { setHistoryWorkflow({ id: w.id, name: w.name }); setHistoryOpen(true) }} hoverColor="#6D28D9" hoverBg="#F5F3FF" />
+                            <div style={{ width: 1, height: 18, background: '#E2E8F0' }} />
+                            <IconBtn icon={Copy}    title="Duplicate" onClick={() => void handleDuplicate(w)} hoverColor="#059669" hoverBg="#F0FDF4" />
+                          </div>
+
+                          {/* Activate | Archive group */}
+                          <div style={{
+                            display: 'inline-flex', alignItems: 'center',
+                            border: '1px solid #E2E8F0', borderRadius: 8,
+                            overflow: 'hidden', background: '#F8FAFC',
+                          }}>
+                            <IconBtn
+                              icon={Power}
+                              title={w.is_active ? 'Deactivate' : 'Activate'}
+                              onClick={() => void handleToggleActive(w)}
+                              hoverColor={w.is_active ? '#DC2626' : '#059669'}
+                              hoverBg={w.is_active ? '#FEF2F2' : '#F0FDF4'}
+                            />
+                            <div style={{ width: 1, height: 18, background: '#E2E8F0' }} />
+                            <IconBtn
+                              icon={w.is_archived ? RotateCcw : Archive}
+                              title={w.is_archived ? 'Restore' : 'Archive'}
+                              onClick={() => void handleArchiveToggle(w)}
+                              hoverColor={w.is_archived ? '#059669' : '#DC2626'}
+                              hoverBg={w.is_archived ? '#F0FDF4' : '#FEF2F2'}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* Editor Modal */}
       <WorkflowEditorModal
         open={editorOpen}
         onClose={() => setEditorOpen(false)}
         onSaved={loadData}
         workflowToEdit={editingWorkflow}
       />
-
-      {/* Version History Modal */}
       <WorkflowVersionHistoryModal
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
-        workflowId={historyWorkflow?.id || null}
+        workflowId={historyWorkflow?.id ?? null}
         workflowName={historyWorkflow?.name}
       />
     </div>

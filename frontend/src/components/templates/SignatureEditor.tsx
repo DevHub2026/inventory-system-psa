@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { type SignatureBlock } from '@/services/templateService'
-import { Check, UserCheck } from 'lucide-react'
+import { UserCheck, Check } from 'lucide-react'
 
 interface SignatureEditorProps {
   blocks: SignatureBlock[]
@@ -7,115 +8,210 @@ interface SignatureEditorProps {
 }
 
 const DEFAULT_BLOCKS: SignatureBlock[] = [
-  { key: 'prepared_by', label: 'Prepared By', name: '{{prepared_by}}', position: 'Property Custodian', enabled: true },
-  { key: 'approved_by', label: 'Approved By', name: 'Department Head', position: 'Supervising Officer', enabled: true },
-  { key: 'received_by', label: 'Received By', name: '{{employee_name}}', position: 'Borrower / Recipient', enabled: true },
-  { key: 'witnessed_by', label: 'Witnessed By', name: '', position: 'Witness', enabled: false },
+  { key: 'received_by',  label: 'Received & Inspected By', name: '{{prepared_by}}',    position: 'Inventory Inspector',  enabled: true  },
+  { key: 'approved_by',  label: 'Approved By',             name: 'Property Custodian', position: 'Custodian Officer',    enabled: true  },
+  { key: 'returned_by',  label: 'Returned By',             name: '{{employee_name}}',  position: 'Borrower',             enabled: true  },
+  { key: 'witnessed_by', label: 'Witnessed By',            name: '',                   position: 'Witness',              enabled: false },
 ]
 
-export function SignatureEditor({ blocks, onChange }: SignatureEditorProps) {
-  const activeBlocks = blocks && blocks.length > 0 ? blocks : DEFAULT_BLOCKS
+// ─── Field row ────────────────────────────────────────────────────────────────
+function SigField({
+  label, value, onChange, mono = false, placeholder,
+}: {
+  label: string; value: string; onChange: (v: string) => void
+  mono?: boolean; placeholder?: string
+}) {
+  const [focused, setFocused] = useState(false)
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94A3B8', marginBottom: 5, letterSpacing: '0.05em', textTransform: 'uppercase' as const }}>
+        {label}
+      </label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: '100%', height: 34, borderRadius: 8,
+          border: `1px solid ${focused ? '#1E40AF' : '#E2E8F0'}`,
+          background: focused ? '#FAFEFF' : '#fff',
+          padding: '0 10px',
+          fontSize: 12.5, color: '#0F172A',
+          fontFamily: mono ? 'ui-monospace, monospace' : 'inherit',
+          outline: 'none', boxSizing: 'border-box',
+          transition: 'border-color 0.12s, background 0.12s',
+          boxShadow: focused ? '0 0 0 3px rgba(30,64,175,0.07)' : 'none',
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      />
+    </div>
+  )
+}
 
-  const handleToggle = (index: number) => {
+// ─── Single block card ────────────────────────────────────────────────────────
+function SignatureBlockCard({
+  block, index, total,
+  onToggle, onFieldChange,
+}: {
+  block: SignatureBlock; index: number; total: number
+  onToggle: () => void
+  onFieldChange: (field: keyof SignatureBlock, value: string) => void
+}) {
+  const enabled = block.enabled
+
+  return (
+    <div style={{
+      borderRadius: 14,
+      border: `1.5px solid ${enabled ? '#BFDBFE' : '#E8EDF5'}`,
+      background: enabled ? '#fff' : '#F8FAFC',
+      overflow: 'hidden',
+      opacity: enabled ? 1 : 0.65,
+      transition: 'all 0.18s',
+      boxShadow: enabled ? '0 2px 10px rgba(30,64,175,0.07)' : 'none',
+    }}>
+      {/* Card header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 16px',
+        background: enabled ? 'linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%)' : '#F8FAFC',
+        borderBottom: `1px solid ${enabled ? '#DBEAFE' : '#EEF2F7'}`,
+      }}>
+        {/* Checkbox + label */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+          <div
+            onClick={onToggle}
+            style={{
+              width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+              border: `2px solid ${enabled ? '#1E40AF' : '#CBD5E1'}`,
+              background: enabled ? '#1E40AF' : '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'all 0.12s',
+            }}
+          >
+            {enabled && <Check size={11} color="#fff" strokeWidth={3}/>}
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 700, color: enabled ? '#0F172A' : '#94A3B8' }}>
+            {block.label || `Block ${index + 1}`}
+          </span>
+        </label>
+
+        {/* Status badge */}
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          fontSize: 10.5, fontWeight: 700,
+          color: enabled ? '#059669' : '#64748B',
+          background: enabled ? '#ECFDF5' : '#F1F5F9',
+          border: `1px solid ${enabled ? '#A7F3D0' : '#E2E8F0'}`,
+          borderRadius: 20, padding: '2px 9px',
+        }}>
+          {enabled
+            ? <><Check size={9} strokeWidth={3}/> Active</>
+            : 'Disabled'
+          }
+        </span>
+      </div>
+
+      {/* Fields — only when enabled */}
+      {enabled && (
+        <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <SigField
+            label="Label Title"
+            value={block.label}
+            onChange={(v) => onFieldChange('label', v)}
+            placeholder="e.g. Prepared By"
+          />
+          <SigField
+            label="Signatory Name"
+            value={block.name}
+            onChange={(v) => onFieldChange('name', v)}
+            placeholder="e.g. {{prepared_by}} or Juan Dela Cruz"
+            mono
+          />
+          <SigField
+            label="Designation / Position"
+            value={block.position}
+            onChange={(v) => onFieldChange('position', v)}
+            placeholder="e.g. Property Custodian"
+          />
+        </div>
+      )}
+
+      {/* Disabled placeholder */}
+      {!enabled && (
+        <div style={{ padding: '14px 16px', textAlign: 'center' }}>
+          <p style={{ fontSize: 12, color: '#CBD5E1', margin: 0 }}>
+            Enable this block to configure signature details.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+export function SignatureEditor({ blocks, onChange }: SignatureEditorProps) {
+  const activeBlocks = (blocks && blocks.length > 0 ? blocks : DEFAULT_BLOCKS).map(b => ({
+    ...b,
+    enabled: b.enabled === true || (b.enabled as unknown) === 1,
+  }))
+  const enabledCount = activeBlocks.filter((b) => b.enabled).length
+
+  const handleToggle = (i: number) => {
     const next = [...activeBlocks]
-    next[index] = { ...next[index], enabled: !next[index].enabled }
+    next[i] = { ...next[i], enabled: !next[i].enabled }
     onChange(next)
   }
 
-  const handleFieldChange = (index: number, field: keyof SignatureBlock, value: string) => {
+  const handleFieldChange = (i: number, field: keyof SignatureBlock, value: string) => {
     const next = [...activeBlocks]
-    next[index] = { ...next[index], [field]: value }
+    next[i] = { ...next[i], [field]: value }
     onChange(next)
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Signature Blocks</h4>
-          <p className="text-[12px] text-slate-500">
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#334155', marginBottom: 4 }}>
+            Signature Blocks
+          </div>
+          <p style={{ fontSize: 12.5, color: '#64748B', margin: 0, lineHeight: 1.5 }}>
             Enable or disable required signature lines and customize their titles and signatory positions.
           </p>
         </div>
-        <div className="flex items-center gap-1 text-xs text-slate-400">
-          <UserCheck size={14} />
-          <span>{activeBlocks.filter((b) => b.enabled).length} Enabled</span>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+          fontSize: 12, fontWeight: 600, color: '#1E40AF',
+          background: '#EFF6FF', border: '1px solid #BFDBFE',
+          borderRadius: 20, padding: '4px 12px',
+        }}>
+          <UserCheck size={13}/> {enabledCount} Enabled
         </div>
       </div>
 
-      <div className="grid gap-3.5 sm:grid-cols-2">
+      {/* Grid of cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: 14,
+        alignItems: 'start',
+      }}>
         {activeBlocks.map((block, idx) => (
-          <div
+          <SignatureBlockCard
             key={block.key || idx}
-            className={`rounded-xl border p-3.5 transition-all ${
-              block.enabled
-                ? 'border-[#0D47A1]/30 bg-white shadow-xs'
-                : 'border-slate-200 bg-slate-50/60 opacity-60'
-            }`}
-          >
-            <div className="mb-2.5 flex items-center justify-between">
-              <label className="flex cursor-pointer items-center gap-2 font-semibold text-xs text-slate-800">
-                <input
-                  type="checkbox"
-                  checked={block.enabled}
-                  onChange={() => handleToggle(idx)}
-                  className="h-4 w-4 rounded-md accent-[#0D47A1]"
-                />
-                <span>{block.label || `Block ${idx + 1}`}</span>
-              </label>
-
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  block.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-500'
-                }`}
-              >
-                {block.enabled ? (
-                  <>
-                    <Check size={10} /> Active
-                  </>
-                ) : (
-                  'Disabled'
-                )}
-              </span>
-            </div>
-
-            {block.enabled && (
-              <div className="space-y-2 pt-1 border-t border-slate-100">
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Label Title</label>
-                  <input
-                    type="text"
-                    value={block.label}
-                    onChange={(e) => handleFieldChange(idx, 'label', e.target.value)}
-                    placeholder="e.g. Prepared By"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-800 focus:border-[#0D47A1] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Signatory Name</label>
-                  <input
-                    type="text"
-                    value={block.name}
-                    onChange={(e) => handleFieldChange(idx, 'name', e.target.value)}
-                    placeholder="e.g. {{prepared_by}} or Juan Dela Cruz"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-800 focus:border-[#0D47A1] focus:outline-none font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Designation / Position</label>
-                  <input
-                    type="text"
-                    value={block.position}
-                    onChange={(e) => handleFieldChange(idx, 'position', e.target.value)}
-                    placeholder="e.g. Property Custodian"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-800 focus:border-[#0D47A1] focus:outline-none"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+            block={block}
+            index={idx}
+            total={activeBlocks.length}
+            onToggle={() => handleToggle(idx)}
+            onFieldChange={(field, value) => handleFieldChange(idx, field, value)}
+          />
         ))}
       </div>
+
     </div>
   )
 }
