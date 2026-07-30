@@ -354,7 +354,7 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(width: 14),
             Expanded(child: Text(label,
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: c))),
-            Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
+            const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
           ],
         ),
       ),

@@ -169,7 +169,7 @@ class _InventoryPageState extends State<InventoryPage> {
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 3),
                   Row(children: [
-                    Text('Qty: ', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                    const Text('Qty: ', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                     Text('${item.quantity}',
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
                             color: isLow ? AppTheme.errorColor : AppTheme.textPrimary)),

@@ -17,7 +17,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _rememberMe = false;
+  final bool _rememberMe = false;
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -262,11 +262,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
         shape: BoxShape.circle,
         color: Colors.white.withValues(alpha: 0.13),
         border: Border.all(color: Colors.white.withValues(alpha: 0.22), width: 2),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0x4D001450),
+            color: Color(0x4D001450),
             blurRadius: 32,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -289,7 +289,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               decoration: BoxDecoration(
                 color: const Color(0xFF60B8FF),
                 borderRadius: BorderRadius.circular(99),
-                boxShadow: [BoxShadow(color: const Color(0xB060B8FF), blurRadius: 8)],
+                boxShadow: const [BoxShadow(color: Color(0xB060B8FF), blurRadius: 8)],
               ),
             ),
           ),
@@ -300,7 +300,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               decoration: BoxDecoration(
                 color: const Color(0xFFFFD400),
                 borderRadius: BorderRadius.circular(99),
-                boxShadow: [BoxShadow(color: const Color(0xB0FFD400), blurRadius: 8)],
+                boxShadow: const [BoxShadow(color: Color(0xB0FFD400), blurRadius: 8)],
               ),
             ),
           ),
@@ -311,7 +311,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               decoration: BoxDecoration(
                 color: const Color(0xFFFF5A5F),
                 borderRadius: BorderRadius.circular(99),
-                boxShadow: [BoxShadow(color: const Color(0xB0FF5A5F), blurRadius: 8)],
+                boxShadow: const [BoxShadow(color: Color(0xB0FF5A5F), blurRadius: 8)],
               ),
             ),
           ),
@@ -390,21 +390,21 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
         color: Colors.white.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0x4DB4D2FF)),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0x12002882),
+            color: Color(0x12002882),
             blurRadius: 16,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
           BoxShadow(
-            color: const Color(0x1F002882),
+            color: Color(0x1F002882),
             blurRadius: 48,
-            offset: const Offset(0, 16),
+            offset: Offset(0, 16),
           ),
           BoxShadow(
-            color: const Color(0x12002882),
+            color: Color(0x12002882),
             blurRadius: 80,
-            offset: const Offset(0, 40),
+            offset: Offset(0, 40),
           ),
         ],
       ),
@@ -461,12 +461,12 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
+                      const Text(
                         'ASSET MANAGEMENT SYSTEM',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF7A96B8),
+                          color: Color(0xFF7A96B8),
                           letterSpacing: 0.04,
                         ),
                       ),
@@ -487,14 +487,14 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           ),
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10),
                         child: Text(
                           'SIGN IN',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF9AB0D0),
+                            color: Color(0xFF9AB0D0),
                             letterSpacing: 0.08,
                           ),
                         ),
@@ -581,10 +581,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                             ],
                           ),
                           boxShadow: [
-                            BoxShadow(
-                              color: const Color(0x730D47A1),
+                            const BoxShadow(
+                              color: Color(0x730D47A1),
                               blurRadius: 16,
-                              offset: const Offset(0, 4),
+                              offset: Offset(0, 4),
                             ),
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.18),
@@ -626,16 +626,16 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                   
                   // Security note
                   const SizedBox(height: 18),
-                  Row(
+                  const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.lock_outline, size: 12, color: const Color(0xFF9AB0D0)),
-                      const SizedBox(width: 5),
+                      Icon(Icons.lock_outline, size: 12, color: Color(0xFF9AB0D0)),
+                      SizedBox(width: 5),
                       Text(
                         'Secured sign in · PSA Network',
                         style: TextStyle(
                           fontSize: 10.5,
-                          color: const Color(0xFF9AB0D0),
+                          color: Color(0xFF9AB0D0),
                           letterSpacing: 0.01,
                         ),
                       ),

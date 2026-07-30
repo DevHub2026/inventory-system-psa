@@ -251,9 +251,9 @@ class _CornerPainter extends CustomPainter {
     const r = 12.0;
     const len = 28.0;
     // Top-left
-    canvas.drawArc(Rect.fromLTWH(0, 0, r * 2, r * 2), 3.14159, 0.5, false, paint);
-    canvas.drawLine(const Offset(r, 0), Offset(r + len, 0), paint);
-    canvas.drawLine(const Offset(0, r), Offset(0, r + len), paint);
+    canvas.drawArc(const Rect.fromLTWH(0, 0, r * 2, r * 2), 3.14159, 0.5, false, paint);
+    canvas.drawLine(const Offset(r, 0), const Offset(r + len, 0), paint);
+    canvas.drawLine(const Offset(0, r), const Offset(0, r + len), paint);
     // Top-right
     final tr = Offset(size.width - r * 2, 0.0);
     canvas.drawArc(Rect.fromLTWH(tr.dx, tr.dy, r * 2, r * 2), -0.5, 0.5, false, paint);

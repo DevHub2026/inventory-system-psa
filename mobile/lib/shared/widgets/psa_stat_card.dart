@@ -38,11 +38,11 @@ class PsaStatCard extends StatelessWidget {
             right: const BorderSide(color: AppTheme.borderColor),
             bottom: const BorderSide(color: AppTheme.borderColor),
           ),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
               color: AppTheme.shadowColor,
               blurRadius: 4,
-              offset: const Offset(0, 1),
+              offset: Offset(0, 1),
             ),
           ],
         ),

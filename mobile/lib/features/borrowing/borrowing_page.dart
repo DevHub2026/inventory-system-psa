@@ -172,7 +172,7 @@ class _BorrowingPageState extends State<BorrowingPage> {
           color: AppTheme.cardColor,
           borderRadius: BorderRadius.circular(AppTheme.radiusXl),
           border: Border.all(color: AppTheme.borderColor),
-          boxShadow: [BoxShadow(color: AppTheme.shadowColor, blurRadius: 4, offset: const Offset(0, 1))],
+          boxShadow: const [BoxShadow(color: AppTheme.shadowColor, blurRadius: 4, offset: Offset(0, 1))],
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),

@@ -117,7 +117,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         padding: const EdgeInsets.all(24),
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: AppTheme.errorColor),
+                          style: const TextStyle(color: AppTheme.errorColor),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -141,11 +141,11 @@ class _DashboardPageState extends State<DashboardPage> {
               color: AppTheme.cardColor,
               borderRadius: BorderRadius.circular(AppTheme.radiusXl),
               border: Border.all(color: AppTheme.borderColor),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
                   color: AppTheme.shadowColor,
                   blurRadius: 4,
-                  offset: const Offset(0, 1),
+                  offset: Offset(0, 1),
                 ),
               ],
             ),
@@ -378,11 +378,11 @@ class _DashboardPageState extends State<DashboardPage> {
         color: AppTheme.cardColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
         border: Border.all(color: AppTheme.borderColor),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: AppTheme.shadowColor,
             blurRadius: 4,
-            offset: const Offset(0, 1),
+            offset: Offset(0, 1),
           ),
         ],
       ),
