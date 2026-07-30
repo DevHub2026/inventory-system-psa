@@ -17,8 +17,8 @@ class ReservationModel {
 
   const ReservationModel({
     required this.id,
-    required this.userId,
-    required this.status,
+    this.userId = 0,
+    this.status = '',
     this.remarks,
     this.startDate,
     this.endDate,
@@ -29,6 +29,10 @@ class ReservationModel {
     this.approver,
     this.items = const [],
   });
+
+  /// Convenience getter for the first item's asset name
+  String? get assetName =>
+      items.isNotEmpty ? items.first.asset?.name : null;
 
   factory ReservationModel.fromJson(Map<String, dynamic> json) =>
       ReservationModel(
@@ -62,8 +66,8 @@ class ReservationItem {
 
   const ReservationItem({
     required this.id,
-    required this.reservationId,
-    required this.assetId,
+    this.reservationId = 0,
+    this.assetId = 0,
     this.status,
     this.asset,
   });

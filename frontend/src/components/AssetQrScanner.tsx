@@ -570,7 +570,11 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
                 { label: 'Name',         value: asset.name },
                 { label: 'Asset Number', value: asset.asset_number, mono: true },
                 { label: 'PSA QR ID',    value: asset.psa_qr_identifier ?? scannedValue, mono: true },
+<<<<<<< HEAD
+                { label: 'Status', value: (() => {
+=======
 { label: 'Status', value: (() => {
+>>>>>>> 6bc7d60696539327e12f61fa55cb8e57b4e53eb7
                     const eff = getEffectiveAssetStatus(asset)
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

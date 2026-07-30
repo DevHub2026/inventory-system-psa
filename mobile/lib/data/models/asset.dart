@@ -31,6 +31,13 @@ class Asset {
     this.identifiers,
   });
 
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
   factory Asset.fromJson(Map<String, dynamic> json) {
     return Asset(
       id: json['id'] as int,
@@ -41,7 +48,7 @@ class Asset {
       status: json['status'] as String,
       conditionStatus: json['condition_status'] as String?,
       purchaseDate: json['purchase_date'] as String?,
-      purchaseCost: (json['purchase_cost'] as num?)?.toDouble(),
+      purchaseCost: _parseDouble(json['purchase_cost']),
       warrantyUntil: json['warranty_until'] as String?,
       category: json['category'] != null 
           ? AssetCategory.fromJson(json['category'] as Map<String, dynamic>) 
