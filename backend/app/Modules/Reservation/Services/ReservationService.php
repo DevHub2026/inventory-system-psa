@@ -6,8 +6,11 @@ use App\Enums\UserRole;
 use App\Models\User;
 use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\AssetIdentifier\Services\AssetIdentifierService;
+use App\Modules\Borrowing\Models\Borrowing;
+use App\Modules\Borrowing\Services\BorrowingService;
 use App\Modules\Notification\Services\NotificationService;
 use App\Modules\Reservation\Models\Reservation;
+use App\Modules\Workflow\Models\WorkflowVersion;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -17,6 +20,7 @@ class ReservationService
         private readonly AssetIdentifierService $assetIdentifierService,
         private readonly NotificationService $notificationService,
         private readonly \App\Modules\Workflow\Services\WorkflowEngineService $workflowEngineService,
+        private readonly BorrowingService $borrowingService,
     ) {}
 
     public function list(User $user, int $perPage = 20): LengthAwarePaginator
@@ -63,7 +67,7 @@ class ReservationService
         });
     }
 
-    public function approve(Reservation $reservation, User $authorizer, ?string $remarks = null): Reservation
+    public function approve(Reservation $reservation, User $authorizer, ?string $remarks = null): array
     {
         return DB::transaction(function () use ($reservation, $authorizer, $remarks) {
             $reservation = Reservation::query()
@@ -75,29 +79,79 @@ class ReservationService
                 throw new \InvalidArgumentException('Borrow request is already authorized or completed.');
             }
 
-
             // Execute Workflow Engine Approval Step
             $reservation = $this->workflowEngineService->approveCurrentLevel($reservation, $authorizer, $remarks);
 
+            $autoReleased = false;
+            $borrowings   = [];
+
             // If the workflow is fully approved, transition the main reservation status.
-            // Assets stay RESERVED (not AVAILABLE) — they are held for release.
-            // They are only freed to AVAILABLE when the borrowing is created (release)
-            // or when the reservation is rejected/cancelled.
             if ($reservation->workflow_status === 'APPROVED') {
                 $reservation->update([
-                    'status' => 'APPROVED',
-                    'authorized_by' => $authorizer->id,
-                    'authorized_at' => now(),
+                    'status'         => 'APPROVED',
+                    'authorized_by'  => $authorizer->id,
+                    'authorized_at'  => now(),
                 ]);
 
-                // Keep assets in RESERVED status — they are spoken for until physically released.
-                // Do NOT update asset status here.
+                // ── Auto-release for single-level workflows ──────────────────────
+                // When the active workflow has exactly 1 enabled approval level, the
+                // admin's approval is the final gate before physical release.  There
+                // is no second approver, so we skip the separate "Release Asset" step
+                // and create the Borrowing record immediately.
+                //
+                // For 2+ level workflows the asset stays RESERVED and a second admin
+                // scan is required to physically hand over the asset.
+                if ($this->isSingleLevelWorkflow($reservation->workflow_version_id)) {
+                    // Reload assets to get the freshest pivot data after the update above.
+                    $reservation->load('assets');
+
+                    foreach ($reservation->assets as $asset) {
+                        // Skip assets that were already fulfilled by a previous release.
+                        // This prevents duplicate borrowing records if, for some reason,
+                        // the approve endpoint is called more than once (race conditions,
+                        // retries, etc.).
+                        $alreadyFulfilled = $reservation->assets()
+                            ->where('assets.id', $asset->id)
+                            ->whereNotNull('reservation_items.fulfilled_at')
+                            ->exists();
+
+                        if ($alreadyFulfilled) {
+                            continue;
+                        }
+
+                        // Also guard against a pre-existing active borrowing for this asset.
+                        $existingActiveBorrowing = Borrowing::query()
+                            ->where('reservation_id', $reservation->id)
+                            ->where('asset_id', $asset->id)
+                            ->whereIn('status', ['BORROWED', 'ACTIVE', 'OVERDUE'])
+                            ->exists();
+
+                        if ($existingActiveBorrowing) {
+                            continue;
+                        }
+
+                        $borrowing = $this->borrowingService->create($authorizer, [
+                            'asset_id'    => $asset->id,
+                            'borrow_date' => now()->toDateString(),
+                            'due_date'    => $reservation->end_date?->toDateString()
+                                             ?? now()->addDays(7)->toDateString(),
+                        ]);
+
+                        $borrowings[] = $borrowing;
+                    }
+
+                    $autoReleased = ! empty($borrowings);
+                }
 
                 if ($reservation->user_id) {
+                    $notifMessage = $autoReleased
+                        ? 'Your borrow request #'.$reservation->id.' has been approved and the asset has been released to you.'
+                        : 'Your borrow request #'.$reservation->id.' has been approved.';
+
                     $this->notificationService->notifyUser(
                         $reservation->user_id,
                         'Borrow Request Approved',
-                        'Your borrow request #'.$reservation->id.' has been approved.',
+                        $notifMessage,
                         'request_approved',
                         $reservation->id,
                         Reservation::class,
@@ -106,8 +160,43 @@ class ReservationService
                 }
             }
 
-            return $reservation->fresh()->load(['user', 'assets', 'authorizer']);
+            $freshReservation = $reservation->fresh()->load(['user', 'assets', 'authorizer']);
+
+            return [
+                'reservation'  => $freshReservation,
+                'auto_released' => $autoReleased,
+                'borrowing_ids' => collect($borrowings)->pluck('id')->values()->all(),
+            ];
         });
+    }
+
+    /**
+     * Returns true when the workflow attached to this reservation has exactly
+     * one enabled approval level.  This is used to decide whether approval
+     * should immediately create the borrowing record (Scenario A) or leave the
+     * asset RESERVED pending a separate "Release Asset" step (Scenario B).
+     *
+     * Returns false when:
+     *  - no workflow version is attached (legacy / auto-approved path)
+     *  - the workflow version has 0 or 2+ enabled levels
+     */
+    private function isSingleLevelWorkflow(?int $workflowVersionId): bool
+    {
+        if (! $workflowVersionId) {
+            return false;
+        }
+
+        $version = WorkflowVersion::with(['approvalLevels'])->find($workflowVersionId);
+
+        if (! $version) {
+            return false;
+        }
+
+        $enabledCount = $version->approvalLevels
+            ->where('is_enabled', true)
+            ->count();
+
+        return $enabledCount === 1;
     }
 
     public function reject(Reservation $reservation, User $authorizer, ?string $remarks = null): Reservation
@@ -176,17 +265,53 @@ class ReservationService
         });
     }
 
-    public function authorizeByScan(User $authorizer, string $value): Reservation
+    public function release(Reservation $reservation, User $actor, ?int $assetId = null): \App\Modules\Borrowing\Models\Borrowing
     {
-        return DB::transaction(function () use ($authorizer, $value) {
-            $reservation = $this->reservationFromScanValue($value);
-
-            if (! $reservation) {
-                throw new \InvalidArgumentException('No pending borrow request found for this QR code.');
+        $reservation = Reservation::query()
+            ->with(['assets'])
+            ->findOrFail($reservation->id);
+ 
+        if ($reservation->status !== 'APPROVED') {
+            throw new \InvalidArgumentException('Only fully approved reservations can be released.');
+        }
+ 
+        $asset = null;
+        if ($assetId !== null) {
+            $asset = $reservation->assets()
+                ->where('assets.id', $assetId)
+                ->whereNull('reservation_items.fulfilled_at')
+                ->first();
+ 
+            if (! $asset) {
+                throw new \InvalidArgumentException('The selected asset is not available for release from this reservation.');
             }
+        } else {
+            $asset = $reservation->assets()
+                ->whereNull('reservation_items.fulfilled_at')
+                ->orderBy('assets.id')
+                ->first();
+ 
+            if (! $asset) {
+                throw new \InvalidArgumentException('No unfulfilled assets are available for release from this reservation.');
+            }
+        }
+ 
+        return $this->borrowingService->create($actor, [
+            'asset_id' => $asset->id,
+            'borrow_date' => now()->toDateString(),
+            'due_date' => $reservation->end_date?->toDateString() ?? now()->addDays(7)->toDateString(),
+        ]);
+    }
+ 
+    public function authorizeByScan(User $authorizer, string $value): array
+    {
+        $reservation = $this->reservationFromScanValue($value);
 
-            return $this->approve($reservation, $authorizer);
-        });
+        if (! $reservation) {
+            throw new \InvalidArgumentException('No pending borrow request found for this QR code.');
+        }
+
+        return $this->approve($reservation, $authorizer);
     }
 
     private function reservationFromScanValue(string $value): ?Reservation
@@ -197,7 +322,9 @@ class ReservationService
         if (str_starts_with($reference, 'PSA-RES-')) {
             $reservationId = (int) substr($reference, strlen('PSA-RES-'));
 
-            return $reservationId > 0 ? Reservation::query()->find($reservationId) : null;
+            return $reservationId > 0
+                ? Reservation::query()->find($reservationId)
+                : null;
         }
 
         $asset = $this->assetIdentifierService->findByValue($value)?->asset;

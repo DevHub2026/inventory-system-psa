@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-=======
-﻿import { useCallback, useEffect, useState } from 'react'
->>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
 import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination } from '@/components/ui'
 import { api } from '@/services/api'
 import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload, type ImportUsersResult, type ChangePasswordPayload } from '@/services/userService'
@@ -40,7 +36,7 @@ export function UsersPage() {
   const [filters,         setFilters]         = useState<UserFilters>({ per_page: 15, page: 1 })
   const [pagination, setPagination] = useState({ current_page: 1, per_page: 15, total: 0, last_page: 1 })
   const [roles, setRoles] = useState<Role[]>([])
-  const [_departments, setDepartments] = useState<DepartmentOption[]>([])
+  const [departments, setDepartments] = useState<DepartmentOption[]>([])
   const [offices, setOffices] = useState<SetupRecord[]>([])
   const [lookupWarning, setLookupWarning] = useState<string | null>(null)
 

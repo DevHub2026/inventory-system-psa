@@ -5,10 +5,12 @@ namespace App\Modules\SystemSetup\Services;
 use App\Modules\SystemSetup\Enums\DocumentType;
 use App\Modules\SystemSetup\Enums\TemplateStatus;
 use App\Modules\SystemSetup\Models\DocumentTemplate;
+use App\Modules\SystemSetup\Models\DocumentTemplateVersion;
 use App\Modules\SystemSetup\Repositories\Contracts\DocumentTemplateRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -16,6 +18,7 @@ class DocumentTemplateService
 {
     public function __construct(
         private readonly DocumentTemplateRepositoryInterface $repository,
+        private readonly DocxTemplateService $docxService,
     ) {}
 
     public function list(array $filters = [], int $perPage = 20): LengthAwarePaginator
@@ -28,65 +31,80 @@ class DocumentTemplateService
         return $this->repository->find($id);
     }
 
+    /**
+     * Create a template metadata record. File may be provided immediately or uploaded later.
+     */
     public function create(array $data, ?UploadedFile $file = null, ?int $userId = null): DocumentTemplate
     {
-        if ($file === null) {
-            throw new \InvalidArgumentException('Template file is required.');
+        $documentType = $data['document_type'];
+        $isOfficial = in_array($documentType, PlaceholderRegistry::officialDocumentTypes(), true);
+
+        $payload = [
+            'name' => $data['name'],
+            'document_type' => $documentType,
+            'description' => $data['description'] ?? null,
+            'version' => $data['version'] ?? '1.0',
+            'status' => $data['status'] ?? TemplateStatus::INACTIVE->value,
+            'is_default' => (bool) ($data['is_default'] ?? false),
+            'change_notes' => $data['change_notes'] ?? null,
+            'created_by' => $userId,
+            'updated_by' => $userId,
+            'uploaded_by' => null,
+            'upload_date' => null,
+            'file_path' => null,
+            'file_name' => null,
+            'file_size' => 0,
+            'mime_type' => null,
+            'extension' => null,
+            'validation_status' => null,
+            'validation_result' => null,
+            'has_unknown_placeholders' => false,
+        ];
+
+        if ($file !== null) {
+            $this->assertAllowedFile($file, $documentType);
+            $stored = $this->storeUploadedFile($file, $documentType);
+            $payload = array_merge($payload, $stored, [
+                'uploaded_by' => $userId,
+                'upload_date' => now(),
+            ]);
+
+            if ($isOfficial || strtolower($file->getClientOriginalExtension()) === 'docx') {
+                $validation = $this->docxService->validateFile(Storage::disk('local')->path($stored['file_path']));
+                $payload['validation_status'] = $validation['validation_status'];
+                $payload['validation_result'] = $validation;
+                $payload['has_unknown_placeholders'] = $validation['unknown'] !== [];
+                if ($payload['has_unknown_placeholders']) {
+                    $payload['status'] = TemplateStatus::INACTIVE->value;
+                    $payload['is_default'] = false;
+                }
+            }
+        } elseif ($isOfficial) {
+            // Official DOCX templates start inactive until a valid file is uploaded.
+            $payload['status'] = TemplateStatus::INACTIVE->value;
+        } elseif ($file === null && ! $isOfficial) {
+            // Spreadsheet templates historically required a file on create.
+            throw new \InvalidArgumentException('Template file is required for this document type.');
         }
 
-        $validatedExtension = strtolower($file->getClientOriginalExtension());
+        $template = $this->repository->create($payload);
 
-        // Validate extension against allowed types
-        $allowed = $this->getAllowedExtensions($data['document_type']);
-        if (! in_array($validatedExtension, $allowed, true)) {
-            throw new \InvalidArgumentException(
-                'File type .'.$validatedExtension.' is not allowed for this document type. Allowed: '.implode(', ', $allowed)
-            );
-        }
-
-        // Store the file securely
-        $path = $this->storeFile($file, $data['document_type']);
-
-        $template = $this->repository->create([
-            'name'          => $data['name'],
-            'document_type' => $data['document_type'],
-            'description'   => $data['description'] ?? null,
-            'version'       => $data['version'] ?? '1.0',
-            'status'        => $data['status'] ?? TemplateStatus::ACTIVE->value,
-            'is_default'    => $data['is_default'] ?? false,
-            'file_path'     => $path,
-            'file_name'     => $file->getClientOriginalName(),
-            'file_size'     => $file->getSize(),
-            'mime_type'     => $file->getMimeType(),
-            'extension'     => $validatedExtension,
-            'uploaded_by'   => $userId,
-            'upload_date'   => now(),
-        ]);
-
-        // If this is set as default, ensure no other defaults exist
         if ($template->is_default) {
             $this->repository->setDefault($template->id);
         }
 
-        return $template->fresh();
-    }
-
-    public function update(int $id, array $data, ?UploadedFile $file = null): DocumentTemplate
-    {
-        $template = $this->repository->find($id);
-
-        if (! $template) {
-            throw new \InvalidArgumentException('Template not found.');
+        if ($template->file_path) {
+            $this->archiveCurrentAsVersion($template->fresh(), $userId, $data['change_notes'] ?? 'Initial upload');
         }
 
-        $fields = [
-            'name', 'document_type', 'description', 'version', 'status', 'is_default',
-            'header_org_name', 'header_office_name', 'header_title', 'logo_url',
-            'body_template', 'footer_text', 'footer_notes', 'signature_blocks',
-            'paper_size', 'orientation', 'margin_top', 'margin_bottom', 'margin_left', 'margin_right',
-            'font_family', 'font_size', 'text_alignment',
-        ];
+        return $template->fresh(['uploader', 'createdByUser', 'updatedByUser']);
+    }
 
+    public function update(int $id, array $data): DocumentTemplate
+    {
+        $template = $this->requireTemplate($id);
+
+        $fields = ['name', 'description', 'change_notes'];
         $updateData = [];
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {
@@ -95,61 +113,142 @@ class DocumentTemplateService
         }
         $updateData['updated_by'] = auth()->id();
 
-        // If a new file is uploaded, replace the old one
-        if ($file !== null) {
-            $validatedExtension = strtolower($file->getClientOriginalExtension());
-            $allowed = $this->getAllowedExtensions($updateData['document_type']);
-            if (! in_array($validatedExtension, $allowed, true)) {
-                throw new \InvalidArgumentException(
-                    'File type .'.$validatedExtension.' is not allowed for this document type.'
-                );
-            }
-
-            // Delete old file
-            if ($template->file_path && Storage::disk('local')->exists($template->file_path)) {
-                Storage::disk('local')->delete($template->file_path);
-            }
-
-            $path = $this->storeFile($file, $updateData['document_type']);
-            $updateData['file_path'] = $path;
-            $updateData['file_name'] = $file->getClientOriginalName();
-            $updateData['file_size'] = $file->getSize();
-            $updateData['mime_type'] = $file->getMimeType();
-            $updateData['extension'] = $validatedExtension;
+        if (array_key_exists('is_default', $data)) {
+            $updateData['is_default'] = (bool) $data['is_default'];
         }
 
         $template = $this->repository->update($id, $updateData);
 
-        // If this is set as default, ensure no other defaults exist
-        if ($template->is_default) {
+        if (! empty($updateData['is_default'])) {
             $this->repository->setDefault($template->id);
         }
 
-        return $template->fresh();
+        return $template->fresh(['uploader', 'createdByUser', 'updatedByUser']);
+    }
+
+    public function uploadOrReplace(int $id, UploadedFile $file, ?string $changeNotes = null, ?int $userId = null): DocumentTemplate
+    {
+        $template = $this->requireTemplate($id);
+        $docType = $template->getRawOriginal('document_type');
+        $this->assertAllowedFile($file, $docType);
+
+        return DB::transaction(function () use ($template, $file, $changeNotes, $userId, $docType) {
+            // Archive existing file before replacing.
+            if ($template->file_path && Storage::disk('local')->exists($template->file_path)) {
+                $this->archiveCurrentAsVersion($template, $userId, $changeNotes ?? 'Replaced before new upload');
+            }
+
+            $stored = $this->storeUploadedFile($file, $docType);
+            $version = $this->nextVersion($template->version);
+
+            $update = array_merge($stored, [
+                'version' => $version,
+                'uploaded_by' => $userId ?? auth()->id(),
+                'upload_date' => now(),
+                'updated_by' => $userId ?? auth()->id(),
+                'change_notes' => $changeNotes,
+            ]);
+
+            if (strtolower($file->getClientOriginalExtension()) === 'docx') {
+                $validation = $this->docxService->validateFile(Storage::disk('local')->path($stored['file_path']));
+                $update['validation_status'] = $validation['validation_status'];
+                $update['validation_result'] = $validation;
+                $update['has_unknown_placeholders'] = $validation['unknown'] !== [];
+                if ($update['has_unknown_placeholders']) {
+                    $update['status'] = TemplateStatus::INACTIVE->value;
+                    $update['is_default'] = false;
+                }
+            }
+
+            $template = $this->repository->update($template->id, $update);
+            $this->archiveCurrentAsVersion($template, $userId ?? auth()->id(), $changeNotes ?? 'Uploaded version '.$version);
+
+            return $template->fresh(['uploader', 'createdByUser', 'updatedByUser', 'versions']);
+        });
+    }
+
+    public function validate(int $id): array
+    {
+        $template = $this->requireTemplate($id);
+
+        if (! $template->file_path || ! Storage::disk('local')->exists($template->file_path)) {
+            throw new \InvalidArgumentException('No DOCX file is uploaded for this template.');
+        }
+
+        if ($template->extension !== 'docx') {
+            throw new \InvalidArgumentException('Placeholder validation is only supported for DOCX templates.');
+        }
+
+        $validation = $this->docxService->validateFile(Storage::disk('local')->path($template->file_path));
+
+        $this->repository->update($template->id, [
+            'validation_status' => $validation['validation_status'],
+            'validation_result' => $validation,
+            'has_unknown_placeholders' => $validation['unknown'] !== [],
+            'updated_by' => auth()->id(),
+        ]);
+
+        if ($validation['unknown'] !== []) {
+            $this->repository->update($template->id, [
+                'status' => TemplateStatus::INACTIVE->value,
+                'is_default' => false,
+            ]);
+        }
+
+        return $validation;
+    }
+
+    public function activate(int $id): DocumentTemplate
+    {
+        $template = $this->requireTemplate($id);
+
+        if ($template->isOfficialDocxType()) {
+            if ($template->extension !== 'docx' || ! $template->file_path) {
+                throw new \InvalidArgumentException('Upload a valid DOCX file before activating this template.');
+            }
+            if ($template->has_unknown_placeholders || $template->validation_status !== 'valid') {
+                throw new \InvalidArgumentException(
+                    'This template has unknown placeholders and cannot be activated until they are fixed.'
+                );
+            }
+        }
+
+        $template = $this->repository->update($id, [
+            'status' => TemplateStatus::ACTIVE->value,
+            'is_default' => true,
+            'updated_by' => auth()->id(),
+        ]);
+
+        $this->repository->setDefault($template->id);
+
+        return $template->fresh(['uploader', 'createdByUser', 'updatedByUser']);
+    }
+
+    public function deactivate(int $id): DocumentTemplate
+    {
+        $template = $this->repository->update($id, [
+            'status' => TemplateStatus::INACTIVE->value,
+            'is_default' => false,
+            'updated_by' => auth()->id(),
+        ]);
+
+        return $template->fresh(['uploader', 'createdByUser', 'updatedByUser']);
     }
 
     public function delete(int $id): void
     {
-        $template = $this->repository->find($id);
+        $template = $this->requireTemplate($id);
 
-        if (! $template) {
-            throw new \InvalidArgumentException('Template not found.');
-        }
-
-        // Delete the file
-        if ($template->file_path && Storage::disk('local')->exists($template->file_path)) {
-            Storage::disk('local')->delete($template->file_path);
-        }
-
+        // Soft-delete only; retain files for audit/rollback via versions.
         $this->repository->delete($id);
     }
 
     public function download(int $id): string
     {
-        $template = $this->repository->find($id);
+        $template = $this->requireTemplate($id);
 
-        if (! $template) {
-            throw new \InvalidArgumentException('Template not found.');
+        if (! $template->file_path) {
+            throw new \InvalidArgumentException('Template file not found on disk.');
         }
 
         $fullPath = Storage::disk('local')->path($template->file_path);
@@ -161,25 +260,101 @@ class DocumentTemplateService
         return $fullPath;
     }
 
-    public function preview(int $id): string
+    public function downloadVersion(int $templateId, int $versionId): array
     {
-        // Preview uses the same file path; the frontend handles rendering
-        return $this->download($id);
+        $template = $this->requireTemplate($templateId);
+        $version = DocumentTemplateVersion::query()
+            ->where('document_template_id', $template->id)
+            ->where('id', $versionId)
+            ->firstOrFail();
+
+        $fullPath = Storage::disk('local')->path($version->file_path);
+        if (! file_exists($fullPath)) {
+            throw new \InvalidArgumentException('Version file not found on disk.');
+        }
+
+        return [$fullPath, $version];
+    }
+
+    public function versions(int $id): Collection
+    {
+        $template = $this->requireTemplate($id);
+
+        return $template->versions()->with('uploader')->get();
+    }
+
+    public function restoreVersion(int $templateId, int $versionId, ?int $userId = null): DocumentTemplate
+    {
+        $template = $this->requireTemplate($templateId);
+        $version = DocumentTemplateVersion::query()
+            ->where('document_template_id', $template->id)
+            ->where('id', $versionId)
+            ->firstOrFail();
+
+        if (! Storage::disk('local')->exists($version->file_path)) {
+            throw new \InvalidArgumentException('Version file not found on disk.');
+        }
+
+        return DB::transaction(function () use ($template, $version, $userId) {
+            if ($template->file_path && Storage::disk('local')->exists($template->file_path)) {
+                $this->archiveCurrentAsVersion($template, $userId, 'Archived before restoring version '.$version->version);
+            }
+
+            // Copy version file to a new active path so version archives stay intact.
+            $docType = $template->getRawOriginal('document_type');
+            $newPath = 'templates/'.$docType.'/'.Str::uuid().'_restored_'.Str::slug(pathinfo($version->file_name, PATHINFO_FILENAME)).'.'.$version->extension;
+            Storage::disk('local')->copy($version->file_path, $newPath);
+
+            $next = $this->nextVersion($template->version);
+
+            $update = [
+                'version' => $next,
+                'file_path' => $newPath,
+                'file_name' => $version->file_name,
+                'file_size' => $version->file_size,
+                'mime_type' => $version->mime_type,
+                'extension' => $version->extension,
+                'validation_status' => $version->validation_status,
+                'validation_result' => $version->validation_result,
+                'has_unknown_placeholders' => $version->has_unknown_placeholders,
+                'uploaded_by' => $userId ?? auth()->id(),
+                'upload_date' => now(),
+                'updated_by' => $userId ?? auth()->id(),
+                'change_notes' => 'Restored from version '.$version->version,
+            ];
+
+            if ($update['has_unknown_placeholders']) {
+                $update['status'] = TemplateStatus::INACTIVE->value;
+                $update['is_default'] = false;
+            }
+
+            $template = $this->repository->update($template->id, $update);
+            $this->archiveCurrentAsVersion($template, $userId ?? auth()->id(), 'Restored version '.$version->version);
+
+            return $template->fresh(['uploader', 'versions']);
+        });
+    }
+
+    public function setDefault(int $id): DocumentTemplate
+    {
+        return $this->activate($id);
+    }
+
+    public function toggleStatus(int $id): DocumentTemplate
+    {
+        $template = $this->requireTemplate($id);
+        $current = $template->getRawOriginal('status');
+
+        if ($current === TemplateStatus::ACTIVE->value) {
+            return $this->deactivate($id);
+        }
+
+        return $this->activate($id);
     }
 
     public function duplicate(int $id): DocumentTemplate
     {
         return $this->repository->duplicate($id);
-    }
-
-    public function setDefault(int $id): DocumentTemplate
-    {
-        return $this->repository->setDefault($id);
-    }
-
-    public function toggleStatus(int $id): DocumentTemplate
-    {
-        return $this->repository->toggleStatus($id);
     }
 
     public function getByDocumentType(DocumentType|string $type): Collection
@@ -192,172 +367,113 @@ class DocumentTemplateService
         return $this->repository->getDefault($type);
     }
 
-    /**
-     * Get the default active template for a document type,
-     * or null if none exists.
-     */
     public function resolveDefault(DocumentType|string $type): ?DocumentTemplate
     {
         return DocumentTemplate::getDefaultFor($type);
     }
 
-    /**
-     * Check if a default template exists for a document type.
-     */
     public function hasDefault(DocumentType|string $type): bool
     {
         return $this->resolveDefault($type) !== null;
     }
 
-    public function restoreDefault(int $id): DocumentTemplate
+    private function requireTemplate(int $id): DocumentTemplate
     {
         $template = $this->repository->find($id);
         if (! $template) {
             throw new \InvalidArgumentException('Template not found.');
         }
 
-        $docType = $template->getRawOriginal('document_type');
-        $preset = $this->getDefaultPreset($docType);
-
-        $template->update([
-            'header_org_name'    => $preset['header_org_name'],
-            'header_office_name' => $preset['header_office_name'],
-            'header_title'       => $preset['header_title'],
-            'body_template'      => $preset['body_template'],
-            'footer_text'        => $preset['footer_text'],
-            'footer_notes'       => $preset['footer_notes'],
-            'signature_blocks'   => $preset['signature_blocks'],
-            'paper_size'         => 'A4',
-            'orientation'        => 'portrait',
-            'margin_top'         => 25,
-            'margin_bottom'      => 25,
-            'margin_left'        => 25,
-            'margin_right'       => 25,
-            'font_family'        => 'Arial',
-            'font_size'          => 12,
-            'text_alignment'     => 'left',
-            'updated_by'         => auth()->id(),
-        ]);
-
-        return $template->fresh();
+        return $template;
     }
 
-    public static function getDefaultPreset(string $docType): array
+    private function assertAllowedFile(UploadedFile $file, string $documentType): void
     {
-        return match ($docType) {
-            'borrow_receipt' => [
-                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
-                'header_office_name' => 'Regional Statistical Services Office',
-                'header_title'       => 'PROPERTY BORROW RECEIPT',
-                'body_template'      => "This is to acknowledge receipt of the following property/equipment borrowed by {{employee_name}} (Employee No: {{employee_number}}) from {{department}} ({{office}}):\n\nAsset Name: {{asset_name}}\nAsset Code / Property Tag: {{asset_code}}\nSerial Number: {{serial_number}}\nManufacturer: {{manufacturer}}\nCategory: {{category}}\nCondition: {{condition}}\n\nBorrow Date: {{borrow_date}}\nDue Date: {{due_date}}\n\nThe borrower agrees to maintain the item in good condition and return it on or before the due date.",
-                'footer_text'        => 'Official Document — Philippine Statistics Authority',
-                'footer_notes'       => 'Note: Unreturned items after the due date will be subject to property accountability review.',
-                'signature_blocks'   => [
-                    ['key' => 'prepared_by', 'label' => 'Prepared By', 'name' => '{{prepared_by}}', 'position' => 'Property Custodian', 'enabled' => true],
-                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Department Head', 'position' => 'Supervising Officer', 'enabled' => true],
-                    ['key' => 'received_by', 'label' => 'Received By (Borrower)', 'name' => '{{employee_name}}', 'position' => 'Borrower', 'enabled' => true],
-                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'Witness', 'enabled' => false],
-                ],
-            ],
-            'return_receipt' => [
-                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
-                'header_office_name' => 'Regional Statistical Services Office',
-                'header_title'       => 'PROPERTY RETURN RECEIPT',
-                'body_template'      => "This is to certify that {{employee_name}} (Employee No: {{employee_number}}) of {{department}} has returned the following item:\n\nAsset Name: {{asset_name}}\nAsset Code: {{asset_code}}\nSerial Number: {{serial_number}}\n\nReturned Date: {{returned_date}}\nCondition upon Return: {{condition}}\n\nThe property has been inspected and returned to active inventory.",
-                'footer_text'        => 'Official Document — Philippine Statistics Authority',
-                'footer_notes'       => 'Verified and accepted into system inventory.',
-                'signature_blocks'   => [
-                    ['key' => 'prepared_by', 'label' => 'Received & Inspected By', 'name' => '{{prepared_by}}', 'position' => 'Inventory Inspector', 'enabled' => true],
-                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Property Custodian', 'position' => 'Custodian Officer', 'enabled' => true],
-                    ['key' => 'received_by', 'label' => 'Returned By', 'name' => '{{employee_name}}', 'position' => 'Borrower', 'enabled' => true],
-                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'Witness', 'enabled' => false],
-                ],
-            ],
-            'issuance' => [
-                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
-                'header_office_name' => 'Regional Statistical Services Office',
-                'header_title'       => 'PROPERTY ACKNOWLEDGEMENT RECEIPT (PAR)',
-                'body_template'      => "I hereby acknowledge receipt from {{office}} of the following official property for which I am permanently responsible:\n\nItem: {{asset_name}}\nProperty Tag / Code: {{asset_code}}\nSerial Number: {{serial_number}}\nManufacturer: {{manufacturer}}\nCategory: {{category}}\nIssued Date: {{issued_date}}\n\nIssued To: {{employee_name}} (Employee No: {{employee_number}})\nDepartment: {{department}}",
-                'footer_text'        => 'Official Document — Philippine Statistics Authority',
-                'footer_notes'       => 'Permanent issuance record. Please report any loss or damage immediately.',
-                'signature_blocks'   => [
-                    ['key' => 'prepared_by', 'label' => 'Issued By', 'name' => '{{prepared_by}}', 'position' => 'Supply Officer', 'enabled' => true],
-                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Property Custodian', 'position' => 'Head Custodian', 'enabled' => true],
-                    ['key' => 'received_by', 'label' => 'Received By (Recipient)', 'name' => '{{employee_name}}', 'position' => 'Accountable Employee', 'enabled' => true],
-                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'Witness', 'enabled' => false],
-                ],
-            ],
-            'property_transfer' => [
-                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
-                'header_office_name' => 'Regional Statistical Services Office',
-                'header_title'       => 'PROPERTY TRANSFER REPORT',
-                'body_template'      => "This document certifies the official transfer of property accountability:\n\nAsset Name: {{asset_name}}\nProperty Code: {{asset_code}}\nSerial Number: {{serial_number}}\nCategory: {{category}}\nCondition: {{condition}}\n\nTransfer Date: {{current_date}}\nTransferred From: {{office}}\nTransferred To: {{department}}",
-                'footer_text'        => 'Official Document — Philippine Statistics Authority',
-                'footer_notes'       => 'Transfer of accountability is effective upon signature of both parties.',
-                'signature_blocks'   => [
-                    ['key' => 'prepared_by', 'label' => 'Transferor (Relinquishing Officer)', 'name' => '{{prepared_by}}', 'position' => 'Relinquishing Officer', 'enabled' => true],
-                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Property Custodian', 'position' => 'Chief Custodian', 'enabled' => true],
-                    ['key' => 'received_by', 'label' => 'Transferee (Receiving Officer)', 'name' => '{{employee_name}}', 'position' => 'Receiving Officer', 'enabled' => true],
-                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'Witness', 'enabled' => false],
-                ],
-            ],
-            'clearance' => [
-                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
-                'header_office_name' => 'Regional Statistical Services Office',
-                'header_title'       => 'PROPERTY CLEARANCE CERTIFICATE',
-                'body_template'      => "This is to certify that {{employee_name}} (Employee No: {{employee_number}}) of {{department}} has been cleared of all property accountabilities, equipment borrowings, and inventory obligations as of {{current_date}}.\n\nStatus: FULLY CLEARED",
-                'footer_text'        => 'Official Document — Philippine Statistics Authority',
-                'footer_notes'       => 'Valid for official clearance processes.',
-                'signature_blocks'   => [
-                    ['key' => 'prepared_by', 'label' => 'Verified & Prepared By', 'name' => '{{prepared_by}}', 'position' => 'Clearance Officer', 'enabled' => true],
-                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Property Custodian', 'position' => 'Chief Custodian', 'enabled' => true],
-                    ['key' => 'received_by', 'label' => 'Cleared Employee', 'name' => '{{employee_name}}', 'position' => 'Employee', 'enabled' => true],
-                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'HR Representative', 'enabled' => false],
-                ],
-            ],
-            'reissuance' => [
-                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
-                'header_office_name' => 'Regional Statistical Services Office',
-                'header_title'       => 'ASSET RE-ISSUANCE FORM',
-                'body_template'      => "This certifies the official transfer and permanent reassignment of accountability for the asset described below:\n\nAsset Name: {{asset_name}}\nProperty Code: {{asset_code}}\nSerial Number: {{serial_number}}\nOffice: {{office}}\nDepartment: {{department}}\n\nPrevious Accountable Holder: {{previous_employee}}\nNew Accountable Holder: {{new_employee}}\nTransfer Date: {{transfer_date}}\n\nReason for Re-Issuance: {{reason}}",
-                'footer_text'        => 'Official Document — Philippine Statistics Authority',
-                'footer_notes'       => 'The new accountable holder assumes full responsibility for the custody and maintenance of the asset.',
-                'signature_blocks'   => [
-                    ['key' => 'prepared_by', 'label' => 'Prepared / Transferred By', 'name' => '{{prepared_by}}', 'position' => 'Property Officer', 'enabled' => true],
-                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => '{{approved_by}}', 'position' => 'Property Custodian', 'enabled' => true],
-                    ['key' => 'received_by', 'label' => 'Accountability Accepted By', 'name' => '{{new_employee}}', 'position' => 'New Accountable Employee', 'enabled' => true],
-                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '{{previous_employee}}', 'position' => 'Previous Accountable Employee', 'enabled' => true],
-                ],
-            ],
-            default => [
-                'header_org_name'    => 'PHILIPPINE STATISTICS AUTHORITY',
-                'header_office_name' => 'Regional Statistical Services Office',
-                'header_title'       => 'OFFICIAL DOCUMENT',
-                'body_template'      => "Document content for {{employee_name}} regarding {{asset_name}} ({{asset_code}}). Generated on {{current_date}}.",
-                'footer_text'        => 'Official Document — Philippine Statistics Authority',
-                'footer_notes'       => '',
-                'signature_blocks'   => [
-                    ['key' => 'prepared_by', 'label' => 'Prepared By', 'name' => '{{prepared_by}}', 'position' => 'Officer', 'enabled' => true],
-                    ['key' => 'approved_by', 'label' => 'Approved By', 'name' => 'Head', 'position' => 'Supervisor', 'enabled' => true],
-                    ['key' => 'received_by', 'label' => 'Received By', 'name' => 'Recipient', 'position' => 'Recipient', 'enabled' => false],
-                    ['key' => 'witnessed_by', 'label' => 'Witnessed By', 'name' => '', 'position' => 'Witness', 'enabled' => false],
-                ],
-            ],
-        };
+        $extension = strtolower($file->getClientOriginalExtension());
+        $allowed = $this->getAllowedExtensions($documentType);
+
+        if (! in_array($extension, $allowed, true)) {
+            throw new \InvalidArgumentException(
+                'File type .'.$extension.' is not allowed for this document type. Allowed: '.implode(', ', $allowed)
+            );
+        }
+
+        if (in_array($documentType, PlaceholderRegistry::officialDocumentTypes(), true) && $extension !== 'docx') {
+            throw new \InvalidArgumentException('Official document templates must be DOCX files.');
+        }
+
+        $mime = (string) $file->getMimeType();
+        if ($extension === 'docx') {
+            $allowedMimes = [
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/zip',
+                'application/octet-stream',
+            ];
+            if ($mime && ! in_array($mime, $allowedMimes, true)) {
+                throw new \InvalidArgumentException('Invalid DOCX MIME type.');
+            }
+        }
     }
 
-    private function storeFile(UploadedFile $file, string $documentType): string
+    /**
+     * @return array{file_path: string, file_name: string, file_size: int, mime_type: ?string, extension: string}
+     */
+    private function storeUploadedFile(UploadedFile $file, string $documentType): array
     {
+        $extension = strtolower($file->getClientOriginalExtension());
         $directory = 'templates/'.$documentType;
-        $filename = Str::uuid().'_'.Str::slug($file->getClientOriginalName()).'.'.$file->getClientOriginalExtension();
+        $safeOriginal = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'template';
+        $filename = Str::uuid().'_'.$safeOriginal.'.'.$extension;
+        $path = $file->storeAs($directory, $filename, 'local');
 
-        return $file->storeAs($directory, $filename, 'local');
+        return [
+            'file_path' => $path,
+            'file_name' => $file->getClientOriginalName(),
+            'file_size' => (int) $file->getSize(),
+            'mime_type' => $file->getMimeType(),
+            'extension' => $extension,
+        ];
+    }
+
+    private function archiveCurrentAsVersion(DocumentTemplate $template, ?int $userId, ?string $notes): void
+    {
+        if (! $template->file_path) {
+            return;
+        }
+
+        DocumentTemplateVersion::query()->create([
+            'document_template_id' => $template->id,
+            'version' => $template->version ?? '1.0',
+            'file_path' => $template->file_path,
+            'file_name' => $template->file_name ?? basename($template->file_path),
+            'file_size' => $template->file_size ?? 0,
+            'mime_type' => $template->mime_type,
+            'extension' => $template->extension,
+            'validation_status' => $template->validation_status,
+            'validation_result' => $template->validation_result,
+            'has_unknown_placeholders' => (bool) $template->has_unknown_placeholders,
+            'change_notes' => $notes,
+            'uploaded_by' => $userId ?? $template->uploaded_by,
+        ]);
+    }
+
+    private function nextVersion(string $version): string
+    {
+        $parts = explode('.', $version);
+        if (count($parts) >= 1 && is_numeric($parts[0])) {
+            $major = (int) $parts[0];
+            $minor = isset($parts[1]) && is_numeric($parts[1]) ? (int) $parts[1] + 1 : 1;
+
+            return $major.'.'.$minor;
+        }
+
+        return '1.0';
     }
 
     private function getAllowedExtensions(string $documentType): array
     {
         $type = DocumentType::tryFrom($documentType);
 
-        return $type ? $type->allowedExtensions() : ['xlsx', 'xls', 'csv', 'docx', 'pdf'];
+        return $type ? $type->allowedExtensions() : ['docx'];
     }
 }

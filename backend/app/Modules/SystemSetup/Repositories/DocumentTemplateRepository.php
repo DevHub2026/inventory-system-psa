@@ -14,7 +14,7 @@ class DocumentTemplateRepository implements DocumentTemplateRepositoryInterface
 {
     public function all(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
-        $query = DocumentTemplate::query();
+        $query = DocumentTemplate::query()->with(['uploader', 'createdByUser', 'updatedByUser']);
 
         if (! empty($filters['document_type'])) {
             $query->where('document_type', $filters['document_type']);
@@ -163,19 +163,22 @@ class DocumentTemplateRepository implements DocumentTemplateRepositoryInterface
             $newVersion = $this->incrementVersion($template->version);
 
             return DocumentTemplate::query()->create([
-                'name'          => $template->name.' (Copy)',
+                'name' => $template->name.' (Copy)',
                 'document_type' => $docType,
-                'description'   => $template->description,
-                'version'       => $newVersion,
-                'status'        => TemplateStatus::ACTIVE->value,
-                'is_default'    => false,
-                'file_path'     => $newPath,
-                'file_name'     => $template->file_name,
-                'file_size'     => $template->file_size,
-                'mime_type'     => $template->mime_type,
-                'extension'     => $template->extension,
-                'uploaded_by'   => $template->uploaded_by,
-                'upload_date'   => now(),
+                'description' => $template->description,
+                'version' => $newVersion,
+                'status' => TemplateStatus::INACTIVE->value,
+                'is_default' => false,
+                'file_path' => $newPath,
+                'file_name' => $template->file_name,
+                'file_size' => $template->file_size,
+                'mime_type' => $template->mime_type,
+                'extension' => $template->extension,
+                'validation_status' => $template->validation_status,
+                'validation_result' => $template->validation_result,
+                'has_unknown_placeholders' => (bool) $template->has_unknown_placeholders,
+                'uploaded_by' => $template->uploaded_by,
+                'upload_date' => now(),
             ]);
         });
     }

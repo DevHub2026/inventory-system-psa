@@ -45,7 +45,7 @@ class ApiConfig {
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         // Add auth token if available
-        final storage = const FlutterSecureStorage();
+        const storage = FlutterSecureStorage();
         final token = await storage.read(key: AppConstants.accessTokenKey);
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
@@ -85,7 +85,7 @@ class ApiConfig {
 
         if (error.response?.statusCode == 401) {
           // Token expired, clear storage
-          final storage = const FlutterSecureStorage();
+          const storage = FlutterSecureStorage();
           await storage.delete(key: AppConstants.accessTokenKey);
           await storage.delete(key: AppConstants.refreshTokenKey);
           await storage.delete(key: AppConstants.userKey);

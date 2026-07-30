@@ -97,7 +97,7 @@ class _PsaButtonState extends State<PsaButton> {
   _VariantStyle _getVariantStyle() {
     switch (widget.variant) {
       case PsaButtonVariant.primary:
-        return _VariantStyle(
+        return const _VariantStyle(
           background: AppTheme.primaryColor,
           hoverBackground: AppTheme.primaryHover,
           border: AppTheme.primaryColor,
@@ -106,11 +106,11 @@ class _PsaButtonState extends State<PsaButton> {
           hasShadow: true,
         );
       case PsaButtonVariant.secondary:
-        return _VariantStyle(
+        return const _VariantStyle(
           background: Colors.white,
-          hoverBackground: const Color(0xFFF1F5F9),
+          hoverBackground: Color(0xFFF1F5F9),
           border: AppTheme.borderColor,
-          hoverBorder: const Color(0xFFCBD5E1),
+          hoverBorder: Color(0xFFCBD5E1),
           color: AppTheme.textPrimary,
           hasShadow: false,
         );
@@ -124,27 +124,27 @@ class _PsaButtonState extends State<PsaButton> {
           hasShadow: false,
         );
       case PsaButtonVariant.danger:
-        return _VariantStyle(
+        return const _VariantStyle(
           background: AppTheme.errorColor,
-          hoverBackground: const Color(0xFFB71C1C),
+          hoverBackground: Color(0xFFB71C1C),
           border: AppTheme.errorColor,
-          hoverBorder: const Color(0xFFB71C1C),
+          hoverBorder: Color(0xFFB71C1C),
           color: Colors.white,
           hasShadow: true,
         );
       case PsaButtonVariant.success:
-        return _VariantStyle(
+        return const _VariantStyle(
           background: AppTheme.successColor,
-          hoverBackground: const Color(0xFF1B5E20),
+          hoverBackground: Color(0xFF1B5E20),
           border: AppTheme.successColor,
-          hoverBorder: const Color(0xFF1B5E20),
+          hoverBorder: Color(0xFF1B5E20),
           color: Colors.white,
           hasShadow: true,
         );
       case PsaButtonVariant.ghost:
-        return _VariantStyle(
+        return const _VariantStyle(
           background: Colors.transparent,
-          hoverBackground: const Color(0xFFF1F5F9),
+          hoverBackground: Color(0xFFF1F5F9),
           border: Colors.transparent,
           hoverBorder: Colors.transparent,
           color: AppTheme.textSecondary,
@@ -156,11 +156,11 @@ class _PsaButtonState extends State<PsaButton> {
   _SizeStyle _getSizeStyle() {
     switch (widget.size) {
       case PsaButtonSize.sm:
-        return _SizeStyle(height: 32, paddingInline: 12, fontSize: 12, gap: 6, iconSize: 14);
+        return const _SizeStyle(height: 32, paddingInline: 12, fontSize: 12, gap: 6, iconSize: 14);
       case PsaButtonSize.md:
-        return _SizeStyle(height: 38, paddingInline: 16, fontSize: 14, gap: 8, iconSize: 16);
+        return const _SizeStyle(height: 38, paddingInline: 16, fontSize: 14, gap: 8, iconSize: 16);
       case PsaButtonSize.lg:
-        return _SizeStyle(height: 42, paddingInline: 20, fontSize: 14, gap: 8, iconSize: 18);
+        return const _SizeStyle(height: 42, paddingInline: 20, fontSize: 14, gap: 8, iconSize: 18);
     }
   }
 }

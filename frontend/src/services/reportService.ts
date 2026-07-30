@@ -170,18 +170,5 @@ export const reportService = {
       responseType: 'blob',
     })
     return response.data
-  },
-
-  async renderDocumentData(type: string, targetId: number): Promise<{
-    template: unknown
-    placeholders: Record<string, string>
-  }> {
-    const { data } = await api.get<ApiResponse<{
-      template: unknown
-      placeholders: Record<string, string>
-    }>>('/documents/render', {
-      params: { type, target_id: targetId },
-    })
-    return unwrapData(data)
-  },
+  }
 }

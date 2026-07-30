@@ -28,11 +28,11 @@ class PsaPanel extends StatelessWidget {
         color: AppTheme.cardColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
         border: Border.all(color: AppTheme.borderColor),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: AppTheme.shadowColor,
             blurRadius: 4,
-            offset: const Offset(0, 1),
+            offset: Offset(0, 1),
           ),
         ],
       ),

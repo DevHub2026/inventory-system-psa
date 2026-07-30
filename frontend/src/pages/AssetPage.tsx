@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   ScanLine, CheckCircle2, XCircle, Printer, Search, Filter,
   Eye, QrCode as QrIcon, Edit3, Trash2, ArrowUpRight, RotateCcw,
-  Package, Wrench, Clock,
+  Package, Wrench, Clock, Send,
 } from 'lucide-react'
 import {
   Alert, Badge, Button, ConfirmDialog, SetupDropdown, EmptyState,
@@ -21,7 +21,7 @@ import type { Asset, AssetStatus } from '@/types'
 import { isAdmin, isStaff, hasAnyRole } from '@/utils/roleHelpers'
 import { getEffectiveAssetStatus } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
-import { PrintableDocumentModal } from '@/components/documents/PrintableDocumentModal'
+import { GenerateDocumentModal } from '@/components/documents/GenerateDocumentModal'
 import { ReissueAssetModal } from '@/components/assets/ReissueAssetModal'
 
 
@@ -109,11 +109,12 @@ interface ActionCellProps {
   onBorrow: () => void
   onReserve: () => void
   onReturn: () => void
+  onRelease: () => void
 }
 
 function ActionCell({
   asset, canManageAssets, canCompleteBorrowing,
-  onView, onQrLabel, onEdit, onDelete, onBorrow, onReserve, onReturn,
+  onView, onQrLabel, onEdit, onDelete, onBorrow, onReserve, onReturn, onRelease,
 }: ActionCellProps) {
   const [openMenu, setOpenMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -215,6 +216,7 @@ function ActionCell({
             {menuItem(<Eye size={14} />, 'View Details', onView)}
             {menuItem(<QrIcon size={14} />, 'QR Label', onQrLabel)}
             {asset.status === 'AVAILABLE' && menuItem(<Clock size={14} />, 'Request Borrow', onReserve)}
+            {asset.status === 'RESERVED' && asset.reservation_context?.status === 'APPROVED' && canCompleteBorrowing && menuItem(<Send size={14} />, 'Release Asset', onRelease)}
             {canManageAssets && menuItem(<Edit3 size={14} />, 'Edit Asset', onEdit)}
             {canManageAssets && (
               <>
@@ -247,6 +249,7 @@ export function AssetPage() {
   const [borrowId,  setBorrowId]  = useState<number | null>(null)
   const [reserveId, setReserveId] = useState<number | null>(null)
   const [returnId,  setReturnId]  = useState<number | null>(null)
+  const [releaseAsset, setReleaseAsset] = useState<Asset | null>(null)
   const [returnNotes,    setReturnNotes]    = useState('')
   const [borrowNotes,    setBorrowNotes]    = useState('')
   const [borrowDueDays,  setBorrowDueDays]  = useState<number | undefined>(undefined)
@@ -747,6 +750,7 @@ export function AssetPage() {
                         onBorrow={() => setBorrowId(r.id)}
                         onReserve={() => setReserveId(r.id)}
                         onReturn={() => setReturnId(r.id)}
+                        onRelease={() => r.reservation_context ? setReleaseAsset(r) : null}
                       />
                     </td>
                   </tr>
@@ -888,6 +892,35 @@ export function AssetPage() {
         }}
       />
 
+      <ConfirmDialog
+        open={releaseAsset !== null}
+        title="Release Asset"
+        message={
+          <div className="space-y-3">
+            <p className="text-[14px] text-[#374151]">This will record the asset as physically released and mark it as currently borrowed.</p>
+            {releaseAsset ? (
+              <>
+                <p className="text-[14px] text-[#374151]">Asset: {releaseAsset.name}</p>
+                <p className="text-[14px] text-[#374151]">Asset No.: {releaseAsset.asset_number}</p>
+              </>
+            ) : null}
+          </div>
+        }
+        confirmLabel="Release Asset"
+        tone="primary"
+        onCancel={() => setReleaseAsset(null)}
+        onConfirm={() => {
+          if (!releaseAsset || !releaseAsset.reservation_context) return
+          void reservationService.release(releaseAsset.reservation_context.id, releaseAsset.id).then(() => {
+            setReleaseAsset(null)
+            setMessage('Asset released and marked as currently borrowed.')
+            notifyDataChanged('all')
+            void load(page)
+            void loadSummary()
+          })
+        }}
+      />
+ 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
       <SharedQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} scanSource="assets_page_scanner" mode="modal" onCompleted={() => { void load(page); void loadSummary() }} />
 
@@ -926,7 +959,7 @@ export function AssetPage() {
                     setViewAsset(null)
                   }}
                 >
-                  <Printer size={14} className="mr-1.5" /> Print Issuance Receipt (PAR)
+                  <Printer size={14} className="mr-1.5" /> Generate Issuance Receipt (PAR)
                 </Button>
               )}
             </div>
@@ -1378,8 +1411,7 @@ export function AssetPage() {
         </div>
       </Modal>
 
-      {/* Issuance Receipt / PAR Printable Document Modal */}
-      <PrintableDocumentModal
+      <GenerateDocumentModal
         open={printIssuanceId !== null}
         onClose={() => setPrintIssuanceId(null)}
         documentType="issuance"

@@ -42,7 +42,7 @@ class InfoCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: Text(
                   item,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppTheme.textSecondary,
                     fontSize: 14,
                   ),

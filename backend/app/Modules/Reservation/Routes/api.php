@@ -10,6 +10,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
         ->middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head');
     Route::post('reservations/{reservation}/approve', [ReservationController::class, 'approve'])
         ->middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head');
+    Route::post('reservations/{reservation}/release', [ReservationController::class, 'release'])
+        ->middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head');
     Route::post('reservations/{reservation}/reject', [ReservationController::class, 'reject'])
         ->middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head');
     Route::post('reservations/{reservation}/cancel', [ReservationController::class, 'cancel']);

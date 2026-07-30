@@ -4,6 +4,7 @@ use App\Http\Controllers\BorrowController;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PermissionController;
 use App\Modules\Auth\Controllers\RoleController;
+use App\Modules\Auth\Controllers\SessionController;
 use App\Modules\Auth\Controllers\UserController;
 use App\Modules\Auth\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,11 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/me', [AuthController::class, 'me']);
         Route::put('/profile', [AuthController::class, 'updateProfile']);
         Route::put('/change-password', [AuthController::class, 'changePassword']);
+
+        // Session management
+        Route::get('/sessions', [SessionController::class, 'index']);
+        Route::post('/sessions/{id}/revoke', [SessionController::class, 'revoke']);
+        Route::post('/sessions/revoke-all', [SessionController::class, 'revokeAll']);
 
         Route::middleware('can:viewAny,App\Models\User')->group(function (): void {
             Route::get('/users', [UserController::class, 'index']);

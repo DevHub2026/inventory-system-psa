@@ -76,11 +76,19 @@ class ReservationController extends Controller
     {
         abort_unless($this->canApproveReservations($request->user()), 403, 'Only authorized staff can approve reservations.');
 
-        $reservation = $this->reservationService->approve($reservation, $request->user());
+        $result = $this->reservationService->approve($reservation, $request->user());
 
         return $this->success(
-            $this->transform($reservation),
-            'Reservation approved successfully.',
+            array_merge(
+                $this->transform($result['reservation']),
+                [
+                    'auto_released' => $result['auto_released'],
+                    'borrowing_ids' => $result['borrowing_ids'],
+                ],
+            ),
+            $result['auto_released']
+                ? 'Borrow request approved and asset released successfully.'
+                : 'Reservation approved successfully.',
         );
     }
 
@@ -110,6 +118,21 @@ class ReservationController extends Controller
         );
     }
 
+    public function release(Request $request, Reservation $reservation): JsonResponse
+    {
+        abort_unless($this->canApproveReservations($request->user()), 403, 'Only authorized staff can release reservations.');
+
+        $borrowing = $this->reservationService->release($reservation, $request->user(), $request->input('asset_id'));
+
+        return $this->success(
+            [
+                'reservation' => $this->transform($reservation->fresh()->load(['user', 'assets', 'authorizer'])),
+                'borrowing' => $this->transformBorrowing($borrowing),
+            ],
+            'Asset released successfully.',
+        );
+    }
+
     public function scanAuthorize(Request $request): JsonResponse
     {
         abort_unless($this->canApproveReservations($request->user()), 403, 'Only authorized staff can approve reservations.');
@@ -117,12 +140,47 @@ class ReservationController extends Controller
         $value = trim((string) $request->input('value', ''));
         abort_if($value === '', 422, 'Identifier value is required.');
 
-        $reservation = $this->reservationService->authorizeByScan($request->user(), $value);
+        $result = $this->reservationService->authorizeByScan($request->user(), $value);
 
         return $this->success(
-            $this->transform($reservation),
-            'Borrow request authorized successfully.',
+            array_merge(
+                $this->transform($result['reservation']),
+                [
+                    'auto_released' => $result['auto_released'],
+                    'borrowing_ids' => $result['borrowing_ids'],
+                ],
+            ),
+            $result['auto_released']
+                ? 'Borrow request approved and asset released successfully.'
+                : 'Borrow request authorized successfully.',
         );
+    }
+
+    private function transformBorrowing(
+        \App\Modules\Borrowing\Models\Borrowing $borrowing
+    ): array
+    {
+        $isReturned = $borrowing->status === 'RETURNED';
+        $receiptPrefix = $isReturned ? 'RT' : 'BR';
+
+        return [
+            'id' => $borrowing->id,
+            'user_id' => $borrowing->user_id,
+            'asset_id' => $borrowing->asset_id,
+            'status' => $borrowing->status,
+            'borrow_date' => $borrowing->borrow_date?->format('Y-m-d'),
+            'borrowed_at' => $borrowing->borrowed_at?->format('Y-m-d H:i:s'),
+            'due_date' => $borrowing->due_date?->format('Y-m-d'),
+            'returned_at' => $borrowing->returned_at?->format('Y-m-d H:i:s'),
+            'remarks' => $borrowing->remarks,
+            'authorized_by' => $borrowing->authorized_by,
+            'authorized_by_name' => $borrowing->authorizer?->full_name ?? $borrowing->authorizer?->email,
+            'authorized_at' => $borrowing->authorized_at?->format('Y-m-d H:i:s'),
+            'asset_name' => $borrowing->asset?->name,
+            'asset_number' => $borrowing->asset?->asset_number,
+            'receipt_code' => $receiptPrefix.'-'.str_pad((string) $borrowing->id, 5, '0', STR_PAD_LEFT),
+            'receipt_payload' => $receiptPrefix.'-'.str_pad((string) $borrowing->id, 5, '0', STR_PAD_LEFT)."|".($borrowing->asset?->asset_number ?? '')."|".$borrowing->user_id,
+        ];
     }
 
     private function canApproveReservations($user): bool

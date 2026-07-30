@@ -117,7 +117,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         padding: const EdgeInsets.all(24),
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: AppTheme.errorColor),
+                          style: const TextStyle(color: AppTheme.errorColor),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -135,6 +135,7 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+<<<<<<< HEAD
           // Page Header
           _buildPageHeader(),
           const SizedBox(height: AppTheme.space6),
@@ -284,6 +285,19 @@ class _DashboardPageState extends State<DashboardPage> {
                   icon: Icons.person_outline,
                   title: 'My Profile Settings',
                   onTap: () => widget.onNavigate?.call(4),
+=======
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.cardColor,
+              borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+              border: Border.all(color: AppTheme.borderColor),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppTheme.shadowColor,
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+>>>>>>> 6bc7d60696539327e12f61fa55cb8e57b4e53eb7
                 ),
               ],
             ),
@@ -409,3 +423,79 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
+<<<<<<< HEAD
+=======
+  Widget _buildQuickActionCard(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        border: Border.all(color: AppTheme.borderColor),
+        boxShadow: const [
+          BoxShadow(
+            color: AppTheme.shadowColor,
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 22, color: iconColor),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+>>>>>>> 6bc7d60696539327e12f61fa55cb8e57b4e53eb7

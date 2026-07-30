@@ -20,7 +20,10 @@ import { SessionsPage } from '@/pages/SessionsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { DevelopersPage } from '@/pages/DevelopersPage'
 import { SystemSetupPage } from '@/pages/SystemSetupPage'
+<<<<<<< HEAD
 import { UserProfilePage } from '@/pages/UserProfilePage'
+=======
+>>>>>>> 6bc7d60696539327e12f61fa55cb8e57b4e53eb7
 import { WorkflowsPage } from '@/pages/WorkflowsPage'
 import { QRScannerPage } from '@/pages/QRScannerPage'
 import { EmployeeAssetPage } from '@/pages/EmployeeAssetPage'
@@ -28,6 +31,7 @@ import { QRScanHistoryPage } from '@/pages/QRScanHistoryPage'
 import LoginPage from '@/pages/LoginPage'
 import { UsersPage } from '@/pages/UsersPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
+import { UserProfilePage } from '@/pages/UserProfilePage'
 
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 
@@ -49,7 +53,7 @@ function App() {
           <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
 
           <Route element={<ProtectedRoute />}>
-            {/* Mobile standalone Employee QR routes */}
+            {/* Mobile / standalone QR routes (keep available for employees) */}
             <Route path="/qr" element={<QRScannerPage />} />
             <Route path="/qr/:identifier" element={<EmployeeAssetPage />} />
 
@@ -76,6 +80,7 @@ function App() {
               <Route path="/sessions" element={<SessionsPage />} />
               <Route path="/privacy" element={<PrivacyNoticePage />} />
               <Route path="/developers" element={<DevelopersPage />} />
+
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>
           </Route>

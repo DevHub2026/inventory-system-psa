@@ -31,7 +31,9 @@ class AssetResource extends JsonResource
             // Prefer an APPROVED reservation (awaiting release) over a PENDING one.
             $reservation = Reservation::query()
                 ->whereIn('status', ['APPROVED', 'PENDING'])
-                ->whereHas('assets', fn ($q) => $q->where('assets.id', $this->id))
+                ->whereHas('assets', fn ($q) => $q
+                    ->where('assets.id', $this->id)
+                    ->whereNull('reservation_items.fulfilled_at'))
                 ->orderByRaw("CASE WHEN status = 'APPROVED' THEN 0 ELSE 1 END")
                 ->orderBy('created_at')
                 ->first();

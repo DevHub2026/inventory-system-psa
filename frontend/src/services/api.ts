@@ -29,7 +29,7 @@ api.interceptors.response.use(
 
     if (status === 422) {
       const firstValidationMessage = validationErrors ? Object.values(validationErrors).flat()[0] : null
-      return Promise.reject(new Error(firstValidationMessage || 'Please check the highlighted fields and try again.'))
+      return Promise.reject(new Error(firstValidationMessage || backendMessage || 'Please check the highlighted fields and try again.'))
     }
 
     if (status === 401) {
