@@ -5,6 +5,7 @@ namespace App\Modules\Asset\Policies;
 use App\Enums\UserRole;
 use App\Models\User;
 use App\Modules\Asset\Models\Asset;
+use App\Modules\Asset\Services\IssuanceAuthorization;
 
 /**
  * A minimal auth guard for asset operations until the RBAC layer is fully
@@ -13,6 +14,8 @@ use App\Modules\Asset\Models\Asset;
  */
 class AssetPolicy
 {
+    public function __construct(private readonly IssuanceAuthorization $issuanceAuthorization) {}
+
     public function viewAny(?User $user): bool
     {
         return $user !== null;
@@ -46,6 +49,14 @@ class AssetPolicy
     public function transfer(?User $user, Asset $asset): bool
     {
         return $this->canManageAssets($user);
+    }
+
+    /**
+     * Initial permanent issuance — available to issuance managers without full asset admin rights.
+     */
+    public function issue(?User $user, Asset $asset): bool
+    {
+        return $this->issuanceAuthorization->canManageIssuance($user);
     }
 
     public function borrow(?User $user, Asset $asset): bool

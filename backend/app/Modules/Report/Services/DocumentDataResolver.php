@@ -215,6 +215,7 @@ class DocumentDataResolver
             return [
                 'asset_name' => $fallback,
                 'asset_description' => $fallback,
+                'asset_number' => $fallback,
                 'asset_code' => $fallback,
                 'property_number' => $fallback,
                 'serial_number' => $fallback,
@@ -233,7 +234,7 @@ class DocumentDataResolver
 
         $serial = $this->identifierValue($asset, IdentifierType::SERIAL_NUMBER);
         $propertyFromIdentifier = $this->identifierValue($asset, IdentifierType::PROPERTY_NUMBER);
-        $propertyNumber = $propertyFromIdentifier ?: $asset->asset_number;
+        $propertyNumber = $asset->property_number ?: $propertyFromIdentifier;
 
         $condition = $asset->condition_status instanceof \BackedEnum
             ? $asset->condition_status->value
@@ -248,6 +249,7 @@ class DocumentDataResolver
         return [
             'asset_name' => $this->val($asset->name, $fallback),
             'asset_description' => $this->val($asset->description, $fallback),
+            'asset_number' => $this->val($asset->asset_number, $fallback),
             'asset_code' => $this->val($asset->asset_number, $fallback),
             'property_number' => $this->val($propertyNumber, $fallback),
             'serial_number' => $this->val($serial, $fallback),

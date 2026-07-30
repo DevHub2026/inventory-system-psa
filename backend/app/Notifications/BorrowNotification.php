@@ -32,7 +32,7 @@ class BorrowNotification extends Notification implements ShouldQueue
             ->subject('New Asset Borrow Request')
             ->greeting('Hello Admin,')
             ->line("{$this->user->getFullNameAttribute()} has borrowed the following asset:")
-            ->line("**Asset Code:** {$this->asset->asset_number}")
+            ->line("**Asset Number:** {$this->asset->asset_number}")
             ->line("**Asset Name:** {$this->asset->name}")
             ->line("**Borrowed At:** {$this->borrowDateLabel()}")
             ->when($this->borrow->due_date, function ($message) {

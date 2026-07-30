@@ -87,6 +87,7 @@ export interface IssuedAsset {
   asset_id: number
   asset_name: string
   asset_number: string
+  property_number?: string | null
   asset_code: string | null
   category: string | null
   serial_number: string | null
@@ -104,6 +105,7 @@ export interface BorrowingHistoryItem {
   asset_id: number
   asset_name: string
   asset_number: string
+  property_number?: string | null
   asset_code: string | null
   category: string | null
   status: string

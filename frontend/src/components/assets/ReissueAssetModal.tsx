@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Modal, Button, Input, Spinner, Alert } from '@/components/ui'
+import { permanentIssuanceService } from '@/services/permanentIssuanceService'
 import { userService } from '@/services/userService'
 import { assetService } from '@/services/assetService'
 import type { Asset, User } from '@/types'
+import type { IssuanceUserSummary } from '@/types/permanentIssuance'
 import { GenerateDocumentModal } from '@/components/documents/GenerateDocumentModal'
 
 interface ReissueAssetModalProps {
@@ -19,9 +21,9 @@ export function ReissueAssetModal({ open, onClose, asset, onSuccess }: ReissueAs
 
   // Step 2 state
   const [searchQuery, setSearchQuery] = useState('')
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<IssuanceUserSummary[]>([])
   const [searchingUsers, setSearchingUsers] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [selectedUser, setSelectedUser] = useState<IssuanceUserSummary | null>(null)
 
   // Step 3 state
   const [transferDate, setTransferDate] = useState(new Date().toISOString().slice(0, 10))
@@ -92,7 +94,7 @@ export function ReissueAssetModal({ open, onClose, asset, onSuccess }: ReissueAs
     const searchEmployees = async () => {
       setSearchingUsers(true)
       try {
-        const paginated = await userService.getUsers({ search: searchQuery, per_page: 50 })
+        const paginated = await permanentIssuanceService.searchUsers({ search: searchQuery, per_page: 50 })
         // Exclude current holder
         const filtered = paginated.items.filter(
           (u) => u.id !== asset.issued_to_user_id && u.full_name !== asset.issued_to

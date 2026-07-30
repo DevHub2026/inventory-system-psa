@@ -13,14 +13,17 @@ use Illuminate\Support\Facades\DB;
 
 class AssetService
 {
-    public function __construct(private readonly AssetIdentifierService $assetIdentifierService) {}
+    public function __construct(
+        private readonly AssetIdentifierService $assetIdentifierService,
+        private readonly AssetLifecycleCoordinator $assetLifecycleCoordinator,
+    ) {}
 
     public function list(array $filters = []): LengthAwarePaginator
     {
         $perPage = (int) ($filters['per_page'] ?? 20);
 
         $query = Asset::query()
-            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers'])
+            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser'])
             ->search($filters['search'] ?? null);
 
         if (! empty($filters['status'])) {
@@ -67,7 +70,7 @@ class AssetService
     public function search(string $term, int $perPage = 20): LengthAwarePaginator
     {
         return Asset::query()
-            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers'])
+            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser'])
             ->search($term)
             ->orderBy('asset_number')
             ->paginate($perPage);
@@ -75,7 +78,17 @@ class AssetService
 
     public function find(Asset $asset): Asset
     {
-        return $asset->load(['category', 'manufacturer', 'office', 'location', 'identifiers']);
+        return $asset->load([
+            'category',
+            'manufacturer',
+            'office',
+            'location',
+            'identifiers',
+            'issuedToUser.department',
+            'issuedToUser.office',
+            'issuedToUser.roles',
+            'issuedByUser',
+        ]);
     }
 
     public function create(array $data): Asset
@@ -111,6 +124,9 @@ class AssetService
         if ($asset->status === AssetStatus::DISPOSED) {
             throw new AssetNotAvailableException('A disposed asset cannot be modified.');
         }
+
+        unset($data['issued_to'], $data['issued_to_user_id'], $data['issued_by_user_id'], $data['date_issued']);
+        $this->assetLifecycleCoordinator->validateManualStatusTransition($asset, $data['status'] ?? null);
 
         $asset->update($data);
 

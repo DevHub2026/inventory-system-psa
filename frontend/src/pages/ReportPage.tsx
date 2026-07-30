@@ -79,10 +79,12 @@ export function ReportPage() {
   }
 
   const assetColumns: Column<AssetReportItem>[] = [
-    { key: 'asset_number', header: 'Asset No.', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number}</span> },
+    { key: 'property_number', header: 'Property Number', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.property_number ?? '—'}</span> },
+    { key: 'asset_number', header: 'Asset Number', render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number}</span> },
     { key: 'name', header: 'Name', render: (r) => <span className="font-medium text-[#1F2937]">{r.name}</span> },
     { key: 'category', header: 'Category', render: (r) => r.category },
     { key: 'status', header: 'Status', render: (r) => inventoryStatusLabel(r.status) },
+    { key: 'accountability', header: 'Accountability', render: (r) => r.accountability ?? 'Unassigned' },
     { key: 'location', header: 'Location', render: (r) => r.location },
   ]
 

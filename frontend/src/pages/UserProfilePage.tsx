@@ -20,6 +20,8 @@ import {
   type IssuedAsset,
   type UserProfile,
 } from '@/services/userService'
+import { permanentIssuanceService } from '@/services/permanentIssuanceService'
+import type { PermanentIssuanceAsset } from '@/types/permanentIssuance'
 import { affectsScope, onDataChanged } from '@/utils/dataRefresh'
 import { formatDate, formatTime } from '@/utils/dateFormat'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
@@ -29,7 +31,7 @@ import { borrowingStatusTone } from '@/utils/statusTone'
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type TabId = 'profile' | 'issued' | 'history'
+type TabId = 'profile' | 'permanent' | 'borrowings' | 'history'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -193,10 +195,77 @@ function ProfileTab({ profile }: { profile: UserProfile }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tab: Currently Issued Assets
+// Tab: Permanently Issued Assets
 // ─────────────────────────────────────────────────────────────────────────────
 
-function IssuedAssetsTab({
+function PermanentIssuanceTab({
+  userId,
+  triggerRefresh,
+}: {
+  userId: number
+  triggerRefresh: number
+}) {
+  const [items, setItems] = useState<PermanentIssuanceAsset[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await permanentIssuanceService.getUserAssets(userId)
+      setItems(result.items)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load permanently issued assets.')
+    } finally {
+      setLoading(false)
+    }
+  }, [userId])
+
+  useEffect(() => { void load() }, [load, triggerRefresh])
+
+  const columns: Column<PermanentIssuanceAsset>[] = [
+    { key: 'asset_name', header: 'Asset Name', render: (r) => r.asset_name },
+    {
+      key: 'property_number',
+      header: 'Property Number',
+      render: (r) => r.property_number ?? '—',
+    },
+    {
+      key: 'asset_number',
+      header: 'Asset Number',
+      render: (r) => r.asset_number ?? '—',
+    },
+    { key: 'category', header: 'Category', render: (r) => r.category ?? '—' },
+    { key: 'office', header: 'Office', render: (r) => r.office ?? '—' },
+    { key: 'date_issued', header: 'Date Issued', render: (r) => r.date_issued ? formatDate(r.date_issued) : '—' },
+    { key: 'issued_by', header: 'Issued By', render: (r) => r.issued_by ?? '—' },
+  ]
+
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}><Spinner /></div>
+  if (error) return <Alert tone="error">{error}</Alert>
+
+  return (
+    <Card noPadding>
+      {items.length === 0 ? (
+        <div style={{ padding: '64px 0' }}>
+          <EmptyState
+            title="No permanently issued assets"
+            description="Property permanently issued to this user will appear here."
+          />
+        </div>
+      ) : (
+        <Table columns={columns} rows={items} rowKey={(r) => r.asset_id} />
+      )}
+    </Card>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tab: Active Borrowings
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ActiveBorrowingsTab({
   userId,
   triggerRefresh,
 }: {
@@ -214,7 +283,7 @@ function IssuedAssetsTab({
       const data = await userService.getIssuedAssets(userId)
       setItems(data)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to load issued assets.')
+      setError(e instanceof Error ? e.message : 'Failed to load active borrowings.')
     } finally {
       setLoading(false)
     }
@@ -231,10 +300,10 @@ function IssuedAssetsTab({
       ),
     },
     {
-      key: 'asset_code',
-      header: 'Asset Code',
+      key: 'asset_number',
+      header: 'Asset Number',
       render: (r) => (
-        <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{r.asset_code ?? r.asset_number ?? '—'}</span>
+        <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{r.asset_number ?? r.asset_code ?? '—'}</span>
       ),
     },
     { key: 'category',      header: 'Category',      render: (r) => r.category      ?? '—' },
@@ -269,7 +338,7 @@ function IssuedAssetsTab({
       {items.length === 0 ? (
         <div style={{ padding: '64px 0' }}>
           <EmptyState
-            title="No currently issued assets"
+            title="No active borrowings"
             description="This user has no assets currently borrowed."
           />
         </div>
@@ -349,9 +418,9 @@ function BorrowingHistoryTab({
       render: (r) => <span style={{ fontWeight: 600, color: '#1E293B' }}>{r.asset_name ?? '—'}</span>,
     },
     {
-      key: 'asset_code',
-      header: 'Asset Code',
-      render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{r.asset_code ?? r.asset_number ?? '—'}</span>,
+      key: 'asset_number',
+      header: 'Asset Number',
+      render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{r.asset_number ?? r.asset_code ?? '—'}</span>,
     },
     { key: 'borrow_date', header: 'Borrow Date', render: (r) => r.borrowed_at ? formatDate(r.borrowed_at) : '—' },
     { key: 'borrow_time', header: 'Borrow Time', render: (r) => r.borrowed_at ? formatTime(r.borrowed_at) : '—' },
@@ -529,8 +598,12 @@ export function UserProfilePage() {
   const tabs: { id: TabId; label: string; count?: number }[] = [
     { id: 'profile', label: 'Profile' },
     {
-      id: 'issued',
-      label: 'Currently Issued',
+      id: 'permanent',
+      label: 'Permanently Issued Assets',
+    },
+    {
+      id: 'borrowings',
+      label: 'Active Borrowings',
       count: profile?.stats.currently_borrowed,
     },
     {
@@ -668,8 +741,12 @@ export function UserProfilePage() {
         <ProfileTab profile={profile} />
       )}
 
-      {activeTab === 'issued' && (
-        <IssuedAssetsTab userId={userId} triggerRefresh={refreshSeq} />
+      {activeTab === 'permanent' && (
+        <PermanentIssuanceTab userId={userId} triggerRefresh={refreshSeq} />
+      )}
+
+      {activeTab === 'borrowings' && (
+        <ActiveBorrowingsTab userId={userId} triggerRefresh={refreshSeq} />
       )}
 
       {activeTab === 'history' && (

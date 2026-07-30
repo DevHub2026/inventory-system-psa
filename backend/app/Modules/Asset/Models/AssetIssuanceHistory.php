@@ -13,6 +13,7 @@ class AssetIssuanceHistory extends Model
 
     protected $fillable = [
         'asset_id',
+        'issuance_type',
         'previous_employee_id',
         'new_employee_id',
         'transferred_by',

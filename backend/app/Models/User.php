@@ -84,6 +84,26 @@ class User extends Authenticatable
     }
 
     /**
+     * @param  list<string>  $roleNames
+     */
+    public function hasAnyRole(array $roleNames): bool
+    {
+        if ($roleNames === []) {
+            return false;
+        }
+
+        return $this->roles()->whereIn('name', $roleNames)->exists();
+    }
+
+    /**
+     * Assets for which this user is the current permanent accountable holder.
+     */
+    public function permanentlyIssuedAssets()
+    {
+        return $this->hasMany(\App\Modules\Asset\Models\Asset::class, 'issued_to_user_id');
+    }
+
+    /**
      * Assign a role by name while preserving existing role assignments.
      */
     public function assignRole(string $roleName): void

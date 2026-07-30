@@ -8,6 +8,7 @@ Route::middleware([
     'auth:sanctum',
     'role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head',
 ])->group(function (): void {
+    Route::get('inventory/validate-sku', [InventoryController::class, 'validateSku']);
     Route::get('inventory', [InventoryController::class, 'index']);
     Route::post('inventory', [InventoryController::class, 'store']);
     Route::put('inventory/{item}', [InventoryController::class, 'update']);

@@ -27,6 +27,12 @@ class UpdateAssetRequest extends FormRequest
                 'max:100',
                 Rule::unique('assets', 'asset_number')->ignore($assetId),
             ],
+            'property_number' => [
+                'nullable',
+                'string',
+                'max:100',
+                Rule::unique('assets', 'property_number')->ignore($assetId),
+            ],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'asset_category_id' => ['sometimes', 'required', 'integer', 'exists:asset_categories,id'],
@@ -40,9 +46,7 @@ class UpdateAssetRequest extends FormRequest
             'purchase_cost' => ['nullable', 'numeric', 'min:0'],
             'warranty_until' => ['nullable', 'date'],
             'remarks' => ['nullable', 'string'],
-            'issued_to' => ['nullable', 'string', 'max:255'],
-            'issued_by_user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'date_issued' => ['nullable', 'date'],
+            // Permanent issuance is handled via POST /assets/{asset}/permanent-issue only.
         ];
     }
 }
