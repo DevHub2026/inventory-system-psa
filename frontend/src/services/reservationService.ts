@@ -166,7 +166,11 @@ export const reservationService = {
       },
     )
   },
-
+ 
+  async release(reservationId: number, assetId: number): Promise<void> {
+    await api.post(`/reservations/${reservationId}/release`, { asset_id: assetId })
+  },
+ 
   async authorizeScan(value: string): Promise<Reservation> {
     const { data } = await api.post<ApiResponse<BackendReservation>>('/reservations/scan-authorize', { value })
     return mapReservation(unwrapData(data))

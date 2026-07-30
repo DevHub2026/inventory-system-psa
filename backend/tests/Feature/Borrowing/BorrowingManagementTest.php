@@ -12,6 +12,9 @@ use App\Modules\AssetCategory\Models\AssetCategory;
 use App\Modules\Reservation\Models\Reservation;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
 use App\Modules\Asset\Enums\IdentifierType;
+use App\Modules\Workflow\Models\Workflow;
+use App\Modules\Workflow\Models\WorkflowVersion;
+use App\Modules\Workflow\Models\WorkflowApprovalLevel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -320,6 +323,265 @@ class BorrowingManagementTest extends TestCase
             ->assertJson(['success' => false, 'message' => 'Borrow request is already authorized or completed.']);
     }
 
+    public function test_one_level_workflow_receipt_scan_auto_releases_asset(): void
+    {
+        $employee = User::factory()->create();
+        $staff = $this->staffUser();
+        $this->createBorrowWorkflow($staff, 1);
+
+        $asset = $this->createAsset();
+        $token = $employee->createToken('auth')->plainTextToken;
+
+        $reservationResponse = $this->withToken($token)
+            ->postJson('/api/v1/reservations', [
+                'asset_ids' => [$asset->id],
+                'start_date' => '2026-07-20',
+                'end_date' => '2026-07-24',
+            ])
+            ->assertStatus(201);
+
+        $reservationId = $reservationResponse->decodeResponseJson()['data']['id'];
+        $receiptPayload = 'PSA-RES-'.$reservationId.'|'.$asset->asset_number.'|'.$employee->id;
+
+        $response =         $this->withToken($staff->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/reservations/scan-authorize', ['value' => $receiptPayload])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Borrow request approved and asset released successfully.',
+                'data' => [
+                    'id' => $reservationId,
+                    'status' => 'APPROVED',
+                    'auto_released' => true,
+                ],
+            ]);
+
+        $this->assertDatabaseHas('reservations', [
+            'id' => $reservationId,
+            'status' => 'APPROVED',
+        ]);        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'BORROWED']);
+        $this->assertDatabaseHas('borrowings', [
+            'reservation_id' => $reservationId,
+            'asset_id' => $asset->id,
+            'status' => 'BORROWED',
+        ]);
+
+        $this->assertDatabaseCount('borrowings', 1);
+    }
+
+    public function test_multi_level_workflow_requires_separate_release_after_final_approval(): void
+    {
+        $employee = User::factory()->create();
+        $staff = $this->staffUser();
+        $this->createBorrowWorkflow($staff, 2);
+
+        $asset = $this->createAsset(['status' => 'AVAILABLE']);
+        $token = $employee->createToken('auth')->plainTextToken;
+
+        $reservationResponse = $this->withToken($token)
+            ->postJson('/api/v1/reservations', [
+                'asset_ids' => [$asset->id],
+                'start_date' => '2026-07-20',
+                'end_date' => '2026-07-24',
+            ])
+            ->assertStatus(201);
+
+        $reservationId = $reservationResponse->decodeResponseJson()['data']['id'];
+        $receiptPayload = 'PSA-RES-'.$reservationId.'|'.$asset->asset_number.'|'.$employee->id;
+
+        $firstApproval = $this->withToken($staff->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/reservations/scan-authorize', ['value' => $receiptPayload])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Borrow request authorized successfully.',
+                'data' => [
+                    'id' => $reservationId,
+                    'status' => 'PENDING',
+                    'auto_released' => false,
+                ],
+            ]);
+
+        $this->assertDatabaseHas('reservations', [
+            'id' => $reservationId,
+            'status' => 'PENDING',
+        ]);
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'RESERVED']);
+        $this->assertDatabaseCount('borrowings', 0);
+
+        $secondApproval = $this->withToken($staff->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/reservations/scan-authorize', ['value' => $receiptPayload])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Borrow request authorized successfully.',
+                'data' => [
+                    'id' => $reservationId,
+                    'status' => 'APPROVED',
+                    'auto_released' => false,
+                ],
+            ]);
+
+        $this->assertDatabaseHas('reservations', [
+            'id' => $reservationId,
+            'status' => 'APPROVED',
+        ]);
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'RESERVED']);
+        $this->assertDatabaseCount('borrowings', 0);
+
+        $releaseResponse = $this->withToken($staff->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/assets/scan', ['value' => $receiptPayload])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Borrowing marked as borrowed successfully.',
+                'data' => [
+                    'asset_id' => $asset->id,
+                    'status' => 'BORROWED',
+                ],
+            ]);
+
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'BORROWED']);
+        $this->assertDatabaseHas('borrowings', [
+            'reservation_id' => $reservationId,
+            'asset_id' => $asset->id,
+            'status' => 'BORROWED',
+        ]);
+        $this->assertDatabaseCount('borrowings', 1);
+    }
+ 
+    public function test_staff_can_release_approved_reservation_via_dedicated_endpoint(): void
+    {
+        $employee = User::factory()->create();
+        $staff = $this->staffUser();
+        $this->createBorrowWorkflow($staff, 2);
+ 
+        $asset = $this->createAsset(['status' => 'AVAILABLE']);
+        $token = $employee->createToken('auth')->plainTextToken;
+ 
+        $reservationResponse = $this->withToken($token)
+            ->postJson('/api/v1/reservations', [
+                'asset_ids' => [$asset->id],
+                'start_date' => '2026-07-20',
+                'end_date' => '2026-07-24',
+            ])
+            ->assertStatus(201);
+ 
+        $reservationId = $reservationResponse->decodeResponseJson()['data']['id'];
+        $receiptPayload = 'PSA-RES-'.$reservationId.'|'.$asset->asset_number.'|'.$employee->id;
+ 
+        $this->withToken($staff->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/reservations/scan-authorize', ['value' => $receiptPayload])
+            ->assertOk()
+            ->assertJson(['success' => true, 'message' => 'Borrow request authorized successfully.']);
+ 
+        $this->withToken($staff->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/reservations/scan-authorize', ['value' => $receiptPayload])
+            ->assertOk()
+            ->assertJson(['success' => true, 'message' => 'Borrow request authorized successfully.']);
+ 
+        $this->withToken($staff->createToken('auth')->plainTextToken)
+            ->postJson("/api/v1/reservations/{$reservationId}/release", ['asset_id' => $asset->id])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Asset released successfully.',
+                'data' => [
+                    'reservation' => [
+                        'id' => $reservationId,
+                        'status' => 'APPROVED',
+                    ],
+                    'borrowing' => [
+                        'asset_id' => $asset->id,
+                        'status' => 'BORROWED',
+                    ],
+                ],
+            ]);
+ 
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'BORROWED']);
+        $this->assertDatabaseHas('borrowings', [
+            'reservation_id' => $reservationId,
+            'asset_id' => $asset->id,
+            'status' => 'BORROWED',
+        ]);
+        $this->assertDatabaseCount('borrowings', 1);
+    }
+
+    public function test_reserved_asset_context_ignores_fulfilled_reservations(): void
+    {
+        $employee = User::factory()->create();
+        $staff = $this->staffUser();
+        $this->createBorrowWorkflow($staff, 2);
+ 
+        $asset = $this->createAsset(['status' => 'AVAILABLE']);
+        $employeeToken = $employee->createToken('auth')->plainTextToken;
+        $staffToken = $staff->createToken('auth')->plainTextToken;
+ 
+        $firstReservationResponse = $this->withToken($employeeToken)
+            ->postJson('/api/v1/reservations', [
+                'asset_ids' => [$asset->id],
+                'start_date' => '2026-07-20',
+                'end_date' => '2026-07-24',
+            ])
+            ->assertStatus(201);
+ 
+        $firstReservationId = $firstReservationResponse->decodeResponseJson()['data']['id'];
+        $firstReceiptPayload = 'PSA-RES-'.$firstReservationId.'|'.$asset->asset_number.'|'.$employee->id;
+ 
+        $this->withToken($staffToken)
+            ->postJson('/api/v1/reservations/scan-authorize', ['value' => $firstReceiptPayload])
+            ->assertOk();
+ 
+        $this->withToken($staffToken)
+            ->postJson('/api/v1/reservations/scan-authorize', ['value' => $firstReceiptPayload])
+            ->assertOk();
+ 
+        $releaseResponse = $this->withToken($staffToken)
+            ->postJson('/api/v1/assets/scan', ['value' => $firstReceiptPayload])
+            ->assertOk();
+ 
+        $borrowId = $releaseResponse->decodeResponseJson()['data']['id'];
+ 
+        $this->withToken($staffToken)
+            ->postJson("/api/v1/borrowings/{$borrowId}/return")
+            ->assertOk();
+ 
+        $this->assertDatabaseHas('assets', ['id' => $asset->id, 'status' => 'AVAILABLE']);
+ 
+        $secondReservationResponse = $this->withToken($employeeToken)
+            ->postJson('/api/v1/reservations', [
+                'asset_ids' => [$asset->id],
+                'start_date' => '2026-08-01',
+                'end_date' => '2026-08-05',
+            ])
+            ->assertStatus(201);
+ 
+        $secondReservationId = $secondReservationResponse->decodeResponseJson()['data']['id'];
+        $secondReceiptPayload = 'PSA-RES-'.$secondReservationId.'|'.$asset->asset_number.'|'.$employee->id;
+ 
+        $this->withToken($staffToken)
+            ->postJson('/api/v1/reservations/scan-authorize', ['value' => $secondReceiptPayload])
+            ->assertOk();
+ 
+        $this->withToken($staffToken)
+            ->postJson('/api/v1/reservations/scan-authorize', ['value' => $secondReceiptPayload])
+            ->assertOk();
+ 
+        $assetResponse = $this->withToken($staffToken)
+            ->getJson("/api/v1/assets/{$asset->id}")
+            ->assertOk();
+ 
+        $currentAsset = $assetResponse->decodeResponseJson()['data'];
+ 
+        $this->assertEquals('RESERVED', $currentAsset['status']);
+        $this->assertEquals($secondReservationId, $currentAsset['reservation_context']['id']);
+ 
+        $this->withToken($staffToken)
+            ->postJson("/api/v1/reservations/{$secondReservationId}/release", ['asset_id' => $asset->id])
+            ->assertOk()
+            ->assertJsonPath('data.borrowing.asset_id', $asset->id);
+    }
+ 
     public function test_staff_receipt_scan_marks_pending_borrow_request_as_borrowed(): void
     {
         $employee = User::factory()->create();
@@ -575,6 +837,45 @@ class BorrowingManagementTest extends TestCase
             'authorized_by' => $borrower->id,
             'authorized_at' => now(),
         ]);
+    }
+
+    private function createBorrowWorkflow(User $creator, int $levels): Workflow
+    {
+        $workflow = Workflow::create([
+            'name' => 'Borrow workflow',
+            'module_type' => 'borrow_request',
+            'description' => 'Workflow for borrow request tests',
+            'is_active' => true,
+            'is_archived' => false,
+            'created_by' => $creator->id,
+            'updated_by' => $creator->id,
+            'options' => [],
+        ]);
+
+        $version = WorkflowVersion::create([
+            'workflow_id' => $workflow->id,
+            'version_number' => 1,
+            'options' => [],
+            'change_summary' => 'Initial test workflow version',
+            'created_by' => $creator->id,
+        ]);
+
+        for ($order = 1; $order <= $levels; $order++) {
+            WorkflowApprovalLevel::create([
+                'workflow_version_id' => $version->id,
+                'level_order' => $order,
+                'name' => "Level {$order}",
+                'roles' => [UserRole::PROPERTY_CUSTODIAN->value],
+                'user_ids' => [],
+                'approval_type' => 'single',
+                'is_enabled' => true,
+                'execution_type' => 'sequential',
+            ]);
+        }
+
+        $workflow->update(['current_version_id' => $version->id]);
+
+        return $workflow->fresh(['currentVersion.approvalLevels']);
     }
 
     private function pendingReservation(User $borrower, Asset $asset): Reservation
