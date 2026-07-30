@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/user.dart';
 import '../../data/services/notification_service.dart';
-import '../dashboard/dashboard_page.dart';
+import '../dashboard/enhanced_dashboard_page.dart';
 import '../assets/asset_list_page.dart';
 import '../borrowing/borrowing_page.dart';
 import '../qr_scanner/qr_scanner_page.dart';
@@ -34,7 +34,7 @@ class _MainNavigationState extends State<MainNavigation> {
         label: 'Dashboard',
         icon: Icons.dashboard_outlined,
         activeIcon: Icons.dashboard,
-        builder: () => DashboardPage(user: widget.user, onNavigate: _navigateTo),
+        builder: () => EnhancedDashboardPage(user: widget.user, onNavigate: _navigateTo),
       ),
       _NavItem(
         label: 'Assets',

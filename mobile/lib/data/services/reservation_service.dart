@@ -70,4 +70,52 @@ class ReservationService {
       throw ApiErrorHandler.handleDioError(e);
     }
   }
+
+  /// Reject a reservation (Staff/Admin only)
+  Future<void> rejectReservation(int id, {String? reason}) async {
+    try {
+      await _dio.post('/reservations/$id/reject',
+          data: {if (reason != null) 'reason': reason});
+    } on DioException catch (e) {
+      throw ApiErrorHandler.handleDioError(e);
+    }
+  }
+
+  /// Get reservation receipt/details
+  Future<Map<String, dynamic>> getReceipt(int reservationId) async {
+    try {
+      final response = await _dio.get('/reservations/$reservationId/receipt');
+      if (response.statusCode == 200) {
+        return response.data['data'] as Map<String, dynamic>;
+      }
+      return {};
+    } on DioException {
+      return {};
+    }
+  }
+
+  /// Get reservation statistics
+  Future<Map<String, dynamic>> getReservationStats() async {
+    try {
+      final response = await _dio.get('/reservations/stats');
+      if (response.statusCode == 200) {
+        return response.data['data'] as Map<String, dynamic>;
+      }
+      return {
+        'pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'completed': 0,
+        'cancelled': 0,
+      };
+    } on DioException {
+      return {
+        'pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'completed': 0,
+        'cancelled': 0,
+      };
+    }
+  }
 }
