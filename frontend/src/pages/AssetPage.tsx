@@ -1,22 +1,28 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ScanLine } from 'lucide-react'
 import {
-  Alert, Badge, Button, ConfirmDialog, Dropdown, EmptyState,
-  Input, Modal, Pagination, SearchBar, Spinner, Table, type Column,
+  ScanLine, CheckCircle2, XCircle, Printer, Search, Filter,
+  Eye, QrCode as QrIcon, Edit3, Trash2, ArrowUpRight, RotateCcw,
+  Package, Wrench, Clock,
+} from 'lucide-react'
+import {
+  Alert, Badge, Button, ConfirmDialog, SetupDropdown, EmptyState,
+  Input, Modal, Pagination, Spinner, Card,
 } from '@/components/ui'
-import { PageHeader } from '@/components/PageHeader'
 import { assetService, type UpdateAssetPayload } from '@/services/assetService'
+import { setupService, type SetupRecord } from '@/services/setupService'
+import { api, unwrapData } from '@/services/api'
 import { reservationService } from '@/services/reservationService'
 import { useAuth } from '@/hooks/useAuth'
 import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
-import { AssetQrScanner } from '@/components/AssetQrScanner'
+import { SharedQrScanner } from '@/components/qr/SharedQrScanner'
 import { QrCode } from '@/components/QrCode'
 import type { Asset, AssetStatus } from '@/types'
-import { assetStatusTone } from '@/utils/statusTone'
-import { isAdmin, isStaff } from '@/utils/roleHelpers'
-import { assetStatusLabel } from '@/utils/displayLabels'
+import { isAdmin, isStaff, hasAnyRole } from '@/utils/roleHelpers'
+import { getEffectiveAssetStatus } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
+import { PrintableDocumentModal } from '@/components/documents/PrintableDocumentModal'
+import { ReissueAssetModal } from '@/components/assets/ReissueAssetModal'
 
 
 /* ── shared select / textarea style ── */
@@ -31,6 +37,197 @@ const TEXTAREA_CLS =
   'focus:border-[#0D47A1] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/15'
 
 const LABEL_CLS = 'mb-1.5 block text-[13px] font-medium text-[#1F2937]'
+
+// ─── Color palette for summary cards ──────────────────────────────────────────
+const colors = {
+  blue:    { bg: '#EFF6FF', text: '#1E40AF', border: '#BFDBFE', icon: '#2563EB' },
+  green:   { bg: '#F0FDF4', text: '#166534', border: '#BBF7D0', icon: '#16A34A' },
+  amber:   { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A', icon: '#D97706' },
+  red:     { bg: '#FEF2F2', text: '#DC2626', border: '#FECACA', icon: '#EF4444' },
+  violet:  { bg: '#FAF5FF', text: '#7C3AED', border: '#DDD6FE', icon: '#8B5CF6' },
+  gray:    { bg: '#F8FAFC', text: '#475569', border: '#E2E8F0', icon: '#94A3B8' },
+}
+
+// ─── Summary Card ──────────────────────────────────────────────────────────────
+function SummaryCard({
+  icon, color, label, value, onClick, active,
+}: {
+  icon: React.ReactNode
+  color: typeof colors.blue
+  label: string
+  value: number
+  onClick?: () => void
+  active?: boolean
+}) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        flex: '1 1 0', minWidth: 180,
+        background: '#fff',
+        borderRadius: 14,
+        border: `1px solid ${active ? color.icon : '#E2E8F0'}`,
+        boxShadow: hovered ? '0 4px 16px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.04)',
+        padding: '18px 20px',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'box-shadow 0.2s, border-color 0.2s',
+        display: 'flex', alignItems: 'center', gap: 14,
+      }}
+    >
+      <div style={{
+        width: 44, height: 44, borderRadius: 12,
+        background: color.bg, border: `1px solid ${color.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        {icon}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 24, fontWeight: 800, color: '#0F172A', lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>
+          {value}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Action Cell ───────────────────────────────────────────────────────────────
+interface ActionCellProps {
+  asset: Asset
+  canManageAssets: boolean
+  canCompleteBorrowing: boolean
+  onView: () => void
+  onQrLabel: () => void
+  onEdit: () => void
+  onDelete: () => void
+  onBorrow: () => void
+  onReserve: () => void
+  onReturn: () => void
+}
+
+function ActionCell({
+  asset, canManageAssets, canCompleteBorrowing,
+  onView, onQrLabel, onEdit, onDelete, onBorrow, onReserve, onReturn,
+}: ActionCellProps) {
+  const [openMenu, setOpenMenu] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenu(false)
+      }
+    }
+    if (openMenu) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [openMenu])
+
+  const iconBtn = (
+    icon: React.ReactNode,
+    label: string,
+    onClick: () => void,
+    variant: 'primary' | 'secondary' | 'success' | 'danger' = 'secondary'
+  ) => {
+    const v = variant === 'primary'
+      ? { bg: '#1E40AF', color: '#fff', border: '#1E40AF', hoverBg: '#1D4ED8' }
+      : variant === 'success'
+        ? { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0', hoverBg: '#DCFCE7' }
+        : variant === 'danger'
+          ? { bg: '#FEF2F2', color: '#DC2626', border: '#FECACA', hoverBg: '#FEE2E2' }
+          : { bg: '#fff', color: '#475569', border: '#D1D5DB', hoverBg: '#F1F5F9' }
+    return (
+      <button
+        onClick={onClick}
+        title={label}
+        style={{
+          height: 32, width: 32, padding: 0,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          border: `1px solid ${v.border}`,
+          borderRadius: 8,
+          background: v.bg,
+          color: v.color,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          transition: 'all 0.15s',
+        }}
+      >
+        {icon}
+      </button>
+    )
+  }
+
+  const menuItem = (icon: React.ReactNode, label: string, onClick: () => void, variant: 'normal' | 'danger' = 'normal') => (
+    <button
+      onClick={() => { onClick(); setOpenMenu(false) }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+        padding: '8px 12px', border: 'none', background: 'transparent',
+        color: variant === 'danger' ? '#DC2626' : '#1E293B',
+        fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+        fontFamily: 'inherit', borderRadius: 6,
+        transition: 'background 0.1s',
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+    >
+      {icon}
+      <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
+    </button>
+  )
+
+  // Determine primary action based on status
+  const primaryAction = asset.status === 'AVAILABLE' && canCompleteBorrowing
+    ? iconBtn(<ArrowUpRight size={14} />, 'Borrow', onBorrow, 'primary')
+    : asset.status === 'BORROWED' && canCompleteBorrowing
+      ? iconBtn(<RotateCcw size={14} />, 'Return', onReturn, 'success')
+      : null
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+      {/* Primary action */}
+      {primaryAction}
+
+      {/* More actions dropdown */}
+      <div ref={menuRef} style={{ position: 'relative' }}>
+        {iconBtn(
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
+          </svg>,
+          'More actions',
+          () => setOpenMenu(!openMenu),
+        )}
+
+        {openMenu && (
+          <div style={{
+            position: 'absolute', right: 0, top: '100%', marginTop: 4,
+            background: '#fff', border: '1px solid #E2E8F0',
+            borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            padding: 6, zIndex: 50, minWidth: 160,
+          }}>
+            {menuItem(<Eye size={14} />, 'View Details', onView)}
+            {menuItem(<QrIcon size={14} />, 'QR Label', onQrLabel)}
+            {asset.status === 'AVAILABLE' && menuItem(<Clock size={14} />, 'Request Borrow', onReserve)}
+            {canManageAssets && menuItem(<Edit3 size={14} />, 'Edit Asset', onEdit)}
+            {canManageAssets && (
+              <>
+                <div style={{ height: 1, background: '#F1F5F9', margin: '4px 0' }} />
+                {menuItem(<Trash2 size={14} />, 'Archive', onDelete, 'danger')}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export function AssetPage() {
   const { user } = useAuth()
@@ -62,9 +259,64 @@ export function AssetPage() {
   const [scannerOpen,setScannerOpen]= useState(false)
   const [editAsset,  setEditAsset]  = useState<Asset | null>(null)
   const [saving,     setSaving]     = useState(false)
+
+  // Printable issuance receipt
+  const [printIssuanceId, setPrintIssuanceId] = useState<number | null>(null)
+
+  // Summary counts
+  const [summary, setSummary] = useState({ available: 0, borrowed: 0, reserved: 0, maintenance: 0, total: 0 })
+
+  // Re-issuance State
+  const [reissueAsset, setReissueAsset] = useState<Asset | null>(null)
+  const [detailTab, setDetailTab] = useState<'info' | 'history'>('info')
+  const [issuanceHistory, setIssuanceHistory] = useState<any[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
+  // Setup options for Quick Add / Quick Edit dropdowns
+  const [offices, setOffices] = useState<SetupRecord[]>([])
+  const [locations, setLocations] = useState<SetupRecord[]>([])
+  const [assetCategories, setAssetCategories] = useState<SetupRecord[]>([])
+  const [manufacturers, setManufacturers] = useState<SetupRecord[]>([])
+
+  // Live item code validation state
+  const [codeValidation, setCodeValidation] = useState<{ exists: boolean; message: string } | null>(null)
+
   const [editForm,   setEditForm]   = useState<UpdateAssetPayload>({
-    name: '', description: '', model: '', status: 'AVAILABLE', condition_status: '', remarks: '',
+    asset_number: '', name: '', description: '', model: '', status: 'AVAILABLE', condition_status: '', remarks: '',
+    asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null,
+    issued_to: '', date_issued: '',
   })
+
+  const loadSetupOptions = useCallback(async () => {
+    try {
+      const [offs, locs, cats, mans] = await Promise.all([
+        setupService.list('offices'),
+        setupService.list('locations'),
+        setupService.list('asset-categories'),
+        setupService.list('manufacturers'),
+      ])
+      setOffices(offs)
+      setLocations(locs)
+      setAssetCategories(cats)
+      setManufacturers(mans)
+    } catch { /* best effort */ }
+  }, [])
+
+  useEffect(() => {
+    void loadSetupOptions()
+  }, [loadSetupOptions])
+
+  const validateCodeLive = useCallback(async (code: string, ignoreId?: number) => {
+    if (!code.trim()) { setCodeValidation(null); return }
+    try {
+      const { data } = await api.get('/assets/validate-code', {
+        params: { code: code.trim(), ignore_id: ignoreId }
+      })
+      setCodeValidation(unwrapData(data))
+    } catch {
+      setCodeValidation(null)
+    }
+  }, [])
 
   async function load(nextPage = page, nextSearch = search) {
     setLoading(true)
@@ -79,19 +331,64 @@ export function AssetPage() {
     }
   }
 
+  // Load summary counts
+  const loadSummary = useCallback(async () => {
+    try {
+      const all = await assetService.list({ per_page: 9999 })
+      const count = (s: AssetStatus) => all.items.filter((a) => a.status === s).length
+      setSummary({
+        available: count('AVAILABLE'),
+        borrowed: count('BORROWED'),
+        reserved: count('RESERVED'),
+        maintenance: count('MAINTENANCE'),
+        total: all.meta.total,
+      })
+    } catch { /* best effort */ }
+  }, [])
+
+  useEffect(() => { void loadSummary() }, [loadSummary])
+
   async function openView(id: number) {
     setMessage(null)
-    try { setViewAsset(await assetService.show(id)) }
-    catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to load asset details.') }
+    setDetailTab('info')
+    setIssuanceHistory([])
+    try {
+      const assetData = await assetService.show(id)
+      setViewAsset(assetData)
+      
+      setLoadingHistory(true)
+      const historyData = await assetService.getIssuanceHistory(id)
+      setIssuanceHistory(historyData)
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Unable to load asset details.')
+    } finally {
+      setLoadingHistory(false)
+    }
   }
 
   async function openEdit(id: number) {
     if (!canManageAssets) { setMessage('Only administrators can edit asset records.'); return }
     setMessage(null)
+    setCodeValidation(null)
     try {
+      await loadSetupOptions()
       const a = await assetService.show(id)
       setEditAsset(a)
-      setEditForm({ name: a.name, description: a.description ?? '', model: a.model ?? '', status: a.status, condition_status: a.condition_status ?? '', remarks: a.remarks ?? '' })
+      setEditForm({
+        asset_number: a.asset_number,
+        name: a.name,
+        description: a.description ?? '',
+        asset_category_id: a.asset_category_id ?? null,
+        manufacturer_id: a.manufacturer_id ?? null,
+        office_id: a.office_id ?? null,
+        location_id: a.location_id ?? null,
+        model: a.model ?? '',
+        status: a.status,
+        condition_status: a.condition_status ?? '',
+        remarks: a.remarks ?? '',
+        issued_to: a.issued_to ?? '',
+        date_issued: a.date_issued ?? '',
+      })
     } catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to load asset for editing.') }
   }
 
@@ -103,12 +400,26 @@ export function AssetPage() {
 
   async function submitEdit() {
     if (!editAsset) return
+    if (codeValidation?.exists) {
+      setMessage('Please fix the duplicate Item Code before saving.')
+      return
+    }
     setSaving(true); setMessage(null)
     try {
-      await assetService.update(editAsset.id, { ...editForm, description: editForm.description || null, model: editForm.model || null, condition_status: editForm.condition_status || null, remarks: editForm.remarks || null })
+      await assetService.update(editAsset.id, {
+        ...editForm,
+        asset_number: editForm.asset_number?.trim() || undefined,
+        description: editForm.description || null,
+        model: editForm.model || null,
+        condition_status: editForm.condition_status || null,
+        remarks: editForm.remarks || null,
+        issued_to: editForm.issued_to || null,
+        date_issued: editForm.date_issued || null,
+      })
       setEditAsset(null)
       setMessage('Asset updated successfully.')
       await load(page)
+      void loadSummary()
     } catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to update asset.') }
     finally { setSaving(false) }
   }
@@ -123,108 +434,333 @@ export function AssetPage() {
   useEffect(() => onDataChanged((scope) => {
     if (affectsScope(scope, 'assets') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
       void load(page)
+      void loadSummary()
       if (viewAsset) void openView(viewAsset.id)
       if (qrAsset)   void openQrLabel(qrAsset.id)
     }
   }), [page, search, status, viewAsset?.id, qrAsset?.id])
 
-  const columns: Column<Asset>[] = useMemo(() => [
-    { key: 'asset_number', header: 'Asset No.',  render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number}</span> },
-    { key: 'name',         header: 'Name',       render: (r) => <span className="font-medium text-[#1F2937]">{r.name}</span> },
-    { key: 'category',     header: 'Category',   render: (r) => r.category ?? '—' },
-    { key: 'status',       header: 'Status',     render: (r) => <Badge tone={assetStatusTone(r.status)}>{assetStatusLabel(r.status)}</Badge> },
-    { key: 'location',     header: 'Location',   render: (r) => r.location ?? '—' },
-    {
-      key: 'actions', header: 'Actions',
-      render: (r) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
-          {/* Info actions */}
-          <Button size="sm" variant="ghost" onClick={() => void openView(r.id)}>View</Button>
-          <Button size="sm" variant="ghost" onClick={() => void openQrLabel(r.id)}>QR Label</Button>
+  // ── Table styles ─────────────────────────────────────────────────────────────
+  const th: React.CSSProperties = {
+    padding: '10px 16px',
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#94A3B8',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.07em',
+    background: '#FAFBFC',
+    borderBottom: '1px solid #E2E8F0',
+    textAlign: 'left' as const,
+    whiteSpace: 'nowrap' as const,
+  }
 
-          {/* Divider */}
-          <span style={{ width: 1, height: 20, background: '#e2e8f0', flexShrink: 0 }} />
-
-          {/* Edit */}
-          {canManageAssets && (
-            <Button size="sm" variant="secondary" onClick={() => void openEdit(r.id)}>Edit</Button>
-          )}
-
-          {/* Status-based primary action */}
-          {r.status === 'AVAILABLE' && canCompleteBorrowing && (
-            <Button size="sm" variant="primary" onClick={() => setBorrowId(r.id)}>Borrow</Button>
-          )}
-          {r.status === 'AVAILABLE' && (
-            <Button size="sm" variant="outline" onClick={() => setReserveId(r.id)}>Request</Button>
-          )}
-          {r.status === 'BORROWED' && canCompleteBorrowing && (
-            <Button size="sm" variant="success" onClick={() => setReturnId(r.id)}>Return</Button>
-          )}
-
-          {/* Danger */}
-          {canManageAssets && (
-            <Button size="sm" variant="danger" onClick={() => setDeleteId(r.id)}>Delete</Button>
-          )}
-        </div>
-      ),
-    },
-  ], [canManageAssets, canCompleteBorrowing])
+  const td: React.CSSProperties = {
+    padding: '14px 16px',
+    fontSize: 13.5,
+    color: '#374151',
+    borderBottom: '1px solid #F1F5F9',
+    verticalAlign: 'middle',
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <PageHeader
-        title="Assets"
-        subtitle="Search, scan, borrow, and view PSA-tracked assets."
-        actions={
-          <Button onClick={() => setScannerOpen(true)}>
-            <ScanLine className="h-4 w-4" />
-            Scan Asset QR
-          </Button>
-        }
-      />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 32 }}>
 
+      {/* ── Header ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 16,
+      }}>
+        <div>
+          <h1 style={{
+            margin: 0,
+            fontSize: 26,
+            fontWeight: 800,
+            color: '#0F172A',
+            letterSpacing: '-0.03em',
+            lineHeight: 1.2,
+          }}>
+            Assets
+          </h1>
+          <p style={{ margin: '6px 0 0', fontSize: 14, color: '#64748B', lineHeight: 1.4 }}>
+            Search, scan, borrow, and view PSA-tracked assets.
+          </p>
+        </div>
+
+        <Button onClick={() => setScannerOpen(true)}>
+          <ScanLine size={16} />
+          Scan Asset QR
+        </Button>
+      </div>
+
+      {/* Alert message */}
       {message && <Alert tone="info" onClose={() => setMessage(null)}>{message}</Alert>}
 
-      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+      {/* ── Summary cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+        <SummaryCard
+          icon={<Package size={20} style={{ color: colors.blue.icon }} />}
+          color={colors.blue}
+          label="Total Assets"
+          value={summary.total}
+          onClick={() => { setStatus(''); void load(1) }}
+          active={status === ''}
+        />
+        <SummaryCard
+          icon={<CheckCircle2 size={20} style={{ color: colors.green.icon }} />}
+          color={colors.green}
+          label="Available"
+          value={summary.available}
+          onClick={() => { setStatus('AVAILABLE'); void load(1) }}
+          active={status === 'AVAILABLE'}
+        />
+        <SummaryCard
+          icon={<ArrowUpRight size={20} style={{ color: colors.amber.icon }} />}
+          color={colors.amber}
+          label="Borrowed"
+          value={summary.borrowed}
+          onClick={() => { setStatus('BORROWED'); void load(1) }}
+          active={status === 'BORROWED'}
+        />
+        <SummaryCard
+          icon={<Clock size={20} style={{ color: colors.violet.icon }} />}
+          color={colors.violet}
+          label="Reserved"
+          value={summary.reserved}
+          onClick={() => { setStatus('RESERVED'); void load(1) }}
+          active={status === 'RESERVED'}
+        />
+        <SummaryCard
+          icon={<Wrench size={20} style={{ color: colors.red.icon }} />}
+          color={colors.red}
+          label="Maintenance"
+          value={summary.maintenance}
+          onClick={() => { setStatus('MAINTENANCE'); void load(1) }}
+          active={status === 'MAINTENANCE'}
+        />
+      </div>
+
+      {/* ── Table card ── */}
+      <Card noPadding>
         {/* Toolbar */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottom: '1px solid #f1f5f9', padding: '14px 20px' }}>
-          <SearchBar
-            placeholder="Search assets…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') void load(1) }}
-          />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <Dropdown
-              options={[
-                { label: 'Available',   value: 'AVAILABLE' },
-                { label: 'Borrowed',    value: 'BORROWED' },
-                { label: 'Reserved',    value: 'RESERVED' },
-                { label: 'Maintenance', value: 'MAINTENANCE' },
-              ]}
-              placeholder="All statuses"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
+        <div style={{
+          display: 'flex', gap: 10, alignItems: 'center',
+          padding: '12px 20px',
+          borderBottom: '1px solid #E2E8F0',
+          background: '#fff',
+        }}>
+          {/* Search */}
+          <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
+            <Search size={14} style={{
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+              color: '#94A3B8', pointerEvents: 'none',
+            }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void load(1) }}
+              placeholder="Search by asset number, name, or category..."
+              style={{
+                width: '100%', height: 38, paddingLeft: 34, paddingRight: 14,
+                borderRadius: 10, border: '1.5px solid #E2E8F0',
+                fontSize: 13.5, color: '#1E293B', outline: 'none',
+                boxSizing: 'border-box', fontFamily: 'inherit',
+                background: '#F8FAFC',
+                transition: 'border-color 0.15s, background 0.15s',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#93C5FD'
+                e.currentTarget.style.background = '#fff'
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#E2E8F0'
+                e.currentTarget.style.background = '#F8FAFC'
+              }}
             />
-            <Button variant="secondary" onClick={() => void load(1)}>Search</Button>
           </div>
+
+          {/* Status filter */}
+          <select
+            value={status}
+            onChange={(e) => { setStatus(e.target.value); void load(1) }}
+            style={{
+              height: 38, paddingInline: '12px 32px', borderRadius: 10,
+              border: '1.5px solid #E2E8F0', fontSize: 13, color: status ? '#1E293B' : '#94A3B8',
+              background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 12px center`,
+              backgroundSize: '10px 6px',
+              appearance: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              outline: 'none', flexShrink: 0,
+              transition: 'border-color 0.15s',
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = '#93C5FD' }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = '#E2E8F0' }}
+          >
+            <option value="">All statuses</option>
+            <option value="AVAILABLE">Available</option>
+            <option value="BORROWED">Borrowed</option>
+            <option value="RESERVED">Reserved</option>
+            <option value="MAINTENANCE">Maintenance</option>
+            <option value="UNAVAILABLE">Unavailable</option>
+            <option value="RETIRED">Retired</option>
+            <option value="DISPOSED">Disposed</option>
+          </select>
+
+          {/* Search button */}
+          <button
+            onClick={() => void load(1)}
+            style={{
+              height: 38, paddingInline: 14, borderRadius: 10,
+              border: '1.5px solid #E2E8F0', background: '#F8FAFC',
+              fontSize: 13, fontWeight: 600, color: '#374151',
+              cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              transition: 'background 0.12s',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
+          >
+            <Filter size={14} />
+            Filter
+          </button>
         </div>
 
         {/* Table */}
-        {loading ? (
-          <div className="flex items-center justify-center py-16"><Spinner /></div>
-        ) : (
-          <>
-            <Table
-              columns={columns} rows={rows} rowKey={(r) => r.id}
-              empty={<div className="py-16"><EmptyState title="No assets found" description="Try another search term or clear the status filter." /></div>}
-            />
-            <div style={{ borderTop: '1px solid #f1f5f9', padding: '10px 20px' }}>
-              <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void load(p)} />
+        <div style={{ overflowX: 'auto' }}>
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+              <Spinner />
             </div>
-          </>
-        )}
-      </div>
+          ) : rows.length === 0 ? (
+            <div style={{ padding: '80px 0' }}>
+              <EmptyState
+                title="No assets found"
+                description="Try another search term or clear the status filter."
+              />
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
+              <colgroup>
+                <col style={{ width: 140 }} />
+                <col style={{ minWidth: 200 }} />
+                <col style={{ width: 160 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 140 }} />
+                <col style={{ width: 120 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th style={th}>Asset No.</th>
+                  <th style={th}>Name</th>
+                  <th style={th}>Category</th>
+                  <th style={th}>Status</th>
+                  <th style={th}>Location</th>
+                  <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, idx) => (
+                  <tr
+                    key={r.id}
+                    style={{
+                      background: idx % 2 === 0 ? '#fff' : '#FAFBFC',
+                      transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F1F5F9' }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? '#fff' : '#FAFBFC'
+                    }}
+                  >
+                    {/* Asset No. */}
+                    <td style={td}>
+                      <code style={{
+                        fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                        fontSize: 11.5, color: '#475569',
+                        background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                        display: 'inline-block',
+                      }}>
+                        {r.asset_number}
+                      </code>
+                    </td>
+
+                    {/* Name */}
+                    <td style={td}>
+                      <div>
+                        <span style={{ fontWeight: 600, color: '#0F172A', fontSize: 13.5 }}>
+                          {r.name}
+                        </span>
+                        {r.description && (
+                          <div style={{
+                            fontSize: 11.5, color: '#9CA3AF', marginTop: 2,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            maxWidth: 300,
+                          }}>
+                            {r.description}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Category */}
+                    <td style={td}>
+                      <span style={{ color: '#64748B', fontSize: 13 }}>
+                        {r.category ?? '—'}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td style={td}>
+                      {(() => {
+                        const eff = getEffectiveAssetStatus(r)
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                            <Badge tone={eff.tone}>{eff.label}</Badge>
+                            {eff.subtext && eff.subtextTone && (
+                              <Badge tone={eff.subtextTone}>{eff.subtext}</Badge>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </td>
+
+                    {/* Location */}
+                    <td style={td}>
+                      <span style={{ color: '#64748B', fontSize: 13 }}>
+                        {r.location ?? '—'}
+                      </span>
+                    </td>
+
+                    {/* Actions */}
+                    <td style={{
+                      ...td, textAlign: 'right' as const,
+                      paddingRight: 20, paddingTop: 10, paddingBottom: 10,
+                    }}>
+                      <ActionCell
+                        asset={r}
+                        canManageAssets={canManageAssets}
+                        canCompleteBorrowing={canCompleteBorrowing}
+                        onView={() => void openView(r.id)}
+                        onQrLabel={() => void openQrLabel(r.id)}
+                        onEdit={() => void openEdit(r.id)}
+                        onDelete={() => setDeleteId(r.id)}
+                        onBorrow={() => setBorrowId(r.id)}
+                        onReserve={() => setReserveId(r.id)}
+                        onReturn={() => setReturnId(r.id)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Pagination */}
+        <div style={{ borderTop: '1px solid #F1F5F9', padding: '10px 20px' }}>
+          <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void load(p)} />
+        </div>
+      </Card>
 
       {/* ── Dialogs ── */}
       <ConfirmDialog
@@ -234,7 +770,7 @@ export function AssetPage() {
         onCancel={() => setDeleteId(null)}
         onConfirm={() => {
           if (deleteId === null) return
-          void assetService.remove(deleteId).then(() => { setDeleteId(null); setMessage('Asset archived.'); void load(page) })
+          void assetService.remove(deleteId).then(() => { setDeleteId(null); setMessage('Asset archived.'); void load(page); void loadSummary() })
         }}
       />
 
@@ -259,6 +795,7 @@ export function AssetPage() {
             setMessage('Item returned successfully.')
             notifyDataChanged('all')
             void load(page)
+            void loadSummary()
           })
         }}
       />
@@ -288,6 +825,7 @@ export function AssetPage() {
             setMessage('Item borrowed successfully. Your receipt is ready.')
             notifyDataChanged('all')
             void load(page)
+            void loadSummary()
           })
         }}
       />
@@ -345,35 +883,168 @@ export function AssetPage() {
               setMessage('Borrow request sent successfully. Present the receipt QR/reference to staff for approval.')
               notifyDataChanged('all')
               void load(page)
+              void loadSummary()
             })
         }}
       />
 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
-      <AssetQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onCompleted={() => void load(page)} />
+      <SharedQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} scanSource="assets_page_scanner" mode="modal" onCompleted={() => { void load(page); void loadSummary() }} />
 
       {/* ── View Asset ── */}
-      <Modal open={viewAsset !== null} title="Asset Details" onClose={() => setViewAsset(null)}>
-        {viewAsset && (
-          <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            {[
-              { label: 'Asset Number', value: viewAsset.asset_number, mono: true },
-              { label: 'Status',       value: <Badge tone={assetStatusTone(viewAsset.status)}>{assetStatusLabel(viewAsset.status)}</Badge> },
-              { label: 'Name',         value: viewAsset.name },
-              { label: 'Category',     value: viewAsset.category ?? '—' },
-              { label: 'Office',       value: viewAsset.office ?? '—' },
-              { label: 'Location',     value: viewAsset.location ?? '—' },
-              { label: 'Model',        value: viewAsset.model ?? '—' },
-              { label: 'Condition',    value: viewAsset.condition_status ?? '—' },
-              { label: 'Description',  value: viewAsset.description ?? '—', full: true },
-              { label: 'Remarks',      value: viewAsset.remarks ?? '—',     full: true },
-            ].map((item) => (
-              <div key={item.label} className={item.full ? 'sm:col-span-2' : ''}>
-                <dt className="text-[11px] font-bold uppercase tracking-wide text-[#9CA3AF]">{item.label}</dt>
-                <dd className={`mt-0.5 font-medium text-[#1F2937] ${item.mono ? 'font-mono text-xs' : 'text-[14px]'}`}>{item.value}</dd>
+      <Modal
+        open={viewAsset !== null}
+        title="Asset Details"
+        onClose={() => setViewAsset(null)}
+        footer={
+          viewAsset ? (
+            <div className="flex items-center justify-between w-full">
+              <div>
+                {viewAsset.issued_to &&
+                  hasAnyRole(user, ['Super Administrator', 'System Administrator', 'Property Custodian', 'Inventory Officer']) &&
+                  viewAsset.status !== 'BORROWED' &&
+                  viewAsset.status !== 'RESERVED' &&
+                  viewAsset.status !== 'MAINTENANCE' &&
+                  !['RETIRED', 'DISPOSED'].includes(viewAsset.status) && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setReissueAsset(viewAsset)
+                        setViewAsset(null)
+                      }}
+                    >
+                      Re-Issue Asset
+                    </Button>
+                  )}
               </div>
-            ))}
-          </dl>
+              {viewAsset.issued_to && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setPrintIssuanceId(viewAsset.id)
+                    setViewAsset(null)
+                  }}
+                >
+                  <Printer size={14} className="mr-1.5" /> Print Issuance Receipt (PAR)
+                </Button>
+              )}
+            </div>
+          ) : null
+        }
+      >
+        {viewAsset && (
+          <div className="space-y-4">
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200">
+              <button
+                type="button"
+                className={`flex-1 pb-2.5 text-center text-sm font-semibold border-b-2 transition-all ${
+                  detailTab === 'info'
+                    ? 'border-[#0D47A1] text-[#0D47A1]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('info')}
+              >
+                General Info
+              </button>
+              <button
+                type="button"
+                className={`flex-1 pb-2.5 text-center text-sm font-semibold border-b-2 transition-all ${
+                  detailTab === 'history'
+                    ? 'border-[#0D47A1] text-[#0D47A1]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('history')}
+              >
+                Issuance History
+              </button>
+            </div>
+
+            {detailTab === 'info' ? (
+              <dl className="grid gap-4 text-sm sm:grid-cols-2 mt-2">
+                {[
+                  { label: 'Asset Number', value: viewAsset.asset_number, mono: true },
+                  { label: 'Status', value: (() => {
+                    const eff = getEffectiveAssetStatus(viewAsset)
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                        <Badge tone={eff.tone}>{eff.label}</Badge>
+                        {eff.subtext && eff.subtextTone && (
+                          <Badge tone={eff.subtextTone}>
+                            {eff.subtext}
+                            {viewAsset.reservation_context?.requester_name && (
+                              <span style={{ fontWeight: 400, opacity: 0.75 }}> · {viewAsset.reservation_context.requester_name}</span>
+                            )}
+                          </Badge>
+                        )}
+                      </div>
+                    )
+                  })() },
+                  { label: 'Name',         value: viewAsset.name },
+                  { label: 'Category',     value: viewAsset.category ?? '—' },
+                  { label: 'Office',       value: viewAsset.office ?? '—' },
+                  { label: 'Location',     value: viewAsset.location ?? '—' },
+                  { label: 'Model',        value: viewAsset.model ?? '—' },
+                  { label: 'Condition',    value: viewAsset.condition_status ?? '—' },
+                  { label: 'Description',  value: viewAsset.description ?? '—', full: true },
+                  { label: 'Remarks',      value: viewAsset.remarks ?? '—',     full: true },
+                  { label: 'Issued To',    value: viewAsset.issued_to ?? '—' },
+                  { label: 'Issued By',    value: viewAsset.issued_by_name ?? '—' },
+                  { label: 'Date Issued',  value: viewAsset.date_issued ?? '—', full: true },
+                ].map((item) => (
+                  <div key={item.label} className={item.full ? 'sm:col-span-2' : ''}>
+                    <dt className="text-[11px] font-bold uppercase tracking-wide text-[#9CA3AF]">{item.label}</dt>
+                    <dd className={`mt-0.5 font-medium text-[#1F2937] ${item.mono ? 'font-mono text-xs' : 'text-[14px]'}`}>{item.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <div className="mt-2 space-y-4">
+                {loadingHistory ? (
+                  <div className="flex justify-center py-8">
+                    <Spinner label="Loading history logs..." />
+                  </div>
+                ) : issuanceHistory.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-500 italic">
+                    No re-issuance history logs recorded for this asset.
+                  </div>
+                ) : (
+                  <div className="relative border-l border-slate-200 ml-4 pl-6 space-y-6 py-2">
+                    {issuanceHistory.map((h, idx) => (
+                      <div key={h.id || idx} className="relative">
+                        {/* Dot */}
+                        <span className="absolute -left-[31px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white border-2 border-[#0D47A1]">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#0D47A1]" />
+                        </span>
+                        
+                        <div className="text-[11px] font-semibold text-slate-400">{h.transfer_date}</div>
+                        <div className="mt-0.5 text-sm font-medium text-slate-800">
+                          Accountability reassigned to <strong className="text-[#0D47A1]">{h.new_employee?.full_name || h.new_employee || 'N/A'}</strong>
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          Previous Holder: {h.previous_employee?.full_name || h.previous_employee || 'N/A'}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          Authorized by: {h.officer?.full_name || h.officer || 'N/A'}
+                        </div>
+                        {h.reason && (
+                          <div className="mt-1.5 text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg p-2 max-w-md">
+                            <strong>Reason:</strong> {h.reason}
+                          </div>
+                        )}
+                        {h.remarks && (
+                          <div className="mt-1 text-[11px] text-slate-400 italic">
+                            Remarks: {h.remarks}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </Modal>
 
@@ -479,36 +1150,252 @@ export function AssetPage() {
         )}
       </Modal>
 
-      {/* ── Edit Asset ── */}
+      {/* ── Edit Asset Modal ── */}
       <Modal
-        open={editAsset !== null} title="Edit Asset" onClose={() => setEditAsset(null)}
+        open={editAsset !== null}
+        title={`Edit Asset: ${editAsset?.name ?? ''}`}
+        onClose={() => setEditAsset(null)}
+        maxWidth={700}
         footer={
           <>
             <Button variant="secondary" onClick={() => setEditAsset(null)}>Cancel</Button>
-            <Button onClick={() => void submitEdit()} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>
+            <Button onClick={() => void submitEdit()} disabled={saving || Boolean(codeValidation?.exists)}>
+              {saving ? 'Saving…' : 'Save Changes'}
+            </Button>
           </>
         }
       >
-        <div className="space-y-4">
-          <Input label="Asset Name"  value={editForm.name ?? ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
-          <Input label="Model"       value={editForm.model ?? ''} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} />
+        <div className="space-y-6">
+          {/* Section 1: Basic Information */}
           <div>
-            <label className={LABEL_CLS}>Status</label>
-            <select className={SELECT_CLS} value={editForm.status ?? 'AVAILABLE'} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as AssetStatus })}>
-              <option value="AVAILABLE">Available</option>
-              <option value="RESERVED">Reserved</option>
-              <option value="BORROWED">Borrowed</option>
-              <option value="MAINTENANCE">Maintenance</option>
-              <option value="UNAVAILABLE">Unavailable</option>
-              <option value="RETIRED">Retired</option>
-              <option value="DISPOSED">Disposed</option>
-            </select>
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">1. Basic Information</p>
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  label="Item Name"
+                  value={editForm.name ?? ''}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                />
+                <div>
+                  <label className={LABEL_CLS}>Item Code / SKU</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      className={SELECT_CLS}
+                      value={editForm.asset_number ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setEditForm({ ...editForm, asset_number: val })
+                        void validateCodeLive(val, editAsset?.id)
+                      }}
+                      placeholder="e.g. AST-2026-001"
+                    />
+                    {codeValidation && (
+                      <div className="mt-1 flex items-center gap-1 text-xs">
+                        {codeValidation.exists ? (
+                          <span className="flex items-center gap-1 font-medium text-red-600">
+                            <XCircle size={14} /> ❌ Already exists
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 font-medium text-emerald-600">
+                            <CheckCircle2 size={14} /> ✓ Available
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className={LABEL_CLS}>Description</label>
+                <textarea
+                  className={TEXTAREA_CLS}
+                  rows={2}
+                  value={editForm.description ?? ''}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  placeholder="Asset description..."
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <SetupDropdown
+                  label="Asset Category"
+                  resource="asset-categories"
+                  options={assetCategories.map((c) => ({ label: c.name, value: c.id, raw: c }))}
+                  value={editForm.asset_category_id}
+                  onChange={(val) => setEditForm({ ...editForm, asset_category_id: val })}
+                  onRefreshNeeded={loadSetupOptions}
+                  placeholder="Select Category"
+                />
+                <SetupDropdown
+                  label="Manufacturer"
+                  resource="manufacturers"
+                  options={manufacturers.map((m) => ({ label: m.name, value: m.id, raw: m }))}
+                  value={editForm.manufacturer_id}
+                  onChange={(val) => setEditForm({ ...editForm, manufacturer_id: val })}
+                  onRefreshNeeded={loadSetupOptions}
+                  placeholder="Select Manufacturer"
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <SetupDropdown
+                  label="Office"
+                  resource="offices"
+                  options={offices.map((o) => ({ label: o.name, value: o.id, raw: o }))}
+                  value={editForm.office_id}
+                  onChange={(val) => setEditForm({ ...editForm, office_id: val, location_id: null })}
+                  onRefreshNeeded={loadSetupOptions}
+                  placeholder="Select Office"
+                />
+                <SetupDropdown
+                  label="Location"
+                  resource="locations"
+                  options={locations
+                    .filter((l) => !editForm.office_id || l.office_id === editForm.office_id)
+                    .map((l) => ({ label: l.name, value: l.id, raw: l }))}
+                  value={editForm.location_id}
+                  onChange={(val) => setEditForm({ ...editForm, location_id: val })}
+                  onRefreshNeeded={loadSetupOptions}
+                  needsOffice
+                  currentOfficeId={editForm.office_id}
+                  placeholder="Select Location"
+                />
+              </div>
+            </div>
           </div>
-          <Input label="Condition"   value={editForm.condition_status ?? ''} onChange={(e) => setEditForm({ ...editForm, condition_status: e.target.value })} placeholder="GOOD, FAIR, DAMAGED, LOST, UNDER_REPAIR" />
-          <Input label="Description" value={editForm.description ?? ''} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
-          <Input label="Remarks"     value={editForm.remarks ?? ''} onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })} />
+
+          {/* Section 2: Inventory */}
+          <div>
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">2. Inventory</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={LABEL_CLS}>Available Quantity (Current Stock)</label>
+                <input
+                  type="text"
+                  readOnly
+                  value="1"
+                  className="w-full h-11 rounded-[10px] border border-[#E5E7EB] bg-[#F8FAFC] px-3.5 text-[14px] text-[#6B7280] shadow-[0_1px_2px_rgba(0,0,0,.05)] cursor-not-allowed select-all font-semibold"
+                  title="Available Quantity is read-only. Stock changes are managed via inventory transactions."
+                />
+                <p className="mt-1 text-[11px] text-[#94A3B8]">
+                  Read-only. Stock adjustments are managed via inventory transactions.
+                </p>
+              </div>
+              <Input
+                label="Remarks / Internal Notes"
+                value={editForm.remarks ?? ''}
+                onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Section 3: Asset Information */}
+          <div>
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">3. Asset Information</p>
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Input
+                  label="Model Number"
+                  value={editForm.model ?? ''}
+                  onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
+                />
+                <div>
+                  <label className={LABEL_CLS}>Condition</label>
+                  <Input
+                    value={editForm.condition_status ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, condition_status: e.target.value })}
+                    placeholder="GOOD, FAIR, DAMAGED"
+                  />
+                </div>
+                <div>
+                  <label className={LABEL_CLS}>Status</label>
+                  <select
+                    className={SELECT_CLS}
+                    value={editForm.status ?? 'AVAILABLE'}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value as AssetStatus })}
+                  >
+                    <option value="AVAILABLE">Available</option>
+                    <option value="RESERVED">Reserved</option>
+                    <option value="BORROWED">Borrowed</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="UNAVAILABLE">Unavailable</option>
+                    <option value="RETIRED">Retired</option>
+                    <option value="DISPOSED">Disposed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Permanent Issuance Information */}
+          <div>
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">4. Permanent Issuance Information</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                label="Issued To"
+                value={editForm.issued_to ?? ''}
+                onChange={(e) => setEditForm({ ...editForm, issued_to: e.target.value })}
+                placeholder="Full Name / Accountable Officer"
+              />
+              <div>
+                <label className={LABEL_CLS}>Date Issued</label>
+                <input
+                  type="date"
+                  className={SELECT_CLS}
+                  value={editForm.date_issued ?? ''}
+                  onChange={(e) => setEditForm({ ...editForm, date_issued: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5: Audit Information */}
+          {editAsset && (
+            <div className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3.5">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">5. Audit Information</p>
+              <div className="grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                <div>
+                  <span className="font-semibold text-slate-700">Created By:</span>{' '}
+                  {editAsset.created_by_name || 'System'}
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Created At:</span>{' '}
+                  {editAsset.created_at ? new Date(editAsset.created_at).toLocaleString() : '—'}
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Updated By:</span>{' '}
+                  {editAsset.updated_by_name || '—'}
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-700">Updated At:</span>{' '}
+                  {editAsset.updated_at ? new Date(editAsset.updated_at).toLocaleString() : '—'}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
+
+      {/* Issuance Receipt / PAR Printable Document Modal */}
+      <PrintableDocumentModal
+        open={printIssuanceId !== null}
+        onClose={() => setPrintIssuanceId(null)}
+        documentType="issuance"
+        targetId={printIssuanceId}
+        title="Property Acknowledgement Receipt (PAR)"
+      />
+
+      {/* Asset Re-Issuance Wizard Modal */}
+      {reissueAsset && (
+        <ReissueAssetModal
+          open={reissueAsset !== null}
+          onClose={() => setReissueAsset(null)}
+          asset={reissueAsset}
+          onSuccess={() => void load(page)}
+        />
+      )}
     </div>
   )
 }

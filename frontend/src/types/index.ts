@@ -27,6 +27,8 @@ export type MaintenanceStatus =
   | 'completed'
   | 'cancelled'
 
+export type ExtensionRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
 /** Matches Auth UserResource (+ optional display helpers). */
 export interface User {
   id: number
@@ -77,6 +79,17 @@ export interface Asset {
   purchase_date?: string | null
   purchase_cost?: string | number | null
   warranty_until?: string | null
+  issued_to?: string | null
+  issued_to_user_id?: number | null
+  issued_by_user_id?: number | null
+  date_issued?: string | null
+  issued_by_name?: string | null
+  created_by?: number | null
+  updated_by?: number | null
+  created_by_name?: string | null
+  updated_by_name?: string | null
+  created_at?: string | null
+  updated_at?: string | null
   identifiers?: Array<{
     id: number
     asset_id: number
@@ -84,6 +97,19 @@ export interface Asset {
     identifier_value: string
     is_primary: boolean
   }>
+  /**
+   * Populated by the backend only when status === 'RESERVED'.
+   * Contains the reservation (PENDING or APPROVED) that is holding this asset.
+   * null when the asset is not reserved.
+   */
+  reservation_context?: {
+    id: number
+    status: 'PENDING' | 'APPROVED'
+    workflow_status?: string | null
+    requester_name?: string | null
+    authorized_by_name?: string | null
+    authorized_at?: string | null
+  } | null
 }
 
 export interface Reservation {
@@ -131,6 +157,7 @@ export interface Borrowing {
   authorized_at?: string | null
   receipt_code?: string
   receipt_payload?: string
+  has_pending_extension?: boolean
 }
 
 export interface InventoryItem {
@@ -145,6 +172,17 @@ export interface InventoryItem {
   unit: string
   reorder_level?: number
   remarks?: string | null
+  description?: string | null
+  asset_category_id?: number | null
+  manufacturer_id?: number | null
+  office_id?: number | null
+  location_id?: number | null
+  created_by?: number | null
+  updated_by?: number | null
+  created_by_name?: string | null
+  updated_by_name?: string | null
+  created_at?: string | null
+  updated_at?: string | null
 }
 
 export interface BorrowRequestResult {
@@ -189,6 +227,20 @@ export interface MaintenanceRequest {
   scheduled_at?: string
 }
 
+export interface BorrowExtensionRequest {
+  id: number
+  borrowing_id: number
+  current_due_date: string
+  requested_due_date: string
+  reason: string
+  status: ExtensionRequestStatus
+  remarks?: string | null
+  reviewed_by?: number | null
+  reviewed_by_name?: string | null
+  reviewed_at?: string | null
+  created_at?: string
+}
+
 export interface DashboardStats {
   total_assets: number
   available: number
@@ -201,6 +253,7 @@ export interface DashboardStats {
     borrowed: number
     reserved: number
     maintenance: number
+    reissued_this_month?: number
   }
   inventory: {
     total: number
@@ -281,4 +334,327 @@ export function displayName(user: User | null | undefined): string {
   const parts = [user.first_name, user.last_name].map((p) => p?.trim()).filter(Boolean)
   if (parts.length > 0) return parts.join(' ')
   return user.email
+}
+
+/* ── Workflow Engine Types ── */
+
+export type WorkflowModuleType =
+  | 'borrow_request'
+  | 'borrow_extension_request'
+  | 'asset_issuance'
+  | 'asset_reissuance'
+  | 'clearance_processing'
+  | 'maintenance_request'
+  | 'lost_asset_report'
+
+export type ApprovalType = 'single' | 'any' | 'all'
+
+export interface WorkflowOptions {
+  auto_approve_no_approver?: boolean
+  skip_disabled_levels?: boolean
+  allow_rejection_any_level?: boolean
+  allow_request_cancellation?: boolean
+  allow_requester_withdrawal?: boolean
+  require_remarks_on_rejection?: boolean
+  require_remarks_on_approval?: boolean
+}
+
+export interface WorkflowApprovalLevel {
+  id?: number
+  workflow_version_id?: number
+  level_order: number
+  name: string
+  roles?: string[]
+  user_ids?: number[]
+  office_id?: number | null
+  department_id?: number | null
+  office?: { id: number; name: string; code?: string }
+  department?: { id: number; name: string; code?: string }
+  approval_type: ApprovalType
+  is_enabled: boolean
+  execution_type?: 'sequential' | 'parallel'
+  parallel_group_id?: string | null
+  conditions?: Record<string, unknown> | null
+  escalation_hours?: number | null
+  escalate_to_roles?: string[] | null
+  escalate_to_user_ids?: number[] | null
+  allow_delegation?: boolean
+}
+
+export interface WorkflowVersion {
+  id: number
+  workflow_id: number
+  version_number: number
+  options?: WorkflowOptions
+  change_summary?: string
+  created_by?: number
+  creator?: { id: number; name?: string; full_name?: string; email: string }
+  created_at: string
+  approval_levels?: WorkflowApprovalLevel[]
+}
+
+export interface Workflow {
+  id: number
+  name: string
+  module_type: WorkflowModuleType
+  description?: string | null
+  is_active: boolean
+  is_archived: boolean
+  current_version_id?: number | null
+  current_version?: WorkflowVersion
+  options?: WorkflowOptions
+  created_by?: number | null
+  updated_by?: number | null
+  creator?: { id: number; name?: string; full_name?: string; email: string }
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkflowApprovalHistory {
+  id: number
+  request_type: string
+  request_id: number
+  workflow_id?: number | null
+  workflow_version_id?: number | null
+  approval_level_id?: number | null
+  level_order?: number | null
+  action: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'WITHDRAWN' | 'SKIPPED' | 'AUTO_APPROVED' | 'DELEGATED' | 'ESCALATED'
+  user_id?: number | null
+  user?: { id: number; name?: string; full_name?: string; email: string }
+  role?: string | null
+  office_id?: number | null
+  office?: { id: number; name: string }
+  department_id?: number | null
+  department?: { id: number; name: string }
+  remarks?: string | null
+  metadata?: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface WorkflowAuditLog {
+  id: number
+  workflow_id?: number | null
+  user_id?: number | null
+  user?: { id: number; name?: string; full_name?: string; email: string }
+  action: string
+  previous_value?: Record<string, unknown> | null
+  new_value?: Record<string, unknown> | null
+  ip_address?: string | null
+  user_agent?: string | null
+  created_at: string
+}
+
+export interface QrScanHistory {
+  id: number
+  asset_id: number
+  user_id?: number | null
+  action_performed: string
+  device?: string | null
+  platform?: string | null
+  browser?: string | null
+  ip_address?: string | null
+  scanned_at: string
+  asset?: Asset
+  user?: User
+}
+
+export interface LostAssetReport {
+  id: number
+  asset_id: number
+  asset_name?: string
+  asset_number?: string
+  reporter_id: number
+  reporter_name?: string
+  description: string
+  last_known_location?: string | null
+  date_lost?: string | null
+  remarks?: string | null
+  status: string
+  workflow_status?: string | null
+  current_level_order?: number | null
+  created_at: string
+}
+
+/* ── Phase 7 — QR Scan Role-Based Types ── */
+
+export type QrType = 'ASSET' | 'BORROWING_RECEIPT' | 'RETURN_RECEIPT' | 'UNKNOWN'
+
+export type AvailableAction =
+  | 'VIEW_ASSET_DETAILS'
+  | 'REQUEST_BORROW'
+  | 'REPORT_DAMAGE'
+  | 'REPORT_LOST'
+  | 'APPROVE_RELEASE'
+  | 'APPROVE_REQUEST'
+  | 'RELEASE_ASSET'
+  | 'RETURN_ASSET'
+  | 'VIEW_BORROWING_STATUS'
+
+export interface QrContext {
+  qr_type: QrType
+  error?: string | null
+  message?: string | null
+  asset?: Asset | null
+  reservation?: {
+    id: number
+    requester_name?: string
+    employee_number?: string | null
+    department?: string | null
+    office?: string | null
+    asset_name?: string
+    asset_number?: string
+    requested_date?: string
+    expected_return_date?: string | null
+    status: string
+    workflow_status?: string | null
+    current_level_order?: number | null
+    remarks?: string | null
+    authorized_by_name?: string | null
+    authorized_at?: string | null
+  } | null
+  borrowing?: {
+    id: number
+    borrower_name?: string
+    employee_number?: string | null
+    department?: string | null
+    office?: string | null
+    asset_name?: string
+    asset_number?: string
+    requested_date?: string
+    borrowed_at?: string | null
+    due_date?: string | null
+    returned_at?: string | null
+    status: string
+    remarks?: string | null
+    authorized_by_name?: string | null
+    authorized_at?: string | null
+  } | null
+  my_active_borrowing?: {
+    id: number
+    due_date?: string
+    status: string
+  } | null
+  my_pending_reservation?: {
+    id: number
+    status: string
+  } | null
+  active_maintenance?: {
+    id: number
+    type: string
+    status: string
+  } | null
+  my_pending_lost_report?: {
+    id: number
+    status: string
+  } | null
+  asset_status?: string | null
+  borrowing_status?: string | null
+  workflow_status?: string | null
+  is_owner?: boolean
+  user_permissions?: {
+    is_admin: boolean
+    is_employee: boolean
+  }
+  available_actions: AvailableAction[]
+}
+
+export interface AssetContext {
+  asset: {
+    id: number
+    asset_number: string
+    name: string
+    description?: string | null
+    model?: string | null
+    status: AssetStatus
+    condition_status?: string | null
+    psa_qr_identifier?: string | null
+    category?: { id: number; name: string } | null
+    manufacturer?: { id: number; name: string } | null
+    office?: { id: number; name: string } | null
+    location?: { id: number; name: string } | null
+    issued_to?: string | null
+    issued_to_user_id?: number | null
+    issued_by_name?: string | null
+    issued_to_name?: string | null
+    date_issued?: string | null
+    created_at?: string | null
+    updated_at?: string | null
+  }
+  active_borrowing?: {
+    id: number
+    user_name?: string
+    borrow_date?: string
+    due_date?: string
+    status: string
+  } | null
+  my_active_borrowing?: {
+    id: number
+    due_date?: string
+    status: string
+  } | null
+  pending_reservation?: {
+    id: number
+    user_name?: string
+    start_date?: string
+    end_date?: string
+    workflow_status?: string | null
+    current_level_order?: number | null
+  } | null
+  my_pending_reservation?: {
+    id: number
+    status: string
+    workflow_status?: string | null
+  } | null
+  my_pending_extension?: {
+    id: number
+    status: string
+  } | null
+  active_maintenance?: {
+    id: number
+    type: string
+    status: string
+  } | null
+  my_pending_lost_report?: {
+    id: number
+    status: string
+  } | null
+  actions: {
+    can_request_borrow: boolean
+    can_request_extension: boolean
+    can_request_reissuance: boolean
+    can_report_damage: boolean
+    can_report_lost: boolean
+  }
+  history: {
+    borrow_history: Array<{
+      id: number
+      user_name?: string
+      borrow_date?: string
+      due_date?: string
+      returned_at?: string | null
+      status: string
+    }>
+    my_reservation_history: Array<{
+      id: number
+      status: string
+      start_date?: string
+      end_date?: string
+      created_at?: string
+      workflow_status?: string | null
+    }>
+    maintenance_history: Array<{
+      id: number
+      type: string
+      status: string
+      description?: string | null
+      created_at?: string
+    }>
+    lost_report_history: Array<{
+      id: number
+      status: string
+      description: string
+      date_lost?: string | null
+      created_at?: string
+    }>
+  }
 }

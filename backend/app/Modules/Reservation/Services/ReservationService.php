@@ -16,6 +16,7 @@ class ReservationService
     public function __construct(
         private readonly AssetIdentifierService $assetIdentifierService,
         private readonly NotificationService $notificationService,
+        private readonly \App\Modules\Workflow\Services\WorkflowEngineService $workflowEngineService,
     ) {}
 
     public function list(User $user, int $perPage = 20): LengthAwarePaginator
@@ -43,6 +44,9 @@ class ReservationService
 
             $reservation = $reservation->load(['user', 'assets']);
 
+            // Start Workflow Engine
+            $this->workflowEngineService->startWorkflow($reservation, 'borrow_request', $user, $data['remarks'] ?? null);
+
             $assetNames = $reservation->assets->pluck('name')->filter()->join(', ') ?: 'asset(s)';
             $requester = ($user->full_name ?: $user->email) ?? 'An employee';
 
@@ -55,13 +59,13 @@ class ReservationService
                 ['link' => '/reservations'],
             );
 
-            return $reservation;
+            return $reservation->fresh();
         });
     }
 
-    public function approve(Reservation $reservation, User $authorizer): Reservation
+    public function approve(Reservation $reservation, User $authorizer, ?string $remarks = null): Reservation
     {
-        return DB::transaction(function () use ($reservation, $authorizer) {
+        return DB::transaction(function () use ($reservation, $authorizer, $remarks) {
             $reservation = Reservation::query()
                 ->with(['user', 'assets'])
                 ->lockForUpdate()
@@ -71,30 +75,38 @@ class ReservationService
                 throw new \InvalidArgumentException('Borrow request is already authorized or completed.');
             }
 
-            $reservation->update([
-                'status' => 'APPROVED',
-                'authorized_by' => $authorizer->id,
-                'authorized_at' => now(),
-            ]);
 
-            // Approval authorizes a future transaction; it must not borrow the asset.
-            $reservation->assets()->update(['status' => AssetStatus::AVAILABLE->value]);
+            // Execute Workflow Engine Approval Step
+            $reservation = $this->workflowEngineService->approveCurrentLevel($reservation, $authorizer, $remarks);
 
-            $fresh = $reservation->fresh()->load(['user', 'assets', 'authorizer']);
+            // If the workflow is fully approved, transition the main reservation status.
+            // Assets stay RESERVED (not AVAILABLE) — they are held for release.
+            // They are only freed to AVAILABLE when the borrowing is created (release)
+            // or when the reservation is rejected/cancelled.
+            if ($reservation->workflow_status === 'APPROVED') {
+                $reservation->update([
+                    'status' => 'APPROVED',
+                    'authorized_by' => $authorizer->id,
+                    'authorized_at' => now(),
+                ]);
 
-            if ($fresh->user_id) {
-                $this->notificationService->notifyUser(
-                    $fresh->user_id,
-                    'Borrow Request Approved',
-                    'Your borrow request #'.$fresh->id.' has been approved.',
-                    'request_approved',
-                    $fresh->id,
-                    Reservation::class,
-                    ['link' => '/reservations'],
-                );
+                // Keep assets in RESERVED status — they are spoken for until physically released.
+                // Do NOT update asset status here.
+
+                if ($reservation->user_id) {
+                    $this->notificationService->notifyUser(
+                        $reservation->user_id,
+                        'Borrow Request Approved',
+                        'Your borrow request #'.$reservation->id.' has been approved.',
+                        'request_approved',
+                        $reservation->id,
+                        Reservation::class,
+                        ['link' => '/reservations'],
+                    );
+                }
             }
 
-            return $fresh;
+            return $reservation->fresh()->load(['user', 'assets', 'authorizer']);
         });
     }
 
@@ -109,6 +121,8 @@ class ReservationService
             if ($reservation->status !== 'PENDING') {
                 throw new \InvalidArgumentException('Only pending borrow requests can be rejected.');
             }
+
+            $reservation = $this->workflowEngineService->rejectCurrentLevel($reservation, $authorizer, $remarks);
 
             $reservation->update([
                 'status' => 'REJECTED',
@@ -152,6 +166,8 @@ class ReservationService
             if ($reservation->user_id !== $actor->id && ! $this->canViewAllReservations($actor)) {
                 throw new \InvalidArgumentException('You are not authorized to cancel this borrow request.');
             }
+
+            $reservation = $this->workflowEngineService->cancelRequest($reservation, $actor, 'User cancelled borrow request');
 
             $reservation->update(['status' => 'CANCELLED']);
             $reservation->assets()->update(['status' => AssetStatus::AVAILABLE->value]);

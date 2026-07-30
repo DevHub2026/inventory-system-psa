@@ -12,6 +12,7 @@
   "dependencies": {
     "@types/dompurify": "3.0.5",
     "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0",
     "axios": "^1.18.1",
     "dompurify": "3.2.6",
     "lucide-react": "^1.24.0",

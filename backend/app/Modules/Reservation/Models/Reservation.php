@@ -21,6 +21,9 @@ class Reservation extends Model
         'remarks',
         'authorized_by',
         'authorized_at',
+        'workflow_version_id',
+        'current_level_order',
+        'workflow_status',
     ];
 
     protected function casts(): array

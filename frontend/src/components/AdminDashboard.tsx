@@ -30,6 +30,7 @@ import {
 import { DashboardStatCard } from '@/components/DashboardStatCard'
 import { dashboardService } from '@/services/dashboardService'
 import { reservationService } from '@/services/reservationService'
+import { borrowExtensionService } from '@/services/borrowExtensionService'
 import type {
   ActivityItem,
   DashboardStats,
@@ -166,23 +167,26 @@ function MetricCard({ children }: { children: React.ReactNode }) {
 export function AdminDashboard() {
   const navigate = useNavigate()
 
-  const [stats,               setStats]               = useState<DashboardStats | null>(null)
-  const [recentActivity,      setRecentActivity]      = useState<ActivityItem[]>([])
-  const [pendingReservations, setPendingReservations] = useState<Reservation[]>([])
-  const [loading,             setLoading]             = useState(true)
-  const [message,             setMessage]             = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [stats,                  setStats]                  = useState<DashboardStats | null>(null)
+  const [recentActivity,         setRecentActivity]         = useState<ActivityItem[]>([])
+  const [pendingReservations,    setPendingReservations]    = useState<Reservation[]>([])
+  const [pendingExtensionsCount, setPendingExtensionsCount] = useState<number>(0)
+  const [loading,                setLoading]                = useState(true)
+  const [message,                setMessage]                = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const [statsRes, activityRes, reservationsRes] = await Promise.all([
+      const [statsRes, activityRes, reservationsRes, extCountRes] = await Promise.all([
         dashboardService.getStats(),
         dashboardService.getRecentActivity(),
         reservationService.list(),
+        borrowExtensionService.getPendingExtensionRequests().catch(() => ({ count: 0 })),
       ])
       setStats(statsRes)
       setRecentActivity(activityRes)
       setPendingReservations(reservationsRes.items.filter((r) => r.status === 'PENDING'))
+      setPendingExtensionsCount(extCountRes.count ?? 0)
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load dashboard data.' })
     } finally {
@@ -269,12 +273,13 @@ export function AdminDashboard() {
     { label: 'Borrowed', value: borrowedAssets, description: 'Currently in use', icon: Archive, tone: 'amber' as const },
     { label: 'Reserved', value: assets?.reserved ?? stats?.reserved ?? 0, description: 'Held for requests', icon: Clock3, tone: 'violet' as const },
     { label: 'Under Maintenance', value: assets?.maintenance ?? stats?.maintenance ?? 0, description: 'Temporarily unavailable', icon: Wrench, tone: 'red' as const },
+    { label: 'Re-Issued This Month', value: assets?.reissued_this_month ?? 0, description: 'Permanent transfers', icon: TrendingUp, tone: 'blue' as const },
   ]
 
   const inventoryCards = [
     { label: 'Total Inventory Items', value: inventory?.total ?? 0, description: 'Tracked stock items', icon: Package, tone: 'blue' as const },
-    { label: 'Expendable Items', value: inventory?.expendable ?? 0, description: 'Consumable stock', icon: PackageMinus, tone: 'amber' as const },
-    { label: 'Non-Expendable Items', value: inventory?.non_expendable ?? 0, description: 'Reusable stock', icon: Boxes, tone: 'green' as const },
+    { label: 'Semi-Expendable (SE)', value: inventory?.expendable ?? 0, description: 'Consumable stock', icon: PackageMinus, tone: 'amber' as const },
+    { label: 'Property, Plant & Equipment (PPE)', value: inventory?.non_expendable ?? 0, description: 'Reusable stock', icon: Boxes, tone: 'green' as const },
     { label: 'Low Stock', value: inventory?.low_stock ?? 0, description: 'At or below reorder', icon: PackageMinus, tone: 'amber' as const },
     { label: 'Out of Stock', value: inventory?.out_of_stock ?? 0, description: 'Zero quantity', icon: PackageX, tone: 'red' as const },
   ]
@@ -284,6 +289,7 @@ export function AdminDashboard() {
     { label: 'Returned Items', value: borrowings?.returned ?? 0, description: 'Completed returns', icon: BadgeCheck, tone: 'green' as const },
     { label: 'Pending Borrow Requests', value: borrowings?.pending_requests ?? 0, description: 'Awaiting approval', icon: CalendarClock, tone: 'amber' as const },
     { label: 'Approved Borrow Requests', value: borrowings?.approved_requests ?? 0, description: 'Ready for release', icon: CheckCircle2, tone: 'green' as const },
+    { label: 'Pending Extensions', value: pendingExtensionsCount, description: 'Awaiting due date extension approval', icon: CalendarClock, tone: 'amber' as const, onClick: () => navigate('/extension-requests') },
   ]
 
   const reservationCards = [

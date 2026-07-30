@@ -93,12 +93,12 @@ class UserImportHandler implements ImportHandlerInterface
             $username = $this->generateUsername((string) $data['last_name'], (string) $data['id_number']);
         }
 
-        // Collision-safe username: append number if taken
+        // Collision-safe username: append _1, _2, ... if taken
         $originalUsername = $username;
         $counter = 0;
         while (User::query()->where('username', $username)->exists()) {
             $counter++;
-            $username = $originalUsername . $counter;
+            $username = $originalUsername . '_' . $counter;
         }
 
         $context['seen_emails'] ??= [];
@@ -118,7 +118,7 @@ class UserImportHandler implements ImportHandlerInterface
         }
 
         if (isset($context['seen_usernames'][$username])) {
-            $errors[] = "Row {$rowNumber}: Username '{$username}' is duplicated in the import file.";
+            $warnings[] = "Row {$rowNumber}: Username '{$username}' is duplicated within file (will be suffixed automatically).";
         }
 
         $role = Role::query()->whereRaw('LOWER(name) = LOWER(?)', [(string) $data['role']])->first();
@@ -179,8 +179,9 @@ class UserImportHandler implements ImportHandlerInterface
 
     private function generateUsername(string $lastName, string $idNumber): string
     {
-        $normalizedLastName = preg_replace('/\s+/', '', strtolower(trim($lastName))) ?: '';
+        // Strip anything that isn't a-z or 0-9 (after lowercasing).
+        $sanitized = preg_replace('/[^a-z0-9]/', '', strtolower(trim($lastName))) ?? '';
 
-        return $normalizedLastName . $idNumber;
+        return $sanitized . $idNumber;
     }
 }

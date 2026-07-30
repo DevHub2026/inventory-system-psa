@@ -159,4 +159,31 @@ class AssetController extends Controller
             'Asset retrieved successfully.',
         );
     }
+
+    public function validateCode(Request $request): JsonResponse
+    {
+        $code = trim((string) $request->query('code', ''));
+        $ignoreId = $request->query('ignore_id') ? (int) $request->query('ignore_id') : null;
+
+        if ($code === '') {
+            return $this->success(['exists' => false, 'message' => 'Code is empty']);
+        }
+
+        $assetExists = Asset::query()
+            ->where('asset_number', $code)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->exists();
+
+        $inventoryExists = \App\Models\InventoryItem::query()
+            ->where('sku', $code)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->exists();
+
+        $exists = $assetExists || $inventoryExists;
+
+        return $this->success([
+            'exists' => $exists,
+            'message' => $exists ? 'Item Code / SKU already exists.' : 'Item Code / SKU is available.',
+        ]);
+    }
 }

@@ -35,6 +35,10 @@ class Asset extends Model
         'insurance_policy_number',
         'insurance_expiration_date',
         'remarks',
+        'issued_to',
+        'issued_to_user_id',
+        'issued_by_user_id',
+        'date_issued',
     ];
 
     protected function casts(): array
@@ -44,7 +48,11 @@ class Asset extends Model
             'condition_status' => ConditionStatus::class,
             'purchase_date' => 'date',
             'warranty_until' => 'date',
+<<<<<<< HEAD
             'insurance_expiration_date' => 'date',
+=======
+            'date_issued' => 'date',
+>>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
             'purchase_cost' => 'decimal:2',
         ];
     }
@@ -67,6 +75,21 @@ class Asset extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    public function issuedByUser(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'issued_by_user_id');
+    }
+
+    public function issuedToUser(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'issued_to_user_id');
+    }
+
+    public function issuanceHistories(): HasMany
+    {
+        return $this->hasMany(AssetIssuanceHistory::class, 'asset_id');
     }
 
     public function identifiers(): HasMany

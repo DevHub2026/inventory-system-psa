@@ -4,8 +4,10 @@ namespace App\Modules\Borrowing\Models;
 
 use App\Models\User;
 use App\Modules\Asset\Models\Asset;
+use App\Modules\Borrowing\Models\BorrowExtensionRequest;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Borrowing extends Model
@@ -55,5 +57,16 @@ class Borrowing extends Model
     public function reservation(): BelongsTo
     {
         return $this->belongsTo(\App\Modules\Reservation\Models\Reservation::class);
+    }
+
+    public function extensionRequests(): HasMany
+    {
+        return $this->hasMany(BorrowExtensionRequest::class);
+    }
+
+    public function pendingExtensionRequest(): HasMany
+    {
+        return $this->hasMany(BorrowExtensionRequest::class)
+            ->where('status', \App\Modules\Borrowing\Enums\ExtensionRequestStatus::PENDING);
     }
 }

@@ -18,6 +18,8 @@ use App\Modules\Inventory\Models\InventoryItem;
 use App\Modules\Inventory\Models\StockTransaction;
 use App\Modules\Notification\Services\NotificationService;
 use App\Modules\Unit\Models\Unit;
+use App\Modules\SystemSetup\Enums\DocumentType;
+use App\Modules\SystemSetup\Services\TemplateRenderingService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -27,9 +29,12 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class InventoryService
 {
-    public function __construct(private readonly NotificationService $notificationService) {}
+    public function __construct(
+        private readonly NotificationService $notificationService,
+        private readonly ?TemplateRenderingService $templateRenderingService = null,
+    ) {}
 
-    public function export(array $filters = []): string
+    public function export(array $filters = [], string $format = 'xlsx'): string
     {
         $items = InventoryItem::query()
             ->with(['asset', 'unit', 'manufacturer', 'office', 'location'])
@@ -59,6 +64,39 @@ class InventoryService
             ->orderByDesc('created_at')
             ->get();
 
+        // Try to use a configured template first
+        if ($this->templateRenderingService !== null) {
+            $documentType = $format === 'csv' ? DocumentType::CSV_EXPORT : DocumentType::EXCEL_EXPORT;
+            $rows = $items->map(fn ($item) => [
+                'id' => $item->id,
+                'type' => ucfirst(str_replace('_', '-', $item->type ?? '')),
+                'item_name' => $item->name,
+                'sku' => $item->sku ?? '',
+                'unit' => $item->unit?->name ?? $item->unit ?? '',
+                'manufacturer' => $item->manufacturer?->name ?? '',
+                'office' => $item->office?->name ?? '',
+                'location' => $item->location?->name ?? '',
+                'quantity' => $item->quantity,
+                'reorder_level' => $item->reorder_level ?? '',
+                'status' => match (true) {
+                    $item->quantity <= 0 => 'Out of Stock',
+                    $item->reorder_level !== null && $item->quantity <= $item->reorder_level => 'Low Stock',
+                    default => 'In Stock',
+                },
+                'linked_asset_no' => $item->asset?->asset_number ?? '',
+                'remarks' => $item->remarks ?? '',
+                'created_at' => $item->created_at?->format('Y-m-d H:i:s') ?? '',
+                'updated_at' => $item->updated_at?->format('Y-m-d H:i:s') ?? '',
+            ])->toArray();
+
+            $result = $this->templateRenderingService->renderReport($documentType, [], $rows, $format);
+
+            if ($result !== null) {
+                return $result['path'];
+            }
+        }
+
+        // Fall back to hardcoded generation
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Inventory Export');
@@ -105,12 +143,20 @@ class InventoryService
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        $filename = 'inventory-export-'.now()->format('Y-m-d-His').'.xlsx';
+        $filename = 'inventory-export-'.now()->format('Y-m-d-His').'.'.$format;
         $path = 'exports/'.$filename;
         Storage::makeDirectory('exports');
 
-        $writer = new Xlsx($spreadsheet);
-        $writer->save(Storage::path($path));
+        if ($format === 'csv') {
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Csv($spreadsheet);
+            $writer->setDelimiter(',');
+            $writer->setEnclose('"');
+            $writer->setEscape('\\');
+            $writer->save(Storage::path($path));
+        } else {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save(Storage::path($path));
+        }
 
         return $path;
     }

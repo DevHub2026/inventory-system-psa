@@ -66,12 +66,11 @@ class UserManagementTest extends TestCase
         $response = $this->withToken($token)
             ->postJson('/api/v1/users', [
                 'employee_number' => 'EMP001',
-                'username' => 'john.doe',
-                'first_name' => 'John',
-                'last_name' => 'Doe',
-                'email' => 'john@example.com',
-                'password' => 'password123',
-                'status' => 'active',
+                'first_name'      => 'John',
+                'last_name'       => 'Doe',
+                'email'           => 'john@example.com',
+                'password'        => 'password123',
+                'status'          => 'active',
             ]);
 
         $response->assertStatus(201)
@@ -82,7 +81,51 @@ class UserManagementTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'employee_number' => 'EMP001',
-            'email' => 'john@example.com',
+            'email'           => 'john@example.com',
+            'username'        => 'doeEMP001',   // auto-generated: lowercase(last_name)+employee_number
+        ]);
+    }
+
+    public function test_username_is_auto_generated_from_last_name_and_employee_number(): void
+    {
+        $admin = User::factory()->create();
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/users', [
+                'employee_number' => '20250012',
+                'first_name'      => 'Maria',
+                'last_name'       => 'Santos',
+                'email'           => 'maria.santos@psa.gov.ph',
+                'password'        => 'password123',
+            ]);
+
+        $response->assertStatus(201);
+
+        $this->assertDatabaseHas('users', [
+            'username' => 'santos20250012',
+        ]);
+    }
+
+    public function test_username_strips_spaces_and_special_chars(): void
+    {
+        $admin = User::factory()->create();
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/users', [
+                'employee_number' => '20250099',
+                'first_name'      => 'Ana',
+                'last_name'       => 'De La Cruz',
+                'email'           => 'ana.delacruz@psa.gov.ph',
+                'password'        => 'password123',
+            ]);
+
+        $response->assertStatus(201);
+
+        // Spaces and uppercase removed: "De La Cruz" -> "delacruz"
+        $this->assertDatabaseHas('users', [
+            'username' => 'delacruz20250099',
         ]);
     }
 
@@ -189,18 +232,19 @@ class UserManagementTest extends TestCase
         $response = $this->withToken($token)
             ->postJson('/api/v1/users', [
                 'employee_number' => 'EMP001',
-                'username' => 'john.doe',
-                'first_name' => 'John',
-                'last_name' => 'Doe',
-                'email' => 'john@example.com',
-                'password' => 'password123',
-                'roles' => [$role->id],
+                'first_name'      => 'John',
+                'last_name'       => 'Doe',
+                'email'           => 'john@example.com',
+                'password'        => 'password123',
+                'roles'           => [$role->id],
             ]);
 
         $response->assertStatus(201);
 
         $user = User::where('email', 'john@example.com')->first();
         $this->assertTrue($user->roles()->where('id', $role->id)->exists());
+        // Username was auto-generated
+        $this->assertSame('doeEMP001', $user->username);
     }
 
     public function test_employee_import_accepts_file_without_department_and_hashes_default_password(): void

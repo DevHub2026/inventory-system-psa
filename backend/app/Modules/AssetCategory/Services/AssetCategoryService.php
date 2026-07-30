@@ -4,6 +4,7 @@ namespace App\Modules\AssetCategory\Services;
 
 use App\Modules\AssetCategory\Models\AssetCategory;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class AssetCategoryService
@@ -28,13 +29,14 @@ class AssetCategoryService
 
     public function create(array $data): AssetCategory
     {
+        $data['created_by'] = Auth::id();
         return AssetCategory::query()->create($data);
     }
 
     public function update(AssetCategory $assetCategory, array $data): AssetCategory
     {
+        $data['updated_by'] = Auth::id();
         $assetCategory->update($data);
-
         return $assetCategory->fresh();
     }
 

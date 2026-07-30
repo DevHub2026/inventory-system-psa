@@ -1,0 +1,143 @@
+<?php
+
+namespace App\Modules\QrScan\Controllers;
+
+use App\Modules\Asset\Models\Asset;
+use App\Modules\Asset\Traits\RespondsWithJson;
+use App\Modules\QrScan\Services\QrScanService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+
+class QrScanController extends Controller
+{
+    use RespondsWithJson;
+
+    public function __construct(private readonly QrScanService $qrScanService) {}
+
+    /**
+     * GET /api/v1/qr/resolve/{identifier}
+     * Centralized QR resolution endpoint.
+     * Detects QR type (ASSET, BORROWING_RECEIPT, RETURN_RECEIPT, UNKNOWN)
+     * and returns normalized role-aware context with available actions.
+     */
+    public function resolve(Request $request, string $identifier): JsonResponse
+    {
+        $context = $this->qrScanService->resolveQrIdentifier($identifier, $request->user());
+
+        if ($context['qr_type'] === 'UNKNOWN') {
+            $status = match ($context['error'] ?? '') {
+                'empty' => 422,
+                'not_found' => 404,
+                default => 422,
+            };
+
+            return $this->error($context['message'] ?? 'Unrecognized QR code.', null, $status);
+        }
+
+        // Record scan for asset QRs
+        if ($context['qr_type'] === 'ASSET' && isset($context['asset']['id'])) {
+            $asset = Asset::find($context['asset']['id']);
+            if ($asset) {
+                $scanSource = $request->query('scan_source') ?? $request->input('scan_source') ?? 'sidebar_scanner';
+                $this->qrScanService->recordScan($asset, $request->user(), 'VIEW', $request, $scanSource);
+            }
+        }
+
+        return $this->success($context, 'QR context resolved successfully.');
+    }
+
+    /**
+     * GET /api/v1/qr/asset/{identifier}
+     * Legacy: Resolve a PSA QR identifier to full asset context.
+     */
+    public function resolveAsset(Request $request, string $identifier): JsonResponse
+    {
+        $identifier = trim(urldecode($identifier));
+        $scanSource = $request->query('scan_source') ?? $request->input('scan_source') ?? 'sidebar_scanner';
+
+        if ($identifier === '') {
+            return $this->error('QR identifier is required.', null, 422);
+        }
+
+        $context = $this->qrScanService->resolveAsset($identifier, $request->user());
+
+        if (isset($context['error'])) {
+            $status = match ($context['error']) {
+                'not_found' => 404,
+                'archived'  => 410,
+                default     => 422,
+            };
+
+            return $this->error($context['message'], null, $status);
+        }
+
+        // Record the VIEW scan asynchronously
+        $assetId = $context['asset']['id'] ?? null;
+        if ($assetId) {
+            $asset = Asset::find($assetId);
+            if ($asset) {
+                $this->qrScanService->recordScan($asset, $request->user(), 'VIEW', $request, $scanSource);
+            }
+        }
+
+        return $this->success($context, 'Asset context resolved successfully.');
+    }
+
+    /**
+     * POST /api/v1/qr/scan-action
+     * Record a non-VIEW scan action (e.g. BORROW_REQUESTED, DAMAGE_REPORTED).
+     */
+    public function recordAction(Request $request): JsonResponse
+    {
+        $request->validate([
+            'asset_id'        => ['required', 'integer', 'exists:assets,id'],
+            'action_performed' => ['required', 'string', 'max:100'],
+            'scan_source'      => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $asset = Asset::findOrFail($request->input('asset_id'));
+        $scanSource = $request->input('scan_source', 'sidebar_scanner');
+        $this->qrScanService->recordScan($asset, $request->user(), $request->input('action_performed'), $request, $scanSource);
+
+        return $this->success(null, 'Scan action recorded.');
+    }
+
+    /**
+     * GET /api/v1/qr/history
+     * Admin/Custodian: paginated scan history.
+     */
+    public function history(Request $request): JsonResponse
+    {
+        $history = $this->qrScanService->listHistory($request->query());
+
+        return $this->success([
+            'items' => $history->items(),
+            'meta'  => [
+                'current_page' => $history->currentPage(),
+                'per_page'     => $history->perPage(),
+                'total'        => $history->total(),
+                'last_page'    => $history->lastPage(),
+            ],
+        ], 'Scan history retrieved successfully.');
+    }
+
+    /**
+     * GET /api/v1/qr/my-history
+     * Employee: own scan history.
+     */
+    public function myHistory(Request $request): JsonResponse
+    {
+        $history = $this->qrScanService->myHistory($request->user(), $request->query());
+
+        return $this->success([
+            'items' => $history->items(),
+            'meta'  => [
+                'current_page' => $history->currentPage(),
+                'per_page'     => $history->perPage(),
+                'total'        => $history->total(),
+                'last_page'    => $history->lastPage(),
+            ],
+        ], 'Your scan history retrieved successfully.');
+    }
+}

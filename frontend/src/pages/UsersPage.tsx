@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+=======
+﻿import { useCallback, useEffect, useState } from 'react'
+>>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
 import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination } from '@/components/ui'
 import { api } from '@/services/api'
 import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload, type ImportUsersResult, type ChangePasswordPayload } from '@/services/userService'
@@ -14,6 +18,12 @@ import { RoleBadges } from '@/components/RoleBadges'
 interface DepartmentOption {
   id: number
   name: string
+}
+
+/** Sanitise last_name + employee_number into a username exactly as the backend does. */
+function generateUsername(lastName: string, employeeNumber: string): string {
+  const sanitized = lastName.toLowerCase().replace(/[^a-z0-9]/g, '')
+  return sanitized + employeeNumber.trim()
 }
 
 export function UsersPage() {
@@ -45,6 +55,15 @@ export function UsersPage() {
     employee_number: '', username: '', first_name: '', middle_name: '', last_name: '',
     email: '', password: '', department_id: null, office_id: null, status: 'active', roles: [],
   })
+
+  /** Update username whenever last_name or employee_number change (create mode only). */
+  const updateUsername = (patch: Partial<CreateUserPayload>, current: CreateUserPayload) => {
+    const next = { ...current, ...patch }
+    if (!editingUser) {
+      next.username = generateUsername(next.last_name, next.employee_number)
+    }
+    return next
+  }
 
   const loadUsers = useCallback(async () => {
     setLoading(true)
@@ -223,7 +242,7 @@ export function UsersPage() {
 
   const downloadTemplate = (type: 'csv' | 'json') => {
     const headers = ['first_name', 'middle_name', 'last_name', 'id_number', 'email', 'role']
-    const sample  = { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '1234-5678', email: 'juan.marquez@example.com', role: 'Employee' }
+    const sample  = { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '20250012', email: 'juan.marquez@example.com', role: 'Employee' }
     const content = type === 'csv'
       ? `${headers.join(',')}\n${headers.map((h) => sample[h as keyof typeof sample]).join(',')}\n`
       : `${JSON.stringify([sample], null, 2)}\n`
@@ -331,13 +350,34 @@ export function UsersPage() {
             <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Identity</p>
             <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Input label="Employee Number" value={formData.employee_number} onChange={(e) => setFormData({ ...formData, employee_number: e.target.value })} />
-                <Input label="Username"        value={formData.username || ''}  onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
+                <Input
+                  label="Employee Number"
+                  value={formData.employee_number}
+                  onChange={(e) => setFormData((prev) => updateUsername({ employee_number: e.target.value }, prev))}
+                />
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-medium text-[#1F2937]">
+                    Username
+                  </label>
+                  <input
+                    readOnly
+                    value={formData.username || ''}
+                    className="w-full h-11 rounded-[10px] border border-[#E5E7EB] bg-[#F8FAFC] px-3.5 text-[14px] text-[#6B7280] shadow-[0_1px_2px_rgba(0,0,0,.05)] cursor-not-allowed select-all"
+                    title="Auto-generated from Last Name + Employee Number"
+                  />
+                  <p className="mt-1 text-[11px] text-[#94A3B8]">
+                    Auto-generated from Last Name + Employee Number
+                  </p>
+                </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Input label="First Name"  value={formData.first_name}       onChange={(e) => setFormData({ ...formData, first_name:   e.target.value })} />
                 <Input label="Middle Name" value={formData.middle_name || ''} onChange={(e) => setFormData({ ...formData, middle_name: e.target.value })} />
-                <Input label="Last Name"   value={formData.last_name}        onChange={(e) => setFormData({ ...formData, last_name:    e.target.value })} />
+                <Input
+                  label="Last Name"
+                  value={formData.last_name}
+                  onChange={(e) => setFormData((prev) => updateUsername({ last_name: e.target.value }, prev))}
+                />
               </div>
             </div>
           </div>
@@ -350,7 +390,22 @@ export function UsersPage() {
               {!editingUser && (
                 <Input label="Password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
               )}
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
+                {/* Department selector */}
+                <div>
+                  <label className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Department</label>
+                  <select
+                    className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/30"
+                    value={formData.department_id ?? ''}
+                    onChange={(e) => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : null })}
+                  >
+                    <option value="">No Department</option>
+                    {(Array.isArray(departments) ? departments : []).map((dept) => (
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Office selector */}
                 <div>
                   <label className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Office</label>
@@ -489,25 +544,13 @@ export function UsersPage() {
                   ))}
                 </div>
               </div>
-              {/* Optional */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <span style={{
-                  flexShrink: 0, marginTop: 1,
-                  width: 18, height: 18, borderRadius: '50%',
-                  background: '#BFDBFE', color: '#1E40AF',
-                  fontSize: 9, fontWeight: 800,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>O</span>
-                <div style={{ fontSize: 12.5, color: '#1E3A8A', lineHeight: 1.5 }}>
-                  <span style={{ fontWeight: 500 }}>Optional: </span>
-                  {['middle_name','username','role'].map((f, i, a) => (
-                    <span key={f}>
-                      <code style={{ fontFamily: 'ui-monospace,monospace', fontWeight: 700, background: '#DBEAFE', borderRadius: 3, padding: '0 4px' }}>{f}</code>
-                      {i < a.length - 1 && <span style={{ color: '#93C5FD' }}>, </span>}
-                    </span>
-                  ))}
-                  <span style={{ color: '#3B82F6' }}> — role defaults to Employee</span>
-                </div>
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#BFDBFE] text-[10px] font-bold text-[#1E40AF]">O</span>
+                <span>Optional: <strong>middle_name</strong>, <strong>role</strong> (defaults to Employee)</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#BFDBFE] text-[10px] font-bold text-[#1E40AF]">⚡</span>
+                <span><strong>Username is auto-generated</strong> as <code className="rounded bg-white/60 px-1">lastname + id_number</code> (e.g. <em>santos20250012</em>). Duplicates get <em>_1</em>, <em>_2</em> suffixes.</span>
               </div>
               {/* Divider */}
               <div style={{ borderTop: '1px solid #BFDBFE', paddingTop: 8, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>

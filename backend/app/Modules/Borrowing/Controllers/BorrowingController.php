@@ -21,6 +21,10 @@ class BorrowingController extends Controller
         $isReturned = $borrowing->status === 'RETURNED';
         $receiptPrefix = $isReturned ? 'RT' : 'BR';
         
+        $hasPendingExtension = $borrowing->relationLoaded('pendingExtensionRequest')
+            ? $borrowing->pendingExtensionRequest->isNotEmpty()
+            : false;
+        
         return [
             'id' => $borrowing->id,
             'user_id' => $borrowing->user_id,
@@ -43,6 +47,7 @@ class BorrowingController extends Controller
             'authorized_at' => $borrowing->authorized_at?->format('Y-m-d H:i:s'),
             'receipt_code' => $receiptPrefix.'-'.str_pad((string) $borrowing->id, 5, '0', STR_PAD_LEFT),
             'receipt_payload' => $receiptPrefix.'-'.str_pad((string) $borrowing->id, 5, '0', STR_PAD_LEFT).'|'.$borrowing->asset?->asset_number.'|'.$borrowing->user_id,
+            'has_pending_extension' => $hasPendingExtension,
         ];
     }
 

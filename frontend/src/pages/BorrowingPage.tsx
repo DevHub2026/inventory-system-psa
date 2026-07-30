@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Badge, Button, Card, EmptyState, Spinner } from '@/components/ui'
+import { Alert, Badge, Card, EmptyState, Modal, Spinner } from '@/components/ui'
 import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
 import { borrowingService } from '@/services/borrowingService'
 import type { Borrowing } from '@/types'
@@ -8,6 +8,7 @@ import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 import { formatDate, formatTime } from '@/utils/dateFormat'
+import BorrowingDetailsPage from '@/pages/BorrowingDetailsPage'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,7 @@ export function BorrowingPage() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [receipt, setReceipt] = useState<ReceiptRecord | null>(null)
+  const [selectedBorrowingId, setSelectedBorrowingId] = useState<number | null>(null)
 
   const loadBorrowings = async () => {
     setLoading(true)
@@ -247,12 +249,16 @@ export function BorrowingPage() {
                     >
                       {/* ID */}
                       <td style={td}>
-                        <span style={{
-                          fontFamily: 'ui-monospace, monospace', fontSize: 12,
-                          fontWeight: 700, color: '#1E40AF',
-                          background: '#EFF6FF', borderRadius: 5,
-                          padding: '2px 7px', display: 'inline-block',
-                        }}>
+                        <span
+                          onClick={() => setSelectedBorrowingId(r.id)}
+                          style={{
+                            fontFamily: 'ui-monospace, monospace', fontSize: 12,
+                            fontWeight: 700, color: '#1E40AF',
+                            background: '#EFF6FF', borderRadius: 5,
+                            padding: '2px 7px', display: 'inline-block',
+                            cursor: 'pointer',
+                          }}
+                        >
                           #{r.id}
                         </span>
                       </td>
@@ -306,6 +312,29 @@ export function BorrowingPage() {
                       {/* Actions */}
                       <td style={{ ...td, textAlign: 'right', paddingRight: 20 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                          {/* Details */}
+                          <button
+                            onClick={() => setSelectedBorrowingId(r.id)}
+                            style={{
+                              height: 28, paddingInline: 10, borderRadius: 6,
+                              border: '1px solid #CBD5E1', background: '#FFFFFF',
+                              color: '#0F172A', fontSize: 11.5, fontWeight: 600,
+                              cursor: 'pointer', fontFamily: 'inherit',
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              whiteSpace: 'nowrap',
+                              transition: 'background 0.1s',
+                            }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#FFFFFF' }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="12" y1="16" x2="12" y2="12" />
+                              <line x1="12" y1="8" x2="12.01" y2="8" />
+                            </svg>
+                            Details
+                          </button>
+
                           {/* Receipt */}
                           <button
                             onClick={() => openReceipt(r)}
@@ -368,6 +397,22 @@ export function BorrowingPage() {
       </Card>
 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
+
+      {selectedBorrowingId !== null && (
+        <Modal
+          open={true}
+          title=""
+          onClose={() => setSelectedBorrowingId(null)}
+          maxWidth={820}
+          footer={null}
+        >
+          <BorrowingDetailsPage
+            borrowingId={selectedBorrowingId}
+            onClose={() => setSelectedBorrowingId(null)}
+            onUpdated={() => void loadBorrowings()}
+          />
+        </Modal>
+      )}
     </div>
   )
 }

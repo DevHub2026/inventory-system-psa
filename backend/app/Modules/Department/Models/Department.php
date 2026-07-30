@@ -15,6 +15,8 @@ class Department extends Model
         'code',
         'description',
         'is_active',
+        'created_by',
+        'updated_by',
     ];
 
     protected function casts(): array

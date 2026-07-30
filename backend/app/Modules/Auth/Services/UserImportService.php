@@ -48,12 +48,12 @@ class UserImportService
             // Use provided username or generate one
             $username = $providedUsername ?? $this->generateUsername((string) $normalizedRow['last_name'], $idNumber);
 
-            // Collision-safe username: append number if taken
+            // Collision-safe username: append _1, _2, ... if taken
             $originalUsername = $username;
             $counter = 0;
             while (isset($seenUsernames[$username]) || User::query()->where('username', $username)->exists()) {
                 $counter++;
-                $username = $originalUsername . $counter;
+                $username = $originalUsername . '_' . $counter;
             }
 
             if (isset($seenEmails[$email])) {
@@ -115,7 +115,7 @@ class UserImportService
             'skipped' => $skipped,
             'failed' => $failed,
             'initial_password' => self::INITIAL_PASSWORD,
-            'username_rule' => 'Generated from last name + ID number, or provided in import file',
+            'username_rule' => 'Auto-generated as lowercase(last_name)+employee_number; duplicates get a _1, _2 suffix',
             'rows' => $results,
         ];
     }
@@ -344,9 +344,10 @@ class UserImportService
 
     private function generateUsername(string $lastName, string $idNumber): string
     {
-        $normalizedLastName = preg_replace('/\s+/', '', strtolower(trim($lastName))) ?: '';
+        // Strip anything that isn't a-z or 0-9 (after lowercasing).
+        $sanitized = preg_replace('/[^a-z0-9]/', '', strtolower(trim($lastName))) ?? '';
 
-        return $normalizedLastName . $idNumber;
+        return $sanitized . $idNumber;
     }
 
     /**
