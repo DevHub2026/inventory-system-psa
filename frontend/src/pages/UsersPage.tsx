@@ -447,116 +447,248 @@ export function UsersPage() {
 
       {/* Import Employees */}
       <Modal
-        open={importModalOpen} onClose={() => setImportModalOpen(false)} title="Import Employees"
+        open={importModalOpen} onClose={() => { setImportModalOpen(false); setImportResult(null); setImportFile(null) }} title="Import Employees"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setImportModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleImport} disabled={importing || !importFile}>{importing ? 'Importing...' : 'Import'}</Button>
+            <Button variant="secondary" onClick={() => { setImportModalOpen(false); setImportResult(null); setImportFile(null) }}>Cancel</Button>
+            <Button onClick={handleImport} disabled={importing || !importFile}>
+              {importing ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <svg style={{ animation: 'spin 1s linear infinite' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                  Importing…
+                </span>
+              ) : 'Import'}
+            </Button>
           </>
         }
       >
-        <div className="space-y-4">
-          {/* Instructions */}
-          <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
-            <p className="mb-2 text-[12px] font-bold uppercase tracking-widest text-[#1E40AF]">File Requirements</p>
-            <div className="space-y-1.5 text-[13px] text-[#1E40AF]">
-              <div className="flex items-start gap-2">
-                <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#1E40AF] text-[10px] font-bold text-white">R</span>
-                <span>Required: <strong>first_name</strong>, <strong>last_name</strong>, <strong>id_number</strong>, <strong>email</strong></span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* ── Field requirements ── */}
+          <div style={{ borderRadius: 12, border: '1px solid #BFDBFE', background: '#EFF6FF', padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#1E40AF', marginBottom: 10 }}>
+              File Requirements
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Required */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{
+                  flexShrink: 0, marginTop: 1,
+                  width: 18, height: 18, borderRadius: '50%',
+                  background: '#1E40AF', color: '#fff',
+                  fontSize: 9, fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>R</span>
+                <div style={{ fontSize: 12.5, color: '#1E3A8A', lineHeight: 1.5 }}>
+                  <span style={{ fontWeight: 500 }}>Required: </span>
+                  {['first_name','last_name','id_number','email'].map((f, i, a) => (
+                    <span key={f}>
+                      <code style={{ fontFamily: 'ui-monospace,monospace', fontWeight: 700, background: '#DBEAFE', borderRadius: 3, padding: '0 4px' }}>{f}</code>
+                      {i < a.length - 1 && <span style={{ color: '#93C5FD' }}>, </span>}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="flex items-start gap-2">
-                <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#BFDBFE] text-[10px] font-bold text-[#1E40AF]">O</span>
-                <span>Optional: <strong>middle_name</strong>, <strong>username</strong>, <strong>role</strong> (defaults to Employee)</span>
+              {/* Optional */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{
+                  flexShrink: 0, marginTop: 1,
+                  width: 18, height: 18, borderRadius: '50%',
+                  background: '#BFDBFE', color: '#1E40AF',
+                  fontSize: 9, fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>O</span>
+                <div style={{ fontSize: 12.5, color: '#1E3A8A', lineHeight: 1.5 }}>
+                  <span style={{ fontWeight: 500 }}>Optional: </span>
+                  {['middle_name','username','role'].map((f, i, a) => (
+                    <span key={f}>
+                      <code style={{ fontFamily: 'ui-monospace,monospace', fontWeight: 700, background: '#DBEAFE', borderRadius: 3, padding: '0 4px' }}>{f}</code>
+                      {i < a.length - 1 && <span style={{ color: '#93C5FD' }}>, </span>}
+                    </span>
+                  ))}
+                  <span style={{ color: '#3B82F6' }}> — role defaults to Employee</span>
+                </div>
               </div>
-              <div className="flex items-start gap-2">
-                <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#BFDBFE] text-[10px] font-bold text-[#1E40AF]">i</span>
-                <span>Default password: <strong>psagens9500</strong> · Accepted formats: CSV, JSON, XLSX</span>
+              {/* Divider */}
+              <div style={{ borderTop: '1px solid #BFDBFE', paddingTop: 8, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, color: '#1E3A8A' }}>
+                  <span style={{ fontWeight: 500 }}>Default password: </span>
+                  <code style={{ fontFamily: 'ui-monospace,monospace', fontWeight: 700, background: '#DBEAFE', borderRadius: 3, padding: '0 5px' }}>psagens9500</code>
+                </span>
+                <span style={{ fontSize: 12, color: '#3B82F6' }}>Formats: CSV · JSON · XLSX</span>
               </div>
             </div>
           </div>
 
-          {/* Template downloads */}
+          {/* ── Download templates ── */}
           <div>
-            <p className="mb-2 text-[12px] font-bold uppercase tracking-widest text-[#94A3B8]">Download Template</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => downloadTemplate('csv')}
-                className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-[13px] font-medium text-[#374151] transition-colors hover:border-[#0D47A1] hover:bg-[#EFF6FF] hover:text-[#0D47A1]"
-              >
-                <span className="rounded bg-[#F0FDF4] px-1.5 py-0.5 text-[10px] font-bold text-[#16A34A]">CSV</span>
-                CSV Template
-              </button>
-              <button
-                type="button"
-                onClick={() => downloadTemplate('json')}
-                className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 py-2.5 text-[13px] font-medium text-[#374151] transition-colors hover:border-[#0D47A1] hover:bg-[#EFF6FF] hover:text-[#0D47A1]"
-              >
-                <span className="rounded bg-[#EFF6FF] px-1.5 py-0.5 text-[10px] font-bold text-[#1D4ED8]">JSON</span>
-                JSON Template
-              </button>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>
+              Download Template
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {([
+                { type: 'csv'  as const, label: 'CSV Template',  badge: 'CSV',  badgeBg: '#F0FDF4', badgeColor: '#15803D' },
+                { type: 'json' as const, label: 'JSON Template', badge: 'JSON', badgeBg: '#EFF6FF', badgeColor: '#1D4ED8' },
+              ]).map(({ type, label, badge, badgeBg, badgeColor }) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => downloadTemplate(type)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 14px', borderRadius: 8,
+                    border: '1px solid #E2E8F0', background: '#fff',
+                    fontSize: 13, fontWeight: 500, color: '#374151',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    transition: 'all 0.1s',
+                  }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLButtonElement
+                    el.style.borderColor = '#1E40AF'; el.style.background = '#EFF6FF'; el.style.color = '#1E40AF'
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLButtonElement
+                    el.style.borderColor = '#E2E8F0'; el.style.background = '#fff'; el.style.color = '#374151'
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  <span style={{ fontSize: 10, fontWeight: 700, background: badgeBg, color: badgeColor, borderRadius: 4, padding: '1px 5px' }}>{badge}</span>
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* File picker */}
+          {/* ── File picker ── */}
           <div>
-            <p className="mb-2 text-[12px] font-bold uppercase tracking-widest text-[#94A3B8]">Select File</p>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>
+              Select File
+            </div>
             <label
               htmlFor="import-file-input"
-              className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-4 transition-colors ${
-                importFile
-                  ? 'border-[#22C55E] bg-[#F0FDF4]'
-                  : 'border-[#CBD5E1] bg-[#F8FAFD] hover:border-[#0D47A1] hover:bg-[#EFF6FF]'
-              }`}
-            >
-              <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${importFile ? 'bg-[#DCFCE7]' : 'bg-[#E2E8F0]'}`}>
-                {importFile
-                  ? <span className="text-[14px]">✓</span>
-                  : <span className="text-[14px] text-[#94A3B8]">↑</span>
+              style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '16px 18px', borderRadius: 12, cursor: 'pointer',
+                border: `2px dashed ${importFile ? '#22C55E' : '#CBD5E1'}`,
+                background: importFile ? '#F0FDF4' : '#F8FAFC',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                if (!importFile) {
+                  const el = e.currentTarget as HTMLLabelElement
+                  el.style.borderColor = '#1E40AF'; el.style.background = '#EFF6FF'
                 }
+              }}
+              onMouseLeave={(e) => {
+                if (!importFile) {
+                  const el = e.currentTarget as HTMLLabelElement
+                  el.style.borderColor = '#CBD5E1'; el.style.background = '#F8FAFC'
+                }
+              }}
+            >
+              {/* Icon */}
+              <div style={{
+                width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+                background: importFile ? '#DCFCE7' : '#E2E8F0',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {importFile ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                )}
               </div>
-              <div className="min-w-0 flex-1">
+
+              {/* Text */}
+              <div style={{ flex: 1, minWidth: 0 }}>
                 {importFile ? (
                   <>
-                    <p className="truncate text-[13px] font-semibold text-[#15803D]">{importFile.name}</p>
-                    <p className="text-[11px] text-[#6B7280]">{(importFile.size / 1024).toFixed(1)} KB — click to change</p>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#15803D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {importFile.name}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                      {(importFile.size / 1024).toFixed(1)} KB · click to change
+                    </div>
                   </>
                 ) : (
                   <>
-                    <p className="text-[13px] font-medium text-[#374151]">Click to choose a file</p>
-                    <p className="text-[11px] text-[#9CA3AF]">.csv, .json, .xlsx — max 10 MB</p>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#374151' }}>
+                      Click to choose a file
+                    </div>
+                    <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
+                      .csv, .json, .xlsx · max 10 MB
+                    </div>
                   </>
                 )}
               </div>
+
+              {importFile && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); setImportFile(null) }}
+                  style={{
+                    flexShrink: 0, width: 26, height: 26, borderRadius: 6,
+                    border: '1px solid #BBF7D0', background: '#fff',
+                    color: '#15803D', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.1s',
+                  }}
+                  title="Remove file"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              )}
+
               <input
                 id="import-file-input"
                 type="file"
                 accept=".csv,.json,.xlsx"
-                className="hidden"
+                style={{ display: 'none' }}
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
               />
             </label>
           </div>
 
-          {/* Import result */}
+          {/* ── Import result ── */}
           {importResult && (
             <div>
-              <p className="mb-2 text-[12px] font-bold uppercase tracking-widest text-[#94A3B8]">Result</p>
-              <div className="grid grid-cols-4 gap-2">
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>
+                Import Result
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                 {[
-                  { label: 'Total',    value: importResult.total_rows, color: 'text-[#1F2937]',   bg: 'bg-[#F8FAFC]',  border: 'border-[#E5E7EB]' },
-                  { label: 'Imported', value: importResult.imported,   color: 'text-[#16A34A]',   bg: 'bg-[#F0FDF4]',  border: 'border-[#BBF7D0]' },
-                  { label: 'Skipped',  value: importResult.skipped,    color: 'text-[#D97706]',   bg: 'bg-[#FFFBEB]',  border: 'border-[#FDE68A]' },
-                  { label: 'Failed',   value: importResult.failed,     color: 'text-[#DC2626]',   bg: 'bg-[#FEF2F2]',  border: 'border-[#FECACA]' },
+                  { label: 'Total',    value: importResult.total_rows, color: '#374151', bg: '#F8FAFC', border: '#E2E8F0', dot: '#94A3B8' },
+                  { label: 'Imported', value: importResult.imported,   color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0', dot: '#22C55E' },
+                  { label: 'Skipped',  value: importResult.skipped,    color: '#B45309', bg: '#FFFBEB', border: '#FDE68A', dot: '#F59E0B' },
+                  { label: 'Failed',   value: importResult.failed,     color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', dot: '#EF4444' },
                 ].map((s) => (
-                  <div key={s.label} className={`rounded-xl border ${s.border} ${s.bg} p-3 text-center`}>
-                    <p className={`text-[18px] font-bold ${s.color}`}>{s.value}</p>
-                    <p className="text-[11px] text-[#6B7280]">{s.label}</p>
+                  <div key={s.label} style={{
+                    borderRadius: 10, border: `1px solid ${s.border}`,
+                    background: s.bg, padding: '12px 10px', textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 5 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, display: 'inline-block' }} />
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280' }}>{s.label}</span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
         </div>
       </Modal>
     </div>

@@ -15,6 +15,7 @@ import { ReservationPage } from '@/pages/ReservationPage'
 import { RolesPage } from '@/pages/RolesPage'
 import { SessionsPage } from '@/pages/SessionsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { DevelopersPage } from '@/pages/DevelopersPage'
 import { SystemSetupPage } from '@/pages/SystemSetupPage'
 import { UserProfilePage } from '@/pages/UserProfilePage'
 import LoginPage from '@/pages/LoginPage'
@@ -53,8 +54,12 @@ function App() {
             <Route path="/permissions" element={<PermissionsPage />} />
             <Route path="/system-setup" element={<SystemSetupPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+<<<<<<< HEAD
             <Route path="/sessions" element={<SessionsPage />} />
             <Route path="/privacy" element={<PrivacyNoticePage />} />
+=======
+            <Route path="/developers" element={<DevelopersPage />} />
+>>>>>>> ca5355dd668142ae61c90cbec3af6999e8e466c9
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Route>

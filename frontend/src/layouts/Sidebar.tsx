@@ -13,7 +13,11 @@ import {
   Users,
   Wrench,
   X,
+<<<<<<< HEAD
   Briefcase,
+=======
+  Code2,
+>>>>>>> ca5355dd668142ae61c90cbec3af6999e8e466c9
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdmin, isStaff, isEmployee } from '@/utils/roleHelpers'
@@ -33,15 +37,23 @@ const allLinks = [
   { to: '/roles',        label: 'Roles & Permissions', icon: Shield,            roles: ['admin'] },
   { to: '/system-setup', label: 'System Setup',        icon: SlidersHorizontal, roles: ['admin'] },
   { to: '/settings',     label: 'Settings',            icon: Settings,          roles: ['admin', 'staff', 'employee'] },
+<<<<<<< HEAD
   { to: '/sessions',     label: 'Active Sessions',     icon: LogOut,            roles: ['admin', 'staff', 'employee'] },
   { to: '/privacy',      label: 'Privacy Notice',      icon: Shield,            roles: ['admin', 'staff', 'employee'] },
+=======
+  { to: '/developers',   label: 'Development Team',    icon: Code2,             roles: ['admin', 'staff', 'employee'] },
+>>>>>>> ca5355dd668142ae61c90cbec3af6999e8e466c9
 ]
 
 const NAV_GROUPS = [
   { label: 'Main Menu',  paths: ['/dashboard', '/assets', '/reservations', '/borrowings'] },
   { label: 'Operations', paths: ['/issued-assets', '/inventory', '/maintenance', '/reports'] },
   { label: 'Admin',      paths: ['/users', '/roles', '/system-setup'] },
+<<<<<<< HEAD
   { label: 'Account',    paths: ['/settings', '/sessions', '/privacy'] },
+=======
+  { label: 'Account',    paths: ['/settings', '/developers'] },
+>>>>>>> ca5355dd668142ae61c90cbec3af6999e8e466c9
 ]
 
 interface SidebarProps {

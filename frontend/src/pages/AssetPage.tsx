@@ -388,24 +388,92 @@ export function AssetPage() {
         }
       >
         {qrAsset && (
-          <div className="asset-qr-print-area flex flex-col items-center gap-4 rounded-xl border border-[#E5E7EB] bg-white p-6 text-center">
+          <div className="asset-qr-print-area" style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
+            borderRadius: 16, border: '1px solid #e2e8f0', background: '#ffffff',
+            padding: '32px 28px', textAlign: 'center',
+          }}>
+            {/* Header */}
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#0D47A1]">PSA Inventory</div>
-              <h3 className="mt-1 text-[18px] font-semibold text-[#1F2937]">{qrAsset.name}</h3>
-              <p className="text-[13px] text-[#6B7280]">Permanent organization-owned asset identifier</p>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+                letterSpacing: '0.2em', color: '#0B3D91',
+                background: '#EEF4FF', border: '1px solid #C5D8FF',
+                borderRadius: 20, padding: '4px 14px',
+                marginBottom: 10,
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <rect x="7" y="7" width="3" height="3" />
+                  <rect x="14" y="7" width="3" height="3" />
+                  <rect x="7" y="14" width="3" height="3" />
+                  <rect x="14" y="14" width="3" height="3" />
+                </svg>
+                PSA Inventory
+              </div>
+              <h3 style={{
+                fontSize: 20, fontWeight: 700, color: '#1e293b',
+                margin: '0 0 4px', lineHeight: 1.25,
+              }}>
+                {qrAsset.name}
+              </h3>
+              <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>
+                Permanent organization-owned asset identifier
+              </p>
             </div>
-            <QrCode value={qrAsset.psa_qr_payload ?? qrAsset.psa_qr_identifier ?? qrAsset.asset_number} className="rounded border border-[#E5E7EB] bg-white p-2 text-[#1F2937]" />
+
+            {/* Divider */}
+            <div style={{ width: 60, height: 2, background: '#e2e8f0', borderRadius: 1 }} />
+
+            {/* QR Code */}
+            <div style={{
+              borderRadius: 14, border: '1px solid #e2e8f0', background: '#ffffff',
+              padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}>
+              <QrCode value={qrAsset.psa_qr_payload ?? qrAsset.psa_qr_identifier ?? qrAsset.asset_number} />
+            </div>
+
+            {/* Identifier */}
             <div>
-              <div className="text-[16px] font-bold tracking-wide text-[#1F2937]">{qrAsset.psa_qr_identifier ?? 'PSA QR not generated'}</div>
-              <div className="text-[13px] text-[#6B7280]">Asset No: {qrAsset.asset_number}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', letterSpacing: '0.02em' }}>
+                {qrAsset.psa_qr_identifier ?? 'PSA QR not generated'}
+              </div>
+              <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>
+                Asset No: {qrAsset.asset_number}
+              </div>
             </div>
-            <div className="w-full rounded-lg bg-[#F9FAFB] p-3 text-left text-[12px] text-[#6B7280]">
-              <div className="font-semibold text-[#1F2937]">Supported scan identifiers:</div>
-              <ul className="mt-1 list-inside list-disc">
-                {(qrAsset.identifiers ?? []).map((id) => (
-                  <li key={id.id}>{id.identifier_type}: {id.identifier_value}</li>
-                ))}
-              </ul>
+
+            {/* Identifiers list */}
+            <div style={{
+              width: '100%', borderRadius: 10, background: '#f8fafc',
+              border: '1px solid #f1f5f9', padding: 14, textAlign: 'left',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 8 }}>
+                Supported scan identifiers
+              </div>
+              {(qrAsset.identifiers ?? []).length > 0 ? (
+                <ul style={{
+                  margin: 0, padding: 0, listStyle: 'none',
+                  display: 'flex', flexDirection: 'column', gap: 6,
+                }}>
+                  {(qrAsset.identifiers ?? []).map((id) => (
+                    <li key={id.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      fontSize: 12, color: '#64748b',
+                    }}>
+                      <span style={{
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: '#0B3D91', flexShrink: 0,
+                      }} />
+                      <span style={{ fontWeight: 600, color: '#334155' }}>{id.identifier_type}:</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{id.identifier_value}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>No additional identifiers registered.</p>
+              )}
             </div>
           </div>
         )}

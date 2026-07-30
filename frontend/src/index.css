@@ -307,8 +307,10 @@ input[type="search"]::-webkit-search-results-decoration {
   .receipt-print-area {
     position: fixed !important; inset: 0 !important;
     width: 100% !important; min-height: 100vh !important;
-    padding: 32px !important; background: white !important; color: #111827 !important;
+    padding: 28px 36px !important; background: white !important; color: #111827 !important;
+    box-sizing: border-box !important;
   }
+  .receipt-print-area img { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   .receipt-print-area button { display: none !important; }
   .asset-qr-print-area,
   .asset-qr-print-area * { visibility: visible !important; }
