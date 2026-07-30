@@ -125,10 +125,22 @@ class DocumentExportService
 
         switch ($reportType) {
             case 'assets':
-                $headers = ['ID', 'Asset Code', 'Name', 'Category', 'Manufacturer', 'Office', 'Location', 'Status', 'Condition', 'Purchase Cost'];
+                $headers = ['ID', 'Property Number', 'Asset Number', 'Name', 'Category', 'Manufacturer', 'Office', 'Location', 'Status', 'Accountability', 'Condition', 'Purchase Cost'];
                 $rows = $this->reportService->getAssetReport($filters)->map(fn ($a) => [
-                    $a->id, $a->asset_number, $a->name, $a->category?->name ?? 'N/A', $a->manufacturer?->name ?? 'N/A',
-                    $a->office?->name ?? 'N/A', $a->location?->name ?? 'N/A', $a->status, $a->condition_status, $a->purchase_cost,
+                    $a->id,
+                    $a->property_number ?? 'N/A',
+                    $a->asset_number,
+                    $a->name,
+                    $a->category?->name ?? 'N/A',
+                    $a->manufacturer?->name ?? 'N/A',
+                    $a->office?->name ?? 'N/A',
+                    $a->location?->name ?? 'N/A',
+                    $a->status,
+                    $a->issued_to_user_id
+                        ? 'Issued to '.($a->issuedToUser?->full_name ?? $a->issued_to ?? 'N/A')
+                        : (filled($a->issued_to) ? 'Issued to '.$a->issued_to : 'Unassigned'),
+                    $a->condition_status,
+                    $a->purchase_cost,
                 ]);
                 break;
 

@@ -61,6 +61,7 @@ export interface User {
 export interface Asset {
   id: number
   asset_number: string
+  property_number?: string | null
   psa_qr_identifier?: string | null
   psa_qr_payload?: string | null
   name: string
@@ -81,6 +82,16 @@ export interface Asset {
   warranty_until?: string | null
   issued_to?: string | null
   issued_to_user_id?: number | null
+  issued_to_user?: {
+    id: number
+    full_name?: string
+    employee_number?: string | null
+    email?: string | null
+    department?: string | null
+    office?: string | null
+    roles?: string[]
+  } | null
+  is_unlinked_holder?: boolean
   issued_by_user_id?: number | null
   date_issued?: string | null
   issued_by_name?: string | null
@@ -164,7 +175,11 @@ export interface InventoryItem {
   id: number
   asset_id?: number | null
   asset_number?: string | null
+  property_number?: string | null
   type?: 'non_expendable' | 'expendable' | string | null
+  classification?: 'PPE' | 'SE' | 'SUPPLY' | string | null
+  item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY' | string | null
+  classification_reason?: string | null
   name: string
   sku?: string
   quantity: number
@@ -177,6 +192,8 @@ export interface InventoryItem {
   manufacturer_id?: number | null
   office_id?: number | null
   location_id?: number | null
+  accountability?: string | null
+  is_unlinked_holder?: boolean
   created_by?: number | null
   updated_by?: number | null
   created_by_name?: string | null

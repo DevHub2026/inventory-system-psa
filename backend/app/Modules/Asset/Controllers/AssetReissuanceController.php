@@ -3,7 +3,8 @@
 namespace App\Modules\Asset\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Enums\UserRole;
+use App\Modules\Asset\Enums\IssuanceType;
+use App\Modules\Asset\Services\IssuanceAuthorization;
 use App\Models\User;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\Asset\Models\AssetIssuanceHistory;
@@ -24,7 +25,8 @@ class AssetReissuanceController extends Controller
     public function __construct(
         private readonly NotificationService $notificationService,
         private readonly AuditLogService $auditLogService,
-        private readonly \App\Modules\Workflow\Services\WorkflowEngineService $workflowEngineService
+        private readonly \App\Modules\Workflow\Services\WorkflowEngineService $workflowEngineService,
+        private readonly IssuanceAuthorization $issuanceAuthorization,
     ) {}
 
     /**
@@ -37,14 +39,7 @@ class AssetReissuanceController extends Controller
             abort(401, 'Unauthenticated.');
         }
 
-        $allowedRoles = [
-            UserRole::SUPER_ADMINISTRATOR->value,
-            UserRole::SYSTEM_ADMINISTRATOR->value,
-            UserRole::PROPERTY_CUSTODIAN->value,
-            UserRole::INVENTORY_OFFICER->value,
-        ];
-
-        if (! $user->hasAnyRole($allowedRoles)) {
+        if (! $this->issuanceAuthorization->canManageIssuance($user)) {
             abort(403, 'Unauthorized. Only property custodians, officers or administrators can perform asset re-issuances.');
         }
     }
@@ -113,6 +108,7 @@ class AssetReissuanceController extends Controller
             // 2. Create Issuance History record
             $historyRecord = AssetIssuanceHistory::create([
                 'asset_id'             => $asset->id,
+                'issuance_type'        => IssuanceType::TRANSFER->value,
                 'previous_employee_id' => $previousEmployee?->id,
                 'new_employee_id'      => $newEmployee->id,
                 'transferred_by'       => auth()->id(),

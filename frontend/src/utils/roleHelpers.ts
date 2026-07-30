@@ -26,6 +26,17 @@ export function isEmployee(user: User | null): boolean {
   return hasAnyRole(user, EMPLOYEE_ROLES)
 }
 
+const ISSUANCE_MANAGER_ROLES = [
+  'Super Administrator',
+  'System Administrator',
+  'Property Custodian',
+  'Inventory Officer',
+]
+
+export function canManageIssuance(user: User | null): boolean {
+  return hasAnyRole(user, ISSUANCE_MANAGER_ROLES)
+}
+
 export function getUserRoleCategory(user: User | null): 'admin' | 'staff' | 'employee' | null {
   if (!user?.roles) return null
   if (isAdmin(user)) return 'admin'

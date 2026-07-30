@@ -119,7 +119,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
             <img
               src={psaLogo}
               alt="PSA Logo"
-              style={{ width: 64, height: 64, objectFit: 'contain', flexShrink: 0 }}
+              style={{ width: 80, height: 80, objectFit: 'contain', flexShrink: 0, background: 'transparent' }}
             />
             <div>
               <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#6B7280' }}>
@@ -184,7 +184,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
 
               <Section title="Asset Information">
                 <Field label="Asset Name"  value={receipt.assetName} />
-                <Field label="Asset Code"  value={receipt.assetCode ?? receipt.assetNumber} mono />
+                <Field label="Asset Number"  value={receipt.assetNumber ?? receipt.assetCode} mono />
                 {receipt.quantity !== undefined && (
                   <Field label="Quantity" value={String(receipt.quantity)} />
                 )}

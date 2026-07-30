@@ -68,12 +68,16 @@ class ReportController extends Controller
         return $this->success($report->map(fn ($asset) => [
             'id' => $asset->id,
             'asset_number' => $asset->asset_number,
+            'property_number' => $asset->property_number,
             'name' => $asset->name,
             'category' => $asset->category->name ?? 'N/A',
             'manufacturer' => $asset->manufacturer->name ?? 'N/A',
             'office' => $asset->office->name ?? 'N/A',
             'location' => $asset->location->name ?? 'N/A',
             'status' => $asset->status,
+            'accountability' => $asset->issued_to_user_id
+                ? 'Issued to '.($asset->issuedToUser?->full_name ?? $asset->issued_to ?? 'N/A')
+                : (filled($asset->issued_to) ? 'Issued to '.$asset->issued_to : 'Unassigned'),
             'condition' => $asset->condition_status,
             'purchase_date' => $asset->purchase_date?->format('Y-m-d'),
             'purchase_cost' => $asset->purchase_cost,

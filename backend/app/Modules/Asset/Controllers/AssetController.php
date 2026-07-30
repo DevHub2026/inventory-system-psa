@@ -170,7 +170,10 @@ class AssetController extends Controller
         }
 
         $assetExists = Asset::query()
-            ->where('asset_number', $code)
+            ->where(function ($q) use ($code): void {
+                $q->where('asset_number', $code)
+                    ->orWhere('property_number', $code);
+            })
             ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
             ->exists();
 

@@ -75,7 +75,7 @@ export default function LoginPage() {
           {/* Logo — clean, no bubble rings */}
           <div className="auth-logo-stack">
             <div className="auth-logo-ring">
-              <img src={logo} alt="PSA seal" className="auth-brand-logo" />
+              <img src={logo} alt="PSA seal" className="auth-brand-logo" style={{ width: '90%', height: '90%' }} />
             </div>
           </div>
 
@@ -135,7 +135,7 @@ export default function LoginPage() {
 
           {/* Header */}
           <div className="auth-card-header">
-            <img src={logo} alt="" className="auth-card-logo" aria-hidden="true" />
+            <img src={logo} alt="" className="auth-card-logo" aria-hidden="true" style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
             <h2 id="login-heading" className="auth-card-title">
               Philippine Statistics Authority
             </h2>

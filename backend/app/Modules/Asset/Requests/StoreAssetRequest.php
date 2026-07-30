@@ -20,6 +20,7 @@ class StoreAssetRequest extends FormRequest
     {
         return [
             'asset_number' => ['required', 'string', 'max:100', 'unique:assets,asset_number'],
+            'property_number' => ['nullable', 'string', 'max:100', 'unique:assets,property_number'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'asset_category_id' => ['required', 'integer', 'exists:asset_categories,id'],

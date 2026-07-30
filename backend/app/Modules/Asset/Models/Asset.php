@@ -19,6 +19,7 @@ class Asset extends Model
 
     protected $fillable = [
         'asset_number',
+        'property_number',
         'name',
         'description',
         'asset_category_id',
@@ -116,6 +117,7 @@ class Asset extends Model
         return $query->where(function (Builder $builder) use ($like, $operator) {
             $builder
                 ->where('asset_number', $operator, $like)
+                ->orWhere('property_number', $operator, $like)
                 ->orWhere('name', $operator, $like)
                 ->orWhere('model', $operator, $like)
                 ->orWhereHas('identifiers', function (Builder $identifiers) use ($like, $operator) {

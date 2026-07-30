@@ -34,7 +34,11 @@ class InventoryController extends Controller
             'id' => $item->id,
             'asset_id' => $item->asset_id,
             'asset_number' => $item->asset?->asset_number,
+            'property_number' => $item->asset?->property_number,
             'type' => $item->type,
+            'classification' => $item->classification,
+            'item_nature' => $item->item_nature,
+            'classification_reason' => $item->classification_reason,
             'name' => $item->name,
             'sku' => $item->sku,
             'quantity' => $item->quantity,
@@ -49,6 +53,14 @@ class InventoryController extends Controller
             'location_name' => $item->location?->name,
             'reorder_level' => $item->reorder_level,
             'status' => $status,
+            'accountability' => $item->classification === 'SUPPLY'
+                ? '—'
+                : ($item->asset?->issued_to_user_id
+                    ? 'Issued to '.($item->asset?->issuedToUser?->full_name ?? $item->asset?->issued_to ?? 'N/A')
+                    : (filled($item->asset?->issued_to)
+                        ? 'Issued to '.$item->asset?->issued_to
+                        : 'Unassigned')),
+            'is_unlinked_holder' => $item->asset?->issued_to_user_id === null && filled($item->asset?->issued_to),
             'remarks' => $item->remarks,
         ];
     }
@@ -90,6 +102,33 @@ class InventoryController extends Controller
                 'next' => $items->nextPageUrl(),
             ],
         ], 'Inventory items retrieved successfully.');
+    }
+
+    public function validateSku(Request $request): JsonResponse
+    {
+        $sku = trim((string) $request->query('sku', ''));
+        $ignoreId = $request->query('ignore_id') ? (int) $request->query('ignore_id') : null;
+
+        if ($sku === '') {
+            return $this->success(['exists' => false, 'message' => 'SKU is empty']);
+        }
+
+        $inventoryExists = InventoryItem::query()
+            ->where('sku', $sku)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->exists();
+
+        $assetExists = \App\Modules\Asset\Models\Asset::query()
+            ->where('asset_number', $sku)
+            ->orWhere('property_number', $sku)
+            ->exists();
+
+        $exists = $inventoryExists || $assetExists;
+
+        return $this->success([
+            'exists' => $exists,
+            'message' => $exists ? 'Item Code / SKU already exists.' : 'Item Code / SKU is available.',
+        ]);
     }
 
     public function simpleList(Request $request): JsonResponse
