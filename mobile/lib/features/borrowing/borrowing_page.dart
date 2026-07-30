@@ -3,7 +3,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../data/models/borrowing.dart';
 import '../../data/services/borrowing_service.dart';
-import '../../data/services/asset_service.dart';
 import '../../shared/widgets/psa_status_badge.dart';
 import '../../shared/widgets/psa_empty_state.dart';
 import '../../shared/widgets/psa_button.dart';
