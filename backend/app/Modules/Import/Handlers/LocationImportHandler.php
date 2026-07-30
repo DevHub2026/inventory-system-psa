@@ -67,7 +67,7 @@ class LocationImportHandler implements ImportHandlerInterface
         }
 
         if ($officeName !== null) {
-            $officeId = Office::query()->whereRaw('LOWER(name) = ?', [strtolower($officeName)])->value('id');
+            $officeId = Office::query()->whereRaw('LOWER(name) = LOWER(?)', [$officeName])->value('id');
             if ($officeId === null) {
                 $errors[] = "Row {$rowNumber}: Office '{$officeName}' was not found.";
             }

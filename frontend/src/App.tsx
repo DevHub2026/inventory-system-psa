@@ -9,18 +9,25 @@ import ExtensionRequestsPage from '@/pages/ExtensionRequestsPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { DocumentTemplatesPage } from '@/pages/DocumentTemplatesPage'
 import { InventoryPage } from '@/pages/InventoryPage'
+import { IssuedAssetsPage } from '@/pages/IssuedAssetsPage'
 import { MaintenancePage } from '@/pages/MaintenancePage'
 import { PermissionsPage } from '@/pages/PermissionsPage'
+import { PrivacyNoticePage } from '@/pages/PrivacyNoticePage'
 import { ReportPage } from '@/pages/ReportPage'
 import { ReservationPage } from '@/pages/ReservationPage'
 import { RolesPage } from '@/pages/RolesPage'
+import { SessionsPage } from '@/pages/SessionsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { DevelopersPage } from '@/pages/DevelopersPage'
 import { SystemSetupPage } from '@/pages/SystemSetupPage'
+<<<<<<< HEAD
+import { UserProfilePage } from '@/pages/UserProfilePage'
+=======
 import { WorkflowsPage } from '@/pages/WorkflowsPage'
 import { QRScannerPage } from '@/pages/QRScannerPage'
 import { EmployeeAssetPage } from '@/pages/EmployeeAssetPage'
 import { QRScanHistoryPage } from '@/pages/QRScanHistoryPage'
+>>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
 import LoginPage from '@/pages/LoginPage'
 import { UsersPage } from '@/pages/UsersPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
@@ -44,6 +51,31 @@ function App() {
         <Routes>
           <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
 
+<<<<<<< HEAD
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/assets" element={<AssetPage />} />
+            <Route path="/reservations" element={<ReservationPage />} />
+            <Route path="/borrowings" element={<BorrowingPage />} />
+            <Route path="/issued-assets" element={<IssuedAssetsPage />} />
+            <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/maintenance" element={<MaintenancePage />} />
+            <Route path="/reports" element={<ReportPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/users/:id" element={<UserProfilePage />} />
+            <Route path="/roles" element={<RolesPage />} />
+            <Route path="/permissions" element={<PermissionsPage />} />
+            <Route path="/system-setup" element={<SystemSetupPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+<<<<<<< HEAD
+            <Route path="/sessions" element={<SessionsPage />} />
+            <Route path="/privacy" element={<PrivacyNoticePage />} />
+=======
+            <Route path="/developers" element={<DevelopersPage />} />
+>>>>>>> ca5355dd668142ae61c90cbec3af6999e8e466c9
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+=======
           <Route element={<ProtectedRoute />}>
             {/* Mobile standalone Employee QR routes */}
             <Route path="/qr" element={<QRScannerPage />} />
@@ -70,6 +102,7 @@ function App() {
               <Route path="/developers" element={<DevelopersPage />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>
+>>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
           </Route>
 
           <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />

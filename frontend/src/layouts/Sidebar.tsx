@@ -15,10 +15,17 @@ import {
   Users,
   Wrench,
   X,
+<<<<<<< HEAD
+  Briefcase,
+=======
   Code2,
+<<<<<<< HEAD
+>>>>>>> ca5355dd668142ae61c90cbec3af6999e8e466c9
+=======
   GitMerge,
   QrCode,
   History,
+>>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdmin, isStaff, isEmployee } from '@/utils/roleHelpers'
@@ -26,6 +33,26 @@ import { displayName } from '@/types'
 import logo from '@/assets/logo.png'
 
 const allLinks = [
+<<<<<<< HEAD
+  { to: '/dashboard',    label: 'Dashboard',           icon: LayoutDashboard,   roles: ['admin', 'staff', 'employee'] },
+  { to: '/assets',       label: 'Assets',              icon: Boxes,             roles: ['admin', 'staff', 'employee'] },
+  { to: '/reservations', label: 'Borrow Requests',     icon: ClipboardList,     roles: ['admin', 'staff', 'employee'] },
+  { to: '/borrowings',   label: 'Borrowed Items',      icon: HandCoins,         roles: ['admin', 'staff', 'employee'] },
+  { to: '/issued-assets', label: 'Issued Assets',      icon: Briefcase,         roles: ['admin', 'staff'] },
+  { to: '/inventory',    label: 'Inventory',           icon: Package,           roles: ['admin', 'staff'] },
+  { to: '/maintenance',  label: 'Maintenance',         icon: Wrench,            roles: ['admin', 'staff'] },
+  { to: '/reports',      label: 'Reports',             icon: FileBarChart,      roles: ['admin', 'staff'] },
+  { to: '/users',        label: 'Users',               icon: Users,             roles: ['admin'] },
+  { to: '/roles',        label: 'Roles & Permissions', icon: Shield,            roles: ['admin'] },
+  { to: '/system-setup', label: 'System Setup',        icon: SlidersHorizontal, roles: ['admin'] },
+  { to: '/settings',     label: 'Settings',            icon: Settings,          roles: ['admin', 'staff', 'employee'] },
+<<<<<<< HEAD
+  { to: '/sessions',     label: 'Active Sessions',     icon: LogOut,            roles: ['admin', 'staff', 'employee'] },
+  { to: '/privacy',      label: 'Privacy Notice',      icon: Shield,            roles: ['admin', 'staff', 'employee'] },
+=======
+  { to: '/developers',   label: 'Development Team',    icon: Code2,             roles: ['admin', 'staff', 'employee'] },
+>>>>>>> ca5355dd668142ae61c90cbec3af6999e8e466c9
+=======
   { to: '/dashboard',           label: 'Dashboard',           icon: LayoutDashboard,   roles: ['admin', 'staff', 'employee'] },
   { to: '/qr',                  label: 'QR Scanner',          icon: QrCode,            roles: ['admin', 'staff', 'employee'] },
   { to: '/assets',               label: 'Assets',              icon: Boxes,             roles: ['admin', 'staff', 'employee'] },
@@ -43,14 +70,24 @@ const allLinks = [
   { to: '/document-templates',   label: 'Document Templates',  icon: FileText,          roles: ['admin'] },
   { to: '/settings',             label: 'Settings',            icon: Settings,          roles: ['admin', 'staff', 'employee'] },
   { to: '/developers',           label: 'Development Team',    icon: Code2,             roles: ['admin', 'staff', 'employee'] },
+>>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
 ]
 
 const NAV_GROUPS = [
   { label: 'Self Service', paths: ['/qr'] },
   { label: 'Main Menu',  paths: ['/dashboard', '/assets', '/reservations', '/borrowings'] },
+<<<<<<< HEAD
+  { label: 'Operations', paths: ['/issued-assets', '/inventory', '/maintenance', '/reports'] },
+  { label: 'Admin',      paths: ['/users', '/roles', '/system-setup'] },
+<<<<<<< HEAD
+  { label: 'Account',    paths: ['/settings', '/sessions', '/privacy'] },
+=======
+=======
   { label: 'Operations', paths: ['/extension-requests', '/inventory', '/maintenance', '/reports'] },
   { label: 'Admin',      paths: ['/users', '/roles', '/system-setup', '/workflows', '/qr-scan-history', '/document-templates'] },
+>>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
   { label: 'Account',    paths: ['/settings', '/developers'] },
+>>>>>>> ca5355dd668142ae61c90cbec3af6999e8e466c9
 ]
 
 interface SidebarProps {

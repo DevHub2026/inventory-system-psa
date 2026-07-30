@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { BrowserQRCodeSvgWriter } from '@zxing/browser'
+import DOMPurify from 'dompurify'
 import { cn } from '@/utils/cn'
 
 interface QrCodeProps {
@@ -11,10 +12,12 @@ interface QrCodeProps {
 export function QrCode({ value, size = 192, className }: QrCodeProps) {
   const svgMarkup = useMemo(() => {
     try {
+      // Sanitize input to prevent XSS
+      const sanitizedValue = String(value).replace(/[<>]/g, '')
       const writer = new BrowserQRCodeSvgWriter()
-      const svg = writer.write(value, size, size)
+      const svg = writer.write(sanitizedValue, size, size)
       svg.setAttribute('role', 'img')
-      svg.setAttribute('aria-label', `QR code for ${value}`)
+      svg.setAttribute('aria-label', `QR code for ${sanitizedValue}`)
 
       return svg.outerHTML
     } catch {

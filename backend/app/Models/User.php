@@ -64,7 +64,15 @@ class User extends Authenticatable
      */
     public function borrows()
     {
-        return $this->hasMany(Borrow::class);
+        return $this->hasMany(\App\Modules\Borrowing\Models\Borrowing::class);
+    }
+
+    /**
+     * Get the user sessions.
+     */
+    public function sessions()
+    {
+        return $this->hasMany(UserSession::class);
     }
 
     /**

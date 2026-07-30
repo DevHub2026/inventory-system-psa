@@ -5,14 +5,18 @@ use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PermissionController;
 use App\Modules\Auth\Controllers\RoleController;
 use App\Modules\Auth\Controllers\UserController;
+use App\Modules\Auth\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:3,1');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:3,1');
 
     Route::middleware('auth:sanctum')->group(function (): void {
+        // Global rate limit: 120 requests per minute per authenticated user
+        Route::middleware('throttle:120,1')->group(function (): void {
+
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
         Route::put('/profile', [AuthController::class, 'updateProfile']);
@@ -29,6 +33,9 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware('can:view,user')->group(function (): void {
             Route::get('/users/{user}', [UserController::class, 'show']);
+            Route::get('/users/{user}/profile', [UserProfileController::class, 'profile']);
+            Route::get('/users/{user}/issued-assets', [UserProfileController::class, 'issuedAssets']);
+            Route::get('/users/{user}/borrowing-history', [UserProfileController::class, 'borrowingHistory']);
         });
 
         Route::middleware('can:update,user')->group(function (): void {
@@ -81,5 +88,7 @@ Route::prefix('v1')->group(function (): void {
         // Borrow routes
         Route::post('/assets/{asset}/borrow', [BorrowController::class, 'borrow']);
         Route::post('/assets/{asset}/return', [BorrowController::class, 'return']);
+
+        }); // end throttle:120,1
     });
 });

@@ -1,4 +1,9 @@
+<<<<<<< HEAD
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+=======
 ﻿import { useCallback, useEffect, useState } from 'react'
+>>>>>>> 6cdf7c3a44fed5390f753f22d0c18a3d791ee889
 import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination } from '@/components/ui'
 import { api } from '@/services/api'
 import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload, type ImportUsersResult, type ChangePasswordPayload } from '@/services/userService'
@@ -35,7 +40,7 @@ export function UsersPage() {
   const [filters,         setFilters]         = useState<UserFilters>({ per_page: 15, page: 1 })
   const [pagination, setPagination] = useState({ current_page: 1, per_page: 15, total: 0, last_page: 1 })
   const [roles, setRoles] = useState<Role[]>([])
-  const [departments, setDepartments] = useState<DepartmentOption[]>([])
+  const [_departments, setDepartments] = useState<DepartmentOption[]>([])
   const [offices, setOffices] = useState<SetupRecord[]>([])
   const [lookupWarning, setLookupWarning] = useState<string | null>(null)
 
@@ -69,6 +74,8 @@ export function UsersPage() {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to load users.' })
     } finally { setLoading(false) }
   }, [filters])
+
+  const navigate = useNavigate()
 
   const loadRoles = useCallback(async () => {
     try {
@@ -247,7 +254,34 @@ export function UsersPage() {
   }
 
   const columns: Column<User>[] = [
-    { key: 'name',   header: 'Name',   render: (u) => <span className="font-medium text-[#1F2937]">{displayName(u)}</span> },
+    {
+      key: 'name',
+      header: 'Name',
+      render: (u) => (
+        <button
+          type="button"
+          onClick={() => navigate(`/users/${u.id}`)}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            textAlign: 'left',
+            fontWeight: 600,
+            fontSize: 14,
+            color: '#0D47A1',
+            textDecoration: 'underline',
+            textDecorationColor: 'transparent',
+            transition: 'text-decoration-color 0.15s',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.textDecorationColor = '#0D47A1' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.textDecorationColor = 'transparent' }}
+          aria-label={`View profile for ${displayName(u)}`}
+        >
+          {displayName(u)}
+        </button>
+      ),
+    },
     { key: 'employee_number', header: 'Employee ID', render: (u) => <span className="font-mono text-xs text-[#6B7280]">{u.employee_number || '\u2014'}</span> },
     { key: 'username', header: 'Username', render: (u) => <span className="font-mono text-xs text-[#6B7280]">{u.username || '\u2014'}</span> },
     { key: 'department', header: 'Department', render: (u) => <span className="text-[#6B7280]">{u.department?.name || '\u2014'}</span> },

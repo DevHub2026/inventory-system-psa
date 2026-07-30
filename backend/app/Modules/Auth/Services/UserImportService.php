@@ -125,6 +125,24 @@ class UserImportService
      */
     private function parseFile(UploadedFile $file): array
     {
+        // Validate file size (max 10MB)
+        if ($file->getSize() > 10 * 1024 * 1024) {
+            throw new \InvalidArgumentException('File size exceeds maximum limit of 10MB.');
+        }
+
+        // Validate MIME type
+        $allowedMimes = [
+            'text/csv',
+            'application/csv',
+            'text/plain',
+            'application/json',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ];
+        $mimeType = $file->getMimeType();
+        if (!in_array($mimeType, $allowedMimes, true)) {
+            throw new \InvalidArgumentException('Invalid file type. Please upload CSV, JSON, or XLSX.');
+        }
+
         $extension = strtolower((string) $file->getClientOriginalExtension());
 
         return match ($extension) {
@@ -343,7 +361,7 @@ class UserImportService
 
         $roleName = $this->nullableString($row['role'] ?? null) ?? UserRole::EMPLOYEE->value;
 
-        return Role::query()->whereRaw('LOWER(name) = ?', [strtolower($roleName)])->first();
+        return Role::query()->whereRaw('LOWER(name) = LOWER(?)', [$roleName])->first();
     }
 
     /**
