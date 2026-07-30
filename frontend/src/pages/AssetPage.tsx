@@ -21,7 +21,7 @@ import type { Asset, AssetStatus } from '@/types'
 import { isAdmin, isStaff, hasAnyRole } from '@/utils/roleHelpers'
 import { getEffectiveAssetStatus } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
-import { PrintableDocumentModal } from '@/components/documents/PrintableDocumentModal'
+import { GenerateDocumentModal } from '@/components/documents/GenerateDocumentModal'
 import { ReissueAssetModal } from '@/components/assets/ReissueAssetModal'
 
 
@@ -959,7 +959,7 @@ export function AssetPage() {
                     setViewAsset(null)
                   }}
                 >
-                  <Printer size={14} className="mr-1.5" /> Print Issuance Receipt (PAR)
+                  <Printer size={14} className="mr-1.5" /> Generate Issuance Receipt (PAR)
                 </Button>
               )}
             </div>
@@ -1411,8 +1411,7 @@ export function AssetPage() {
         </div>
       </Modal>
 
-      {/* Issuance Receipt / PAR Printable Document Modal */}
-      <PrintableDocumentModal
+      <GenerateDocumentModal
         open={printIssuanceId !== null}
         onClose={() => setPrintIssuanceId(null)}
         documentType="issuance"

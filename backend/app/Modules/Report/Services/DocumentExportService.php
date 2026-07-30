@@ -2,12 +2,14 @@
 
 namespace App\Modules\Report\Services;
 
-use App\Models\User;
-use App\Modules\Asset\Models\Asset;
-use App\Modules\Borrowing\Models\Borrowing;
-use App\Modules\Inventory\Models\InventoryItem;
-use App\Modules\Reservation\Models\Reservation;
 use App\Modules\SystemSetup\Models\DocumentTemplate;
+use App\Modules\SystemSetup\Models\GeneratedDocument;
+use App\Modules\SystemSetup\Services\DocxTemplateService;
+use App\Modules\SystemSetup\Services\PlaceholderRegistry;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Csv;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -17,121 +19,79 @@ class DocumentExportService
 {
     public function __construct(
         private readonly ReportService $reportService,
+        private readonly DocumentDataResolver $dataResolver,
+        private readonly DocxTemplateService $docxService,
     ) {}
 
     /**
-     * Resolve data for printable receipts/documents.
+     * Generate an official DOCX document from the active template.
+     *
+     * @return array{generated: GeneratedDocument, absolute_path: string}
      */
-    public function resolveDocumentData(string $documentType, int $targetId): array
+    public function generateDocument(string $documentType, int $targetId): array
     {
-        $template = DocumentTemplate::getDefaultFor($documentType);
-
-        $placeholders = [
-            'current_date'  => now()->format('F j, Y'),
-            'current_time'  => now()->format('g:i A'),
-            'generated_by'  => auth()->user()?->full_name ?? 'System Administrator',
-            'prepared_by'   => auth()->user()?->full_name ?? 'Property Custodian',
-        ];
-
-        switch ($documentType) {
-            case 'borrow_receipt':
-            case 'return_receipt':
-                $borrowing = Borrowing::with([
-                    'user.department',
-                    'asset.category',
-                    'asset.office',
-                    'asset.manufacturer',
-                    'extensionRequests' => fn ($q) => $q->latest()->limit(1),
-                ])->findOrFail($targetId);
-                $user  = $borrowing->user;
-                $asset = $borrowing->asset;
-                $latestExtension = $borrowing->extensionRequests->first();
-
-                $placeholders = array_merge($placeholders, [
-                    'employee_name'       => $user?->full_name ?? ($user?->email ?? 'N/A'),
-                    'employee_number'     => $user?->employee_number ?? 'N/A',
-                    'department'          => $user?->department?->name ?? 'N/A',
-                    'office'              => $asset?->office?->name ?? 'PSA Regional Office',
-                    'asset_name'          => $asset?->name ?? 'N/A',
-                    'asset_code'          => $asset?->asset_number ?? 'N/A',
-                    'serial_number'       => $asset?->serial_number ?? 'N/A',
-                    'manufacturer'        => $asset?->manufacturer?->name ?? 'N/A',
-                    'category'            => $asset?->category?->name ?? 'N/A',
-                    'condition'           => $asset?->condition_status ?? 'Good',
-                    'borrow_date'         => $borrowing->borrow_date?->format('F j, Y') ?? 'N/A',
-                    'due_date'            => $borrowing->due_date?->format('F j, Y') ?? 'N/A',
-                    'returned_date'       => $borrowing->returned_at?->format('F j, Y') ?? now()->format('F j, Y'),
-                    'requested_extension' => $latestExtension?->requested_due_date?->format('F j, Y') ?? 'N/A',
-                    'approved_extension'  => ($latestExtension?->status?->value === 'APPROVED')
-                        ? ($latestExtension?->requested_due_date?->format('F j, Y') ?? 'N/A')
-                        : 'N/A',
-                ]);
-                break;
-
-            case 'issuance':
-            case 'property_transfer':
-                $asset = Asset::with(['category', 'office', 'location', 'manufacturer', 'issuedByUser.department'])->findOrFail($targetId);
-                $issuedBy = $asset->issuedByUser;
-                $placeholders = array_merge($placeholders, [
-                    'employee_name'   => $asset->issued_to ?? 'Accountable Employee',
-                    'employee_number' => $issuedBy?->employee_number ?? 'N/A',
-                    'department'      => $issuedBy?->department?->name ?? $asset->office?->name ?? 'N/A',
-                    'office'          => $asset->office?->name ?? 'PSA Central Office',
-                    'asset_name'      => $asset->name,
-                    'asset_code'      => $asset->asset_number,
-                    'serial_number'   => $asset->serial_number ?? 'N/A',
-                    'manufacturer'    => $asset->manufacturer?->name ?? 'N/A',
-                    'category'        => $asset->category?->name ?? 'N/A',
-                    'condition'       => $asset->condition_status instanceof \BackedEnum
-                        ? $asset->condition_status->value
-                        : ($asset->condition_status ?? 'Good'),
-                    'issued_date'     => $asset->date_issued?->format('F j, Y') ?? now()->format('F j, Y'),
-                    'issued_by'       => $issuedBy?->full_name ?? 'N/A',
-                ]);
-                break;
-
-            case 'clearance':
-                $user = User::with('department')->findOrFail($targetId);
-                $placeholders = array_merge($placeholders, [
-                    'employee_name'   => $user->full_name,
-                    'employee_number' => $user->employee_number ?? 'N/A',
-                    'department'      => $user->department?->name ?? 'N/A',
-                    'office'          => 'Philippine Statistics Authority',
-                ]);
-                break;
-
-            case 'reissuance':
-                $history = \App\Modules\Asset\Models\AssetIssuanceHistory::with([
-                    'asset.office',
-                    'previousEmployee',
-                    'newEmployee.department',
-                    'officer'
-                ])->findOrFail($targetId);
-
-                $asset = $history->asset;
-                $prev  = $history->previousEmployee;
-                $new   = $history->newEmployee;
-                $officer = $history->officer;
-
-                $placeholders = array_merge($placeholders, [
-                    'previous_employee' => $prev ? $prev->full_name : ($asset->issued_to ?? 'N/A'),
-                    'new_employee'      => $new ? $new->full_name : 'N/A',
-                    'asset_name'        => $asset ? $asset->name : 'N/A',
-                    'asset_code'        => $asset ? $asset->asset_number : 'N/A',
-                    'serial_number'     => $asset ? ($asset->serial_number ?? 'N/A') : 'N/A',
-                    'office'            => $asset?->office?->name ?? 'N/A',
-                    'department'        => $new?->department?->name ?? 'N/A',
-                    'transfer_date'     => $history->transfer_date?->format('F j, Y') ?? 'N/A',
-                    'reason'            => $history->reason ?? 'N/A',
-                    'prepared_by'       => $officer ? $officer->full_name : 'N/A',
-                    'approved_by'       => 'Property Custodian',
-                ]);
-                break;
+        if (! in_array($documentType, PlaceholderRegistry::officialDocumentTypes(), true)) {
+            throw new \InvalidArgumentException('Unsupported document type for DOCX generation.');
         }
 
+        $template = DocumentTemplate::getActiveDocxFor($documentType);
+
+        if (! $template) {
+            throw new \RuntimeException(
+                'No active DOCX template is configured for this document type. Please contact a system administrator.'
+            );
+        }
+
+        if ($template->has_unknown_placeholders || $template->validation_status === 'invalid') {
+            throw new \RuntimeException(
+                'The active template contains unknown placeholders and cannot be used until it is fixed and re-validated.'
+            );
+        }
+
+        if (! $template->file_path || ! Storage::disk('local')->exists($template->file_path)) {
+            throw new \RuntimeException(
+                'No active DOCX template file is available for this document type. Please contact a system administrator.'
+            );
+        }
+
+        $placeholders = $this->dataResolver->resolve($documentType, $targetId);
+        $sourcePath = Storage::disk('local')->path($template->file_path);
+
+        $safeType = Str::slug($documentType);
+        $filename = $safeType.'_'.$targetId.'_'.now()->format('Ymd_His').'_'.Str::lower(Str::random(6)).'.docx';
+        $relativePath = 'generated-documents/'.$safeType.'/'.$filename;
+        $absolutePath = Storage::disk('local')->path($relativePath);
+
+        $this->docxService->generate($sourcePath, $absolutePath, $placeholders);
+
+        $generated = GeneratedDocument::query()->create([
+            'document_template_id' => $template->id,
+            'document_type' => $documentType,
+            'target_type' => $this->dataResolver->targetTypeFor($documentType),
+            'target_id' => $targetId,
+            'file_path' => $relativePath,
+            'file_name' => $filename,
+            'file_size' => is_file($absolutePath) ? filesize($absolutePath) : 0,
+            'mime_type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'status' => 'completed',
+            'metadata' => [
+                'template_version' => $template->version,
+                'placeholder_keys' => array_keys($placeholders),
+            ],
+            'generated_by' => Auth::id(),
+            'generated_at' => now(),
+        ]);
+
+        Log::info('Official DOCX document generated', [
+            'document_type' => $documentType,
+            'target_id' => $targetId,
+            'template_id' => $template->id,
+            'generated_id' => $generated->id,
+        ]);
+
         return [
-            'template'     => $template,
-            'placeholders' => $placeholders,
+            'generated' => $generated,
+            'absolute_path' => $absolutePath,
         ];
     }
 
@@ -144,17 +104,16 @@ class DocumentExportService
         $sheet = $spreadsheet->getActiveSheet();
 
         $title = match ($reportType) {
-            'assets'        => 'ASSET INVENTORY REPORT',
-            'borrowings'    => 'BORROWED ITEMS REPORT',
-            'reservations'  => 'RESERVATIONS REPORT',
-            'inventory'     => 'STOCK INVENTORY REPORT',
-            'overdue'       => 'OVERDUE BORROWINGS REPORT',
-            'low_stock'     => 'LOW STOCK ALERT REPORT',
+            'assets' => 'ASSET INVENTORY REPORT',
+            'borrowings' => 'BORROWED ITEMS REPORT',
+            'reservations' => 'RESERVATIONS REPORT',
+            'inventory' => 'STOCK INVENTORY REPORT',
+            'overdue' => 'OVERDUE BORROWINGS REPORT',
+            'low_stock' => 'LOW STOCK ALERT REPORT',
             'user_activity' => 'USER ACTIVITY REPORT',
-            default         => 'OFFICIAL REPORT',
+            default => 'OFFICIAL REPORT',
         };
 
-        // Header rows
         $sheet->setCellValue('A1', 'PHILIPPINE STATISTICS AUTHORITY');
         $sheet->setCellValue('A2', $title);
         $sheet->setCellValue('A3', 'Generated on: '.now()->format('F j, Y g:i A').' | Filter: '.($filters['office_id'] ?? 'All Offices'));
@@ -164,7 +123,6 @@ class DocumentExportService
 
         $startRow = 5;
 
-        // Populate table data
         switch ($reportType) {
             case 'assets':
                 $headers = ['ID', 'Asset Code', 'Name', 'Category', 'Manufacturer', 'Office', 'Location', 'Status', 'Condition', 'Purchase Cost'];
@@ -200,7 +158,6 @@ class DocumentExportService
                 break;
         }
 
-        // Write Headers
         $col = 'A';
         foreach ($headers as $header) {
             $sheet->setCellValue($col.$startRow, $header);
@@ -208,7 +165,6 @@ class DocumentExportService
             $col++;
         }
 
-        // Write Data Rows
         $currentRow = $startRow + 1;
         foreach ($rows as $rowData) {
             $col = 'A';
@@ -219,7 +175,6 @@ class DocumentExportService
             $currentRow++;
         }
 
-        // Auto-fit columns
         foreach (range('A', $col) as $colLetter) {
             $sheet->getColumnDimension($colLetter)->setAutoSize(true);
         }

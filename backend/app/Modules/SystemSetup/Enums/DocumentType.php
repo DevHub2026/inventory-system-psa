@@ -78,8 +78,26 @@ enum DocumentType: string
             self::EXCEL_EXPORT => ['xlsx', 'xls'],
             self::CSV_EXPORT   => ['csv'],
             self::PDF_TEMPLATE => ['pdf'],
-            default            => ['xlsx', 'xls', 'csv', 'docx', 'pdf'],
+            self::BORROW_RECEIPT,
+            self::RETURN_RECEIPT,
+            self::CLEARANCE,
+            self::ISSUANCE,
+            self::PROPERTY_TRANSFER,
+            self::REISSUANCE => ['docx'],
+            default => ['docx'],
         };
+    }
+
+    public function isOfficialDocx(): bool
+    {
+        return in_array($this, [
+            self::BORROW_RECEIPT,
+            self::RETURN_RECEIPT,
+            self::CLEARANCE,
+            self::ISSUANCE,
+            self::PROPERTY_TRANSFER,
+            self::REISSUANCE,
+        ], true);
     }
 
     /**

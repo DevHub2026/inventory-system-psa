@@ -10,7 +10,7 @@ import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { formatDate, formatTime } from '@/utils/dateFormat'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
-import { PrintableDocumentModal } from '@/components/documents/PrintableDocumentModal'
+import { GenerateDocumentModal } from '@/components/documents/GenerateDocumentModal'
 import { Printer } from 'lucide-react'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -263,14 +263,14 @@ export function BorrowingDetailsPage({
             {/* Print Borrow Receipt */}
             {!loading && borrowing && (
               <Button variant="secondary" onClick={() => openPrintModal('borrow_receipt')}>
-                <Printer size={14} style={{ marginRight: 6 }} /> Borrow Receipt
+                <Printer size={14} style={{ marginRight: 6 }} /> Generate Borrow Receipt
               </Button>
             )}
 
             {/* Print Return Receipt (only once returned) */}
             {!loading && borrowing && ['RETURNED', 'COMPLETED'].includes(borrowing.status) && (
               <Button variant="secondary" onClick={() => openPrintModal('return_receipt')}>
-                <Printer size={14} style={{ marginRight: 6 }} /> Return Receipt
+                <Printer size={14} style={{ marginRight: 6 }} /> Generate Return Receipt
               </Button>
             )}
 
@@ -686,8 +686,7 @@ export function BorrowingDetailsPage({
         </form>
       </Modal>
 
-      {/* Printable Receipt Modal */}
-      <PrintableDocumentModal
+      <GenerateDocumentModal
         open={printModalOpen}
         onClose={() => setPrintModalOpen(false)}
         documentType={printDocType}
