@@ -1,21 +1,30 @@
 import '../data/models/user.dart';
 
-/// Check if user has admin role
+/// Check if user has admin role - checks all roles in the list
 bool isAdmin(User user) {
-  return user.role?.toLowerCase() == 'admin' ||
-      user.role?.toLowerCase() == 'administrator';
+  if (user.roles == null || user.roles!.isEmpty) return false;
+  return user.roles!.any((role) => 
+    role.name.toLowerCase() == 'admin' || 
+    role.name.toLowerCase() == 'administrator'
+  );
 }
 
-/// Check if user has staff role
+/// Check if user has staff role - checks all roles in the list
 bool isStaff(User user) {
-  return user.role?.toLowerCase() == 'staff' ||
-      user.role?.toLowerCase() == 'officer';
+  if (user.roles == null || user.roles!.isEmpty) return false;
+  return user.roles!.any((role) => 
+    role.name.toLowerCase() == 'staff' || 
+    role.name.toLowerCase() == 'officer'
+  );
 }
 
-/// Check if user has employee role
+/// Check if user has employee role - checks all roles in the list
 bool isEmployee(User user) {
-  return user.role?.toLowerCase() == 'employee' ||
-      user.role?.toLowerCase() == 'user';
+  if (user.roles == null || user.roles!.isEmpty) return false;
+  return user.roles!.any((role) => 
+    role.name.toLowerCase() == 'employee' || 
+    role.name.toLowerCase() == 'user'
+  );
 }
 
 /// Get all user roles

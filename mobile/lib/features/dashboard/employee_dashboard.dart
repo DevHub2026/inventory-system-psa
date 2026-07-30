@@ -63,10 +63,20 @@ class _EmployeeDashboardState extends State<EmployeeDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('Employee Dashboard'),
+        title: const Text(
+          'Employee Dashboard',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: AppTheme.primaryColor,
         elevation: 0,
         scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -78,22 +88,17 @@ class _EmployeeDashboardState extends State<EmployeeDashboard> {
                   onRetry: _loadData,
                 )
               : RefreshIndicator(
-                  onRefresh: () => Future.delayed(Duration.zero, _loadData),
+                  onRefresh: _loadData,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(AppTheme.space4),
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildWelcomeSection(),
-                        const SizedBox(height: AppTheme.space6),
+                        const SizedBox(height: AppTheme.space5),
                         _buildMyActivityGrid(),
-                        const SizedBox(height: AppTheme.space6),
+                        const SizedBox(height: AppTheme.space5),
                         _buildQuickActions(),
-                        if (_recentActivity.isNotEmpty) ...[
-                          const SizedBox(height: AppTheme.space6),
-                          _buildMyActivitySection(),
-                        ],
                       ],
                     ),
                   ),
@@ -102,67 +107,130 @@ class _EmployeeDashboardState extends State<EmployeeDashboard> {
   }
 
   Widget _buildWelcomeSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Welcome back!',
-          style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
-              ),
-        ),
-        const SizedBox(height: AppTheme.space2),
-        Text(
-          'Here is your asset activity overview.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.textSecondary,
-              ),
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.space4),
+      decoration: const BoxDecoration(
+        color: AppTheme.primaryColor,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Welcome back!',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: AppTheme.space1),
+          Text(
+            'Here is your asset activity overview.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildMyActivityGrid() {
     final stats = _stats!;
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: AppTheme.space3,
-      crossAxisSpacing: AppTheme.space3,
-      childAspectRatio: 1.4,
-      children: [
-        StatCard(
-          label: 'My Borrowed Items',
-          value: stats.borrowedAssets.toString(),
-          icon: Icons.inventory_2_outlined,
-          color: AppTheme.primaryColor,
-          backgroundColor: AppTheme.primaryPale,
-        ),
-        StatCard(
-          label: 'Pending Requests',
-          value: stats.pendingBorrowRequests.toString(),
-          icon: Icons.content_paste_outlined,
-          color: AppTheme.infoColor,
-          backgroundColor: const Color(0xFFDEF9FF),
-        ),
-        StatCard(
-          label: 'Due Soon',
-          value: stats.pendingReturns.toString(),
-          icon: Icons.calendar_today_outlined,
-          color: AppTheme.warningColor,
-          backgroundColor: const Color(0xFFFEF3C7),
-        ),
-        StatCard(
-          label: 'Overdue',
-          value: '0',
-          icon: Icons.warning_amber_outlined,
-          color: AppTheme.dangerColor,
-          backgroundColor: const Color(0xFFFEE2E2),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
+      child: GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: AppTheme.space3,
+        crossAxisSpacing: AppTheme.space3,
+        childAspectRatio: 1.3,
+        children: [
+          _buildStatCard(
+            'My Borrowed Items',
+            stats.borrowedAssets.toString(),
+            Icons.inventory_2_outlined,
+            AppTheme.primaryColor,
+            AppTheme.primaryPale,
+          ),
+          _buildStatCard(
+            'Pending Requests',
+            stats.pendingBorrowRequests.toString(),
+            Icons.content_paste_outlined,
+            AppTheme.infoColor,
+            const Color(0xFFDEF9FF),
+          ),
+          _buildStatCard(
+            'Due Soon',
+            stats.pendingReturns.toString(),
+            Icons.calendar_today_outlined,
+            AppTheme.warningColor,
+            const Color(0xFFFEF3C7),
+          ),
+          _buildStatCard(
+            'Overdue',
+            '0',
+            Icons.warning_amber_outlined,
+            AppTheme.dangerColor,
+            const Color(0xFFFEE2E2),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.space4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                ),
+                child: Icon(icon, size: 20, color: color),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTheme.space3),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -171,41 +239,109 @@ class _EmployeeDashboardState extends State<EmployeeDashboard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space2),
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
           child: Text(
             'Quick Actions',
-            style: Theme.of(context).textTheme.displaySmall,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
           ),
         ),
         const SizedBox(height: AppTheme.space3),
-        ActionCard(
-          title: 'Browse Assets',
-          subtitle: 'View available assets to borrow',
-          icon: Icons.inventory_2_outlined,
-          color: AppTheme.primaryColor,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AssetListPage()),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
+          child: Column(
+            children: [
+              _buildActionTile(
+                'Browse Assets',
+                'View available assets to borrow',
+                Icons.inventory_2_outlined,
+                AppTheme.primaryColor,
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AssetListPage()),
+                ),
+              ),
+              const SizedBox(height: AppTheme.space2),
+              _buildActionTile(
+                'My Borrowings',
+                'View your active borrowings and returns',
+                Icons.assignment_turned_in_outlined,
+                const Color(0xFF7C3AED),
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BorrowingPage()),
+                ),
+              ),
+            ],
           ),
-        ),
-        ActionCard(
-          title: 'My Borrowings',
-          subtitle: 'View your active borrowings and returns',
-          icon: Icons.assignment_turned_in_outlined,
-          color: const Color(0xFF7C3AED),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const BorrowingPage()),
-          ),
-        ),
-        ActionCard(
-          title: 'Scan QR Code',
-          subtitle: 'Scan asset or receipt QR codes',
-          icon: Icons.qr_code_scanner_outlined,
-          color: AppTheme.tealColor,
-          onTap: () => widget.onNavigate?.call(2),
         ),
       ],
+    );
+  }
+
+  Widget _buildActionTile(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.space4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              ),
+              child: Icon(icon, size: 22, color: color),
+            ),
+            const SizedBox(width: AppTheme.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: AppTheme.textMuted,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -214,27 +350,34 @@ class _EmployeeDashboardState extends State<EmployeeDashboard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space2),
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
           child: Text(
             'Your Recent Activity',
-            style: Theme.of(context).textTheme.displaySmall,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
           ),
         ),
         const SizedBox(height: AppTheme.space3),
-        Container(
-          decoration: BoxDecoration(
-            color: AppTheme.cardColor,
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            border: Border.all(color: AppTheme.borderColor),
-            boxShadow: AppTheme.shadowSm,
-          ),
-          child: Column(
-            children: [
-              for (int i = 0; i < _recentActivity.length && i < 5; i++) ...[
-                if (i > 0) const Divider(height: 1),
-                _buildActivityTile(_recentActivity[i]),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppTheme.cardColor,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              border: Border.all(color: AppTheme.borderColor),
+              boxShadow: AppTheme.shadowSm,
+            ),
+            child: Column(
+              children: [
+                for (int i = 0; i < _recentActivity.length && i < 5; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  _buildActivityTile(_recentActivity[i]),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ],
