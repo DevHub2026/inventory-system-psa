@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { EmptyState, Spinner, Table, Alert, type Column } from '@/components/ui'
+import { EmptyState, Spinner, Table, Alert, Card, type Column } from '@/components/ui'
 import {
   reportService,
   type AssetReportItem,
@@ -77,23 +77,23 @@ export function ReportPage() {
 
   // ── Column helpers ──
   const mono = (v: string) => (
-    <span className="font-mono text-xs text-slate-600">{v}</span>
+    <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{v}</span>
   )
   const bold = (v: string) => (
-    <span className="font-semibold text-slate-900">{v}</span>
+    <span style={{ fontWeight: 600, color: '#0F172A' }}>{v}</span>
   )
 
   const assetColumns: Column<AssetReportItem>[] = [
     { key: 'asset_number', header: 'ASSET NO.',  render: (r) => mono(r.asset_number) },
     { key: 'name',         header: 'NAME',       render: (r) => bold(r.name) },
-    { key: 'category',     header: 'CATEGORY',   render: (r) => <span className="text-sm text-slate-700">{r.category}</span> },
+    { key: 'category',     header: 'CATEGORY',   render: (r) => <span style={{ fontSize: 13, color: '#475569' }}>{r.category}</span> },
     { key: 'status',       header: 'STATUS',     render: (r) => inventoryStatusLabel(r.status) },
-    { key: 'location',     header: 'LOCATION',   render: (r) => <span className="text-sm text-slate-700">{r.location}</span> },
+    { key: 'location',     header: 'LOCATION',   render: (r) => <span style={{ fontSize: 13, color: '#475569' }}>{r.location}</span> },
   ]
 
   const borrowingColumns: Column<BorrowingReportItem>[] = [
     { key: 'asset_name',  header: 'ASSET',       render: (r) => bold(r.asset_name) },
-    { key: 'borrower',    header: 'BORROWER',    render: (r) => <span className="text-sm text-slate-700">{r.borrower}</span> },
+    { key: 'borrower',    header: 'BORROWER',    render: (r) => <span style={{ fontSize: 13, color: '#475569' }}>{r.borrower}</span> },
     { key: 'borrow_date', header: 'BORROW DATE', render: (r) => mono(r.borrow_date) },
     { key: 'due_date',    header: 'DUE DATE',    render: (r) => mono(r.due_date) },
     { key: 'status',      header: 'STATUS',      render: (r) => borrowingStatusLabel(r.status) },
@@ -101,13 +101,17 @@ export function ReportPage() {
 
   const overdueColumns: Column<OverdueReportItem>[] = [
     { key: 'asset_name',  header: 'ASSET',        render: (r) => bold(r.asset_name) },
-    { key: 'borrower',    header: 'BORROWER',     render: (r) => <span className="text-sm text-slate-700">{r.borrower}</span> },
+    { key: 'borrower',    header: 'BORROWER',     render: (r) => <span style={{ fontSize: 13, color: '#475569' }}>{r.borrower}</span> },
     { key: 'due_date',    header: 'DUE DATE',     render: (r) => mono(r.due_date) },
     {
       key: 'days_overdue',
       header: 'DAYS OVERDUE',
       render: (r) => (
-        <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+        <span style={{
+          display: 'inline-flex', alignItems: 'center',
+          borderRadius: 20, background: '#FEF2F2',
+          padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#DC2626',
+        }}>
           {r.days_overdue} days
         </span>
       ),
@@ -117,8 +121,8 @@ export function ReportPage() {
   const inventoryColumns: Column<InventoryReportItem>[] = [
     { key: 'sku',           header: 'SKU / CODE',    render: (r) => mono(r.sku || '—') },
     { key: 'name',          header: 'ITEM NAME',     render: (r) => bold(r.name) },
-    { key: 'quantity',      header: 'QTY',           render: (r) => <span className="font-bold text-slate-900">{r.quantity}</span> },
-    { key: 'reorder_level', header: 'REORDER ALERT', render: (r) => <span className="text-sm text-slate-700">{r.reorder_level}</span> },
+    { key: 'quantity',      header: 'QTY',           render: (r) => <span style={{ fontWeight: 600, color: '#0F172A' }}>{r.quantity}</span> },
+    { key: 'reorder_level', header: 'REORDER ALERT', render: (r) => <span style={{ fontSize: 13, color: '#475569' }}>{r.reorder_level}</span> },
   ]
 
   const lowStockColumns: Column<LowStockReportItem>[] = [
@@ -127,33 +131,37 @@ export function ReportPage() {
       key: 'quantity',
       header: 'CURRENT QTY',
       render: (r) => (
-        <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-bold text-red-700">
+        <span style={{
+          display: 'inline-flex', alignItems: 'center',
+          borderRadius: 20, background: '#FEF2F2',
+          padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#DC2626',
+        }}>
           {r.quantity}
         </span>
       ),
     },
-    { key: 'reorder_level', header: 'ALERT LEVEL', render: (r) => <span className="text-sm text-slate-700">{r.reorder_level}</span> },
+    { key: 'reorder_level', header: 'ALERT LEVEL', render: (r) => <span style={{ fontSize: 13, color: '#475569' }}>{r.reorder_level}</span> },
   ]
 
   const userActivityColumns: Column<UserActivityReportItem>[] = [
     { key: 'user',       header: 'USER',   render: (r) => bold(r.user) },
-    { key: 'asset_name', header: 'ASSET',  render: (r) => <span className="text-sm text-slate-700">{r.asset_name}</span> },
-    { key: 'action',     header: 'ACTION', render: (r) => <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">{r.action}</span> },
+    { key: 'asset_name', header: 'ASSET',  render: (r) => <span style={{ fontSize: 13, color: '#475569' }}>{r.asset_name}</span> },
+    { key: 'action',     header: 'ACTION', render: (r) => <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 6, background: '#EFF6FF', padding: '4px 10px', fontSize: 12, fontWeight: 600, color: '#003DA5' }}>{r.action}</span> },
     { key: 'date',       header: 'DATE',   render: (r) => mono(r.date) },
   ]
 
   const reissuanceColumns: Column<ReissuanceReportItem>[] = [
     { key: 'asset_number',      header: 'ASSET NO.',      render: (r) => mono(r.asset_number) },
     { key: 'asset_name',        header: 'ASSET NAME',     render: (r) => bold(r.asset_name) },
-    { key: 'previous_employee', header: 'FROM',           render: (r) => <span className="text-sm text-slate-700">{r.previous_employee}</span> },
-    { key: 'new_employee',      header: 'TO',             render: (r) => <span className="font-semibold text-blue-700">{r.new_employee}</span> },
-    { key: 'transferred_by',    header: 'TRANSFERRED BY', render: (r) => <span className="text-sm text-slate-700">{r.transferred_by}</span> },
+    { key: 'previous_employee', header: 'FROM',           render: (r) => <span style={{ fontSize: 13, color: '#475569' }}>{r.previous_employee}</span> },
+    { key: 'new_employee',      header: 'TO',             render: (r) => <span style={{ fontWeight: 600, color: '#003DA5' }}>{r.new_employee}</span> },
+    { key: 'transferred_by',    header: 'TRANSFERRED BY', render: (r) => <span style={{ fontSize: 13, color: '#475569' }}>{r.transferred_by}</span> },
     { key: 'transfer_date',     header: 'DATE',           render: (r) => mono(r.transfer_date) },
     {
       key: 'reason',
       header: 'REASON',
       render: (r) => (
-        <span className="block max-w-xs truncate text-xs text-slate-500">{r.reason || '—'}</span>
+        <span style={{ display: 'block', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, color: '#64748B' }}>{r.reason || '—'}</span>
       ),
     },
   ]
@@ -170,94 +178,137 @@ export function ReportPage() {
   const activeTab = TABS.find((t) => t.key === reportType)!
 
   return (
-    <div className="space-y-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 32 }}>
 
-      {/* ── Page Header ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      {/* ── Header ── */}
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16,
+      }}>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Reports &amp; Exports</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.03em', lineHeight: 1.2 }}>
+            Reports & Exports
+          </h1>
+          <p style={{ margin: '6px 0 0', fontSize: 14, color: '#64748B', lineHeight: 1.4 }}>
             Generate official reports and export data to Excel, CSV, or PDF.
           </p>
         </div>
 
         {/* Export buttons */}
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             type="button"
             disabled={exporting || data.length === 0}
             onClick={() => void handleExport('excel')}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              height: 38, paddingInline: 16, borderRadius: 10,
+              border: '1px solid #BBF7D0', background: '#F0FDF4',
+              fontSize: 13, fontWeight: 600, color: '#166534',
+              cursor: exporting || data.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: exporting || data.length === 0 ? 0.5 : 1,
+              fontFamily: 'inherit', transition: 'all 0.15s',
+            }}
           >
-            <FileSpreadsheet size={14} />
+            <FileSpreadsheet size={15} />
             Excel
           </button>
           <button
             type="button"
             disabled={exporting || data.length === 0}
             onClick={() => void handleExport('csv')}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              height: 38, paddingInline: 16, borderRadius: 10,
+              border: '1px solid #E2E8F0', background: '#fff',
+              fontSize: 13, fontWeight: 600, color: '#475569',
+              cursor: exporting || data.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: exporting || data.length === 0 ? 0.5 : 1,
+              fontFamily: 'inherit', transition: 'all 0.15s',
+            }}
           >
-            <FileCode size={14} />
+            <FileCode size={15} />
             CSV
           </button>
           <button
             type="button"
             disabled={data.length === 0}
             onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              height: 38, paddingInline: 16, borderRadius: 10,
+              border: '1px solid #003DA5', background: '#003DA5',
+              fontSize: 13, fontWeight: 600, color: '#fff',
+              cursor: data.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: data.length === 0 ? 0.5 : 1,
+              fontFamily: 'inherit', transition: 'all 0.15s',
+            }}
           >
-            <Printer size={14} />
+            <Printer size={15} />
             Print / PDF
           </button>
         </div>
       </div>
 
-      {/* ── Alert ── */}
-      {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>
-          {message.text}
-        </Alert>
-      )}
+      {/* Alert */}
+      {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
       {/* ── Main Card ── */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-
+      <Card noPadding>
         {/* Tab Navigation */}
-        <div className="border-b border-slate-200 bg-white">
-          <nav className="flex gap-1 px-1" aria-label="Report tabs">
-            {TABS.map((tab) => {
-              const active = reportType === tab.key
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setReportType(tab.key)}
-                  className={[
-                    'relative whitespace-nowrap px-4 py-3 text-sm font-semibold transition-all',
-                    active
-                      ? 'text-blue-700'
-                      : 'text-slate-500 hover:text-slate-700',
-                  ].join(' ')}
-                >
-                  {tab.label}
-                  {active && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t" />
-                  )}
-                </button>
-              )
-            })}
-          </nav>
+        <div style={{
+          display: 'flex', gap: 0,
+          borderBottom: '1px solid #E2E8F0',
+          background: '#FAFBFC',
+          padding: '0 16px',
+          overflowX: 'auto',
+        }}>
+          {TABS.map((tab) => {
+            const active = reportType === tab.key
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setReportType(tab.key)}
+                style={{
+                  position: 'relative',
+                  padding: '14px 18px',
+                  fontSize: 13,
+                  fontWeight: active ? 600 : 500,
+                  color: active ? '#003DA5' : '#64748B',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: active ? '2px solid #003DA5' : '2px solid transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = '#334155' }}
+                onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = '#64748B' }}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
         </div>
 
         {/* Info Bar */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-5 py-2.5">
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: '1px solid #F1F5F9',
+          padding: '12px 20px',
+          background: '#fff',
+        }}>
           <div>
-            <p className="text-sm font-medium text-slate-700">{activeTab.label}</p>
-            <p className="text-xs text-slate-500">{activeTab.description}</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#0F172A', lineHeight: 1.3 }}>{activeTab.label}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748B' }}>{activeTab.description}</p>
           </div>
           {!loading && (
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-100">
+            <span style={{
+              borderRadius: 20, background: '#EFF6FF',
+              padding: '4px 14px', fontSize: 12, fontWeight: 600, color: '#003DA5',
+              border: '1px solid #BFDBFE',
+            }}>
               {data.length} {data.length === 1 ? 'Record' : 'Records'}
             </span>
           )}
@@ -265,19 +316,19 @@ export function ReportPage() {
 
         {/* Content Area */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-24">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '80px 0' }}>
             <Spinner label="" />
-            <p className="text-sm font-medium text-slate-500">Loading report data…</p>
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#64748B' }}>Loading report data…</p>
           </div>
         ) : data.length === 0 ? (
-          <div className="py-20">
+          <div style={{ padding: '80px 0' }}>
             <EmptyState
               title="No records found"
               description="No data available for this report type."
             />
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div style={{ overflowX: 'auto' }}>
             <Table
               columns={currentColumns as any}
               rows={data as any[]}
@@ -285,8 +336,7 @@ export function ReportPage() {
             />
           </div>
         )}
-      </div>
-
+      </Card>
     </div>
   )
 }

@@ -20,10 +20,6 @@ import { SessionsPage } from '@/pages/SessionsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { DevelopersPage } from '@/pages/DevelopersPage'
 import { SystemSetupPage } from '@/pages/SystemSetupPage'
-<<<<<<< HEAD
-import { UserProfilePage } from '@/pages/UserProfilePage'
-=======
->>>>>>> 6bc7d60696539327e12f61fa55cb8e57b4e53eb7
 import { WorkflowsPage } from '@/pages/WorkflowsPage'
 import { QRScannerPage } from '@/pages/QRScannerPage'
 import { EmployeeAssetPage } from '@/pages/EmployeeAssetPage'
