@@ -2,13 +2,12 @@
 
 namespace App\Modules\Report\Controllers;
 
-use App\Modules\Asset\Traits\RespondsWithJson;
+use App\Modules\Report\Services\DocumentExportService;
 use App\Modules\Report\Services\ReportService;
+use App\Modules\Asset\Traits\RespondsWithJson;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-
-use App\Modules\Report\Services\DocumentExportService;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ReportController extends Controller
@@ -32,21 +31,33 @@ class ReportController extends Controller
         }
     }
 
-    public function renderDocument(Request $request): JsonResponse
+    public function generateDocument(Request $request): BinaryFileResponse|JsonResponse
     {
-        $type     = $request->query('type');
-        $targetId = (int) $request->query('target_id');
+        $type = $request->input('type', $request->query('type'));
+        $targetId = (int) $request->input('target_id', $request->query('target_id'));
 
         if (! $type || ! $targetId) {
             return $this->error('Document type and target ID are required.', null, 422);
         }
 
         try {
-            $result = $this->exportService->resolveDocumentData($type, $targetId);
+            $result = $this->exportService->generateDocument((string) $type, $targetId);
+            $generated = $result['generated'];
 
-            return $this->success($result, 'Document template resolved successfully.');
+            return response()->download(
+                $result['absolute_path'],
+                $generated->file_name,
+                [
+                    'Content-Type' => $generated->mime_type
+                        ?? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                ],
+            );
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), null, 422);
+        } catch (\RuntimeException $e) {
+            return $this->error($e->getMessage(), null, 422);
         } catch (\Throwable $e) {
-            return $this->error('Failed to resolve document template: '.$e->getMessage(), null, 404);
+            return $this->error('Failed to generate document: '.$e->getMessage(), null, 500);
         }
     }
 

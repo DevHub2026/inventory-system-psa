@@ -3,7 +3,7 @@ import { Modal, Button, Input, Spinner, Alert } from '@/components/ui'
 import { userService } from '@/services/userService'
 import { assetService } from '@/services/assetService'
 import type { Asset, User } from '@/types'
-import { PrintableDocumentModal } from '@/components/documents/PrintableDocumentModal'
+import { GenerateDocumentModal } from '@/components/documents/GenerateDocumentModal'
 
 interface ReissueAssetModalProps {
   open: boolean
@@ -431,7 +431,7 @@ export function ReissueAssetModal({ open, onClose, asset, onSuccess }: ReissueAs
                   <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                   <rect x="6" y="14" width="12" height="8" />
                 </svg>
-                Print Re-Issuance Form
+                Generate Re-Issuance Form
               </Button>
             </div>
           </div>
@@ -493,7 +493,7 @@ export function ReissueAssetModal({ open, onClose, asset, onSuccess }: ReissueAs
       </Modal>
 
       {historyId && (
-        <PrintableDocumentModal
+        <GenerateDocumentModal
           open={printModalOpen}
           onClose={() => setPrintModalOpen(false)}
           documentType="reissuance"

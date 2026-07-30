@@ -5,7 +5,7 @@ namespace App\Modules\SystemSetup\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
 
-class UpdateDocumentTemplateRequest extends FormRequest
+class UploadDocumentTemplateRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -18,10 +18,13 @@ class UpdateDocumentTemplateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+            'file' => ['required', 'file', 'max:10240'],
             'change_notes' => ['nullable', 'string', 'max:1000'],
-            'is_default' => ['nullable', 'boolean'],
         ];
+    }
+
+    public function getFile(): UploadedFile
+    {
+        return $this->file('file');
     }
 }

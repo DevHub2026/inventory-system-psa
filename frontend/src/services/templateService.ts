@@ -12,6 +12,7 @@ export type DocumentType =
   | 'clearance'
   | 'issuance'
   | 'property_transfer'
+  | 'reissuance'
   | 'excel_export'
   | 'csv_export'
   | 'pdf_template'
@@ -22,12 +23,28 @@ export interface DocumentTypeOption {
   category: string
 }
 
-export interface SignatureBlock {
+export interface PlaceholderDefinition {
   key: string
+  token: string
   label: string
-  name: string
-  position: string
-  enabled: boolean
+  description: string
+  category: string
+  document_types: string[]
+  source: string
+  required: boolean
+  aliases: string[]
+  value_type: string
+  missing_behavior: string
+}
+
+export interface TemplateValidationResult {
+  placeholders: string[]
+  counts: Record<string, number>
+  valid: string[]
+  unknown: string[]
+  duplicates: Record<string, number>
+  is_valid: boolean
+  validation_status: string
 }
 
 export interface DocumentTemplate {
@@ -45,32 +62,38 @@ export interface DocumentTemplate {
   file_size?: number | null
   mime_type?: string | null
   extension?: string | null
-  file_url?: string | null
+  has_file?: boolean
+  is_docx_ready?: boolean
+  validation_status?: string | null
+  validation_result?: TemplateValidationResult | null
+  has_unknown_placeholders?: boolean
+  change_notes?: string | null
   uploaded_by?: number | null
+  uploaded_by_name?: string | null
   upload_date?: string | null
-  header_org_name?: string | null
-  header_office_name?: string | null
-  header_title?: string | null
-  logo_url?: string | null
-  body_template?: string | null
-  footer_text?: string | null
-  footer_notes?: string | null
-  signature_blocks?: SignatureBlock[] | null
-  paper_size?: 'A4' | 'Letter' | string
-  orientation?: 'portrait' | 'landscape' | string
-  margin_top?: number
-  margin_bottom?: number
-  margin_left?: number
-  margin_right?: number
-  font_family?: 'Arial' | 'Calibri' | 'Times New Roman' | string
-  font_size?: number
-  text_alignment?: 'left' | 'center' | 'right' | string
   created_by?: number | null
   updated_by?: number | null
   created_by_name?: string | null
   updated_by_name?: string | null
   created_at: string
   updated_at: string
+}
+
+export interface DocumentTemplateVersion {
+  id: number
+  document_template_id: number
+  version: string
+  file_name: string
+  file_size: number
+  mime_type?: string | null
+  extension?: string | null
+  validation_status?: string | null
+  validation_result?: TemplateValidationResult | null
+  has_unknown_placeholders?: boolean
+  change_notes?: string | null
+  uploaded_by?: number | null
+  uploaded_by_name?: string | null
+  created_at: string
 }
 
 export interface TemplateFilters {
@@ -80,14 +103,15 @@ export interface TemplateFilters {
   is_default?: boolean
 }
 
-export interface TemplateUploadPayload {
-  name: string
-  document_type: string
-  description?: string
-  version?: string
-  status?: string
-  is_default?: boolean
-  file?: File | null
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  window.URL.revokeObjectURL(url)
 }
 
 export const templateService = {
@@ -105,23 +129,15 @@ export const templateService = {
   },
 
   async getDocumentTypes(): Promise<DocumentTypeOption[]> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<DocumentTypeOption[]>>('/document-templates/types')
-        return unwrapData(data)
-      },
-      async () => [],
-    )
+    const { data } = await api.get<ApiResponse<DocumentTypeOption[]>>('/document-templates/types')
+    return unwrapData(data)
   },
 
-  async getByDocumentType(type: string): Promise<DocumentTemplate[]> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<DocumentTemplate[]>>(`/document-templates/type/${type}`)
-        return unwrapData(data)
-      },
-      async () => [],
-    )
+  async getPlaceholders(documentType?: string): Promise<PlaceholderDefinition[]> {
+    const { data } = await api.get<ApiResponse<PlaceholderDefinition[]>>('/document-templates/placeholders', {
+      params: documentType ? { document_type: documentType } : undefined,
+    })
+    return unwrapData(data)
   },
 
   async get(id: number): Promise<DocumentTemplate> {
@@ -129,14 +145,18 @@ export const templateService = {
     return unwrapData(data)
   },
 
-  async upload(payload: TemplateUploadPayload): Promise<DocumentTemplate> {
+  async create(payload: {
+    name: string
+    document_type: string
+    description?: string
+    change_notes?: string
+    file?: File | null
+  }): Promise<DocumentTemplate> {
     const formData = new FormData()
     formData.append('name', payload.name)
     formData.append('document_type', payload.document_type)
     if (payload.description) formData.append('description', payload.description)
-    if (payload.version) formData.append('version', payload.version)
-    if (payload.status) formData.append('status', payload.status)
-    if (payload.is_default) formData.append('is_default', '1')
+    if (payload.change_notes) formData.append('change_notes', payload.change_notes)
     if (payload.file) formData.append('file', payload.file)
 
     const { data } = await api.post<ApiResponse<DocumentTemplate>>('/document-templates', formData, {
@@ -145,18 +165,50 @@ export const templateService = {
     return unwrapData(data)
   },
 
-  async update(id: number, payload: Partial<TemplateUploadPayload>): Promise<DocumentTemplate> {
-    const formData = new FormData()
-    if (payload.name) formData.append('name', payload.name)
-    if (payload.description !== undefined) formData.append('description', payload.description ?? '')
-    if (payload.version) formData.append('version', payload.version)
-    if (payload.status) formData.append('status', payload.status)
-    if (payload.is_default !== undefined) formData.append('is_default', payload.is_default ? '1' : '0')
-    if (payload.file) formData.append('file', payload.file)
+  async updateMetadata(
+    id: number,
+    payload: { name?: string; description?: string | null; change_notes?: string | null },
+  ): Promise<DocumentTemplate> {
+    const { data } = await api.put<ApiResponse<DocumentTemplate>>(`/document-templates/${id}`, payload)
+    return unwrapData(data)
+  },
 
-    const { data } = await api.put<ApiResponse<DocumentTemplate>>(`/document-templates/${id}`, formData, {
+  async upload(id: number, file: File, changeNotes?: string): Promise<DocumentTemplate> {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (changeNotes) formData.append('change_notes', changeNotes)
+
+    const { data } = await api.post<ApiResponse<DocumentTemplate>>(`/document-templates/${id}/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
+    return unwrapData(data)
+  },
+
+  async replace(id: number, file: File, changeNotes?: string): Promise<DocumentTemplate> {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (changeNotes) formData.append('change_notes', changeNotes)
+
+    const { data } = await api.post<ApiResponse<DocumentTemplate>>(`/document-templates/${id}/replace`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return unwrapData(data)
+  },
+
+  async validate(id: number): Promise<{ template: DocumentTemplate; validation: TemplateValidationResult }> {
+    const { data } = await api.post<ApiResponse<{ template: DocumentTemplate; validation: TemplateValidationResult }>>(
+      `/document-templates/${id}/validate`,
+    )
+    return unwrapData(data)
+  },
+
+  async activate(id: number): Promise<DocumentTemplate> {
+    const { data } = await api.post<ApiResponse<DocumentTemplate>>(`/document-templates/${id}/activate`)
+    return unwrapData(data)
+  },
+
+  async deactivate(id: number): Promise<DocumentTemplate> {
+    const { data } = await api.post<ApiResponse<DocumentTemplate>>(`/document-templates/${id}/deactivate`)
     return unwrapData(data)
   },
 
@@ -164,42 +216,74 @@ export const templateService = {
     await api.delete(`/document-templates/${id}`)
   },
 
-  async download(id: number): Promise<Blob> {
-    const response = await api.get(`/document-templates/${id}/download`, {
+  async download(id: number, filename?: string): Promise<void> {
+    const response = await api.get(`/document-templates/${id}/download`, { responseType: 'blob' })
+    triggerBlobDownload(response.data, filename || `template-${id}.docx`)
+  },
+
+  async versions(id: number): Promise<DocumentTemplateVersion[]> {
+    const { data } = await api.get<ApiResponse<DocumentTemplateVersion[]>>(`/document-templates/${id}/versions`)
+    return unwrapData(data)
+  },
+
+  async restoreVersion(id: number, versionId: number): Promise<DocumentTemplate> {
+    const { data } = await api.post<ApiResponse<DocumentTemplate>>(
+      `/document-templates/${id}/versions/${versionId}/restore`,
+    )
+    return unwrapData(data)
+  },
+
+  async downloadVersion(id: number, versionId: number, filename?: string): Promise<void> {
+    const response = await api.get(`/document-templates/${id}/versions/${versionId}/download`, {
       responseType: 'blob',
     })
-    return response.data
+    triggerBlobDownload(response.data, filename || `template-v-${versionId}.docx`)
   },
 
-  async preview(id: number): Promise<Blob> {
-    const response = await api.get(`/document-templates/${id}/preview`, {
-      responseType: 'blob',
-    })
-    return response.data
-  },
+  async generateDocument(type: string, targetId: number, filename?: string): Promise<void> {
+    try {
+      const response = await api.post(
+        '/documents/generate',
+        { type, target_id: targetId },
+        { responseType: 'blob' },
+      )
 
-  async duplicate(id: number): Promise<DocumentTemplate> {
-    const { data } = await api.post<ApiResponse<DocumentTemplate>>(`/document-templates/${id}/duplicate`)
-    return unwrapData(data)
-  },
+      const disposition = response.headers['content-disposition'] as string | undefined
+      let resolvedName = filename || `${type}-${targetId}.docx`
+      if (disposition) {
+        const match = /filename="?([^"]+)"?/i.exec(disposition)
+        if (match?.[1]) resolvedName = match[1]
+      }
 
-  async setDefault(id: number): Promise<DocumentTemplate> {
-    const { data } = await api.post<ApiResponse<DocumentTemplate>>(`/document-templates/${id}/set-default`)
-    return unwrapData(data)
-  },
+      if (response.data instanceof Blob && response.data.type.includes('application/json')) {
+        const text = await response.data.text()
+        const parsed = JSON.parse(text) as { message?: string }
+        throw new Error(parsed.message || 'Document generation failed.')
+      }
 
-  async updateContent(id: number, payload: Partial<DocumentTemplate>): Promise<DocumentTemplate> {
-    const { data } = await api.put<ApiResponse<DocumentTemplate>>(`/document-templates/${id}`, payload)
-    return unwrapData(data)
-  },
-
-  async restoreDefault(id: number): Promise<DocumentTemplate> {
-    const { data } = await api.post<ApiResponse<DocumentTemplate>>(`/document-templates/${id}/restore-default`)
-    return unwrapData(data)
-  },
-
-  async toggleStatus(id: number): Promise<DocumentTemplate> {
-    const { data } = await api.post<ApiResponse<DocumentTemplate>>(`/document-templates/${id}/toggle-status`)
-    return unwrapData(data)
+      triggerBlobDownload(response.data, resolvedName)
+    } catch (error: unknown) {
+      if (error instanceof Error && !(error as { response?: unknown }).response) {
+        throw error
+      }
+      const axiosError = error as { response?: { data?: Blob; status?: number }; message?: string }
+      if (axiosError.response?.data instanceof Blob) {
+        try {
+          const text = await axiosError.response.data.text()
+          const parsed = JSON.parse(text) as { message?: string }
+          throw new Error(
+            parsed.message ||
+              'No active DOCX template is configured for this document type. Please contact a system administrator.',
+          )
+        } catch (inner: unknown) {
+          if (inner instanceof Error && inner.message && !inner.message.includes('JSON')) {
+            throw inner
+          }
+        }
+      }
+      throw error instanceof Error
+        ? error
+        : new Error('Document generation failed.')
+    }
   },
 }

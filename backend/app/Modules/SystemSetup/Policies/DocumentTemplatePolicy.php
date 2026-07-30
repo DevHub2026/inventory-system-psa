@@ -48,9 +48,19 @@ class DocumentTemplatePolicy
         return $user !== null;
     }
 
-    public function preview(?User $user, DocumentTemplate $template): bool
+    public function upload(?User $user, DocumentTemplate $template): bool
     {
-        return $user !== null;
+        return $this->isAdmin($user);
+    }
+
+    public function activate(?User $user, DocumentTemplate $template): bool
+    {
+        return $this->isAdmin($user);
+    }
+
+    public function validateTemplate(?User $user, DocumentTemplate $template): bool
+    {
+        return $this->isAdmin($user);
     }
 
     public function duplicate(?User $user, DocumentTemplate $template): bool

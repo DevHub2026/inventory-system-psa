@@ -2,12 +2,14 @@
 
 namespace App\Modules\SystemSetup\Models;
 
+use App\Models\User;
 use App\Modules\SystemSetup\Enums\DocumentType;
 use App\Modules\SystemSetup\Enums\TemplateStatus;
+use App\Modules\SystemSetup\Services\PlaceholderRegistry;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
-use App\Models\User;
 
 class DocumentTemplate extends Model
 {
@@ -25,25 +27,12 @@ class DocumentTemplate extends Model
         'file_size',
         'mime_type',
         'extension',
+        'validation_status',
+        'validation_result',
+        'has_unknown_placeholders',
+        'change_notes',
         'uploaded_by',
         'upload_date',
-        'header_org_name',
-        'header_office_name',
-        'header_title',
-        'logo_url',
-        'body_template',
-        'footer_text',
-        'footer_notes',
-        'signature_blocks',
-        'paper_size',
-        'orientation',
-        'margin_top',
-        'margin_bottom',
-        'margin_left',
-        'margin_right',
-        'font_family',
-        'font_size',
-        'text_alignment',
         'created_by',
         'updated_by',
     ];
@@ -51,28 +40,39 @@ class DocumentTemplate extends Model
     protected function casts(): array
     {
         return [
-            'is_default'       => 'boolean',
-            'file_size'        => 'integer',
-            'upload_date'      => 'datetime',
-            'status'           => TemplateStatus::class,
-            'document_type'    => DocumentType::class,
-            'signature_blocks' => 'array',
-            'margin_top'       => 'float',
-            'margin_bottom'    => 'float',
-            'margin_left'      => 'float',
-            'margin_right'     => 'float',
-            'font_size'        => 'integer',
+            'is_default' => 'boolean',
+            'file_size' => 'integer',
+            'upload_date' => 'datetime',
+            'status' => TemplateStatus::class,
+            'document_type' => DocumentType::class,
+            'validation_result' => 'array',
+            'has_unknown_placeholders' => 'boolean',
         ];
     }
 
-    public function createdByUser()
+    public function createdByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function updatedByUser()
+    public function updatedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function uploader(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(DocumentTemplateVersion::class)->orderByDesc('id');
+    }
+
+    public function generatedDocuments(): HasMany
+    {
+        return $this->hasMany(GeneratedDocument::class);
     }
 
     public function scopeActive($query)
@@ -93,7 +93,7 @@ class DocumentTemplate extends Model
     }
 
     /**
-     * Get the default active template for a given document type.
+     * Default active template for spreadsheet exports (legacy path).
      */
     public static function getDefaultFor(DocumentType|string $type): ?self
     {
@@ -108,35 +108,31 @@ class DocumentTemplate extends Model
     }
 
     /**
-     * Get all active templates for a document type.
+     * Active DOCX template used for official document generation.
      */
-    public static function getActiveFor(DocumentType|string $type): self
+    public static function getActiveDocxFor(DocumentType|string $type): ?self
     {
         $value = $type instanceof DocumentType ? $type->value : $type;
 
-        return self::query()
-            ->where('document_type', $value)
-            ->where('status', TemplateStatus::ACTIVE->value)
-            ->orderByDesc('is_default')
-            ->orderByDesc('upload_date')
-            ->get();
-    }
-
-    /**
-     * Full URL to the stored template file.
-     */
-    public function getFileUrlAttribute(): ?string
-    {
-        if (! $this->file_path) {
+        if (! in_array($value, PlaceholderRegistry::officialDocumentTypes(), true)) {
             return null;
         }
 
-        return asset('storage/'.$this->file_path);
+        $query = self::query()
+            ->where('document_type', $value)
+            ->where('status', TemplateStatus::ACTIVE->value)
+            ->where('extension', 'docx')
+            ->whereNotNull('file_path')
+            ->where('has_unknown_placeholders', false);
+
+        $default = (clone $query)->where('is_default', true)->latest('updated_at')->first();
+        if ($default) {
+            return $default;
+        }
+
+        return $query->latest('updated_at')->first();
     }
 
-    /**
-     * Human-readable status label.
-     */
     public function getStatusLabelAttribute(): string
     {
         return $this->status instanceof TemplateStatus
@@ -144,11 +140,20 @@ class DocumentTemplate extends Model
             : ($this->status === TemplateStatus::ACTIVE->value ? 'Active' : 'Inactive');
     }
 
-    /**
-     * Check if this template is the default.
-     */
-    public function getIsDefaultLabelAttribute(): string
+    public function isOfficialDocxType(): bool
     {
-        return $this->is_default ? 'Default' : '';
+        $type = $this->document_type instanceof DocumentType
+            ? $this->document_type->value
+            : (string) $this->document_type;
+
+        return in_array($type, PlaceholderRegistry::officialDocumentTypes(), true);
+    }
+
+    public function isDocxReady(): bool
+    {
+        return $this->extension === 'docx'
+            && filled($this->file_path)
+            && ! $this->has_unknown_placeholders
+            && $this->validation_status === 'valid';
     }
 }

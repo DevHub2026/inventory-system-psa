@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Modules\SystemSetup\Models\DocumentTemplate;
-use App\Modules\SystemSetup\Services\DocumentTemplateService;
 use Illuminate\Database\Seeder;
 
 class DocumentTemplateSeeder extends Seeder
@@ -14,67 +13,47 @@ class DocumentTemplateSeeder extends Seeder
             [
                 'name' => 'Borrow Receipt',
                 'document_type' => 'borrow_receipt',
-                'description' => 'Official property borrow receipt template used when employees borrow equipment or assets.',
-                'version' => '1.0',
-                'status' => 'active',
-                'is_default' => true,
+                'description' => 'Official property borrow receipt. Upload a DOCX file containing supported placeholders.',
             ],
             [
                 'name' => 'Return Receipt',
                 'document_type' => 'return_receipt',
-                'description' => 'Official return receipt template issued when borrowed property is returned to inventory.',
-                'version' => '1.0',
-                'status' => 'active',
-                'is_default' => true,
+                'description' => 'Official return receipt. Upload a DOCX file containing supported placeholders.',
             ],
             [
-                'name' => 'Asset Issuance Receipt',
+                'name' => 'Asset Issuance Receipt (PAR)',
                 'document_type' => 'issuance',
-                'description' => 'Property Acknowledgement Receipt (PAR) for permanent property issuance to employees.',
-                'version' => '1.0',
-                'status' => 'active',
-                'is_default' => true,
+                'description' => 'Property Acknowledgement Receipt (PAR). Upload the official DOCX form with placeholders.',
             ],
             [
                 'name' => 'Property Transfer Receipt',
                 'document_type' => 'property_transfer',
-                'description' => 'Property transfer report template for transferring asset accountability between departments or custodians.',
-                'version' => '1.0',
-                'status' => 'active',
-                'is_default' => true,
+                'description' => 'Property transfer report. Upload a DOCX file containing supported placeholders.',
             ],
             [
                 'name' => 'Clearance Certificate',
                 'document_type' => 'clearance',
-                'description' => 'Property clearance certificate verifying an employee has no outstanding property accountabilities.',
-                'version' => '1.0',
-                'status' => 'active',
-                'is_default' => true,
+                'description' => 'Property clearance certificate. Upload a DOCX file containing supported placeholders.',
             ],
             [
                 'name' => 'Asset Re-Issuance Form',
                 'document_type' => 'reissuance',
-                'description' => 'Official form for transferring permanent asset accountability between employees.',
-                'version' => '1.0',
-                'status' => 'active',
-                'is_default' => true,
+                'description' => 'Asset re-issuance form. Upload a DOCX file containing supported placeholders.',
             ],
         ];
 
         foreach ($templates as $data) {
-            $preset = DocumentTemplateService::getDefaultPreset($data['document_type']);
-            DocumentTemplate::firstOrCreate(
+            DocumentTemplate::query()->firstOrCreate(
                 ['document_type' => $data['document_type']],
-                array_merge($data, $preset, [
-                    'paper_size' => 'A4',
-                    'orientation' => 'portrait',
-                    'margin_top' => 25,
-                    'margin_bottom' => 25,
-                    'margin_left' => 25,
-                    'margin_right' => 25,
-                    'font_family' => 'Arial',
-                    'font_size' => 12,
-                    'text_alignment' => 'left',
+                array_merge($data, [
+                    'version' => '1.0',
+                    'status' => 'inactive',
+                    'is_default' => false,
+                    'file_path' => null,
+                    'file_name' => null,
+                    'file_size' => 0,
+                    'validation_status' => null,
+                    'has_unknown_placeholders' => false,
                 ])
             );
         }
