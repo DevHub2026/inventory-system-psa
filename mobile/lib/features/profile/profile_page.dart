@@ -86,7 +86,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       if (!_loading && _profileData != null) ...[
                         _buildStats(),
                         const SizedBox(height: AppTheme.space4),
-    ],
+                      ],
                       _buildInfoSection(),
                       const SizedBox(height: AppTheme.space4),
                       _buildActions(),
@@ -413,7 +413,6 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               child: Icon(icon, size: 18, color: c),
             ),
-<<<<<<< HEAD
             const SizedBox(width: AppTheme.space3),
             Expanded(
               child: Text(
@@ -426,12 +425,6 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
-=======
-            const SizedBox(width: 14),
-            Expanded(child: Text(label,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: c))),
-            const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
->>>>>>> 6bc7d60696539327e12f61fa55cb8e57b4e53eb7
           ],
         ),
       ),

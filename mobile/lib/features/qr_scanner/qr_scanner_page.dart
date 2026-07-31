@@ -14,14 +14,10 @@ class QrScannerPage extends StatefulWidget {
 }
 
 class _QrScannerPageState extends State<QrScannerPage> with WidgetsBindingObserver {
-  final MobileScannerController _controller = MobileScannerController(
-    detectionSpeed: DetectionSpeed.normal,
-    facing: CameraFacing.back,
-    formats: const [BarcodeFormat.qrCode, BarcodeFormat.code128, BarcodeFormat.code39],
-  );
   final AssetService _assetService = AssetService();
+  MobileScannerController? _controller;
 
-  bool _scanning = true;
+  bool _scanning = false;
   bool _processing = false;
   bool _torchOn = false;
 
@@ -34,17 +30,33 @@ class _QrScannerPageState extends State<QrScannerPage> with WidgetsBindingObserv
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && mounted) {
-      _controller.start();
-    } else if (state == AppLifecycleState.paused) {
-      _controller.stop();
+    if (_controller == null) return;
+    
+    if (state == AppLifecycleState.paused) {
+      _controller!.stop();
+    } else if (state == AppLifecycleState.resumed && _scanning && !_processing) {
+      _controller!.start();
     }
+  }
+
+  void _startScanning() {
+    _controller = MobileScannerController(
+      detectionSpeed: DetectionSpeed.normal,
+      facing: CameraFacing.back,
+      formats: const [BarcodeFormat.qrCode, BarcodeFormat.code128, BarcodeFormat.code39],
+    );
+    
+    setState(() {
+      _scanning = true;
+      _processing = false;
+    });
+    _controller!.start();
   }
 
   void _onDetect(BarcodeCapture capture) {
@@ -56,10 +68,9 @@ class _QrScannerPageState extends State<QrScannerPage> with WidgetsBindingObserv
 
   Future<void> _handleScan(String code) async {
     setState(() { _scanning = false; _processing = true; });
-    await _controller.stop();
+    await _controller?.stop();
 
     try {
-      // Use the scan endpoint — returns borrowing/asset info
       final result = await _assetService.scanAsset(code);
       if (mounted) {
         await _showScanResult(result, code);
@@ -96,7 +107,6 @@ class _QrScannerPageState extends State<QrScannerPage> with WidgetsBindingObserv
         },
       ),
     );
-    // If sheet dismissed without action
     if (mounted && _scanning == false) _resetScan();
   }
 
@@ -132,7 +142,7 @@ class _QrScannerPageState extends State<QrScannerPage> with WidgetsBindingObserv
 
   void _resetScan() {
     setState(() { _scanning = true; _processing = false; });
-    _controller.start();
+    _controller?.start();
   }
 
   @override
@@ -150,22 +160,32 @@ class _QrScannerPageState extends State<QrScannerPage> with WidgetsBindingObserv
           fontWeight: FontWeight.w700,
         ),
         actions: [
-          IconButton(
-            icon: Icon(_torchOn ? Icons.flash_on : Icons.flash_off, color: Colors.white),
-            onPressed: () async {
-              await _controller.toggleTorch();
-              setState(() => _torchOn = !_torchOn);
-            },
-          ),
+          if (_scanning && _controller != null)
+            IconButton(
+              icon: Icon(_torchOn ? Icons.flash_on : Icons.flash_off, color: Colors.white),
+              onPressed: () async {
+                await _controller!.toggleTorch();
+                setState(() => _torchOn = !_torchOn);
+              },
+            ),
         ],
       ),
       body: Stack(
         children: [
-          // Camera view
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
-          ),
+          // Camera view - only show when scanning and controller exists
+          if (_scanning && !_processing && _controller != null)
+            MobileScanner(
+              controller: _controller!,
+              onDetect: _onDetect,
+            )
+          else
+            // Black background when not scanning
+            Container(
+              color: Colors.black,
+              child: const Center(
+                child: Icon(Icons.camera_alt, size: 64, color: Colors.white24),
+              ),
+            ),
           // Dark overlay with cutout
           _buildOverlay(),
           // Status indicator
@@ -190,7 +210,6 @@ class _QrScannerPageState extends State<QrScannerPage> with WidgetsBindingObserv
   }
 
   Widget _buildOverlay() {
-    // Calculate responsive frame size (75% of screen width, max 280px)
     final screenWidth = MediaQuery.of(context).size.width;
     final frameSize = (screenWidth * 0.75).clamp(200.0, 280.0);
 
@@ -223,6 +242,25 @@ class _QrScannerPageState extends State<QrScannerPage> with WidgetsBindingObserv
               height: frameSize,
               child: CustomPaint(painter: _CornerPainter()),
             ),
+            const SizedBox(height: 24),
+            // Start scanning button - show when not scanning
+            if (!_scanning && !_processing)
+              ElevatedButton(
+                onPressed: _startScanning,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.camera_alt, size: 24),
+                    const SizedBox(width: 12),
+                    const Text('Start Scanning', style: TextStyle(fontSize: 16)),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -242,7 +280,6 @@ class _ScanOverlayPainter extends CustomPainter {
     final cy = size.height / 2;
     final frameLeft = cx - frameSize / 2;
     final frameTop = cy - frameSize / 2;
-    // Draw dark overlay with transparent frame
     final path = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
       ..addRRect(RRect.fromRectAndRadius(
@@ -267,20 +304,16 @@ class _CornerPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     const r = 12.0;
     const len = 28.0;
-    // Top-left
     canvas.drawArc(const Rect.fromLTWH(0, 0, r * 2, r * 2), 3.14159, 0.5, false, paint);
-    canvas.drawLine(const Offset(r, 0), const Offset(r + len, 0), paint);
-    canvas.drawLine(const Offset(0, r), const Offset(0, r + len), paint);
-    // Top-right
+    canvas.drawLine(const Offset(r, 0), Offset(r + len, 0), paint);
+    canvas.drawLine(const Offset(0, r), Offset(0, r + len), paint);
     final tr = Offset(size.width - r * 2, 0.0);
     canvas.drawArc(Rect.fromLTWH(tr.dx, tr.dy, r * 2, r * 2), -0.5, 0.5, false, paint);
     canvas.drawLine(Offset(size.width - r - len, 0), Offset(size.width - r, 0), paint);
     canvas.drawLine(Offset(size.width, r), Offset(size.width, r + len), paint);
-    // Bottom-left
     canvas.drawArc(Rect.fromLTWH(0, size.height - r * 2, r * 2, r * 2), 1.57079, 0.5, false, paint);
     canvas.drawLine(Offset(0, size.height - r - len), Offset(0, size.height - r), paint);
     canvas.drawLine(Offset(r, size.height), Offset(r + len, size.height), paint);
-    // Bottom-right
     canvas.drawArc(Rect.fromLTWH(size.width - r * 2, size.height - r * 2, r * 2, r * 2), 0, 0.5, false, paint);
     canvas.drawLine(Offset(size.width - r - len, size.height), Offset(size.width - r, size.height), paint);
     canvas.drawLine(Offset(size.width, size.height - r - len), Offset(size.width, size.height - r), paint);

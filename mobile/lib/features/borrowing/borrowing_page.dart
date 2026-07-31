@@ -306,7 +306,6 @@ class _BorrowingPageState extends State<BorrowingPage> {
   }
 
   Widget _buildBorrowingCard(Borrowing borrowing) {
-<<<<<<< HEAD
     final isOverdue = borrowing.dueDate != null &&
         DateTime.parse(borrowing.dueDate!).isBefore(DateTime.now());
 
@@ -320,22 +319,6 @@ class _BorrowingPageState extends State<BorrowingPage> {
             builder: (_) => BorrowingDetailPage(borrowingId: borrowing.id),
           ),
         ).then((_) => _loadBorrowings(refresh: true)),
-=======
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => BorrowingDetailPage(borrowingId: borrowing.id)),
-      ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: AppTheme.cardColor,
-          borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-          border: Border.all(color: AppTheme.borderColor),
-          boxShadow: const [BoxShadow(color: AppTheme.shadowColor, blurRadius: 4, offset: Offset(0, 1))],
-        ),
->>>>>>> 6bc7d60696539327e12f61fa55cb8e57b4e53eb7
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.space3),
           child: Column(
