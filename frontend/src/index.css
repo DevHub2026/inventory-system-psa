@@ -1,9 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
 @import "tailwindcss";
 
-/* ============================================================
-   TAILWIND v4 THEME TOKENS
-   ============================================================ */
 @theme {
   /* PSA Blue scale */
   --color-brand-50:  #eef4ff;
@@ -195,7 +192,7 @@ h5 { font-size: var(--text-card-title);    font-weight: 500; }
 h6 { font-size: var(--text-secondary);     font-weight: 500; }
 
 /*
- * Do NOT add a blanket p { color } rule here �
+ * Do NOT add a blanket p { color } rule here
  * it overrides component inline styles and Tailwind text-color utilities.
  */
 
@@ -323,13 +320,13 @@ input[type="search"]::-webkit-search-results-decoration {
 }
 
 /* ============================================================
-   12. PSA SIDEBAR � layout engine
+   12. PSA SIDEBAR — layout engine
    ============================================================
    The sidebar is ALWAYS a flex child in the app shell row.
    On desktop (= 768px): position is unset (static in flow).
-     ? Takes its 260px; main column fills the rest with flex:1.
+     → Takes its 260px; main column fills the rest with flex:1.
    On mobile  (< 768px): position is fixed; overlays content.
-     ? Slides in/out with transform.
+     → Slides in/out with transform.
 
    Using @layer ensures these rules have higher priority than
    Tailwind utilities and won't be reset by @import "tailwindcss".
@@ -339,7 +336,7 @@ input[type="search"]::-webkit-search-results-decoration {
     width: 260px;
     flex-shrink: 0;
     height: 100%;
-    /* position is unset on desktop � static in flex flow */
+    /* position is unset on desktop — static in flex flow */
     transition: transform 0.22s ease-in-out;
   }
 }
@@ -359,6 +356,27 @@ input[type="search"]::-webkit-search-results-decoration {
       transform: translateX(0) !important;
     }
   }
+}
+
+/* Hide scrollbar but keep scrolling functionality */
+.psa-sidebar nav {
+  overflow-y: scroll !important;
+  scrollbar-width: none !important;  /* Firefox */
+  -ms-overflow-style: none !important;  /* IE and Edge */
+}
+
+.psa-sidebar nav::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;  /* Chrome, Safari, Opera */
+}
+
+.psa-sidebar nav::-webkit-scrollbar-track {
+  display: none !important;
+}
+
+.psa-sidebar nav::-webkit-scrollbar-thumb {
+  display: none !important;
 }
 
 /* ============================================================
@@ -387,6 +405,9 @@ input[type="search"]::-webkit-search-results-decoration {
 @media (min-width: 1024px) {
   .lg\:\!grid-cols-2  { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
+
+/* ============================================================
+   15. AUTH PAGES
    ============================================================ */
 
 html:has(.auth-page),
@@ -866,4 +887,3 @@ html:has(.auth-page) #root {
   .auth-input { height: 46px; }
   .auth-submit { height: 46px; }
 }
-  

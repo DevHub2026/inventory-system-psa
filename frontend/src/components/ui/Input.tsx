@@ -34,7 +34,6 @@ export function Input({ label, error, helperText, className, id, ...props }: Inp
           'transition-colors duration-150',
           'focus:border-[#0B3D91] focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/15',
           'disabled:cursor-not-allowed disabled:bg-[#F8FAFC] disabled:text-[#94a3b8]',
-          'read-only:bg-[#F8FAFC] read-only:text-[#64748b]',
           error && 'border-[#C62828] focus:ring-[#C62828]/15',
           className,
         )}

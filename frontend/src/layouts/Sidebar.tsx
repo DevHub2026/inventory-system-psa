@@ -155,7 +155,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
         />
       )}
 
-      <aside style={sidebarStyle}>
+      <aside className="psa-sidebar" style={sidebarStyle}>
 
         {/* ── Brand header ── */}
         <div style={{
@@ -168,10 +168,11 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
           <div style={{
             display: 'grid', width: 44, height: 44, flexShrink: 0,
             placeItems: 'center', borderRadius: '50%',
-            background: 'transparent',
-            border: 'none',
+            background: '#ffffff',
+            border: '2px solid rgba(255,255,255,0.2)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
           }}>
-            <img src={logo} alt="PSA" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+            <img src={logo} alt="PSA" style={{ width: 36, height: 36, objectFit: 'contain' }} />
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#ffffff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -200,7 +201,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
         </div>
 
         {/* ── Navigation ── */}
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }} aria-label="Main navigation">
+        <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'scroll', scrollbarWidth: 'none', msOverflowStyle: 'none' }} aria-label="Main navigation">
           {NAV_GROUPS.map((group) => {
             const groupLinks = visibleLinks.filter((l) => group.paths.includes(l.to))
             if (groupLinks.length === 0) return null
@@ -330,6 +331,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
             <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.60)' }}>Sign out</div>
           </button>
         </div>
+
       </aside>
     </>
   )

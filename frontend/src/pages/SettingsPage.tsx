@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { KeyRound, User, Mail, Lock, Eye, EyeOff, Shield, Building2, Hash, Check, X } from 'lucide-react'
 import { Input, Button, Alert } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
@@ -231,10 +231,17 @@ export function SettingsPage() {
     setIsSaving(true); setMessage(null)
     try {
       const updated = await authService.updateProfile(profileForm)
-      setUser(updated)
+      // Ensure the new name is set in the user object even if the backend
+      // doesn't return it in the response
+      const updatedUser = {
+        ...updated,
+        name: profileForm.name?.trim() || updated.name,
+        full_name: profileForm.name?.trim() || updated.full_name,
+      }
+      setUser(updatedUser)
       setProfileForm({
-        name:  displayName(updated),
-        email: updated.email || '',
+        name:  profileForm.name?.trim() || displayName(updatedUser),
+        email: updatedUser.email || '',
       })
       setIsEditing(false)
       setMessage({ type: 'success', text: 'Profile updated successfully.' })
@@ -257,13 +264,16 @@ export function SettingsPage() {
     } finally { setIsSaving(false) }
   }
 
-  const name     = displayName(user)
-  const initials = name
-    .split(' ')
-    .filter((_, i, a) => i === 0 || i === a.length - 1)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
+  const name = useMemo(() => displayName(user), [user?.id, user?.name, user?.full_name, user?.first_name, user?.last_name])
+  const initials = useMemo(() => {
+    const n = name
+    return n
+      .split(' ')
+      .filter((_, i, a) => i === 0 || i === a.length - 1)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase()
+  }, [name])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 820, paddingBottom: 32 }}>

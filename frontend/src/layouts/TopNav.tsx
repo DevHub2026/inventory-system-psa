@@ -1,9 +1,7 @@
-import { LogOut, Menu, Search } from 'lucide-react'
+import { Menu, Search } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { displayName } from '@/types'
-import { getUserRoleCategory } from '@/utils/roleHelpers'
 import { NotificationBell } from '@/components/NotificationBell'
 
 interface TopNavProps {
@@ -26,17 +24,11 @@ const PAGE_TITLES: Record<string, string> = {
 }
 
 export function TopNav({ onMenuClick }: TopNavProps) {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const { pathname }     = useLocation()
   const navigate         = useNavigate()
   const [search, setSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
-  const [signOutHover, setSignOutHover] = useState(false)
-
-  const role      = getUserRoleCategory(user)
-  const roleLabel = role ? role[0].toUpperCase() + role.slice(1) : 'Account'
-  const name      = displayName(user)
-  const initials  = name.slice(0, 1).toUpperCase()
 
   const submitSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -104,7 +96,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
         </div>
       </div>
 
-      {/* ── Right: search + bell + user + sign-out ── */}
+      {/* ── Right: search + bell ── */}
       <div style={{ display: 'flex', flexShrink: 0, alignItems: 'center', gap: 8 }}>
 
         {/* Search bar — md+ */}
@@ -131,7 +123,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             style={{
-              width: 140,
+              width: 180,
               background: 'transparent',
               border: 'none',
               outline: 'none',
@@ -146,73 +138,6 @@ export function TopNav({ onMenuClick }: TopNavProps) {
 
         {/* Notification bell */}
         <NotificationBell />
-
-        {/* Divider */}
-        <span
-          className="hidden sm:block"
-          style={{ width: 1, height: 22, background: '#e2e8f0', flexShrink: 0 }}
-          aria-hidden="true"
-        />
-
-        {/* User avatar + name */}
-        <div
-          className="hidden sm:flex"
-          style={{ alignItems: 'center', gap: 8 }}
-        >
-          {/* Avatar */}
-          <span style={{
-            display: 'grid', width: 30, height: 30, flexShrink: 0,
-            placeItems: 'center', borderRadius: '50%',
-            background: '#0B3D91',
-            fontSize: 11, fontWeight: 700, color: '#ffffff',
-            letterSpacing: '0.02em',
-          }}>
-            {initials}
-          </span>
-          {/* Name + role — lg+ */}
-          <div className="hidden lg:block" style={{ lineHeight: 1.25 }}>
-            <div style={{
-              maxWidth: 130, fontSize: 13, fontWeight: 600, color: '#1e293b',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {name}
-            </div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
-              {roleLabel}
-            </div>
-          </div>
-        </div>
-
-        {/* Sign out button */}
-        <button
-          type="button"
-          onClick={() => void logout()}
-          title="Sign out"
-          onMouseEnter={() => setSignOutHover(true)}
-          onMouseLeave={() => setSignOutHover(false)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            height: 34,
-            paddingInline: 12,
-            borderRadius: 8,
-            border: signOutHover ? '1px solid #fecaca' : '1px solid #e2e8f0',
-            background: signOutHover ? '#fef2f2' : '#ffffff',
-            color: signOutHover ? '#dc2626' : '#64748b',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            transition: 'all 0.15s',
-            boxSizing: 'border-box',
-            flexShrink: 0,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <LogOut size={14} style={{ flexShrink: 0 }} aria-hidden="true" />
-          <span className="hidden sm:inline">Sign out</span>
-        </button>
 
       </div>
     </header>

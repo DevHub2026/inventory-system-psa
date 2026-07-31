@@ -1,5 +1,6 @@
 import { teamMembers, type TeamMember } from '@/data/developers'
 import psaLogo from '@/assets/logo.png'
+import { Users, Code2, GraduationCap, Award } from 'lucide-react'
 
 // ─── Logo imports ─────────────────────────────────────────────────────────────
 const rmmcMod = import.meta.glob('../assets/rmmc-logo.png', { eager: true }) as Record<string, { default: string }>

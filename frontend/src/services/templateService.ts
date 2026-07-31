@@ -37,6 +37,14 @@ export interface PlaceholderDefinition {
   missing_behavior: string
 }
 
+export interface SignatureBlock {
+  key: string
+  label: string
+  name?: string | null
+  position?: string | null
+  enabled: boolean
+}
+
 export interface TemplateValidationResult {
   placeholders: string[]
   counts: Record<string, number>
@@ -77,6 +85,24 @@ export interface DocumentTemplate {
   updated_by_name?: string | null
   created_at: string
   updated_at: string
+  // Template customization properties
+  logo_url?: string | null
+  header_org_name?: string | null
+  header_office_name?: string | null
+  header_title?: string | null
+  body_template?: string | null
+  footer_text?: string | null
+  footer_notes?: string | null
+  signature_blocks?: SignatureBlock[] | null
+  font_family?: string | null
+  font_size?: number | null
+  text_alignment?: string | null
+  orientation?: string | null
+  paper_size?: string | null
+  margin_top?: number | null
+  margin_bottom?: number | null
+  margin_left?: number | null
+  margin_right?: number | null
 }
 
 export interface DocumentTemplateVersion {
