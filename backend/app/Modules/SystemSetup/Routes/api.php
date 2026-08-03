@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('document-templates/types', [DocumentTemplateController::class, 'documentTypes']);
+    Route::get('document-templates/usage-contexts', [DocumentTemplateController::class, 'usageContexts']);
     Route::get('document-templates/placeholders', [DocumentTemplateController::class, 'placeholders']);
     Route::get('document-templates/type/{type}', [DocumentTemplateController::class, 'byType']);
 

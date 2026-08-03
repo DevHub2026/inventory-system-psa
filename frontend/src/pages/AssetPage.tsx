@@ -13,6 +13,7 @@ import { assetService, type UpdateAssetPayload } from '@/services/assetService'
 import { setupService, type SetupRecord } from '@/services/setupService'
 import { api, unwrapData } from '@/services/api'
 import { reservationService } from '@/services/reservationService'
+import { borrowingService } from '@/services/borrowingService'
 import { useAuth } from '@/hooks/useAuth'
 import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
 import { SharedQrScanner } from '@/components/qr/SharedQrScanner'
@@ -1009,7 +1010,7 @@ export function AssetPage() {
         onCancel={() => setReleaseAsset(null)}
         onConfirm={() => {
           if (!releaseAsset || !releaseAsset.reservation_context) return
-          void reservationService.release(releaseAsset.reservation_context.id, releaseAsset.id).then(() => {
+          void borrowingService.releaseFromReservation(releaseAsset.reservation_context.id).then(() => {
             setReleaseAsset(null)
             setMessage('Asset released and marked as currently borrowed.')
             notifyDataChanged('all')

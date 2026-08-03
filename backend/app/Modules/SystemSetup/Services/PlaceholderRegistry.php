@@ -128,16 +128,32 @@ class PlaceholderRegistry
     }
 
     /**
+     * Return placeholder definitions for API consumption.
+     *
+     * Accepts either a document_type string (legacy) or a usage_context key.
+     * When a usage_context is supplied it is resolved to the matching document_type
+     * via TemplateUsageContext, so placeholders are filtered by the underlying type.
+     *
      * @return list<array<string, mixed>>
      */
     public static function forApi(?string $documentType = null): array
     {
+        // Allow callers to pass a usage_context value (e.g. BORROWING_RECEIPT) directly;
+        // resolve it to the underlying document_type so filtering works correctly.
+        $resolvedType = $documentType;
+        if ($documentType !== null) {
+            $ctx = \App\Modules\SystemSetup\Enums\TemplateUsageContext::tryFrom($documentType);
+            if ($ctx !== null) {
+                $resolvedType = $ctx->documentType();
+            }
+        }
+
         $defs = self::definitions();
 
-        if ($documentType) {
+        if ($resolvedType) {
             $defs = array_values(array_filter(
                 $defs,
-                fn (array $d) => in_array($documentType, $d['document_types'], true)
+                fn (array $d) => in_array($resolvedType, $d['document_types'], true)
             ));
         }
 
@@ -156,6 +172,17 @@ class PlaceholderRegistry
                 'missing_behavior' => $d['missing_behavior'],
             ];
         }, $defs);
+    }
+
+    /**
+     * Return only placeholders valid for the given usage_context key.
+     * Delegates to forApi() via the usage_context → document_type resolution.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function forUsageContext(string $usageContext): array
+    {
+        return self::forApi($usageContext);
     }
 
     /**

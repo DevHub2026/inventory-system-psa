@@ -45,6 +45,8 @@ interface BackendReservation {
   employee_name?: string | null
   receipt_code?: string
   receipt_payload?: string
+  auto_released?: boolean
+  borrowing_ids?: number[]
 }
 
 function mapReservation(reservation: BackendReservation): Reservation {
@@ -68,6 +70,8 @@ function mapReservation(reservation: BackendReservation): Reservation {
     asset_numbers: reservation.asset_numbers ?? [],
     receipt_code: reservation.receipt_code,
     receipt_payload: reservation.receipt_payload,
+    auto_released: reservation.auto_released ?? false,
+    borrowing_ids: reservation.borrowing_ids ?? [],
   }
 }
 

@@ -1,6 +1,6 @@
     <?php
 
-namespace App\Modules\Auth\Controllers;
+namespace App\Modules\Auth\Controllers; 
 
 use App\Models\UserSession;
 use Illuminate\Http\JsonResponse;

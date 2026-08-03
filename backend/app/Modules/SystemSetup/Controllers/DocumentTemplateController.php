@@ -4,6 +4,7 @@ namespace App\Modules\SystemSetup\Controllers;
 
 use App\Modules\Asset\Traits\RespondsWithJson;
 use App\Modules\SystemSetup\Enums\DocumentType;
+use App\Modules\SystemSetup\Enums\TemplateUsageContext;
 use App\Modules\SystemSetup\Models\DocumentTemplate;
 use App\Modules\SystemSetup\Models\DocumentTemplateVersion;
 use App\Modules\SystemSetup\Requests\StoreDocumentTemplateRequest;
@@ -30,6 +31,15 @@ class DocumentTemplateController extends Controller
             ? $template->document_type->value
             : (string) $template->document_type;
 
+        // Resolve usage_context — support both cast enum and raw string.
+        $usageContextValue = $template->usage_context instanceof TemplateUsageContext
+            ? $template->usage_context->value
+            : ($template->getRawOriginal('usage_context') ?? null);
+
+        $usageContextEnum = $usageContextValue
+            ? TemplateUsageContext::tryFrom($usageContextValue)
+            : null;
+
         return [
             'id' => $template->id,
             'name' => $template->name,
@@ -40,6 +50,11 @@ class DocumentTemplateController extends Controller
             'category' => $template->document_type instanceof DocumentType
                 ? $template->document_type->category()
                 : DocumentType::tryFrom($typeValue)?->category() ?? 'Other',
+            'usage_context' => $usageContextValue,
+            'usage_context_label' => $usageContextEnum?->label(),
+            'usage_context_description' => $usageContextEnum?->description(),
+            'usage_context_operational_status' => $usageContextEnum?->operationalStatus(),
+            'usage_context_operational_note' => $usageContextEnum?->operationalNote(),
             'description' => $template->description,
             'version' => $template->version,
             'status' => $template->status instanceof \BackedEnum
@@ -53,6 +68,12 @@ class DocumentTemplateController extends Controller
             'extension' => $template->extension,
             'has_file' => filled($template->file_path),
             'is_docx_ready' => $template->isDocxReady(),
+            // ── Separated status fields ────────────────────────────────────
+            'file_validation_status' => $template->getFileValidationStatus(),
+            'placeholder_status' => $template->getPlaceholderStatus(),
+            'resolution_mode' => $template->getResolutionMode(),
+            'generation_readiness' => $template->getGenerationReadiness(),
+            // ──────────────────────────────────────────────────────────────
             'validation_status' => $template->validation_status,
             'validation_result' => $template->validation_result,
             'has_unknown_placeholders' => (bool) $template->has_unknown_placeholders,
@@ -348,6 +369,14 @@ class DocumentTemplateController extends Controller
         return $this->success(
             DocumentType::all(),
             'Document types retrieved successfully.',
+        );
+    }
+
+    public function usageContexts(): JsonResponse
+    {
+        return $this->success(
+            TemplateUsageContext::all(),
+            'Template usage contexts retrieved successfully.',
         );
     }
 }

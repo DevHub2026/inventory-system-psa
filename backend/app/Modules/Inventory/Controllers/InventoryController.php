@@ -62,6 +62,7 @@ class InventoryController extends Controller
                         : 'Unassigned')),
             'is_unlinked_holder' => $item->asset?->issued_to_user_id === null && filled($item->asset?->issued_to),
             'remarks' => $item->remarks,
+            'unit_cost' => $item->unit_cost !== null ? (float) $item->unit_cost : null,
         ];
     }
 

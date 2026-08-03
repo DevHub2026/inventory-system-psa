@@ -22,8 +22,20 @@ function movementTypeLabel(type: string) {
   )
 }
 
+const PPE_THRESHOLD = 50000
+
+function classifyByPrice(unitCost: number | null | undefined): { label: string; tone: 'blue' | 'green' | 'yellow' } {
+  if (unitCost === null || unitCost === undefined || unitCost <= 0) {
+    return { label: 'Manual Review Required', tone: 'yellow' }
+  }
+  if (unitCost >= PPE_THRESHOLD) {
+    return { label: 'PPE (Property, Plant & Equipment)', tone: 'blue' }
+  }
+  return { label: 'SE (Semi-Expendable)', tone: 'green' }
+}
+
 const BLANK_FORM: CreateInventoryItemPayload = {
-  name: '', sku: '', type: ITEM_TYPE, quantity: 0, unit: '', reorder_level: 0, track_as_asset: true,
+  name: '', sku: '', type: ITEM_TYPE, quantity: 0, unit: '', reorder_level: 0, track_as_asset: true, unit_cost: null,
 }
 
 export function NonExpendableInventoryPage() {
@@ -86,6 +98,7 @@ export function NonExpendableInventoryPage() {
       unit: item.unit,
       reorder_level: item.reorder_level || 0,
       track_as_asset: Boolean(item.asset_id),
+      unit_cost: item.unit_cost ?? null,
     })
     setModalOpen(true)
   }
@@ -161,11 +174,17 @@ export function NonExpendableInventoryPage() {
   }
 
   const columns: Column<InventoryItem>[] = [
-    { key: 'name',         header: 'Item',          render: (r) => <span className="font-medium text-[#1F2937]">{r.name}</span> },
-    { key: 'asset_number', header: 'Asset No.',     render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number ?? 'Not linked'}</span> },
-    { key: 'quantity',     header: 'Available Qty', render: (r) => <span className="font-semibold">{r.quantity}</span> },
-    { key: 'unit',         header: 'Unit',          render: (r) => r.unit },
-    { key: 'status',       header: 'Status',        render: (r) => <Badge tone={r.status === 'OUT_OF_STOCK' ? 'red' : r.status === 'LOW_STOCK' ? 'yellow' : 'green'}>{inventoryStatusLabel(r.status)}</Badge> },
+    { key: 'name',           header: 'Item',           render: (r) => <span className="font-medium text-[#1F2937]">{r.name}</span> },
+    { key: 'asset_number',   header: 'Asset No.',      render: (r) => <span className="font-mono text-xs text-[#6B7280]">{r.asset_number ?? 'Not linked'}</span> },
+    { key: 'classification', header: 'Class.',         render: (r) => r.classification
+        ? <Badge tone={r.classification === 'PPE' ? 'blue' : r.classification === 'SE' ? 'green' : 'gray'}>{r.classification}</Badge>
+        : <span style={{ fontSize: 11, color: '#94A3B8' }}>Unclassified</span> },
+    { key: 'unit_cost',      header: 'Unit Cost',      render: (r) => r.unit_cost != null
+        ? <span className="font-mono text-xs">₱{Number(r.unit_cost).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+        : <span style={{ fontSize: 11, color: '#94A3B8' }}>—</span> },
+    { key: 'quantity',       header: 'Available Qty',  render: (r) => <span className="font-semibold">{r.quantity}</span> },
+    { key: 'unit',           header: 'Unit',           render: (r) => r.unit },
+    { key: 'status',         header: 'Status',         render: (r) => <Badge tone={r.status === 'OUT_OF_STOCK' ? 'red' : r.status === 'LOW_STOCK' ? 'yellow' : 'green'}>{inventoryStatusLabel(r.status)}</Badge> },
     {
       key: 'actions', header: 'Actions',
       render: (r) => (
@@ -223,6 +242,44 @@ export function NonExpendableInventoryPage() {
             <Input label="Available Quantity" type="number" value={formData.quantity.toString()} disabled={Boolean(editingItem)} helperText={editingItem ? 'Use Adjust to update stock.' : undefined} onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })} />
             <Input label="Unit" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} placeholder="e.g. unit, set" />
           </div>
+
+          {/* Unit Cost + live PPE/SE preview */}
+          <div>
+            <Input
+              label="Unit Cost (₱)"
+              type="number"
+              min={0}
+              step="0.01"
+              value={formData.unit_cost !== null && formData.unit_cost !== undefined ? formData.unit_cost.toString() : ''}
+              onChange={(e) => {
+                const raw = e.target.value
+                setFormData({ ...formData, unit_cost: raw === '' ? null : parseFloat(raw) })
+              }}
+              placeholder="e.g. 75000.00"
+              helperText="Used to automatically determine PPE (≥ ₱50,000) or SE (< ₱50,000) classification."
+            />
+            {/* Live classification preview */}
+            {(() => {
+              const preview = classifyByPrice(formData.unit_cost)
+              const toneStyles: Record<string, { bg: string; border: string; text: string }> = {
+                blue:   { bg: '#EFF6FF', border: '#BFDBFE', text: '#1D4ED8' },
+                green:  { bg: '#F0FDF4', border: '#BBF7D0', text: '#15803D' },
+                yellow: { bg: '#FFFBEB', border: '#FDE68A', text: '#92400E' },
+                slate:  { bg: '#F8FAFC', border: '#E2E8F0', text: '#64748B' },
+              }
+              const s = toneStyles[preview.tone]
+              return (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, background: s.bg, border: `1px solid ${s.border}` }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: s.text }}>Classification Preview:</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: s.text }}>{preview.label}</span>
+                </div>
+              )
+            })()}
+            <p style={{ marginTop: 6, fontSize: 11, color: '#94A3B8' }}>
+              Threshold: ≥ ₱{PPE_THRESHOLD.toLocaleString()} = PPE · &lt; ₱{PPE_THRESHOLD.toLocaleString()} = SE · No price = Manual Review
+            </p>
+          </div>
+
           <Input label="Low Stock Alert" helperText="Show a warning when available quantity reaches this number." type="number" value={formData.reorder_level?.toString() || '0'} onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })} />
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
             <input type="checkbox" checked={Boolean(formData.track_as_asset)} disabled={Boolean(editingItem?.asset_id)} onChange={(e) => setFormData({ ...formData, track_as_asset: e.target.checked })} style={{ width: 16, height: 16, accentColor: '#0B3D91', cursor: 'pointer' }} />

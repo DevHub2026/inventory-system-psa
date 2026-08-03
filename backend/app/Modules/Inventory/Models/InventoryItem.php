@@ -27,6 +27,7 @@ class InventoryItem extends Model
         'name',
         'sku',
         'quantity',
+        'unit_cost',
         'unit',
         'unit_id',
         'manufacturer_id',
@@ -35,6 +36,13 @@ class InventoryItem extends Model
         'reorder_level',
         'remarks',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'unit_cost' => 'decimal:2',
+        ];
+    }
 
     public function asset(): BelongsTo
     {

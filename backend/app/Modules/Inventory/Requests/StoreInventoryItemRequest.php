@@ -29,6 +29,7 @@ class StoreInventoryItemRequest extends FormRequest
             'item_nature' => ['nullable', 'string', Rule::in(['ACCOUNTABLE_PROPERTY', 'CONSUMABLE_SUPPLY'])],
             'classification_reason' => ['nullable', 'string', 'max:1000'],
             'quantity' => ['required', 'integer', 'min:0'],
+            'unit_cost' => ['nullable', 'numeric', 'min:0'],
             'unit' => ['nullable', 'string', 'max:50'],
             'reorder_level' => ['nullable', 'integer', 'min:0'],
             'remarks' => ['nullable', 'string'],

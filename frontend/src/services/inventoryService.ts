@@ -13,6 +13,7 @@ export interface CreateInventoryItemPayload {
   item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY'
   classification_reason?: string
   quantity: number
+  unit_cost?: number | null
   unit: string
   reorder_level?: number
   remarks?: string
@@ -27,6 +28,7 @@ export interface UpdateInventoryItemPayload {
   item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY'
   classification_reason?: string
   quantity?: number
+  unit_cost?: number | null
   unit?: string
   reorder_level?: number
   remarks?: string

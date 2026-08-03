@@ -17,6 +17,27 @@ export type DocumentType =
   | 'csv_export'
   | 'pdf_template'
 
+/**
+ * Stable backend keys for document-generation workflow areas.
+ * Maps 1-to-1 with TemplateUsageContext PHP enum values.
+ */
+export type TemplateUsageContextKey =
+  | 'BORROWING_RECEIPT'
+  | 'BORROWING_RETURN'
+  | 'PERMANENT_ISSUANCE'
+  | 'ASSET_TRANSFER'
+  | 'ASSET_REISSUANCE'
+  | 'CLEARANCE'
+
+export interface TemplateUsageContextOption {
+  value: TemplateUsageContextKey
+  label: string
+  description: string
+  document_type: string
+  operational_status: 'FULLY_CONNECTED' | 'BACKEND_SUPPORTED'
+  operational_note: string
+}
+
 export interface DocumentTypeOption {
   value: string
   label: string
@@ -61,11 +82,28 @@ export interface DocumentTemplate {
   document_type: string
   document_type_label: string
   category: string
+  /** Stable backend key — e.g. BORROWING_RECEIPT. Null for legacy templates. */
+  usage_context: TemplateUsageContextKey | null
+  usage_context_label: string | null
+  usage_context_description: string | null
+  /** FULLY_CONNECTED | BACKEND_SUPPORTED | null (when no context assigned) */
+  usage_context_operational_status: 'FULLY_CONNECTED' | 'BACKEND_SUPPORTED' | null
+  usage_context_operational_note: string | null
   description: string | null
   version: string
   status: string
   status_label: string
   is_default: boolean
+  // ── Separated status fields from backend ─────────────────────────────
+  /** no_file | valid | invalid | not_validated */
+  file_validation_status: 'no_file' | 'valid' | 'invalid' | 'not_validated'
+  /** no_file | not_validated | no_placeholders | placeholders_valid | invalid_placeholders | not_applicable */
+  placeholder_status: 'no_file' | 'not_validated' | 'no_placeholders' | 'placeholders_valid' | 'invalid_placeholders' | 'not_applicable'
+  /** explicit_context | document_type_fallback */
+  resolution_mode: 'explicit_context' | 'document_type_fallback'
+  /** ready | inactive | no_file | not_validated | invalid_placeholders | not_docx */
+  generation_readiness: 'ready' | 'inactive' | 'no_file' | 'not_validated' | 'invalid_placeholders' | 'not_docx'
+  // ─────────────────────────────────────────────────────────────────────
   file_name?: string | null
   file_size?: number | null
   mime_type?: string | null
@@ -125,6 +163,7 @@ export interface DocumentTemplateVersion {
 export interface TemplateFilters {
   search?: string
   document_type?: string
+  usage_context?: TemplateUsageContextKey | string
   status?: string
   is_default?: boolean
 }
@@ -159,6 +198,11 @@ export const templateService = {
     return unwrapData(data)
   },
 
+  async getUsageContexts(): Promise<TemplateUsageContextOption[]> {
+    const { data } = await api.get<ApiResponse<TemplateUsageContextOption[]>>('/document-templates/usage-contexts')
+    return unwrapData(data)
+  },
+
   async getPlaceholders(documentType?: string): Promise<PlaceholderDefinition[]> {
     const { data } = await api.get<ApiResponse<PlaceholderDefinition[]>>('/document-templates/placeholders', {
       params: documentType ? { document_type: documentType } : undefined,
@@ -174,6 +218,7 @@ export const templateService = {
   async create(payload: {
     name: string
     document_type: string
+    usage_context?: TemplateUsageContextKey | null
     description?: string
     change_notes?: string
     file?: File | null
@@ -181,6 +226,7 @@ export const templateService = {
     const formData = new FormData()
     formData.append('name', payload.name)
     formData.append('document_type', payload.document_type)
+    if (payload.usage_context) formData.append('usage_context', payload.usage_context)
     if (payload.description) formData.append('description', payload.description)
     if (payload.change_notes) formData.append('change_notes', payload.change_notes)
     if (payload.file) formData.append('file', payload.file)
@@ -193,7 +239,12 @@ export const templateService = {
 
   async updateMetadata(
     id: number,
-    payload: { name?: string; description?: string | null; change_notes?: string | null },
+    payload: {
+      name?: string
+      usage_context?: TemplateUsageContextKey | null
+      description?: string | null
+      change_notes?: string | null
+    },
   ): Promise<DocumentTemplate> {
     const { data } = await api.put<ApiResponse<DocumentTemplate>>(`/document-templates/${id}`, payload)
     return unwrapData(data)

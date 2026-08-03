@@ -143,6 +143,8 @@ export interface Reservation {
   asset_numbers?: string[]
   receipt_code?: string
   receipt_payload?: string
+  auto_released?: boolean
+  borrowing_ids?: number[]
 }
 
 export interface Borrowing {
@@ -183,6 +185,13 @@ export interface InventoryItem {
   name: string
   sku?: string
   quantity: number
+  /**
+   * Unit cost in PHP (decimal). Used to auto-classify PPE (>= ₱50,000)
+   * or SE (> ₱0 and < ₱50,000) for accountable items.
+   * Supply items may carry a cost here for procurement tracking only —
+   * it does NOT drive PPE/SE classification for supply items.
+   */
+  unit_cost?: number | null
   status: string
   unit: string
   reorder_level?: number

@@ -20,6 +20,10 @@ class DocumentTemplateRepository implements DocumentTemplateRepositoryInterface
             $query->where('document_type', $filters['document_type']);
         }
 
+        if (! empty($filters['usage_context'])) {
+            $query->where('usage_context', $filters['usage_context']);
+        }
+
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
@@ -165,6 +169,7 @@ class DocumentTemplateRepository implements DocumentTemplateRepositoryInterface
             return DocumentTemplate::query()->create([
                 'name' => $template->name.' (Copy)',
                 'document_type' => $docType,
+                'usage_context' => $template->getRawOriginal('usage_context'),
                 'description' => $template->description,
                 'version' => $newVersion,
                 'status' => TemplateStatus::INACTIVE->value,

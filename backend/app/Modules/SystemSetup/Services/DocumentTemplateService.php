@@ -42,6 +42,7 @@ class DocumentTemplateService
         $payload = [
             'name' => $data['name'],
             'document_type' => $documentType,
+            'usage_context' => $data['usage_context'] ?? null,
             'description' => $data['description'] ?? null,
             'version' => $data['version'] ?? '1.0',
             'status' => $data['status'] ?? TemplateStatus::INACTIVE->value,
@@ -104,7 +105,7 @@ class DocumentTemplateService
     {
         $template = $this->requireTemplate($id);
 
-        $fields = ['name', 'description', 'change_notes'];
+        $fields = ['name', 'description', 'change_notes', 'usage_context'];
         $updateData = [];
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {

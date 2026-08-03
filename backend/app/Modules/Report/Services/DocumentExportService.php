@@ -2,6 +2,7 @@
 
 namespace App\Modules\Report\Services;
 
+use App\Modules\SystemSetup\Enums\TemplateUsageContext;
 use App\Modules\SystemSetup\Models\DocumentTemplate;
 use App\Modules\SystemSetup\Models\GeneratedDocument;
 use App\Modules\SystemSetup\Services\DocxTemplateService;
@@ -34,7 +35,14 @@ class DocumentExportService
             throw new \InvalidArgumentException('Unsupported document type for DOCX generation.');
         }
 
-        $template = DocumentTemplate::getActiveDocxFor($documentType);
+        // Resolution order:
+        // 1. Active template explicitly assigned to a matching usage_context.
+        // 2. Fallback: active template matched by document_type only (backward
+        //    compat for templates created before usage_context existed).
+        $usageContext = TemplateUsageContext::fromDocumentType($documentType);
+        $template = $usageContext
+            ? DocumentTemplate::getActiveDocxForContext($usageContext)
+            : DocumentTemplate::getActiveDocxFor($documentType);
 
         if (! $template) {
             throw new \RuntimeException(

@@ -16,6 +16,7 @@ use App\Modules\AssetCategory\Models\AssetCategory;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
 use App\Modules\Inventory\Models\InventoryItem;
 use App\Modules\Inventory\Models\StockTransaction;
+use App\Modules\Inventory\Services\InventoryClassificationService;
 use App\Modules\Notification\Services\NotificationService;
 use App\Modules\Unit\Models\Unit;
 use App\Modules\SystemSetup\Enums\DocumentType;
@@ -600,6 +601,12 @@ class InventoryService
         $itemNature = strtoupper((string) ($data['item_nature'] ?? ''));
         $legacyType = (string) ($data['type'] ?? '');
 
+        // ── Validate & cast unit_cost ──────────────────────────────────────
+        if (array_key_exists('unit_cost', $data)) {
+            $data['unit_cost'] = InventoryClassificationService::castAndValidate($data['unit_cost']);
+        }
+
+        // ── Initial classification from legacy type / explicit value ───────
         if ($classification === '') {
             if ($legacyType === 'expendable') {
                 $classification = self::CLASSIFICATION_SUPPLY;
@@ -614,6 +621,29 @@ class InventoryService
             throw new \InvalidArgumentException("Invalid classification '{$classification}'.");
         }
 
+        // ── Price-driven PPE/SE auto-classification ────────────────────────
+        // Applies to accountable (non-SUPPLY) items whenever unit_cost is present
+        // in the incoming payload (including explicit null/zero — those clear the
+        // classification so the record is not left with a stale PPE/SE value).
+        if (array_key_exists('unit_cost', $data) && InventoryClassificationService::shouldClassifyByPrice($classification)) {
+            $unitCost = $data['unit_cost']; // may be null or 0.0 after castAndValidate
+            $priceResult = InventoryClassificationService::classify($unitCost);
+
+            if ($priceResult['classification'] !== null) {
+                // Valid price → set PPE or SE
+                $classification = $priceResult['classification'];
+                $data['classification_reason'] = $priceResult['classification_reason'];
+            } else {
+                // null/zero price → clear classification; do NOT leave stale PPE/SE
+                $classification = null;
+                $data['classification_reason'] = $priceResult['classification_reason'];
+            }
+        }
+
+        // ── Resolve item_nature ────────────────────────────────────────────
+        // null classification = manual review → item stays ACCOUNTABLE_PROPERTY
+        // SUPPLY → CONSUMABLE_SUPPLY
+        // PPE / SE → ACCOUNTABLE_PROPERTY
         if ($itemNature === '') {
             $itemNature = $classification === self::CLASSIFICATION_SUPPLY
                 ? self::NATURE_CONSUMABLE
@@ -624,14 +654,16 @@ class InventoryService
             throw new \InvalidArgumentException("Invalid item nature '{$itemNature}'.");
         }
 
+        // ── Enforce SUPPLY / CONSUMABLE → no asset tracking ───────────────
         if ($classification === self::CLASSIFICATION_SUPPLY || $itemNature === self::NATURE_CONSUMABLE) {
             $trackAsAsset = false;
             $data['type'] = 'expendable';
         } else {
+            // PPE, SE, or null (manual review) → non_expendable accountable item
             $data['type'] = 'non_expendable';
         }
 
-        $data['classification'] = $classification;
+        $data['classification'] = $classification;  // null = manual review required
         $data['item_nature'] = $itemNature;
 
         return [$data, $trackAsAsset];
