@@ -14,9 +14,7 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   final UserService _userService = UserService();
-  late final TextEditingController _firstName;
-  late final TextEditingController _middleName;
-  late final TextEditingController _lastName;
+  late final TextEditingController _name;
   late final TextEditingController _email;
   bool _loading = false;
   String? _error;
@@ -24,17 +22,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
-    _firstName  = TextEditingController(text: widget.user.firstName);
-    _middleName = TextEditingController(text: widget.user.middleName ?? '');
-    _lastName   = TextEditingController(text: widget.user.lastName);
-    _email      = TextEditingController(text: widget.user.email);
+    _name = TextEditingController(text: widget.user.fullName);
+    _email = TextEditingController(text: widget.user.email);
   }
 
   @override
   void dispose() {
-    _firstName.dispose();
-    _middleName.dispose();
-    _lastName.dispose();
+    _name.dispose();
     _email.dispose();
     super.dispose();
   }
@@ -44,10 +38,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     setState(() { _loading = true; _error = null; });
     try {
       await _userService.updateProfile({
-        'first_name':  _firstName.text.trim(),
-        'middle_name': _middleName.text.trim().isNotEmpty ? _middleName.text.trim() : null,
-        'last_name':   _lastName.text.trim(),
-        'email':       _email.text.trim(),
+        'name': _name.text.trim(),
+        'email': _email.text.trim(),
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -57,7 +49,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     } catch (e) {
       setState(() { _error = e.toString().replaceAll('Exception: ', ''); });
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() { _loading = false; });
     }
   }
 
@@ -100,11 +92,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 const SizedBox(height: 16),
               ],
-              _field(_firstName, 'First Name', required: true),
-              const SizedBox(height: 14),
-              _field(_middleName, 'Middle Name'),
-              const SizedBox(height: 14),
-              _field(_lastName, 'Last Name', required: true),
+              _field(_name, 'Full Name', required: true),
               const SizedBox(height: 14),
               _field(_email, 'Email Address',
                   required: true,

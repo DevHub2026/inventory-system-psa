@@ -46,12 +46,13 @@ export function TopNav({ onMenuClick }: TopNavProps) {
       gap: 12,
       borderBottom: '1px solid #e2e8f0',
       background: '#ffffff',
-      padding: '0 20px',
+      padding: '0 24px',
       boxSizing: 'border-box',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
     }}>
 
       {/* ── Left: hamburger + page title ── */}
-      <div style={{ display: 'flex', minWidth: 0, alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', minWidth: 0, alignItems: 'center', gap: 14 }}>
 
         {/* Hamburger — hidden on desktop via media query class */}
         <button
@@ -64,6 +65,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
             width: 34, height: 34, flexShrink: 0,
             borderRadius: 8, border: 'none',
             background: 'transparent', cursor: 'pointer', color: '#64748b',
+            transition: 'background 0.15s',
           }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#f1f5f9' }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
@@ -72,16 +74,16 @@ export function TopNav({ onMenuClick }: TopNavProps) {
         </button>
 
         {/* Page title */}
-        <div style={{ display: 'flex', minWidth: 0, alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', minWidth: 0, alignItems: 'center', gap: 12 }}>
           {/* PSA blue accent bar — desktop only */}
           <span
             className="hidden lg:block"
-            style={{ width: 3, height: 20, flexShrink: 0, borderRadius: 99, background: '#0B3D91' }}
+            style={{ width: 3, height: 22, flexShrink: 0, borderRadius: 99, background: '#0B3D91' }}
             aria-hidden="true"
           />
           <div style={{ minWidth: 0 }}>
             <div style={{
-              fontSize: 14, fontWeight: 700, color: '#1e293b',
+              fontSize: 15, fontWeight: 700, color: '#0F172A',
               lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
               {PAGE_TITLES[pathname] ?? 'PSA Inventory'}
@@ -97,7 +99,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
       </div>
 
       {/* ── Right: search + bell ── */}
-      <div style={{ display: 'flex', flexShrink: 0, alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', flexShrink: 0, alignItems: 'center', gap: 10 }}>
 
         {/* Search bar — md+ */}
         <form
@@ -107,10 +109,10 @@ export function TopNav({ onMenuClick }: TopNavProps) {
             height: 36,
             alignItems: 'center',
             gap: 6,
-            borderRadius: 10,
+            borderRadius: 8,
             border: searchFocused ? '1.5px solid #0B3D91' : '1.5px solid #e2e8f0',
             background: searchFocused ? '#ffffff' : '#f8fafc',
-            padding: '0 12px',
+            padding: '0 10px',
             transition: 'border-color 0.15s, background 0.15s',
             boxShadow: searchFocused ? '0 0 0 3px rgba(11,61,145,0.10)' : 'none',
             boxSizing: 'border-box',
@@ -137,7 +139,16 @@ export function TopNav({ onMenuClick }: TopNavProps) {
         </form>
 
         {/* Notification bell */}
-        <NotificationBell />
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 34, height: 34,
+          borderRadius: 8,
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          transition: 'background 0.15s',
+        }}>
+          <NotificationBell />
+        </div>
 
       </div>
     </header>

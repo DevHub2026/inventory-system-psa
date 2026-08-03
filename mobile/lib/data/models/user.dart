@@ -6,6 +6,7 @@ class User {
   final String? middleName;
   final String lastName;
   final String email;
+  final String? name; // Added: full name from API
   final String? status;
   final String? createdAt;
   final Department? department;
@@ -20,6 +21,7 @@ class User {
     this.middleName,
     required this.lastName,
     required this.email,
+    this.name, // Added: full name from API
     this.status,
     this.createdAt,
     this.department,
@@ -27,13 +29,12 @@ class User {
     this.roles,
   });
 
-  String get fullName => '$firstName $middleName $lastName'.trim();
+  String get fullName => name ?? '$firstName $middleName $lastName'.trim();
 
   /// Returns the primary role name (e.g. 'admin', 'staff', 'employee')
   String? get role => roles?.isNotEmpty == true ? roles!.first.name : null;
 
-  factory User.fromJson(Map<String, dynamic>
- json) {
+  factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] as int,
       employeeNumber: json['employee_number'] as String?,
@@ -42,6 +43,7 @@ class User {
       middleName: json['middle_name'] as String?,
       lastName: json['last_name'] as String,
       email: json['email'] as String,
+      name: json['name'] as String?, // Added: full name from API
       status: json['status'] as String?,
       createdAt: json['created_at'] as String?,
       department: json['department'] != null 
@@ -65,6 +67,7 @@ class User {
       'middle_name': middleName,
       'last_name': lastName,
       'email': email,
+      'name': name,
       'status': status,
       'created_at': createdAt,
       'department': department?.toJson(),

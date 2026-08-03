@@ -320,17 +320,6 @@ export function AdminDashboard() {
             Live metrics for assets, inventory, borrowings, reservations, and users.
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 2 }}>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            fontSize: 12, fontWeight: 600, color: '#166534',
-            background: '#f0fdf4', border: '1px solid #bbf7d0',
-            borderRadius: 8, padding: '6px 12px',
-          }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-            System Live
-          </span>
-        </div>
       </div>
 
       {message && (

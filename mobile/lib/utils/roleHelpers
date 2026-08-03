@@ -1,0 +1,68 @@
+import '../data/models/user.dart';
+
+// Role names must match the backend exactly (same as web roleHelpers.ts)
+const ADMIN_ROLES = ['Super Administrator', 'System Administrator'];
+const STAFF_ROLES = ['Property Custodian', 'Inventory Officer', 'Department Head', 'Auditor'];
+const EMPLOYEE_ROLES = ['Employee'];
+
+/// Check if user has admin role - checks all roles in the list
+bool isAdmin(User user) {
+  if (user.roles == null || user.roles!.isEmpty) return false;
+  return user.roles!.any((role) => ADMIN_ROLES.contains(role.name));
+}
+
+/// Check if user has staff role - checks all roles in the list
+bool isStaff(User user) {
+  if (user.roles == null || user.roles!.isEmpty) return false;
+  return user.roles!.any((role) => STAFF_ROLES.contains(role.name));
+}
+
+/// Check if user has employee role - checks all roles in the list
+bool isEmployee(User user) {
+  if (user.roles == null || user.roles!.isEmpty) return false;
+  return user.roles!.any((role) => EMPLOYEE_ROLES.contains(role.name));
+}
+
+/// Get the user's primary role category: 'admin', 'staff', 'employee', or null
+/// Uses the same priority as the web: admin > staff > employee
+String? getUserRoleCategory(User user) {
+  if (user.roles == null || user.roles!.isEmpty) return null;
+  if (isAdmin(user)) return 'admin';
+  if (isStaff(user)) return 'staff';
+  if (isEmployee(user)) return 'employee';
+  return null;
+}
+
+/// Get all user roles
+List<String> getUserRoles(User user) {
+  final roles = <String>[];
+  if (isAdmin(user)) roles.add('admin');
+  if (isStaff(user)) roles.add('staff');
+  if (isEmployee(user)) roles.add('employee');
+  return roles;
+}
+
+/// Check if user can approve borrow requests (Admin or Staff)
+bool canApproveBorrows(User user) {
+  return isAdmin(user) || isStaff(user);
+}
+
+/// Check if user can manage assets (Admin or Staff)
+bool canManageAssets(User user) {
+  return isAdmin(user) || isStaff(user);
+}
+
+/// Check if user can view reports (Admin or Staff)
+bool canViewReports(User user) {
+  return isAdmin(user) || isStaff(user);
+}
+
+/// Check if user can manage users (Admin only)
+bool canManageUsers(User user) {
+  return isAdmin(user);
+}
+
+/// Check if user can manage system settings (Admin only)
+bool canManageSettings(User user) {
+  return isAdmin(user);
+}

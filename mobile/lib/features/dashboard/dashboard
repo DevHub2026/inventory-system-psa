@@ -65,7 +65,8 @@ class _DashboardPageState extends State<DashboardPage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Sign out'),
-        content: const Text('Are you sure you want to sign out of PSA Inventory?'),
+        content:
+            const Text('Are you sure you want to sign out of PSA Inventory?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
@@ -95,7 +96,8 @@ class _DashboardPageState extends State<DashboardPage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const NotificationsPage()),
+                MaterialPageRoute(
+                    builder: (context) => const NotificationsPage()),
               );
             },
           ),
@@ -130,6 +132,9 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // ════════════════════════════════════════════════════════════════
+  //  DASHBOARD BODY
+  // ════════════════════════════════════════════════════════════════
   Widget _buildDashboard() {
     final stats = _stats!;
     return SingleChildScrollView(
@@ -137,18 +142,29 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Page Header
           _buildPageHeader(),
           const SizedBox(height: 24),
+
+          // Assets Section
           const PsaSectionLabel(label: 'Assets'),
           _buildAssetsSection(stats),
           const SizedBox(height: 24),
+
+          // Borrowing Section
           const PsaSectionLabel(label: 'Borrowing'),
           _buildBorrowingSection(stats),
           const SizedBox(height: 24),
+
+          // Metric Cards (Utilization + Health)
           _buildMetricCards(stats),
           const SizedBox(height: 24),
+
+          // Quick Actions
           _buildQuickActionsPanel(),
           const SizedBox(height: 20),
+
+          // Recent Activity
           if (_recentActivity.isNotEmpty) ...[
             _buildRecentActivityPanel(),
             const SizedBox(height: 20),
@@ -158,12 +174,13 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // ── Page Header ──
   Widget _buildPageHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'PSA REGION XII \u00B7 ASSET MANAGEMENT',
+          'PSA REGION XII · ASSET MANAGEMENT',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
@@ -194,6 +211,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // ── Assets Section ──
   Widget _buildAssetsSection(DashboardStats stats) {
     return GridView.count(
       shrinkWrap: true,
@@ -235,6 +253,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // ── Borrowing Section ──
   Widget _buildBorrowingSection(DashboardStats stats) {
     return GridView.count(
       shrinkWrap: true,
@@ -276,6 +295,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // ── Metric Cards (Utilization + System Health) ──
   Widget _buildMetricCards(DashboardStats stats) {
     final utilizationRate = stats.totalAssets > 0
         ? ((stats.borrowedAssets / stats.totalAssets) * 100).round()
@@ -284,6 +304,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return Column(
       children: [
+        // Asset Utilization Rate
         _buildMetricCard(
           label: 'ASSET UTILIZATION RATE',
           icon: Icons.trending_up,
@@ -310,37 +331,50 @@ class _DashboardPageState extends State<DashboardPage> {
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
                       'of assets borrowed',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textMuted,
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
+              // Progress bar
               ClipRRect(
                 borderRadius: BorderRadius.circular(999),
                 child: LinearProgressIndicator(
                   value: (utilizationRate / 100).clamp(0.0, 1.0),
                   minHeight: 8,
                   backgroundColor: const Color(0xFFF1F5F9),
-                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryHover),
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(AppTheme.primaryHover),
                 ),
               ),
               const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('0%', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-                  Text('100%', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                  Text('0%',
+                      style: TextStyle(
+                          fontSize: 11, color: AppTheme.textMuted)),
+                  Text('100%',
+                      style: TextStyle(
+                          fontSize: 11, color: AppTheme.textMuted)),
                 ],
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
+
+        // System Health
         _buildMetricCard(
           label: 'SYSTEM HEALTH',
           icon: isHealthy ? Icons.shield_outlined : Icons.warning_amber,
-          iconBg: isHealthy ? const Color(0xFFF0FDF4) : const Color(0xFFFFFBEB),
+          iconBg: isHealthy
+              ? const Color(0xFFF0FDF4)
+              : const Color(0xFFFFFBEB),
           iconColor: isHealthy ? AppTheme.successColor : AppTheme.warningColor,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,7 +385,9 @@ class _DashboardPageState extends State<DashboardPage> {
                   Icon(
                     isHealthy ? Icons.check_circle : Icons.warning_amber,
                     size: 22,
-                    color: isHealthy ? AppTheme.successColor : AppTheme.warningColor,
+                    color: isHealthy
+                        ? AppTheme.successColor
+                        : AppTheme.warningColor,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -359,7 +395,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
-                      color: isHealthy ? AppTheme.successColor : AppTheme.warningColor,
+                      color: isHealthy
+                          ? AppTheme.successColor
+                          : AppTheme.warningColor,
                     ),
                   ),
                 ],
@@ -369,7 +407,11 @@ class _DashboardPageState extends State<DashboardPage> {
                 isHealthy
                     ? 'Pending borrow requests are within normal levels.'
                     : '${stats.pendingBorrowRequests} pending borrow requests require attention.',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.5),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textMuted,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 20),
               Row(
@@ -412,7 +454,11 @@ class _DashboardPageState extends State<DashboardPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.borderColor),
         boxShadow: const [
-          BoxShadow(color: AppTheme.shadowColor, blurRadius: 4, offset: Offset(0, 1)),
+          BoxShadow(
+            color: AppTheme.shadowColor,
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
         ],
       ),
       child: Column(
@@ -463,7 +509,13 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppTheme.textMuted,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             value.toString(),
@@ -478,6 +530,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // ── Quick Actions Panel ──
   Widget _buildQuickActionsPanel() {
     return Container(
       decoration: BoxDecoration(
@@ -485,7 +538,11 @@ class _DashboardPageState extends State<DashboardPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.borderColor),
         boxShadow: const [
-          BoxShadow(color: AppTheme.shadowColor, blurRadius: 4, offset: Offset(0, 1)),
+          BoxShadow(
+            color: AppTheme.shadowColor,
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
         ],
       ),
       child: Column(
@@ -597,7 +654,8 @@ class _DashboardPageState extends State<DashboardPage> {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
+                const Icon(Icons.chevron_right,
+                    size: 18, color: AppTheme.textMuted),
               ],
             ),
           ),
@@ -606,6 +664,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // ── Recent Activity Panel ──
   Widget _buildRecentActivityPanel() {
     return Container(
       decoration: BoxDecoration(
@@ -613,29 +672,43 @@ class _DashboardPageState extends State<DashboardPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.borderColor),
         boxShadow: const [
-          BoxShadow(color: AppTheme.shadowColor, blurRadius: 4, offset: Offset(0, 1)),
+          BoxShadow(
+            color: AppTheme.shadowColor,
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Panel Header
           Padding(
             padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                const Text(
-                  'Recent Activity',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Recent Activity',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Latest actions across all modules',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Latest actions across all modules',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                 ),
               ],
             ),
@@ -656,7 +729,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildActivityTile(ActivityItem item) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Container(
@@ -666,7 +740,8 @@ class _DashboardPageState extends State<DashboardPage> {
               color: AppTheme.primaryPale,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.history, size: 18, color: AppTheme.primaryColor),
+            child: const Icon(Icons.history,
+                size: 18, color: AppTheme.primaryColor),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -676,25 +751,24 @@ class _DashboardPageState extends State<DashboardPage> {
                 Text(
                   item.description,
                   style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.textPrimary,
-                  ),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.textPrimary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (item.userName != null)
-                  Text(
-                    item.userName!,
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                  ),
+                  Text(item.userName!,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppTheme.textSecondary)),
               ],
             ),
           ),
           const SizedBox(width: 8),
           Text(
             DateFormatter.timeAgo(item.createdAt),
-            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+            style: const TextStyle(
+                fontSize: 11, color: AppTheme.textMuted),
           ),
         ],
       ),

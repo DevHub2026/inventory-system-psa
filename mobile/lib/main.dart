@@ -78,15 +78,22 @@ class _SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: AppTheme.primaryHover,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.analytics_outlined, size: 72, color: Colors.white),
-            SizedBox(height: 20),
-            Text(
+            // PSA Logo
+            Image.asset(
+              'assets/images/logo.png',
+              width: 120,
+              height: 120,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 32),
+            // App Name
+            const Text(
               'PSA Inventory',
               style: TextStyle(
                 color: Colors.white,
@@ -95,8 +102,12 @@ class _SplashScreen extends StatelessWidget {
                 letterSpacing: 0.3,
               ),
             ),
-            SizedBox(height: 40),
-            CircularProgressIndicator(color: Colors.white),
+            const SizedBox(height: 40),
+            // Loading indicator
+            const CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 2.5,
+            ),
           ],
         ),
       ),

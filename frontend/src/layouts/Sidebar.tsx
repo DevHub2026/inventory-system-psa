@@ -60,7 +60,6 @@ const NAV_GROUPS = [
 
 interface SidebarProps {
   open: boolean
-  /** True when viewport ≥ 768px — controls positioning mode */
   isDesktop: boolean
   onClose: () => void
 }
@@ -80,7 +79,6 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
     } else {
       links = allLinks.filter((l) => l.roles.includes('employee'))
     }
-
     const seen = new Set<string>()
     return links.filter((link) => {
       if (seen.has(link.to)) return false
@@ -100,18 +98,6 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
   const name         = displayName(user)
   const initials     = name.slice(0, 1).toUpperCase()
 
-  /*
-   * POSITIONING LOGIC — 100% inline styles, zero CSS class dependency:
-   *
-   * Desktop (isDesktop = true):
-   *   position: relative  → stays in flex row, takes 260px, main fills rest.
-   *   transform: none     → always visible.
-   *
-   * Mobile (isDesktop = false):
-   *   position: fixed     → overlays content, doesn't push main column.
-   *   transform:          → translateX(-260px) when closed, 0 when open.
-   *   z-index: 40         → above backdrop.
-   */
   const sidebarStyle: React.CSSProperties = isDesktop
     ? {
         position: 'relative',
@@ -120,7 +106,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: '#0B3D91',
+        background: 'linear-gradient(180deg, #0B3D91 0%, #0A3580 50%, #082A6A 100%)',
         transform: 'none',
         zIndex: 'auto',
         transition: 'none',
@@ -134,22 +120,21 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: '#0B3D91',
+        background: 'linear-gradient(180deg, #0B3D91 0%, #0A3580 50%, #082A6A 100%)',
         zIndex: 40,
         transform: open ? 'translateX(0)' : 'translateX(-260px)',
-        transition: 'transform 0.22s ease-in-out',
+        transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
       }
 
   return (
     <>
-      {/* Mobile backdrop — only shown when drawer is open on mobile */}
       {!isDesktop && open && (
         <div
           aria-hidden="true"
           onClick={onClose}
           style={{
             position: 'fixed', inset: 0,
-            background: 'rgba(0,0,0,0.45)',
+            background: 'rgba(0,0,0,0.50)',
             zIndex: 39,
           }}
         />
@@ -161,28 +146,36 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
         <div style={{
           display: 'flex', height: 64, flexShrink: 0,
           alignItems: 'center', gap: 12,
-          borderBottom: '1px solid rgba(255,255,255,0.10)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
           padding: '0 20px',
           boxSizing: 'border-box',
         }}>
           <div style={{
-            display: 'grid', width: 44, height: 44, flexShrink: 0,
+            display: 'grid', width: 42, height: 42, flexShrink: 0,
             placeItems: 'center', borderRadius: '50%',
             background: '#ffffff',
             border: '2px solid rgba(255,255,255,0.2)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
           }}>
-            <img src={logo} alt="PSA" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+            <img src={logo} alt="PSA" style={{ width: 34, height: 34, objectFit: 'contain' }} />
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#ffffff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{
+              fontSize: 15, fontWeight: 800, color: '#ffffff',
+              lineHeight: 1.3, letterSpacing: '0.01em',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
               PSA Inventory
             </div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.15em', lineHeight: 1.3, marginTop: 2 }}>
+            <div style={{
+              fontSize: 10, fontWeight: 600,
+              color: 'rgba(255,255,255,0.40)',
+              textTransform: 'uppercase', letterSpacing: '0.18em',
+              lineHeight: 1.3, marginTop: 2,
+            }}>
               Region XII
             </div>
           </div>
-          {/* Mobile close button */}
           {!isDesktop && (
             <button
               type="button"
@@ -191,7 +184,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 30, height: 30, flexShrink: 0,
-                borderRadius: 8, border: 'none', background: 'transparent',
+                borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.08)',
                 color: 'rgba(255,255,255,0.55)', cursor: 'pointer',
               }}
             >
@@ -201,22 +194,25 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
         </div>
 
         {/* ── Navigation ── */}
-        <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'scroll', scrollbarWidth: 'none', msOverflowStyle: 'none' }} aria-label="Main navigation">
+        <nav style={{
+          flex: 1, padding: '12px 10px',
+          overflowY: 'scroll', scrollbarWidth: 'none', msOverflowStyle: 'none',
+        }} aria-label="Main navigation">
           {NAV_GROUPS.map((group) => {
             const groupLinks = visibleLinks.filter((l) => group.paths.includes(l.to))
             if (groupLinks.length === 0) return null
             return (
-              <div key={group.label} style={{ marginBottom: 20 }}>
+              <div key={group.label} style={{ marginBottom: 16 }}>
                 <div style={{
-                  fontSize: 10, fontWeight: 700,
-                  textTransform: 'uppercase', letterSpacing: '0.14em',
-                  color: 'rgba(255,255,255,0.30)',
-                  padding: '0 12px', marginBottom: 4, lineHeight: 1,
+                  fontSize: 9.5, fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.16em',
+                  color: 'rgba(255,255,255,0.25)',
+                  padding: '0 10px', marginBottom: 4, lineHeight: 1,
                 }}>
                   {group.label}
                 </div>
 
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }} role="list">
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 1 }} role="list">
                   {groupLinks.map((link) => {
                     if (!visiblePaths.has(link.to)) return null
                     const Icon = link.icon
@@ -230,17 +226,17 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                             display: 'flex',
                             alignItems: 'center',
                             gap: 10,
-                            height: 40,
-                            padding: '0 12px',
-                            borderRadius: 10,
+                            height: 38,
+                            padding: '0 10px',
+                            borderRadius: 8,
                             fontSize: 13,
-                            fontWeight: isActive ? 600 : 500,
+                            fontWeight: isActive ? 600 : 450,
                             lineHeight: 1,
                             textDecoration: 'none',
-                            color: isActive ? '#0B3D91' : 'rgba(255,255,255,0.70)',
+                            color: isActive ? '#0B3D91' : 'rgba(255,255,255,0.72)',
                             background: isActive ? '#ffffff' : 'transparent',
-                            boxShadow: isActive ? '0 1px 6px rgba(0,0,0,0.12)' : 'none',
-                            transition: 'background 0.15s, color 0.15s',
+                            boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.15)' : 'none',
+                            transition: 'all 0.15s ease',
                             boxSizing: 'border-box',
                           })}
                         >
@@ -249,7 +245,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                               <Icon
                                 style={{
                                   width: 17, height: 17, flexShrink: 0,
-                                  color: isActive ? '#0B3D91' : 'rgba(255,255,255,0.50)',
+                                  color: isActive ? '#0B3D91' : 'rgba(255,255,255,0.48)',
                                   transition: 'color 0.15s',
                                 }}
                                 strokeWidth={isActive ? 2.25 : 1.75}
@@ -273,7 +269,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
         {/* ── User footer ── */}
         <div style={{
           flexShrink: 0,
-          borderTop: '1px solid rgba(255,255,255,0.12)',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
           padding: '10px 12px 12px',
         }}>
           <button
@@ -281,16 +277,18 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
             onClick={() => { navigate('/settings'); onClose() }}
             style={{
               display: 'flex', width: '100%', alignItems: 'center', gap: 10,
-              borderRadius: 10, padding: '8px 10px',
-              background: 'transparent', border: 'none', cursor: 'pointer',
+              borderRadius: 8, padding: '8px 10px',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              cursor: 'pointer',
               textAlign: 'left', boxSizing: 'border-box',
+              transition: 'background 0.15s',
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.10)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)' }}
           >
-            {/* Avatar */}
             <div style={{
-              display: 'grid', width: 36, height: 36, flexShrink: 0,
+              display: 'grid', width: 34, height: 34, flexShrink: 0,
               placeItems: 'center', borderRadius: '50%',
               background: '#FFD400',
               fontSize: 13, fontWeight: 900, color: '#0B3D91',
@@ -298,12 +296,17 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
             }}>
               {initials}
             </div>
-            {/* Text */}
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#ffffff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{
+                fontSize: 13, fontWeight: 600, color: '#ffffff',
+                lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
                 {name}
               </div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.3, marginTop: 2 }}>
+              <div style={{
+                fontSize: 10.5, color: 'rgba(255,255,255,0.45)',
+                lineHeight: 1.3, marginTop: 1,
+              }}>
                 Account settings
               </div>
             </div>
@@ -314,21 +317,21 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
             onClick={() => void logout()}
             style={{
               display: 'flex', width: '100%', alignItems: 'center', gap: 8,
-              borderRadius: 10, padding: '7px 12px', marginTop: 4,
+              borderRadius: 8, padding: '7px 10px', marginTop: 6,
               background: 'transparent', border: 'none', cursor: 'pointer',
-              boxSizing: 'border-box',
+              boxSizing: 'border-box', transition: 'background 0.15s',
             }}
             onMouseEnter={(e) => {
               const b = e.currentTarget as HTMLButtonElement
-              b.style.background = 'rgba(255,255,255,0.10)'
+              b.style.background = 'rgba(255,255,255,0.08)'
             }}
             onMouseLeave={(e) => {
               const b = e.currentTarget as HTMLButtonElement
               b.style.background = 'transparent'
             }}
           >
-            <LogOut size={14} style={{ flexShrink: 0, color: 'rgba(255,255,255,0.60)' }} aria-hidden="true" />
-            <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.60)' }}>Sign out</div>
+            <LogOut size={14} style={{ flexShrink: 0, color: 'rgba(255,255,255,0.45)' }} aria-hidden="true" />
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.45)' }}>Sign out</div>
           </button>
         </div>
 

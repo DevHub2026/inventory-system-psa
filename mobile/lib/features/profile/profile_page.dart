@@ -23,7 +23,6 @@ class _ProfilePageState extends State<ProfilePage> {
   final UserService _userService = UserService();
   Map<String, dynamic>? _profileData;
   bool _loading = true;
-  // ignore: unused_field
   String? _error;
 
   @override
@@ -80,16 +79,17 @@ class _ProfilePageState extends State<ProfilePage> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(AppTheme.space4),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(),
+                      _buildHeaderCard(),
                       const SizedBox(height: AppTheme.space4),
                       if (!_loading && _profileData != null) ...[
-                        _buildStats(),
+                        _buildStatsRow(),
                         const SizedBox(height: AppTheme.space4),
                       ],
-                      _buildInfoSection(),
+                      _buildAccountInfoCard(),
                       const SizedBox(height: AppTheme.space4),
-                      _buildActions(),
+                      _buildActionsCard(),
                       const SizedBox(height: AppTheme.space6),
                     ],
                   ),
@@ -110,25 +110,28 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Text(
             'My Profile',
-            style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                  fontSize: AppTheme.textSectionTitle,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
-                ),
+            style: TextStyle(
+              fontSize: AppTheme.textSectionTitle,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+              letterSpacing: -0.02,
+            ),
           ),
           const SizedBox(height: AppTheme.space2),
           Text(
             'View and manage your account information.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textSecondary,
-                ),
+            style: TextStyle(
+              fontSize: AppTheme.textBody,
+              color: AppTheme.textSecondary,
+              height: 1.5,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeaderCard() {
     final u = widget.user;
     return Container(
       padding: const EdgeInsets.all(AppTheme.space5),
@@ -140,6 +143,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       child: Row(
         children: [
+          // Avatar with glow effect
           Container(
             width: 72,
             height: 72,
@@ -149,7 +153,7 @@ class _ProfilePageState extends State<ProfilePage> {
               boxShadow: [
                 BoxShadow(
                   color: AppTheme.psaYellow.withValues(alpha: 0.4),
-                  blurRadius: 12,
+                  blurRadius: 16,
                   spreadRadius: 2,
                 ),
               ],
@@ -161,11 +165,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   color: AppTheme.primaryColor,
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
+                  letterSpacing: -0.02,
                 ),
               ),
             ),
           ),
           const SizedBox(width: AppTheme.space4),
+          // User info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,6 +182,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
+                    letterSpacing: -0.01,
                   ),
                 ),
                 const SizedBox(height: AppTheme.space1),
@@ -189,6 +196,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 const SizedBox(height: AppTheme.space1),
+                // Status badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
@@ -210,6 +218,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       color: u.status?.toLowerCase() == 'active'
                           ? AppTheme.successColor
                           : AppTheme.warningColor,
+                      letterSpacing: 0.3,
                     ),
                   ),
                 ),
@@ -221,52 +230,84 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildStats() {
+  Widget _buildStatsRow() {
     final stats = _profileData!['stats'] as Map<String, dynamic>? ?? {};
     return Row(
       children: [
-        _statChip('Borrowed', '${stats['currently_borrowed'] ?? 0}', AppTheme.primaryColor),
+        Expanded(
+          child: _statCard(
+            'Borrowed',
+            '${stats['currently_borrowed'] ?? 0}',
+            AppTheme.primaryColor,
+            const Color(0xFFEFF6FF),
+          ),
+        ),
         const SizedBox(width: AppTheme.space2),
-        _statChip('Total', '${stats['total_borrowed'] ?? 0}', AppTheme.tealColor),
+        Expanded(
+          child: _statCard(
+            'Total',
+            '${stats['total_borrowed'] ?? 0}',
+            AppTheme.tealColor,
+            const Color(0xFFF0FDF4),
+          ),
+        ),
         const SizedBox(width: AppTheme.space2),
-        _statChip('Returned', '${stats['returned'] ?? 0}', AppTheme.successColor),
+        Expanded(
+          child: _statCard(
+            'Returned',
+            '${stats['returned'] ?? 0}',
+            AppTheme.successColor,
+            const Color(0xFFF0FDF4),
+          ),
+        ),
         const SizedBox(width: AppTheme.space2),
-        _statChip('Overdue', '${stats['overdue'] ?? 0}', AppTheme.dangerColor),
+        Expanded(
+          child: _statCard(
+            'Overdue',
+            '${stats['overdue'] ?? 0}',
+            AppTheme.dangerColor,
+            const Color(0xFFFEF2F2),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _statChip(String label, String value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color),
+  Widget _statCard(String label, String value, Color color, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppTheme.space3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: color,
+              letterSpacing: -0.02,
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: color.withValues(alpha: 0.8),
-              ),
+          ),
+          const SizedBox(height: AppTheme.space1),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color.withValues(alpha: 0.8),
+              letterSpacing: 0.2,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInfoSection() {
+  Widget _buildAccountInfoCard() {
     final u = widget.user;
     return Container(
       decoration: BoxDecoration(
@@ -278,6 +319,7 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Section header
           Padding(
             padding: const EdgeInsets.fromLTRB(AppTheme.space4, AppTheme.space3, AppTheme.space4, AppTheme.space2),
             child: Text(
@@ -286,43 +328,48 @@ class _ProfilePageState extends State<ProfilePage> {
                 fontSize: AppTheme.textCardTitle,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textSecondary,
+                letterSpacing: 0.2,
               ),
             ),
           ),
           const Divider(height: 1),
-          _row('Full Name', u.fullName),
-          _row('Employee ID', u.employeeNumber),
-          _row('Username', u.username),
-          _row('Email', u.email),
-          _row('Department', u.department?.name),
-          _row('Office', u.office?.name),
+          // Info rows
+          _infoRow('Full Name', u.fullName),
+          _infoRow('Employee ID', u.employeeNumber),
+          _infoRow('Username', u.username),
+          _infoRow('Email', u.email),
+          _infoRow('Department', u.department?.name),
+          _infoRow('Office', u.office?.name),
           if (u.roles != null && u.roles!.isNotEmpty)
-            _row('Role', u.roles!.map((r) => r.name).join(', ')),
-          _row('Member Since', DateFormatter.formatDate(u.createdAt), last: true),
+            _infoRow('Role', u.roles!.map((r) => r.name).join(', ')),
+          _infoRow('Member Since', DateFormatter.formatDate(u.createdAt), isLast: true),
         ],
       ),
     );
   }
 
-  Widget _row(String label, String? value, {bool last = false}) {
+  Widget _infoRow(String label, String? value, {bool isLast = false}) {
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppTheme.space4, vertical: AppTheme.space3),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Label
               SizedBox(
-                width: 110,
+                width: 120,
                 child: Text(
                   label,
                   style: const TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: AppTheme.textMuted,
                     letterSpacing: 0.3,
                   ),
                 ),
               ),
+              // Value
               Expanded(
                 child: Text(
                   value?.isNotEmpty == true ? value! : '—',
@@ -330,18 +377,24 @@ class _ProfilePageState extends State<ProfilePage> {
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: AppTheme.textPrimary,
+                    height: 1.4,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        if (!last) const Divider(height: 1, indent: AppTheme.space4, endIndent: AppTheme.space4),
+        if (!isLast)
+          const Divider(
+            height: 1,
+            indent: AppTheme.space4,
+            endIndent: AppTheme.space4,
+          ),
       ],
     );
   }
 
-  Widget _buildActions() {
+  Widget _buildActionsCard() {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.cardColor,
@@ -356,8 +409,7 @@ class _ProfilePageState extends State<ProfilePage> {
             label: 'Edit Profile',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                  builder: (_) => EditProfilePage(user: widget.user)),
+              MaterialPageRoute(builder: (_) => EditProfilePage(user: widget.user)),
             ).then((_) => _loadProfile()),
           ),
           const Divider(height: 1, indent: 56),

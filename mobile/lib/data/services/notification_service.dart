@@ -1,8 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../config/api_config.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/utils/api_error_handler.dart';
-import '../models/notification_model.dart';
+import '../../data/models/notification_model.dart';
 
 class NotificationService {
   final Dio _dio = ApiConfig.dio;
@@ -10,14 +9,15 @@ class NotificationService {
   Future<List<NotificationModel>> getNotifications({int perPage = 20}) async {
     try {
       final response = await _dio.get(
-        AppConstants.notifications,
+        '/notifications',
         queryParameters: {'per_page': perPage},
       );
 
       if (response.statusCode == 200) {
         final data = response.data;
         if (data is Map<String, dynamic> && data.containsKey('data')) {
-          final items = data['data'] as List<dynamic>;
+          final nested = data['data'] as Map<String, dynamic>;
+          final items = nested['items'] as List<dynamic>? ?? [];
           return items.map((e) => NotificationModel.fromJson(e as Map<String, dynamic>)).toList();
         }
         return <NotificationModel>[];
@@ -31,7 +31,7 @@ class NotificationService {
 
   Future<int> getUnreadCount() async {
     try {
-      final response = await _dio.get('${AppConstants.notifications}/unread-count');
+      final response = await _dio.get('/notifications/unread-count');
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -49,7 +49,7 @@ class NotificationService {
 
   Future<void> markAsRead(int notificationId) async {
     try {
-      await _dio.post('${AppConstants.notifications}/$notificationId/read');
+      await _dio.post('/notifications/$notificationId/read');
     } on DioException catch (e) {
       throw ApiErrorHandler.handleDioError(e);
     }
@@ -57,7 +57,7 @@ class NotificationService {
 
   Future<void> markAllAsRead() async {
     try {
-      await _dio.post('${AppConstants.notifications}/mark-all-read');
+      await _dio.post('/notifications/mark-all-read');
     } on DioException catch (e) {
       throw ApiErrorHandler.handleDioError(e);
     }

@@ -539,10 +539,23 @@ export function AssetPage() {
           </p>
         </div>
 
-        <Button onClick={() => setScannerOpen(true)}>
-          <ScanLine size={16} />
+        <button
+          onClick={() => setScannerOpen(true)}
+          style={{
+            height: 38, paddingInline: 18, borderRadius: 10,
+            border: 'none', background: '#1E40AF', color: '#fff',
+            fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+            fontFamily: 'inherit',
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            boxShadow: '0 2px 8px rgba(30,64,175,0.25)',
+            transition: 'background 0.1s',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1D3FAB' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1E40AF' }}
+        >
+          <ScanLine size={14} />
           Scan Asset QR
-        </Button>
+        </button>
       </div>
 
       {/* Alert message */}

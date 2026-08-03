@@ -39,10 +39,51 @@ class AuthService {
       
       if (response.statusCode == 200) {
         final data = response.data;
+        User user;
         if (data is Map<String, dynamic> && data.containsKey('data')) {
-          return User.fromJson(data['data']);
+          user = User.fromJson(data['data']);
+        } else {
+          user = User.fromJson(data);
         }
-        return User.fromJson(data);
+        
+        // Ensure roles are loaded - fetch separately if missing
+        if (user.roles == null || user.roles!.isEmpty) {
+          try {
+            final rolesResponse = await _dio.get('/user-roles');
+            if (rolesResponse.statusCode == 200) {
+              final rolesData = rolesResponse.data;
+              List<Role> roles = [];
+              if (rolesData is Map<String, dynamic> && rolesData.containsKey('data')) {
+                final rolesList = rolesData['data'] as List<dynamic>;
+                roles = rolesList.map((e) => Role.fromJson(e as Map<String, dynamic>)).toList();
+              } else if (rolesData is List<dynamic>) {
+                roles = rolesData.map((e) => Role.fromJson(e as Map<String, dynamic>)).toList();
+              }
+              
+              // Merge roles into user
+              user = User(
+                id: user.id,
+                employeeNumber: user.employeeNumber,
+                username: user.username,
+                firstName: user.firstName,
+                middleName: user.middleName,
+                lastName: user.lastName,
+                email: user.email,
+                name: user.name,
+                status: user.status,
+                createdAt: user.createdAt,
+                department: user.department,
+                office: user.office,
+                roles: roles.isNotEmpty ? roles : user.roles,
+              );
+            }
+          } catch (e) {
+            // If fetching roles fails, continue with existing user data
+            // The dashboard will default to Employee view if no roles
+          }
+        }
+        
+        return user;
       } else {
         throw Exception('Failed to fetch profile');
       }
