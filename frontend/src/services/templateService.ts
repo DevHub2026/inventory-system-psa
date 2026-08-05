@@ -168,6 +168,58 @@ export interface TemplateFilters {
   is_default?: boolean
 }
 
+// ── Read-only Document Template Preview ───────────────────────────────────────
+
+export interface PreviewTemplateInfo {
+  exists: boolean
+  ready?: boolean
+  template_id?: number
+  template_name?: string
+  template_version?: string
+  file_validation_status?: string
+  placeholder_status?: string
+  generation_readiness?: string
+  is_default?: boolean
+  resolution_source?: 'active_context_template' | 'document_type_fallback'
+}
+
+export interface TemplatePreviewInfo {
+  template_id: number
+  template_name: string
+  template_version: string
+  document_type: string
+  usage_context: string | null
+  usage_context_label: string | null
+  effective_context: string | null
+  effective_context_label: string | null
+  resolution_mode: 'explicit_context' | 'document_type_fallback'
+  selected: PreviewTemplateInfo
+  active: PreviewTemplateInfo
+  default: PreviewTemplateInfo
+  real_record_supported: boolean
+}
+
+export interface PreviewRecord {
+  target_type: string
+  target_id: number
+  label: string
+  status: string
+}
+
+export interface PreviewRecordsResult {
+  context: string
+  records: PreviewRecord[]
+}
+
+export interface PreviewGenerationResult {
+  filename: string
+  template_id: number
+  template_name: string
+  template_version: string
+  resolution: string
+  resolution_source: string
+}
+
 function triggerBlobDownload(blob: Blob, filename: string) {
   const url = window.URL.createObjectURL(blob)
   const anchor = document.createElement('a')
@@ -317,6 +369,89 @@ export const templateService = {
     triggerBlobDownload(response.data, filename || `template-v-${versionId}.docx`)
   },
 
+  async getPreviewInfo(templateId: number): Promise<TemplatePreviewInfo> {
+    const { data } = await api.get<ApiResponse<TemplatePreviewInfo>>(`/document-templates/${templateId}/preview-info`)
+    return unwrapData(data)
+  },
+
+  async getPreviewRecords(templateId: number, perPage = 20): Promise<PreviewRecordsResult> {
+    const { data } = await api.get<ApiResponse<PreviewRecordsResult>>(
+      `/document-templates/${templateId}/preview-records`,
+      { params: { per_page: perPage } },
+    )
+    return unwrapData(data)
+  },
+
+  /**
+   * Generate a read-only DOCX preview.
+   *
+   * mode: 'selected' | 'active' | 'default'
+   * sample_data: true uses safe sample values; false requires a real target_id.
+   *
+   * PREVIEW IS ALWAYS READ-ONLY — no workflow, asset, reservation, borrowing,
+   * issuance, transfer, clearance or audit record is created or changed.
+   */
+  async generatePreview(
+    templateId: number,
+    options: {
+      mode: 'selected' | 'active' | 'default'
+      sample_data?: boolean
+      target_id?: number | null
+    },
+  ): Promise<PreviewGenerationResult> {
+    const response = await api.post(
+      `/document-templates/${templateId}/preview`,
+      {
+        mode: options.mode,
+        sample_data: options.sample_data === false ? 'false' : 'true',
+        target_id: options.target_id ?? undefined,
+      },
+      { responseType: 'blob' },
+    )
+
+    // Parse resolution metadata from response headers.
+    const h = response.headers as Record<string, string | undefined>
+    const decode = (v?: string) => {
+      if (!v) return ''
+      try {
+        return decodeURIComponent(v)
+      } catch {
+        return v
+      }
+    }
+
+    let filename = `preview-${options.mode}.docx`
+    const disposition = h['content-disposition']
+    if (disposition) {
+      const match = /filename="?([^"]+)"?/i.exec(disposition)
+      if (match?.[1]) filename = match[1]
+    }
+
+    if (response.data instanceof Blob && response.data.type.includes('application/json')) {
+      const text = await response.data.text()
+      try {
+        const parsed = JSON.parse(text) as { message?: string }
+        throw new Error(parsed.message || 'Preview generation failed.')
+      } catch (parseError: unknown) {
+        if (parseError instanceof Error && parseError.message) {
+          throw parseError
+        }
+        throw new Error('Preview generation failed.', { cause: parseError })
+      }
+    }
+
+    triggerBlobDownload(response.data, filename)
+
+    return {
+      filename,
+      template_id: Number(h['x-preview-template-id'] ?? 0),
+      template_name: decode(h['x-preview-template-name']),
+      template_version: h['x-preview-template-version'] ?? '',
+      resolution: decode(h['x-preview-resolution']),
+      resolution_source: h['x-preview-resolution-source'] ?? '',
+    }
+  },
+
   async generateDocument(type: string, targetId: number, filename?: string): Promise<void> {
     try {
       const response = await api.post(
@@ -335,7 +470,7 @@ export const templateService = {
       if (response.data instanceof Blob && response.data.type.includes('application/json')) {
         const text = await response.data.text()
         const parsed = JSON.parse(text) as { message?: string }
-        throw new Error(parsed.message || 'Document generation failed.')
+        throw new Error(parsed.message || 'Document generation failed.', { cause: new Error('Backend returned a non-document response.') })
       }
 
       triggerBlobDownload(response.data, resolvedName)
@@ -345,18 +480,15 @@ export const templateService = {
       }
       const axiosError = error as { response?: { data?: Blob; status?: number }; message?: string }
       if (axiosError.response?.data instanceof Blob) {
+        let message = 'No active DOCX template is configured for this document type. Please contact a system administrator.'
         try {
           const text = await axiosError.response.data.text()
           const parsed = JSON.parse(text) as { message?: string }
-          throw new Error(
-            parsed.message ||
-              'No active DOCX template is configured for this document type. Please contact a system administrator.',
-          )
-        } catch (inner: unknown) {
-          if (inner instanceof Error && inner.message && !inner.message.includes('JSON')) {
-            throw inner
-          }
+          if (parsed.message) message = parsed.message
+        } catch (_) {
+          // Non-JSON error body — keep the default message.
         }
+        throw new Error(message, { cause: error })
       }
       throw error instanceof Error
         ? error

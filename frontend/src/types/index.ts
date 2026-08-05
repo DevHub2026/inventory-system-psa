@@ -121,6 +121,10 @@ export interface Asset {
     authorized_by_name?: string | null
     authorized_at?: string | null
   } | null
+  /** ID of the linked InventoryItem (null for standalone assets). */
+  inventory_item_id?: number | null
+  /** Whether this asset participates in the borrowing workflow. */
+  is_borrowable?: boolean
 }
 
 export interface Reservation {
@@ -194,15 +198,25 @@ export interface InventoryItem {
   unit_cost?: number | null
   status: string
   unit: string
+  unit_id?: number | null
+  unit_name?: string | null
   reorder_level?: number
+  is_borrowable?: boolean
   remarks?: string | null
   description?: string | null
   asset_category_id?: number | null
   manufacturer_id?: number | null
+  manufacturer_name?: string | null
   office_id?: number | null
+  office_name?: string | null
   location_id?: number | null
+  location_name?: string | null
   accountability?: string | null
   is_unlinked_holder?: boolean
+  // Asset-level fields for Inventory-as-primary-form
+  model?: string | null
+  condition_status?: string | null
+  asset_status?: string | null
   created_by?: number | null
   updated_by?: number | null
   created_by_name?: string | null

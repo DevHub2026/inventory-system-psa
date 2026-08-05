@@ -165,12 +165,36 @@ export const reportService = {
     )
   },
 
+  /**
+   * Export a report to Excel (.xlsx) or CSV.
+   *
+   * Routing:
+   *  - "reissuances" → GET /reports/reissuances/export   (AssetReissuanceController)
+   *  - everything else → GET /reports/export              (ReportController / DocumentExportService)
+   *
+   * The reissuances endpoint reads `format` directly ('excel'|'csv').
+   * The shared endpoint reads `type` + `format` as query params.
+   */
   async exportReport(type: string, format: 'excel' | 'csv', params?: Record<string, unknown>): Promise<Blob> {
-    const urlPath = type === 'reissuances' ? '/reports/reissuances/export' : '/reports/export';
+    const urlPath = type === 'reissuances' ? '/reports/reissuances/export' : '/reports/export'
     const response = await api.get(urlPath, {
       params: { ...params, type, format },
       responseType: 'blob',
     })
-    return response.data
-  }
+
+    // Guard: if the server returned a JSON error instead of a binary file, surface the message.
+    const contentType = String((response.headers as Record<string, unknown>)['content-type'] ?? '')
+    if (contentType.includes('application/json')) {
+      const text = await (response.data as Blob).text()
+      let msg = 'Export failed. The server returned an error.'
+      try {
+        msg = (JSON.parse(text) as { message?: string }).message ?? msg
+      } catch {
+        // leave default message
+      }
+      throw new Error(msg)
+    }
+
+    return response.data as Blob
+  },
 }

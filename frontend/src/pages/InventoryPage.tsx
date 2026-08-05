@@ -426,17 +426,26 @@ export function InventoryPage() {
     office_id?: number | null
     location_id?: number | null
     description?: string
+    model?: string | null
+    condition_status?: string | null
+    property_number?: string | null
   }>({
-    name: '', sku: '', quantity: 0, unit: '', reorder_level: 0,
+    name: '', sku: '', quantity: 0, unit_cost: null, unit: '', unit_id: null, reorder_level: 0,
+    is_borrowable: true,
     track_as_asset: true, type: 'non_expendable', classification: 'PPE', item_nature: 'ACCOUNTABLE_PROPERTY',
     asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
+    model: null, condition_status: null, property_number: null,
   })
 
   useEffect(() => {
     const validateCode = async () => {
       try {
         const { data } = await api.get<ApiResponse<{ exists: boolean; message: string }>>('/inventory/validate-sku', {
-          params: { sku: formData.sku },
+          params: {
+            sku: formData.sku,
+            // Pass the inventory item's id so the backend ignores the item's own SKU
+            ...(editingItem ? { ignore_id: editingItem.id } : {}),
+          },
         })
         setCodeValidation(unwrapData(data))
       } catch {
@@ -445,8 +454,10 @@ export function InventoryPage() {
     }
     if (formData.sku) {
       void validateCode()
+    } else {
+      setCodeValidation(null)
     }
-  }, [formData.sku])
+  }, [formData.sku, editingItem?.id])
 
   // Load table rows — pg=1 resets list, pg>1 appends (infinite scroll)
   const loadInventory = useCallback(async (pg = 1) => {
@@ -542,7 +553,8 @@ export function InventoryPage() {
     setEditingItem(null)
     setCodeValidation(null)
     setFormData({
-      name: '', sku: '', quantity: 0, unit: '', reorder_level: 0,
+      name: '', sku: '', quantity: 0, unit_cost: null, unit: '', unit_id: null, reorder_level: 0,
+      is_borrowable: activeTab !== 'supply',
       track_as_asset: activeTab !== 'supply',
       classification: activeTab === 'all'
         ? 'PPE'
@@ -554,6 +566,7 @@ export function InventoryPage() {
       item_nature: activeTab === 'supply' ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY',
       type: activeTab === 'supply' ? 'expendable' : 'non_expendable',
       asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
+      model: null, condition_status: null, property_number: null,
     })
     setModalOpen(true)
   }
@@ -565,8 +578,11 @@ export function InventoryPage() {
       name: item.name,
       sku: item.sku ?? '',
       quantity: item.quantity,
+      unit_cost: item.unit_cost ?? null,
       unit: item.unit,
+      unit_id: item.unit_id ?? null,
       reorder_level: item.reorder_level || 0,
+      is_borrowable: item.is_borrowable !== false,
       track_as_asset: Boolean(item.asset_id),
       classification: (item.classification as 'PPE' | 'SE' | 'SUPPLY') ?? ((item.type === 'expendable') ? 'SUPPLY' : 'PPE'),
       item_nature: (item.item_nature as 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY') ?? ((item.type === 'expendable') ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY'),
@@ -576,6 +592,9 @@ export function InventoryPage() {
       office_id: item.office_id ?? null,
       location_id: item.location_id ?? null,
       description: item.description ?? '',
+      model: item.model ?? null,
+      condition_status: item.condition_status ?? null,
+      property_number: item.property_number ?? null,
     })
     setModalOpen(true)
   }
@@ -900,6 +919,7 @@ export function InventoryPage() {
                 <col style={{ minWidth: 200 }} />
                 <col style={{ width: 160 }} />
                 <col style={{ width: 160 }} />
+                <col style={{ width: 120 }} />
                 <col style={{ width: 170 }} />
                 <col style={{ width: 72 }} />
                 <col style={{ width: 80 }} />
@@ -911,6 +931,7 @@ export function InventoryPage() {
                   <th style={th}>Item</th>
                   <th style={th}>Property Number</th>
                   <th style={th}>Asset Number</th>
+                  <th style={th}>Unit Cost</th>
                   <th style={th}>Accountability</th>
                   <th style={{ ...th, textAlign: 'center' as const }}>Qty</th>
                   <th style={th}>Unit</th>
@@ -994,6 +1015,17 @@ export function InventoryPage() {
                       )}
                     </td>
 
+                    {/* Unit Cost */}
+                    <td style={td}>
+                      {r.unit_cost != null ? (
+                        <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', fontVariantNumeric: 'tabular-nums' }}>
+                          ₱{Number(r.unit_cost).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#CBD5E1' }}>—</span>
+                      )}
+                    </td>
+
                     {/* Accountability */}
                     <td style={td}>
                       <span style={{ color: '#64748B', fontSize: 13 }}>
@@ -1065,15 +1097,33 @@ export function InventoryPage() {
 
       {/* ── Add / Edit modal ── */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingItem ? 'Edit Item' : 'Add Item'}
-        footer={<><Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button><Button onClick={handleSubmit} disabled={saving}>{saving ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Item'}</Button></>}>
+        footer={<><Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button><Button onClick={handleSubmit} disabled={saving || Boolean(codeValidation?.exists)}>{saving ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Item'}</Button></>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <Input label="Item Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Bond Paper A4" />
-          <Input label="Item Code / SKU" helperText="Use the existing code if available." value={formData.sku || ''} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} placeholder="e.g. SKU-001" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Input label="Available Quantity" type="number" value={formData.quantity.toString()} disabled={Boolean(editingItem)} helperText={editingItem ? 'Use Adjust to update stock.' : undefined} onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })} />
-            <Input label="Unit" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} placeholder="e.g. reams, pcs" />
+
+          {/* Section: Basic Information */}
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: '#94A3B8' }}>
+            Basic Information
           </div>
-          <Input label="Low Stock Alert" helperText="Warn when quantity reaches this number." type="number" value={formData.reorder_level?.toString() || '0'} onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })} />
+
+          <Input label="Item Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Laptop EB-X1 001" />
+
+          {/* SKU with live validation */}
+          <div>
+            <Input
+              label="Item Code / SKU"
+              helperText={editingItem ? 'Editing the code is optional — leave unchanged to keep the existing code.' : 'Use a unique code for this item.'}
+              value={formData.sku || ''}
+              onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+              placeholder="e.g. SKU-001"
+            />
+            {codeValidation && formData.sku && (
+              <div style={{ marginTop: 4, fontSize: 12, fontWeight: 600, color: codeValidation.exists ? '#DC2626' : '#16A34A' }}>
+                {codeValidation.exists ? '❌ ' : '✓ '}{codeValidation.message}
+              </div>
+            )}
+          </div>
+
+          {/* Inventory Type */}
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Inventory Type</div>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -1084,16 +1134,172 @@ export function InventoryPage() {
                     ...formData,
                     classification: c,
                     item_nature: c === 'SUPPLY' ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY',
+                    is_borrowable: c !== 'SUPPLY',
                     track_as_asset: c !== 'SUPPLY',
                     type: c === 'SUPPLY' ? 'expendable' : 'non_expendable',
                   })}
                     style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`, background: active ? '#EFF6FF' : '#fff', color: active ? '#1E40AF' : '#64748B', fontWeight: active ? 700 : 500, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
-                    {c}
+                    {c === 'SUPPLY' ? 'Supply' : c}
                   </button>
                 )
               })}
             </div>
+            <div style={{ marginTop: 6, fontSize: 12, color: '#94A3B8' }}>
+              {formData.classification === 'PPE' && 'Property, Plant & Equipment — unit cost ≥ ₱50,000'}
+              {formData.classification === 'SE' && 'Semi-Expendable — unit cost below ₱50,000'}
+              {formData.classification === 'SUPPLY' && 'Consumable supply — quantity-based, not individually tracked'}
+            </div>
           </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Input
+              label="Available Quantity"
+              type="number"
+              value={formData.quantity.toString()}
+              disabled={Boolean(editingItem)}
+              helperText={editingItem ? 'Use Stock In/Out/Adjust to change quantity.' : undefined}
+              onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
+            />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Unit of Measure</div>
+              <input
+                value={formData.unit || ''}
+                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                placeholder="e.g. piece, unit, ream"
+                list="unit-suggestions"
+                style={{
+                  width: '100%', height: 38, paddingInline: 12, borderRadius: 10,
+                  border: '1.5px solid #E2E8F0', fontSize: 13.5, color: '#1E293B',
+                  outline: 'none', boxSizing: 'border-box' as const, fontFamily: 'inherit',
+                  background: '#F8FAFC',
+                }}
+              />
+              <datalist id="unit-suggestions">
+                {['piece', 'unit', 'ream', 'box', 'cartridge', 'pack', 'set', 'bottle', 'roll', 'bundle'].map((u) => (
+                  <option key={u} value={u} />
+                ))}
+              </datalist>
+              <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 3 }}>
+                e.g. piece, unit, ream, box, cartridge
+              </div>
+            </div>
+          </div>
+
+          <Input
+            label="Low Stock Alert"
+            helperText="Show a warning when quantity reaches this number."
+            type="number"
+            value={formData.reorder_level?.toString() || '0'}
+            onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })}
+          />
+
+          {/* Unit Cost — drives PPE/SE auto-classification for accountable items */}
+          {formData.classification !== 'SUPPLY' && (
+            <div>
+              <Input
+                label="Unit Cost (₱)"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="e.g. 75000.00"
+                value={formData.unit_cost !== null && formData.unit_cost !== undefined ? String(formData.unit_cost) : ''}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  setFormData({
+                    ...formData,
+                    unit_cost: raw === '' ? null : parseFloat(raw) || 0,
+                  })
+                }}
+              />
+              <div style={{
+                marginTop: 5, padding: '6px 10px', borderRadius: 7,
+                background: '#F8FAFC', border: '1px solid #E2E8F0',
+                fontSize: 11, color: '#64748B', lineHeight: 1.5,
+              }}>
+                <span style={{ fontWeight: 600, color: '#0F172A' }}>Auto-classification: </span>
+                {formData.unit_cost !== null && formData.unit_cost !== undefined && formData.unit_cost >= 50000
+                  ? <span style={{ color: '#1D4ED8', fontWeight: 600 }}>PPE (₱50,000 and above)</span>
+                  : formData.unit_cost !== null && formData.unit_cost !== undefined && formData.unit_cost > 0
+                    ? <span style={{ color: '#15803D', fontWeight: 600 }}>SE (above ₱0, below ₱50,000)</span>
+                    : <span style={{ color: '#94A3B8' }}>Leave blank to keep current classification ({formData.classification ?? 'manual review'})</span>}
+              </div>
+            </div>
+          )}
+
+          {/* Section: Equipment Details — PPE/SE only */}
+          {formData.classification !== 'SUPPLY' && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: '#94A3B8', marginTop: 8 }}>
+                Equipment Details
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <Input
+                    label="Property Number"
+                    value={formData.property_number || ''}
+                    onChange={(e) => setFormData({ ...formData, property_number: e.target.value || null })}
+                    placeholder="e.g. PPE-2026-001"
+                  />
+                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 3 }}>Optional — leave blank if not yet assigned.</div>
+                </div>
+                <Input
+                  label="Model Number"
+                  value={formData.model || ''}
+                  onChange={(e) => setFormData({ ...formData, model: e.target.value || null })}
+                  placeholder="e.g. ThinkPad X1"
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Condition</div>
+                  <select
+                    value={formData.condition_status || ''}
+                    onChange={(e) => setFormData({ ...formData, condition_status: e.target.value || null })}
+                    style={{
+                      width: '100%', height: 38, paddingInline: '12px 32px', borderRadius: 10,
+                      border: '1.5px solid #E2E8F0', fontSize: 13, color: formData.condition_status ? '#1E293B' : '#94A3B8',
+                      background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 12px center`,
+                      backgroundSize: '10px 6px', appearance: 'none', cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
+                    }}
+                  >
+                    <option value="">Select condition</option>
+                    <option value="GOOD">Good</option>
+                    <option value="FAIR">Fair</option>
+                    <option value="POOR">Poor</option>
+                    <option value="DAMAGED">Damaged</option>
+                    <option value="FOR_REPAIR">For Repair</option>
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Borrowable</div>
+                  <select
+                    value={formData.is_borrowable !== false ? 'true' : 'false'}
+                    onChange={(e) => setFormData({ ...formData, is_borrowable: e.target.value === 'true' })}
+                    style={{
+                      width: '100%', height: 38, paddingInline: '12px 32px', borderRadius: 10,
+                      border: '1.5px solid #E2E8F0', fontSize: 13, color: '#1E293B',
+                      background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 12px center`,
+                      backgroundSize: '10px 6px', appearance: 'none', cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
+                    }}
+                  >
+                    <option value="true">Yes — can be borrowed</option>
+                    <option value="false">No — not available for borrowing</option>
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Remarks */}
+          <Input
+            label="Remarks / Internal Notes"
+            value={formData.remarks || ''}
+            onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+            placeholder="Optional notes"
+          />
+
         </div>
       </Modal>
 

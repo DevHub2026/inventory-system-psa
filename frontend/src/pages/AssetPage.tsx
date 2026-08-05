@@ -1,17 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ScanLine, CheckCircle2, XCircle, Printer, Search, Filter,
+  ScanLine, Printer, Search, Filter, ExternalLink,
   Eye, QrCode as QrIcon, Edit3, Trash2, ArrowUpRight, RotateCcw,
-  Package, Wrench, Clock, Send,
+  Package, Wrench, Clock, Send, ToggleLeft, ToggleRight,
 } from 'lucide-react'
 import {
-  Alert, Badge, Button, ConfirmDialog, SetupDropdown, EmptyState,
+  Alert, Badge, Button, ConfirmDialog, EmptyState,
   Input, Modal, Pagination, Spinner, Card,
 } from '@/components/ui'
 import { assetService, type UpdateAssetPayload } from '@/services/assetService'
-import { setupService, type SetupRecord } from '@/services/setupService'
-import { api, unwrapData } from '@/services/api'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
 import { useAuth } from '@/hooks/useAuth'
@@ -251,6 +249,7 @@ function ActionCell({
 
 export function AssetPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const canManageAssets     = isAdmin(user)
   const canIssueAssets      = canManageIssuance(user)
@@ -299,50 +298,13 @@ export function AssetPage() {
   const [issuanceHistory, setIssuanceHistory] = useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
 
-  // Setup options for Quick Add / Quick Edit dropdowns
-  const [offices, setOffices] = useState<SetupRecord[]>([])
-  const [locations, setLocations] = useState<SetupRecord[]>([])
-  const [assetCategories, setAssetCategories] = useState<SetupRecord[]>([])
-  const [manufacturers, setManufacturers] = useState<SetupRecord[]>([])
+  // Borrowable toggle state
+  const [borrowableLoading, setBorrowableLoading] = useState(false)
 
-  // Live item code validation state
-  const [codeValidation, setCodeValidation] = useState<{ exists: boolean; message: string } | null>(null)
-
-  const [editForm,   setEditForm]   = useState<UpdateAssetPayload>({
-    asset_number: '', property_number: '', name: '', description: '', model: '', status: 'AVAILABLE', condition_status: '', remarks: '',
-    asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null,
+  const [editForm, setEditForm] = useState<UpdateAssetPayload>({
+    status: 'AVAILABLE', condition_status: '', remarks: '',
+    purchase_date: null, purchase_cost: null, warranty_until: null,
   })
-
-  const loadSetupOptions = useCallback(async () => {
-    try {
-      const [offs, locs, cats, mans] = await Promise.all([
-        setupService.list('offices'),
-        setupService.list('locations'),
-        setupService.list('asset-categories'),
-        setupService.list('manufacturers'),
-      ])
-      setOffices(offs)
-      setLocations(locs)
-      setAssetCategories(cats)
-      setManufacturers(mans)
-    } catch { /* best effort */ }
-  }, [])
-
-  useEffect(() => {
-    void loadSetupOptions()
-  }, [loadSetupOptions])
-
-  const validateCodeLive = useCallback(async (code: string, ignoreId?: number) => {
-    if (!code.trim()) { setCodeValidation(null); return }
-    try {
-      const { data } = await api.get('/assets/validate-code', {
-        params: { code: code.trim(), ignore_id: ignoreId }
-      })
-      setCodeValidation(unwrapData(data))
-    } catch {
-      setCodeValidation(null)
-    }
-  }, [])
 
   async function load(nextPage = page, nextSearch = search) {
     setLoading(true)
@@ -395,24 +357,16 @@ export function AssetPage() {
   async function openEdit(id: number) {
     if (!canManageAssets) { setMessage('Only administrators can edit asset records.'); return }
     setMessage(null)
-    setCodeValidation(null)
     try {
-      await loadSetupOptions()
       const a = await assetService.show(id)
       setEditAsset(a)
       setEditForm({
-        asset_number: a.asset_number,
-        property_number: a.property_number ?? '',
-        name: a.name,
-        description: a.description ?? '',
-        asset_category_id: a.asset_category_id ?? null,
-        manufacturer_id: a.manufacturer_id ?? null,
-        office_id: a.office_id ?? null,
-        location_id: a.location_id ?? null,
-        model: a.model ?? '',
         status: a.status,
         condition_status: a.condition_status ?? '',
         remarks: a.remarks ?? '',
+        purchase_date: a.purchase_date ?? null,
+        purchase_cost: typeof a.purchase_cost === 'string' ? parseFloat(a.purchase_cost) || null : (a.purchase_cost ?? null),
+        warranty_until: a.warranty_until ?? null,
       })
       setIssueUserId(a.issued_to_user_id ?? null)
       setIssueUser(a.issued_to_user ? {
@@ -436,10 +390,6 @@ export function AssetPage() {
 
   async function submitEdit() {
     if (!editAsset) return
-    if (codeValidation?.exists) {
-      setMessage('Please fix the duplicate Item Code before saving.')
-      return
-    }
     const shouldIssue =
       !hasPermanentHolder(editAsset) &&
       issueUserId !== null &&
@@ -448,13 +398,12 @@ export function AssetPage() {
     setSaving(true); setMessage(null)
     try {
       await assetService.update(editAsset.id, {
-        ...editForm,
-        asset_number: editForm.asset_number?.trim() || undefined,
-        property_number: editForm.property_number?.trim() || null,
-        description: editForm.description || null,
-        model: editForm.model || null,
+        status:           editForm.status,
         condition_status: editForm.condition_status || null,
-        remarks: editForm.remarks || null,
+        remarks:          editForm.remarks || null,
+        purchase_date:    editForm.purchase_date || null,
+        purchase_cost:    editForm.purchase_cost ?? null,
+        warranty_until:   editForm.warranty_until || null,
       })
 
       if (shouldIssue) {
@@ -473,6 +422,23 @@ export function AssetPage() {
       void loadSummary()
     } catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to update asset.') }
     finally { setSaving(false) }
+  }
+
+  async function toggleBorrowable(asset: Asset) {
+    const next = !(asset.is_borrowable ?? true)
+    setBorrowableLoading(true)
+    try {
+      await assetService.setBorrowable(asset.id, next)
+      // Refresh so the updated flag surfaces in the modal and table
+      const refreshed = await assetService.show(asset.id)
+      setEditAsset(refreshed)
+      await load(page)
+      setMessage(next ? 'Borrowing enabled for this asset.' : 'Borrowing disabled for this asset.')
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Unable to update borrowable setting.')
+    } finally {
+      setBorrowableLoading(false)
+    }
   }
 
   useEffect(() => { void load(1) }, [status])
@@ -1296,174 +1262,94 @@ export function AssetPage() {
       </Modal>
 
       {/* ── Edit Asset Modal ── */}
+      {/* ── Edit Asset Modal ── */}
       <Modal
         open={editAsset !== null}
         title={`Edit Asset: ${editAsset?.name ?? ''}`}
         onClose={() => setEditAsset(null)}
-        maxWidth={700}
+        maxWidth={680}
         footer={
           <>
             <Button variant="secondary" onClick={() => setEditAsset(null)}>Cancel</Button>
-            <Button onClick={() => void submitEdit()} disabled={saving || Boolean(codeValidation?.exists)}>
+            <Button onClick={() => void submitEdit()} disabled={saving}>
               {saving ? 'Saving…' : 'Save Changes'}
             </Button>
           </>
         }
       >
-        <div className="space-y-6">
-          {/* Section 1: Basic Information */}
-          <div>
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">1. Basic Information</p>
-            <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Input
-                  label="Item Name"
-                  value={editForm.name ?? ''}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                />
-                <div>
-                  <label className={LABEL_CLS}>Item Code / SKU</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      className={SELECT_CLS}
-                      value={editForm.asset_number ?? ''}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        setEditForm({ ...editForm, asset_number: val })
-                        void validateCodeLive(val, editAsset?.id)
-                      }}
-                      placeholder="e.g. AST-2026-001"
-                    />
-                    {codeValidation && (
-                      <div className="mt-1 flex items-center gap-1 text-xs">
-                        {codeValidation.exists ? (
-                          <span className="flex items-center gap-1 font-medium text-red-600">
-                            <XCircle size={14} /> ❌ Already exists
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 font-medium text-emerald-600">
-                            <CheckCircle2 size={14} /> ✓ Available
-                          </span>
-                        )}
-                      </div>
-                    )}
+        {editAsset && (
+          <div className="space-y-6">
+
+            {/* Inventory-owned fields notice */}
+            {editAsset.inventory_item_id && (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 12,
+                borderRadius: 12, border: '1px solid #BFDBFE',
+                background: '#EFF6FF', padding: '12px 16px',
+              }}>
+                <div style={{ color: '#2563EB', flexShrink: 0, marginTop: 1 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#1E40AF' }}>
+                    Item details are managed in Inventory
+                  </p>
+                  <p style={{ margin: '3px 0 0', fontSize: 12, color: '#3B82F6', lineHeight: 1.5 }}>
+                    Name, category, manufacturer, office, location, model and property number are edited from the linked Inventory Item only.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setEditAsset(null); navigate(`/inventory?highlight=${editAsset.inventory_item_id}`) }}
+                  style={{
+                    flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5,
+                    borderRadius: 8, border: '1.5px solid #93C5FD', background: '#fff',
+                    color: '#1D4ED8', fontSize: 12, fontWeight: 700, padding: '5px 12px',
+                    cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#DBEAFE' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#fff' }}
+                >
+                  <ExternalLink size={12} />
+                  Open Inventory Item
+                </button>
+              </div>
+            )}
+
+            {/* A: Read-only item identity */}
+            <div>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Item Identity (read-only)</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {([
+                  { label: 'Item Name',       value: editAsset.name },
+                  { label: 'Asset Number',    value: editAsset.asset_number,          mono: true },
+                  { label: 'Property Number', value: editAsset.property_number ?? '—', mono: true },
+                  { label: 'Category',        value: editAsset.category ?? '—' },
+                  { label: 'Model',           value: editAsset.model ?? '—' },
+                  { label: 'Office',          value: editAsset.office ?? '—' },
+                  { label: 'Location',        value: editAsset.location ?? '—' },
+                  { label: 'Description',     value: editAsset.description ?? '—' },
+                ] as { label: string; value: string; mono?: boolean }[]).map(({ label, value, mono }) => (
+                  <div key={label} className={label === 'Description' ? 'sm:col-span-2' : ''}>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8] mb-0.5">{label}</p>
+                    <p style={{
+                      fontSize: 13.5, margin: 0,
+                      fontFamily: mono ? "'SF Mono','Fira Code',ui-monospace,monospace" : undefined,
+                      color: value === '—' ? '#CBD5E1' : '#1E293B', fontWeight: 500,
+                      padding: '7px 12px', borderRadius: 8,
+                      border: '1px solid #F1F5F9', background: '#F8FAFC',
+                    }}>
+                      {value}
+                    </p>
                   </div>
-                </div>
-                <div>
-                  <label className={LABEL_CLS}>Property Number</label>
-                  <input
-                    type="text"
-                    className={SELECT_CLS}
-                    value={editForm.property_number ?? ''}
-                    onChange={(e) => setEditForm({ ...editForm, property_number: e.target.value })}
-                    placeholder="e.g. PROP-2026-001"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={LABEL_CLS}>Description</label>
-                <textarea
-                  className={TEXTAREA_CLS}
-                  rows={2}
-                  value={editForm.description ?? ''}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                  placeholder="Asset description..."
-                />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <SetupDropdown
-                  label="Asset Category"
-                  resource="asset-categories"
-                  options={assetCategories.map((c) => ({ label: c.name, value: c.id, raw: c }))}
-                  value={editForm.asset_category_id}
-                  onChange={(val) => setEditForm({ ...editForm, asset_category_id: val })}
-                  onRefreshNeeded={loadSetupOptions}
-                  placeholder="Select Category"
-                />
-                <SetupDropdown
-                  label="Manufacturer"
-                  resource="manufacturers"
-                  options={manufacturers.map((m) => ({ label: m.name, value: m.id, raw: m }))}
-                  value={editForm.manufacturer_id}
-                  onChange={(val) => setEditForm({ ...editForm, manufacturer_id: val })}
-                  onRefreshNeeded={loadSetupOptions}
-                  placeholder="Select Manufacturer"
-                />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <SetupDropdown
-                  label="Office"
-                  resource="offices"
-                  options={offices.map((o) => ({ label: o.name, value: o.id, raw: o }))}
-                  value={editForm.office_id}
-                  onChange={(val) => setEditForm({ ...editForm, office_id: val, location_id: null })}
-                  onRefreshNeeded={loadSetupOptions}
-                  placeholder="Select Office"
-                />
-                <SetupDropdown
-                  label="Location"
-                  resource="locations"
-                  options={locations
-                    .filter((l) => !editForm.office_id || l.office_id === editForm.office_id)
-                    .map((l) => ({ label: l.name, value: l.id, raw: l }))}
-                  value={editForm.location_id}
-                  onChange={(val) => setEditForm({ ...editForm, location_id: val })}
-                  onRefreshNeeded={loadSetupOptions}
-                  needsOffice
-                  currentOfficeId={editForm.office_id}
-                  placeholder="Select Location"
-                />
+                ))}
               </div>
             </div>
-          </div>
 
-          {/* Section 2: Inventory */}
-          <div>
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">2. Inventory</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className={LABEL_CLS}>Available Quantity (Current Stock)</label>
-                <input
-                  type="text"
-                  readOnly
-                  value="1"
-                  className="w-full h-11 rounded-[10px] border border-[#E5E7EB] bg-[#F8FAFC] px-3.5 text-[14px] text-[#6B7280] shadow-[0_1px_2px_rgba(0,0,0,.05)] cursor-not-allowed select-all font-semibold"
-                  title="Available Quantity is read-only. Stock changes are managed via inventory transactions."
-                />
-                <p className="mt-1 text-[11px] text-[#94A3B8]">
-                  Read-only. Stock adjustments are managed via inventory transactions.
-                </p>
-              </div>
-              <Input
-                label="Remarks / Internal Notes"
-                value={editForm.remarks ?? ''}
-                onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })}
-              />
-            </div>
-          </div>
-
-          {/* Section 3: Asset Information */}
-          <div>
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">3. Asset Information</p>
-            <div className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Input
-                  label="Model Number"
-                  value={editForm.model ?? ''}
-                  onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
-                />
-                <div>
-                  <label className={LABEL_CLS}>Condition</label>
-                  <Input
-                    value={editForm.condition_status ?? ''}
-                    onChange={(e) => setEditForm({ ...editForm, condition_status: e.target.value })}
-                    placeholder="GOOD, FAIR, DAMAGED"
-                  />
-                </div>
+            {/* B: Operational status */}
+            <div>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Operational Status</p>
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className={LABEL_CLS}>Status</label>
                   <select
@@ -1474,20 +1360,116 @@ export function AssetPage() {
                     <option value="AVAILABLE">Available</option>
                     <option value="MAINTENANCE">Maintenance</option>
                     <option value="UNAVAILABLE">Unavailable</option>
+                    <option value="FOR_DISPOSAL">For Disposal</option>
                     <option value="RETIRED">Retired</option>
                     <option value="DISPOSED">Disposed</option>
                   </select>
                 </div>
+                <div>
+                  <label className={LABEL_CLS}>Condition</label>
+                  <select
+                    className={SELECT_CLS}
+                    value={editForm.condition_status ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, condition_status: e.target.value || null })}
+                  >
+                    <option value="">— Not specified —</option>
+                    <option value="GOOD">Good</option>
+                    <option value="FAIR">Fair</option>
+                    <option value="POOR">Poor</option>
+                    <option value="DAMAGED">Damaged</option>
+                    <option value="FOR_REPAIR">For Repair</option>
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Section 4: Permanent Issuance Information */}
-          {editAsset && (
+            {/* C: Procurement */}
             <div>
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">4. Permanent Issuance Information</p>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Procurement</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className={LABEL_CLS}>Purchase Date</label>
+                  <input type="date" className={SELECT_CLS}
+                    value={editForm.purchase_date ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, purchase_date: e.target.value || null })} />
+                </div>
+                <div>
+                  <label className={LABEL_CLS}>Purchase Cost (₱)</label>
+                  <input type="number" min={0} step="0.01" className={SELECT_CLS} placeholder="0.00"
+                    value={editForm.purchase_cost ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, purchase_cost: e.target.value ? parseFloat(e.target.value) : null })} />
+                </div>
+                <div>
+                  <label className={LABEL_CLS}>Warranty Until</label>
+                  <input type="date" className={SELECT_CLS}
+                    value={editForm.warranty_until ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, warranty_until: e.target.value || null })} />
+                </div>
+              </div>
+            </div>
+
+            {/* D: Borrowable toggle */}
+            {editAsset.inventory_item_id && (
+              <div>
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Borrowing</p>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  borderRadius: 12, border: '1px solid #E2E8F0',
+                  background: '#FAFBFC', padding: '14px 18px', gap: 16,
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0F172A' }}>
+                      {(editAsset.is_borrowable ?? true) ? 'Borrowing enabled' : 'Borrowing disabled'}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                      {(editAsset.is_borrowable ?? true)
+                        ? 'This item can be selected in borrow requests and QR workflows.'
+                        : 'This item will not appear in borrow requests. Permanent issuance is still possible.'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={borrowableLoading || ['BORROWED', 'RESERVED'].includes(editAsset.status)}
+                    onClick={() => void toggleBorrowable(editAsset)}
+                    style={{
+                      flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 7,
+                      borderRadius: 9, border: '1.5px solid',
+                      borderColor: (editAsset.is_borrowable ?? true) ? '#BBF7D0' : '#E2E8F0',
+                      background: (editAsset.is_borrowable ?? true) ? '#F0FDF4' : '#fff',
+                      color: (editAsset.is_borrowable ?? true) ? '#166534' : '#64748B',
+                      fontSize: 13, fontWeight: 700, padding: '7px 14px',
+                      cursor: (borrowableLoading || ['BORROWED', 'RESERVED'].includes(editAsset.status)) ? 'not-allowed' : 'pointer',
+                      opacity: borrowableLoading ? 0.6 : 1,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {(editAsset.is_borrowable ?? true)
+                      ? <><ToggleRight size={16} /> Disable</>
+                      : <><ToggleLeft size={16} /> Enable</>}
+                  </button>
+                </div>
+                {['BORROWED', 'RESERVED'].includes(editAsset.status) && (
+                  <p style={{ marginTop: 6, fontSize: 11.5, color: '#B45309' }}>
+                    Borrowing cannot be changed while the asset is {editAsset.status.toLowerCase()}. Resolve the active transaction first.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* E: Remarks */}
+            <div>
+              <label className={LABEL_CLS}>Remarks / Internal Notes</label>
+              <textarea className={TEXTAREA_CLS} rows={2}
+                value={editForm.remarks ?? ''}
+                onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })}
+                placeholder="Optional operational notes…" />
+            </div>
+
+            {/* F: Permanent Issuance */}
+            <div>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Permanent Issuance</p>
               {hasPermanentHolder(editAsset) ? (
-                <div className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-4 space-y-2">
+                <div className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-4 space-y-1.5">
                   <p className="text-sm font-semibold text-[#0F172A]">
                     Accountable To: {editAsset.issued_to_user?.full_name ?? editAsset.issued_to ?? '—'}
                   </p>
@@ -1495,7 +1477,7 @@ export function AssetPage() {
                     <p className="text-xs text-amber-700">This record uses a legacy unlinked holder name.</p>
                   )}
                   <p className="text-sm text-[#64748B]">
-                    To transfer accountability, close edit and use <strong>Re-Issue / Transfer</strong> from Asset Details.
+                    To transfer accountability, close this form and use <strong>Re-Issue / Transfer</strong> from Asset Details.
                   </p>
                 </div>
               ) : canIssueAssets ? (
@@ -1503,19 +1485,12 @@ export function AssetPage() {
                   <IssuanceUserSearchSelect
                     value={issueUserId}
                     initialUser={issueUser}
-                    onChange={(userId, user) => {
-                      setIssueUserId(userId)
-                      setIssueUser(user)
-                    }}
+                    onChange={(userId, user) => { setIssueUserId(userId); setIssueUser(user) }}
                   />
                   <div>
                     <label className={LABEL_CLS}>Date Issued</label>
-                    <input
-                      type="date"
-                      className={SELECT_CLS}
-                      value={issueDate}
-                      onChange={(e) => setIssueDate(e.target.value)}
-                    />
+                    <input type="date" className={SELECT_CLS} value={issueDate}
+                      onChange={(e) => setIssueDate(e.target.value)} />
                   </div>
                   <Button
                     type="button"
@@ -1539,42 +1514,28 @@ export function AssetPage() {
                     {issuing ? 'Issuing…' : 'Issue Asset'}
                   </Button>
                   <p className="text-xs text-[#94A3B8]">
-                    Select an accountable employee and click <strong>Issue Asset</strong>, or use <strong>Save Changes</strong> to update the asset and issue in one step.
+                    Select an employee and click <strong>Issue Asset</strong>, or use <strong>Save Changes</strong> to update status and issue in one step.
                   </p>
                 </div>
               ) : (
                 <p className="text-sm text-[#64748B]">No permanent holder assigned.</p>
               )}
             </div>
-          )}
 
-          {/* Section 5: Audit Information */}
-          {editAsset && (
+            {/* G: Audit */}
             <div className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3.5">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">5. Audit Information</p>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Audit</p>
               <div className="grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
-                <div>
-                  <span className="font-semibold text-slate-700">Created By:</span>{' '}
-                  {editAsset.created_by_name || 'System'}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-700">Created At:</span>{' '}
-                  {editAsset.created_at ? new Date(editAsset.created_at).toLocaleString() : '—'}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-700">Updated By:</span>{' '}
-                  {editAsset.updated_by_name || '—'}
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-700">Updated At:</span>{' '}
-                  {editAsset.updated_at ? new Date(editAsset.updated_at).toLocaleString() : '—'}
-                </div>
+                <div><span className="font-semibold text-slate-700">Created By:</span> {editAsset.created_by_name || 'System'}</div>
+                <div><span className="font-semibold text-slate-700">Created At:</span> {editAsset.created_at ? new Date(editAsset.created_at).toLocaleString() : '—'}</div>
+                <div><span className="font-semibold text-slate-700">Updated By:</span> {editAsset.updated_by_name || '—'}</div>
+                <div><span className="font-semibold text-slate-700">Updated At:</span> {editAsset.updated_at ? new Date(editAsset.updated_at).toLocaleString() : '—'}</div>
               </div>
             </div>
-          )}
-        </div>
-      </Modal>
 
+          </div>
+        )}
+      </Modal>
       <GenerateDocumentModal
         open={printIssuanceId !== null}
         onClose={() => setPrintIssuanceId(null)}

@@ -8,6 +8,7 @@ use App\Modules\AssetIdentifier\Models\AssetIdentifier;
 use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\Asset\Enums\ConditionStatus;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,7 +16,17 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Asset extends Model
 {
+    use HasFactory;
     use SoftDeletes;
+
+    /**
+     * Resolve the factory for this model.
+     * The factory lives at Database\Factories\AssetFactory (legacy location).
+     */
+    protected static function newFactory(): \Database\Factories\AssetFactory
+    {
+        return \Database\Factories\AssetFactory::new();
+    }
 
     protected $fillable = [
         'asset_number',
@@ -40,6 +51,14 @@ class Asset extends Model
         'issued_to_user_id',
         'issued_by_user_id',
         'date_issued',
+        // Disposal lifecycle fields
+        'disposal_reason',
+        'disposal_date',
+        'disposal_method',
+        'disposal_approval_ref',
+        'disposal_approved_by',
+        'disposal_cancelled_at',
+        'disposal_cancel_reason',
     ];
 
     protected function casts(): array
@@ -51,6 +70,8 @@ class Asset extends Model
             'warranty_until' => 'date',
             'insurance_expiration_date' => 'date',
             'date_issued' => 'date',
+            'disposal_date' => 'date',
+            'disposal_cancelled_at' => 'datetime',
             'purchase_cost' => 'decimal:2',
         ];
     }
@@ -98,6 +119,21 @@ class Asset extends Model
     public function borrows(): HasMany
     {
         return $this->hasMany(\App\Modules\Borrowing\Models\Borrowing::class);
+    }
+
+    /**
+     * The linked InventoryItem that owns this asset record.
+     * inventory_items.asset_id → assets.id (inverse of BelongsTo on InventoryItem).
+     */
+    public function inventoryItem(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Modules\Inventory\Models\InventoryItem::class, 'asset_id');
+    }
+
+    /** User who approved / initiated the disposal workflow. */
+    public function disposalApprover(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'disposal_approved_by');
     }
 
     public function scopeAvailable(Builder $query): Builder

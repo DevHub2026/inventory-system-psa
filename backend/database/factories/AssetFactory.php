@@ -4,7 +4,7 @@ namespace Database\Factories;
 
 use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\Asset\Enums\ConditionStatus;
-use App\Models\Asset;
+use App\Modules\Asset\Models\Asset;
 use App\Models\AssetCategory;
 use App\Models\Location;
 use App\Models\Manufacturer;

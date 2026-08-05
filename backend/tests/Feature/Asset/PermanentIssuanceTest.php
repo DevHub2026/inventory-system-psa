@@ -170,21 +170,42 @@ class PermanentIssuanceTest extends TestCase
     public function test_asset_update_strips_issuance_fields(): void
     {
         $asset = Asset::factory()->create([
-            'name' => 'Original Name',
+            'name'   => 'Original Name',
+            'status' => AssetStatus::AVAILABLE->value,
         ]);
 
+        // Issuance fields must be ignored/stripped even when included in the request.
+        // The 'name' field is now inventory-owned (prohibited via UpdateAssetRequest),
+        // so send only the operational fields.
         $this->actingAs($this->admin)->putJson("/api/v1/assets/{$asset->id}", [
-            'name' => 'Updated Name',
-            'issued_to' => 'Manual Name',
+            'status'          => AssetStatus::MAINTENANCE->value,
+            // These should be silently stripped by the service regardless:
+            'issued_to'         => 'Manual Name',
             'issued_to_user_id' => $this->employee->id,
-            'date_issued' => '2026-07-30',
+            'date_issued'       => '2026-07-30',
         ])->assertOk();
 
         $asset->refresh();
 
-        $this->assertSame('Updated Name', $asset->name);
+        // Status must have changed (operational field)
+        $this->assertSame(AssetStatus::MAINTENANCE->value, $asset->status->value);
+        // Name must NOT have changed (inventory-owned, prohibited)
+        $this->assertSame('Original Name', $asset->name);
+        // Issuance fields must NOT have been set by the update endpoint
         $this->assertNull($asset->issued_to_user_id);
         $this->assertNull($asset->issued_to);
+    }
+
+    public function test_asset_update_rejects_inventory_owned_name_field(): void
+    {
+        $asset = Asset::factory()->create(['name' => 'Original Name']);
+
+        $this->actingAs($this->admin)->putJson("/api/v1/assets/{$asset->id}", [
+            'name' => 'Attempted Override',
+        ])->assertStatus(422);
+
+        $asset->refresh();
+        $this->assertSame('Original Name', $asset->name);
     }
 
     public function test_permanently_issued_asset_remains_visible_in_assets_listing_without_status_change(): void

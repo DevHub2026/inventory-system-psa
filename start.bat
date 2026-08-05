@@ -1,4 +1,14 @@
 @echo off
+
+rem Request administrator permission if not already elevated
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Requesting administrator permission...
+
+    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+    exit /b
+)
+
 setlocal enabledelayedexpansion
 
 cd /d "%~dp0"
@@ -27,6 +37,28 @@ if errorlevel 1 (
   exit /b 1
 )
 
+echo.
+echo Checking PostgreSQL...
+
+sc query "postgresql-x64-18" | find "RUNNING" >nul
+
+if errorlevel 1 (
+  echo PostgreSQL is stopped. Starting PostgreSQL...
+
+  net start "postgresql-x64-18"
+
+  if errorlevel 1 (
+    echo.
+    echo ERROR: PostgreSQL could not be started.
+    pause
+    exit /b 1
+  )
+
+  echo PostgreSQL started successfully.
+) else (
+  echo PostgreSQL is already running.
+)
+
 if not exist "backend\artisan" (
   echo ERROR: backend\artisan was not found.
   echo Run this file from the PSA Inventory System project root.
@@ -43,14 +75,17 @@ if not exist "frontend\package.json" (
 
 if not exist "frontend\node_modules" (
   echo Installing frontend dependencies...
+
   pushd frontend
   call npm install
+
   if errorlevel 1 (
     popd
     echo ERROR: npm install failed.
     pause
     exit /b 1
   )
+
   popd
 )
 
@@ -67,22 +102,22 @@ if "%BACKEND_PORT%"=="" set BACKEND_PORT=8000
 if "%FRONTEND_PORT%"=="" set FRONTEND_PORT=5173
 if "%VITE_API_BASE_URL%"=="" set VITE_API_BASE_URL=/api/v1
 
+echo.
 echo Starting backend + frontend...
-echo backend: http://localhost:%BACKEND_PORT%
-echo frontend: http://localhost:%FRONTEND_PORT%
-echo phone: use the LAN URL printed by runner.js
-echo api: %VITE_API_BASE_URL%
+echo.
+echo Backend:  http://localhost:%BACKEND_PORT%
+echo Frontend: http://localhost:%FRONTEND_PORT%
+echo Phone:    Use the LAN URL printed by runner.js
+echo API:      %VITE_API_BASE_URL%
+echo.
 
-rem If you want custom ports, set env vars before running:
-rem   set BACKEND_PORT=8000
-rem   set FRONTEND_PORT=5173
 node runner.js
 
 if errorlevel 1 (
+  echo.
   echo Runner stopped with an error.
   pause
   exit /b 1
 )
 
 endlocal
-

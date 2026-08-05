@@ -31,7 +31,7 @@ interface ReceiptModalProps {
 }
 
 function receiptTypeLabel(type: ReceiptRecord['type'], status?: string | null) {
-  if (type === 'Reservation') return 'Borrow Request'
+  if (type === 'Reservation') return 'Borrow Request QR Slip'
   return status === 'RETURNED' ? 'Return Receipt' : 'Borrow Receipt'
 }
 
@@ -98,7 +98,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
   return (
     <Modal
       open={receipt !== null}
-      title={`${title} Receipt`}
+      title={title === 'Borrow Request QR Slip' ? 'Borrow Request QR Slip' : `${title} Receipt`}
       onClose={onClose}
       footer={
         <>

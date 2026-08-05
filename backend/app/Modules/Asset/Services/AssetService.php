@@ -23,7 +23,7 @@ class AssetService
         $perPage = (int) ($filters['per_page'] ?? 20);
 
         $query = Asset::query()
-            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser'])
+            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser', 'inventoryItem'])
             ->search($filters['search'] ?? null);
 
         if (! empty($filters['status'])) {
@@ -70,7 +70,7 @@ class AssetService
     public function search(string $term, int $perPage = 20): LengthAwarePaginator
     {
         return Asset::query()
-            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser'])
+            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser', 'inventoryItem'])
             ->search($term)
             ->orderBy('asset_number')
             ->paginate($perPage);
@@ -88,6 +88,7 @@ class AssetService
             'issuedToUser.office',
             'issuedToUser.roles',
             'issuedByUser',
+            'inventoryItem',
         ]);
     }
 
@@ -125,7 +126,22 @@ class AssetService
             throw new AssetNotAvailableException('A disposed asset cannot be modified.');
         }
 
+        // ── Strip all inventory-owned fields ────────────────────────────────
+        // The Inventory module is the single source of truth for these columns.
+        // Allowing them to be written here would create a conflicting write path.
+        // The UpdateAssetRequest already rejects them with 422; this is a
+        // defence-in-depth guard in case the service is called directly.
+        $inventoryOwned = [
+            'name', 'description', 'asset_number', 'property_number',
+            'asset_category_id', 'manufacturer_id', 'office_id', 'location_id', 'model',
+        ];
+        foreach ($inventoryOwned as $field) {
+            unset($data[$field]);
+        }
+
+        // Permanent-issuance fields are managed by PermanentIssuanceController only.
         unset($data['issued_to'], $data['issued_to_user_id'], $data['issued_by_user_id'], $data['date_issued']);
+
         $this->assetLifecycleCoordinator->validateManualStatusTransition($asset, $data['status'] ?? null);
 
         $asset->update($data);
@@ -146,6 +162,14 @@ class AssetService
 
         $asset->update(['status' => AssetStatus::RETIRED]);
         $asset->delete();
+
+        // Also soft-delete the linked inventory item so the counts stay consistent.
+        // The inventory item's deletion is NOT permanent — it can be restored via
+        // InventoryItem::withTrashed()->find($id)->restore() if needed.
+        \App\Modules\Inventory\Models\InventoryItem::query()
+            ->where('asset_id', $asset->id)
+            ->whereNull('deleted_at')
+            ->update(['deleted_at' => now()]);
 
         return $asset;
     }

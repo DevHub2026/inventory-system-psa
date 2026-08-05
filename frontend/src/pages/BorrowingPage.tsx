@@ -215,15 +215,7 @@ export function BorrowingPage() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <colgroup>
-                <col style={{ width: 80  }} />   {/* ID */}
-                <col />                           {/* Asset (flex) */}
-                <col style={{ width: 120 }} />   {/* Borrower */}
-                <col style={{ width: 100 }} />   {/* Status */}
-                <col style={{ width: 130 }} />   {/* Borrowed */}
-                <col style={{ width: 130 }} />   {/* Due */}
-                <col style={{ width: 130 }} />   {/* Returned */}
-                <col style={{ width: 120 }} />   {/* Authorized by */}
-                <col style={{ width: 120 }} />   {/* Actions */}
+                <col style={{ width: 80 }} /><col /><col style={{ width: 120 }} /><col style={{ width: 100 }} /><col style={{ width: 130 }} /><col style={{ width: 130 }} /><col style={{ width: 130 }} /><col style={{ width: 120 }} /><col style={{ width: 120 }} />
               </colgroup>
 
               <thead>

@@ -364,13 +364,13 @@ export function ReservationPage() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <colgroup>
-                <col style={{ width: 70  }} />   {/* ID */}
-                <col style={{ width: 140 }} />   {/* Employee */}
-                <col />                           {/* Asset (flex) */}
-                <col style={{ width: 240 }} />   {/* Purpose */}
-                <col style={{ width: 100 }} />   {/* Status */}
-                <col style={{ width: 180 }} />   {/* Schedule */}
-                <col style={{ width: 150 }} />   {/* Actions */}
+                <col style={{ width: 70  }} />
+                <col style={{ width: 140 }} />
+                <col />
+                <col style={{ width: 240 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 180 }} />
+                <col style={{ width: 150 }} />
               </colgroup>
 
               <thead>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Input, Badge, EmptyState, Spinner, Alert } from '@/components/ui'
+import { Input, Badge, EmptyState, Spinner, Alert } from '@/components/ui'
 import { workflowService, type ModuleOption } from '@/services/workflowService'
 import type { Workflow } from '@/types'
 import { WorkflowEditorModal } from '@/components/workflows/WorkflowEditorModal'
@@ -233,12 +233,12 @@ export function WorkflowsPage() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <colgroup>
-                <col />                           {/* Workflow — flex */}
-                <col style={{ width: 200 }} />   {/* Module */}
-                <col style={{ width: 100 }} />   {/* Levels */}
-                <col style={{ width: 100 }} />   {/* Status */}
-                <col style={{ width: 130 }} />   {/* Updated */}
-                <col style={{ width: 160 }} />   {/* Actions */}
+                <col />
+                <col style={{ width: 200 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 160 }} />
               </colgroup>
 
               <thead>

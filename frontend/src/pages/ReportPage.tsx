@@ -188,15 +188,15 @@ export function ReportPage() {
       }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.03em', lineHeight: 1.2 }}>
-            Reports & Exports
+            Reports &amp; Exports
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: 14, color: '#64748B', lineHeight: 1.4 }}>
             Generate official reports and export data to Excel, CSV, or PDF.
           </p>
         </div>
 
-        {/* Export buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Export buttons — hidden when printing */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} className="report-no-print">
           <button
             type="button"
             disabled={exporting || data.length === 0}
@@ -254,10 +254,25 @@ export function ReportPage() {
       {/* Alert */}
       {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
+      {/* ── Printable report area — this wrapper is the only thing visible when printing ── */}
+      <div className="report-print-area">
+
+        {/* Print-only page header (invisible on screen via CSS inversion) */}
+        <div className="report-print-only" style={{ display: 'none' }}>
+          <div style={{ textAlign: 'center', marginBottom: 16, borderBottom: '2px solid #003DA5', paddingBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#003DA5', letterSpacing: '0.04em' }}>
+              PHILIPPINE STATISTICS AUTHORITY
+            </div>
+            <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+              Inventory Management System — {activeTab.label} ({new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })})
+            </div>
+          </div>
+        </div>
+
       {/* ── Main Card ── */}
       <Card noPadding>
-        {/* Tab Navigation */}
-        <div style={{
+        {/* Tab Navigation — hidden when printing */}
+        <div className="report-no-print" style={{
           display: 'flex', gap: 0,
           borderBottom: '1px solid #E2E8F0',
           background: '#FAFBFC',
@@ -339,6 +354,8 @@ export function ReportPage() {
           </div>
         )}
       </Card>
+
+      </div>{/* end .report-print-area */}
     </div>
   )
 }

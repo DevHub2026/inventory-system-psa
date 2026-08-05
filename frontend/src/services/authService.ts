@@ -9,6 +9,9 @@ export interface LoginPayload {
 
 export interface UpdateProfilePayload {
   name?: string
+  first_name?: string
+  middle_name?: string | null
+  last_name?: string
   email?: string
 }
 

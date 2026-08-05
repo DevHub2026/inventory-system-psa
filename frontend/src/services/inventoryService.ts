@@ -14,10 +14,21 @@ export interface CreateInventoryItemPayload {
   classification_reason?: string
   quantity: number
   unit_cost?: number | null
-  unit: string
+  unit?: string
+  unit_id?: number | null
   reorder_level?: number
   remarks?: string
+  is_borrowable?: boolean
   track_as_asset?: boolean
+  manufacturer_id?: number | null
+  office_id?: number | null
+  location_id?: number | null
+  // Asset-level fields written through linked asset
+  model?: string | null
+  condition_status?: string | null
+  description?: string | null
+  asset_category_id?: number | null
+  property_number?: string | null
 }
 
 export interface UpdateInventoryItemPayload {
@@ -30,9 +41,20 @@ export interface UpdateInventoryItemPayload {
   quantity?: number
   unit_cost?: number | null
   unit?: string
+  unit_id?: number | null
   reorder_level?: number
   remarks?: string
+  is_borrowable?: boolean
   track_as_asset?: boolean
+  manufacturer_id?: number | null
+  office_id?: number | null
+  location_id?: number | null
+  // Asset-level fields written through linked asset
+  model?: string | null
+  condition_status?: string | null
+  description?: string | null
+  asset_category_id?: number | null
+  property_number?: string | null
 }
 
 export interface InventoryFilters {

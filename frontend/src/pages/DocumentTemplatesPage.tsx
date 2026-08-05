@@ -9,8 +9,9 @@ import {
 } from '@/services/templateService'
 import { useAuth } from '@/hooks/useAuth'
 import { isAdmin } from '@/utils/roleHelpers'
+import { TemplatePreviewTab } from '@/components/documents/TemplatePreviewTab'
 import {
-  CheckCircle2, Copy, Download, FileText, Plus, RefreshCw, Search, Trash2, Upload, XCircle,
+  CheckCircle2, Copy, Download, Eye, FileText, Plus, RefreshCw, Search, Trash2, Upload, XCircle,
   Info, Layers, Shield, History, Tag, AlertTriangle, CheckCheck, Clock,
 } from 'lucide-react'
 
@@ -102,7 +103,7 @@ function ValidationPanel({ validation }: { validation: TemplateValidationResult 
   )
 }
 
-type DetailTab = 'details' | 'validation' | 'versions' | 'placeholders'
+type DetailTab = 'details' | 'validation' | 'versions' | 'placeholders' | 'preview'
 
 export function DocumentTemplatesPage() {
   const { user } = useAuth()
@@ -268,11 +269,12 @@ export function DocumentTemplatesPage() {
     )
   }
 
-  const detailTabs: { id: DetailTab; label: string; icon: any }[] = [
+  const detailTabs: { id: DetailTab; label: string; icon: React.ElementType }[] = [
     { id: 'details', label: 'Details', icon: FileText },
     { id: 'validation', label: 'Validation', icon: Shield },
     { id: 'versions', label: 'Versions', icon: History },
     { id: 'placeholders', label: 'Placeholders', icon: Layers },
+    { id: 'preview', label: 'Preview', icon: Eye },
   ]
 
   return (
@@ -302,8 +304,30 @@ export function DocumentTemplatesPage() {
       }}>
         <Info size={16} style={{ color: '#64748B', flexShrink: 0 }} />
         <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>
-          Create DOCX with placeholders like <code style={{ color: '#003DA5', background: '#EFF6FF', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>{'{{employee_name}}'}</code> → Upload → Validate → Activate
+          Create DOCX with placeholders like <code style={{ color: '#003DA5', background: '#EFF6FF', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>{'{{employee_name}}'}</code> → Upload → Validate → Activate → Preview
         </p>
+      </div>
+
+      {/* ── Official Template File Format Policy (Phase 2) ─────────────────── */}
+      <div style={{ borderRadius: 10, border: '1px solid #E2E8F0', background: '#F8FAFC', padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <FileText size={15} style={{ color: '#003DA5' }} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>Official Document Template Format Policy</span>
+        </div>
+        <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.7 }}>
+          <p style={{ margin: '0 0 6px' }}>
+            Official document templates use <strong>DOCX</strong> format. Create or edit the form in Microsoft Word,
+            add supported placeholders, then upload the DOCX file. The system validates placeholders and uses the
+            template during official document generation.
+          </p>
+          <p style={{ margin: '0 0 6px' }}>
+            <strong>XLSX</strong> and <strong>CSV</strong> are used for spreadsheet and data exports and are not part
+            of the official document-template workflow. They are not routed through the DOCX placeholder system.
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>PDF</strong> may be available as a generated output but is not currently an editable template format.
+          </p>
+        </div>
       </div>
 
       {/* Main layout */}
@@ -694,6 +718,11 @@ export function DocumentTemplatesPage() {
                       />
                     </div>
                   </div>
+                )}
+
+                {/* Preview tab (read-only document preview) */}
+                {detailTab === 'preview' && (
+                  <TemplatePreviewTab template={selected} />
                 )}
 
                 {/* Validation tab */}

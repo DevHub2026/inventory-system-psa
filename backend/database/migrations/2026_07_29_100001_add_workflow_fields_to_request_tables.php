@@ -41,10 +41,20 @@ return new class extends Migration
             $table->dropColumn(['workflow_version_id', 'current_level_order', 'workflow_status']);
         });
 
+        // The maintenances columns may have already been removed by a later migration's
+        // own down() (2026_07_29_200002), so only drop what still exists.
         if (Schema::hasTable('maintenances')) {
             Schema::table('maintenances', function (Blueprint $table) {
-                $table->dropForeign(['workflow_version_id']);
-                $table->dropColumn(['workflow_version_id', 'current_level_order', 'workflow_status']);
+                if (Schema::hasColumn('maintenances', 'workflow_version_id')) {
+                    $table->dropForeign(['workflow_version_id']);
+                    $table->dropColumn('workflow_version_id');
+                }
+                if (Schema::hasColumn('maintenances', 'current_level_order')) {
+                    $table->dropColumn('current_level_order');
+                }
+                if (Schema::hasColumn('maintenances', 'workflow_status')) {
+                    $table->dropColumn('workflow_status');
+                }
             });
         }
     }

@@ -45,9 +45,18 @@ class AuthService
 
     public function updateProfile(User $user, array $data): User
     {
-        $user->update($data);
+        // Remove any keys that are not on the users table to prevent mass-assignment issues
+        $allowedKeys = ['first_name', 'middle_name', 'last_name', 'email', 'username', 'employee_number'];
+        $filtered = array_intersect_key($data, array_flip($allowedKeys));
 
-        return $user->fresh();
+        // Remove null values only for fields not explicitly set to null
+        $filtered = array_filter($filtered, fn ($v) => $v !== null);
+
+        if (! empty($filtered)) {
+            $user->update($filtered);
+        }
+
+        return $user->fresh(['department', 'roles']);
     }
 
     public function changePassword(User $user, string $newPassword): void

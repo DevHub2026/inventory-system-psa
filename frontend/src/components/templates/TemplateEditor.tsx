@@ -23,12 +23,7 @@ const lbl: React.CSSProperties = {
 }
 
 // ─── Shared select style ──────────────────────────────────────────────────────
-const sel: React.CSSProperties = {
-  width: '100%', height: 38, borderRadius: 10, border: '1px solid #E2E8F0',
-  background: '#fff', padding: '0 12px',
-  fontSize: 13, color: '#1E293B', outline: 'none',
-  fontFamily: 'inherit', cursor: 'pointer',
-}
+// (sel is defined for reference but applied inline; kept for potential future use)
 
 // ─── Toggle button (paper size / orientation / font / etc.) ──────────────────
 function ToggleBtn({ label, active, onClick, style }: {
@@ -171,7 +166,7 @@ export function TemplateEditor({ template, onChange, onSave, onRestoreDefault, s
         {/* HEADER */}
         {activeTab === 'header' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <LogoUploader logoUrl={template.logo_url} onChange={(url)=>onChange({...template,logo_url:url})}/>
+            <LogoUploader logoUrl={template.logo_url} onChange={(url: string | null) => onChange({...template, logo_url: url})}/>
             <Input label="Organization Name" value={template.header_org_name||''} onChange={(e)=>onChange({...template,header_org_name:e.target.value})} placeholder="PHILIPPINE STATISTICS AUTHORITY"/>
             <Input label="Office Name" value={template.header_office_name||''} onChange={(e)=>onChange({...template,header_office_name:e.target.value})} placeholder="Regional Statistical Services Office"/>
             <Input label="Document Title" value={template.header_title||''} onChange={(e)=>onChange({...template,header_title:e.target.value})} placeholder="PROPERTY BORROW RECEIPT"/>

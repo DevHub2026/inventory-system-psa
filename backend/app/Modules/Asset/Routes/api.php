@@ -2,6 +2,7 @@
 
 use App\Modules\Asset\Controllers\PermanentIssuanceController;
 use App\Modules\Asset\Controllers\AssetController;
+use App\Modules\Asset\Controllers\DisposalController;
 use App\Modules\Asset\Controllers\LocationController;
 use App\Modules\Asset\Controllers\ManufacturerController;
 use App\Modules\Asset\Controllers\OfficeController;
@@ -20,6 +21,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('assets/scan', [AssetController::class, 'scan']);
     Route::post('assets/{asset}/archive', [AssetController::class, 'archive']);
     Route::post('assets/{asset}/transfer', [AssetController::class, 'transfer']);
+    Route::patch('assets/{asset}/borrowable', [AssetController::class, 'setBorrowable']);
+
+    // Disposal lifecycle routes — restricted to staff/admin roles
+    Route::middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head')->group(function (): void {
+        Route::post('assets/{asset}/dispose', [DisposalController::class, 'markForDisposal']);
+        Route::post('assets/{asset}/dispose/finalize', [DisposalController::class, 'finalize']);
+        Route::post('assets/{asset}/dispose/cancel', [DisposalController::class, 'cancel']);
+    });
     
     // Reissuance routes
     Route::post('assets/{asset}/reissue', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'reissue']);

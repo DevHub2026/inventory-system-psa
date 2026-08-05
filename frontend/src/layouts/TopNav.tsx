@@ -1,7 +1,6 @@
 import { Menu, Search } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import { useAuth } from '@/hooks/useAuth'
 import { NotificationBell } from '@/components/NotificationBell'
 
 interface TopNavProps {
@@ -24,7 +23,6 @@ const PAGE_TITLES: Record<string, string> = {
 }
 
 export function TopNav({ onMenuClick }: TopNavProps) {
-  const { user } = useAuth()
   const { pathname }     = useLocation()
   const navigate         = useNavigate()
   const [search, setSearch] = useState('')

@@ -230,7 +230,17 @@ export function SettingsPage() {
     }
     setIsSaving(true); setMessage(null)
     try {
-      const updated = await authService.updateProfile(profileForm)
+      // Split the combined name into first/last for the backend
+      const nameParts = (profileForm.name?.trim() ?? '').split(/\s+/)
+      const firstName = nameParts[0] ?? ''
+      const lastName = nameParts.slice(1).join(' ') || undefined
+
+      const updated = await authService.updateProfile({
+        name: profileForm.name?.trim(),
+        first_name: firstName || undefined,
+        last_name: lastName,
+        email: profileForm.email?.trim() || undefined,
+      })
       // Ensure the new name is set in the user object even if the backend
       // doesn't return it in the response
       const updatedUser = {

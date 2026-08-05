@@ -161,24 +161,45 @@ class AssetManagementTest extends TestCase
     {
         $asset = Asset::factory()->create();
 
-        $updateData = [
-            'name' => 'Updated Asset Name',
-            'description' => 'Updated description',
-            'status' => AssetStatus::MAINTENANCE->value,
-        ];
-
+        // Only asset-operational fields are accepted via the update endpoint.
+        // Inventory-owned fields (name, description, model, etc.) must be
+        // changed through the Inventory module.
         $response = $this->actingAs($this->admin)
-            ->putJson("/api/v1/assets/{$asset->id}", $updateData);
+            ->putJson("/api/v1/assets/{$asset->id}", [
+                'status'           => AssetStatus::MAINTENANCE->value,
+                'condition_status' => 'GOOD',
+                'remarks'          => 'Sent for annual servicing.',
+            ]);
 
         $response->assertStatus(200)
             ->assertJson([
-            'success' => true,
-                'message' => 'Asset updated successfully.'
+                'success' => true,
+                'message' => 'Asset updated successfully.',
             ]);
 
         $this->assertDatabaseHas('assets', [
-            'id' => $asset->id,
-            'name' => 'Updated Asset Name',
+            'id'               => $asset->id,
+            'status'           => AssetStatus::MAINTENANCE->value,
+            'condition_status' => 'GOOD',
+        ]);
+    }
+
+    public function test_asset_update_rejects_inventory_owned_fields(): void
+    {
+        $asset = Asset::factory()->create(['name' => 'Original Name']);
+
+        $response = $this->actingAs($this->admin)
+            ->putJson("/api/v1/assets/{$asset->id}", [
+                'name'        => 'Attempted Override',
+                'description' => 'Attempted override',
+            ]);
+
+        $response->assertStatus(422);
+
+        // The name in the database must not have changed
+        $this->assertDatabaseHas('assets', [
+            'id'   => $asset->id,
+            'name' => 'Original Name',
         ]);
     }
 

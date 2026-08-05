@@ -29,4 +29,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('document-templates', [DocumentTemplateController::class, 'index']);
     Route::get('document-templates/{template}', [DocumentTemplateController::class, 'show']);
     Route::get('document-templates/{template}/download', [DocumentTemplateController::class, 'download']);
+
+    // Read-only document template preview (sample data or real workflow record).
+    // Preview generation never creates or modifies workflow records.
+    Route::get('document-templates/{template}/preview-info', [DocumentTemplateController::class, 'previewInfo']);
+    Route::get('document-templates/{template}/preview-records', [DocumentTemplateController::class, 'previewRecords']);
+    Route::post('document-templates/{template}/preview', [DocumentTemplateController::class, 'previewGenerate']);
 });

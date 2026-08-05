@@ -34,13 +34,15 @@ class InventoryItem extends Model
         'office_id',
         'location_id',
         'reorder_level',
+        'is_borrowable',
         'remarks',
     ];
 
     protected function casts(): array
     {
         return [
-            'unit_cost' => 'decimal:2',
+            'unit_cost'     => 'decimal:2',
+            'is_borrowable' => 'boolean',
         ];
     }
 

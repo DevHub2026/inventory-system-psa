@@ -29,40 +29,51 @@ class InventoryController extends Controller
 
         // Handle unit - could be string (old) or Unit model (new)
         $unitName = is_string($item->unit) ? $item->unit : ($item->unit?->name ?? '');
-        
+
         return [
-            'id' => $item->id,
-            'asset_id' => $item->asset_id,
-            'asset_number' => $item->asset?->asset_number,
-            'property_number' => $item->asset?->property_number,
-            'type' => $item->type,
-            'classification' => $item->classification,
-            'item_nature' => $item->item_nature,
-            'classification_reason' => $item->classification_reason,
-            'name' => $item->name,
-            'sku' => $item->sku,
-            'quantity' => $item->quantity,
-            'unit' => $unitName,
-            'unit_id' => $item->unit_id,
-            'unit_name' => $unitName,
-            'manufacturer_id' => $item->manufacturer_id,
-            'manufacturer_name' => $item->manufacturer?->name,
-            'office_id' => $item->office_id,
-            'office_name' => $item->office?->name,
-            'location_id' => $item->location_id,
-            'location_name' => $item->location?->name,
-            'reorder_level' => $item->reorder_level,
-            'status' => $status,
-            'accountability' => $item->classification === 'SUPPLY'
+            'id'                     => $item->id,
+            'asset_id'               => $item->asset_id,
+            'asset_number'           => $item->asset?->asset_number,
+            'property_number'        => $item->asset?->property_number,
+            'type'                   => $item->type,
+            'classification'         => $item->classification,
+            'item_nature'            => $item->item_nature,
+            'classification_reason'  => $item->classification_reason,
+            'name'                   => $item->name,
+            'sku'                    => $item->sku,
+            'quantity'               => $item->quantity,
+            'unit'                   => $unitName,
+            'unit_id'                => $item->unit_id,
+            'unit_name'              => $unitName,
+            'manufacturer_id'        => $item->manufacturer_id,
+            'manufacturer_name'      => $item->manufacturer?->name,
+            'office_id'              => $item->office_id,
+            'office_name'            => $item->office?->name,
+            'location_id'            => $item->location_id,
+            'location_name'          => $item->location?->name,
+            'reorder_level'          => $item->reorder_level,
+            'is_borrowable'          => (bool) ($item->is_borrowable ?? true),
+            'status'                 => $status,
+            'accountability'         => $item->classification === 'SUPPLY'
                 ? '—'
                 : ($item->asset?->issued_to_user_id
                     ? 'Issued to '.($item->asset?->issuedToUser?->full_name ?? $item->asset?->issued_to ?? 'N/A')
                     : (filled($item->asset?->issued_to)
                         ? 'Issued to '.$item->asset?->issued_to
                         : 'Unassigned')),
-            'is_unlinked_holder' => $item->asset?->issued_to_user_id === null && filled($item->asset?->issued_to),
-            'remarks' => $item->remarks,
-            'unit_cost' => $item->unit_cost !== null ? (float) $item->unit_cost : null,
+            'is_unlinked_holder'     => $item->asset?->issued_to_user_id === null && filled($item->asset?->issued_to),
+            'remarks'                => $item->remarks,
+            'unit_cost'              => $item->unit_cost !== null ? (float) $item->unit_cost : null,
+            // Asset-level fields for Inventory-as-primary-form display
+            'model'                  => $item->asset?->model,
+            'condition_status'       => $item->asset?->condition_status instanceof \App\Modules\Asset\Enums\ConditionStatus
+                ? $item->asset->condition_status->value
+                : ($item->asset?->condition_status ?? null),
+            'asset_status'           => $item->asset?->status instanceof \App\Modules\Asset\Enums\AssetStatus
+                ? $item->asset->status->value
+                : ($item->asset?->status ?? null),
+            'description'            => $item->asset?->description,
+            'asset_category_id'      => $item->asset?->asset_category_id,
         ];
     }
 
@@ -114,21 +125,40 @@ class InventoryController extends Controller
             return $this->success(['exists' => false, 'message' => 'SKU is empty']);
         }
 
+        // Check inventory_items — exclude the currently-edited item by its inventory ID.
         $inventoryExists = InventoryItem::query()
             ->where('sku', $sku)
-            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->when($ignoreId !== null, fn ($q) => $q->where('id', '!=', $ignoreId))
             ->exists();
+
+        if ($inventoryExists) {
+            return $this->success([
+                'exists' => true,
+                'message' => 'Item Code / SKU already exists in inventory.',
+            ]);
+        }
+
+        // Check assets — but skip the asset that is linked to the item currently being edited.
+        // This prevents a false "duplicate" when the item's own SKU matches its linked asset_number.
+        $linkedAssetId = $ignoreId
+            ? InventoryItem::query()->where('id', $ignoreId)->value('asset_id')
+            : null;
 
         $assetExists = \App\Modules\Asset\Models\Asset::query()
-            ->where('asset_number', $sku)
-            ->orWhere('property_number', $sku)
+            ->where(function ($q) use ($sku): void {
+                $q->where('asset_number', $sku)
+                  ->orWhere('property_number', $sku);
+            })
+            ->when($linkedAssetId !== null, fn ($q) => $q->where('id', '!=', $linkedAssetId))
             ->exists();
 
-        $exists = $inventoryExists || $assetExists;
+        $exists = $assetExists;
 
         return $this->success([
             'exists' => $exists,
-            'message' => $exists ? 'Item Code / SKU already exists.' : 'Item Code / SKU is available.',
+            'message' => $exists
+                ? 'Item Code / SKU already exists as an asset identifier.'
+                : 'Item Code / SKU is available.',
         ]);
     }
 
@@ -144,6 +174,7 @@ class InventoryController extends Controller
 
     public function show(InventoryItem $item): JsonResponse
     {
+        $item->load(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location']);
         return $this->success($this->transform($item), 'Inventory item retrieved successfully.');
     }
 

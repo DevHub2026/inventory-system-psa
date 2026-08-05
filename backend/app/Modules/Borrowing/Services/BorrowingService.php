@@ -39,6 +39,17 @@ class BorrowingService
         return DB::transaction(function () use ($actor, $data) {
             $asset = Asset::query()->lockForUpdate()->findOrFail($data['asset_id']);
 
+            // Enforce is_borrowable flag — check through the linked inventory item.
+            $linkedInventory = \App\Modules\Inventory\Models\InventoryItem::query()
+                ->where('asset_id', $asset->id)
+                ->first();
+
+            if ($linkedInventory !== null && ! (bool) ($linkedInventory->is_borrowable ?? true)) {
+                throw new AssetNotAvailableException(
+                    'This item is not configured as borrowable and cannot be borrowed.'
+                );
+            }
+
             // Approved reservations created before the standardized workflow may
             // still leave the asset in RESERVED. That state represents the same
             // approved request and can be fulfilled exactly once by this service.
@@ -335,6 +346,15 @@ class BorrowingService
             }
 
             $asset = Asset::query()->lockForUpdate()->findOrFail($assetIdentifier->asset_id);
+
+            // Enforce is_borrowable flag
+            $linkedInventory = \App\Modules\Inventory\Models\InventoryItem::query()
+                ->where('asset_id', $asset->id)
+                ->first();
+
+            if ($linkedInventory !== null && ! (bool) ($linkedInventory->is_borrowable ?? true)) {
+                throw new \InvalidArgumentException('This item is not configured as borrowable.');
+            }
 
             // Check asset status
             if ($asset->status === AssetStatus::BORROWED) {

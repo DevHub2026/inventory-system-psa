@@ -72,7 +72,5 @@ class DatabaseSeeder extends Seeder
         );
         $employeeRole = Role::where('name', UserRole::EMPLOYEE->value)->first();
         $employee->roles()->syncWithoutDetaching([$employeeRole->id]);
-
-        $this->call(DemoDataSeeder::class);
     }
 }

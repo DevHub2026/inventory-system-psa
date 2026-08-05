@@ -52,10 +52,10 @@ function SigField({
 
 // ─── Single block card ────────────────────────────────────────────────────────
 function SignatureBlockCard({
-  block, index, total,
+  block, index,
   onToggle, onFieldChange,
 }: {
-  block: SignatureBlock; index: number; total: number
+  block: SignatureBlock; index: number
   onToggle: () => void
   onFieldChange: (field: keyof SignatureBlock, value: string) => void
 }) {
@@ -124,14 +124,14 @@ function SignatureBlockCard({
           />
           <SigField
             label="Signatory Name"
-            value={block.name}
+            value={block.name ?? ''}
             onChange={(v) => onFieldChange('name', v)}
             placeholder="e.g. {{prepared_by}} or Juan Dela Cruz"
             mono
           />
           <SigField
             label="Designation / Position"
-            value={block.position}
+            value={block.position ?? ''}
             onChange={(v) => onFieldChange('position', v)}
             placeholder="e.g. Property Custodian"
           />
@@ -205,7 +205,6 @@ export function SignatureEditor({ blocks, onChange }: SignatureEditorProps) {
             key={block.key || idx}
             block={block}
             index={idx}
-            total={activeBlocks.length}
             onToggle={() => handleToggle(idx)}
             onFieldChange={(field, value) => handleFieldChange(idx, field, value)}
           />

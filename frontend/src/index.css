@@ -299,6 +299,8 @@ input[type="search"]::-webkit-search-results-decoration {
    ============================================================ */
 @media print {
   body * { visibility: hidden !important; }
+
+  /* ── Receipt / QR slip ── */
   .receipt-print-area,
   .receipt-print-area * { visibility: visible !important; }
   .receipt-print-area {
@@ -309,6 +311,8 @@ input[type="search"]::-webkit-search-results-decoration {
   }
   .receipt-print-area img { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   .receipt-print-area button { display: none !important; }
+
+  /* ── Asset QR print ── */
   .asset-qr-print-area,
   .asset-qr-print-area * { visibility: visible !important; }
   .asset-qr-print-area {
@@ -316,7 +320,57 @@ input[type="search"]::-webkit-search-results-decoration {
     width: 100% !important; min-height: 100vh !important;
     padding: 32px !important; background: white !important; color: #111827 !important;
   }
-  @page { size: A4; margin: 16mm; }
+
+  /* ── Report / list print ── */
+  .report-print-area,
+  .report-print-area * { visibility: visible !important; }
+  .report-print-area {
+    /* Use static positioning so the report flows naturally and paginates
+       across multiple printed pages. position:fixed would clip content
+       beyond the first viewport. */
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    padding: 0 !important;
+    background: white !important;
+    color: #111827 !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+  }
+  /* Print-only header: invisible on screen, shown during print */
+  .report-print-area .report-print-only { display: block !important; }
+  /* Hide interactive chrome that should not appear on paper */
+  .report-print-area .report-no-print,
+  .report-print-area button { display: none !important; }
+  /* Ensure the table does not get clipped by overflow:hidden wrappers */
+  .report-print-area table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 11px !important;
+  }
+  .report-print-area thead { display: table-header-group !important; }
+  .report-print-area tr    { page-break-inside: avoid !important; }
+  .report-print-area th,
+  .report-print-area td {
+    padding: 6px 8px !important;
+    border: 1px solid #E2E8F0 !important;
+    word-break: break-word !important;
+  }
+  .report-print-area th {
+    background: #F8FAFC !important;
+    font-weight: 700 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* Overflow wrappers that hide content on screen must be visible for print */
+  .report-print-area [style*="overflow"] { overflow: visible !important; }
+
+  @page { size: A4 landscape; margin: 12mm; }
+}
+
+/* Print-only elements — hidden on screen */
+@media screen {
+  .report-print-only { display: none !important; }
 }
 
 /* ============================================================

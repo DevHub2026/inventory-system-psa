@@ -20,7 +20,7 @@ class CreateUsersTable extends Migration //fixed 7/15/2026 10:55 AM
             $table->string('middle_name')->nullable();
             $table->string('last_name')->nullable();
             $table->unsignedBigInteger('department_id')->nullable();
-            $table->tinyInteger('status')->default(1);
+            $table->string('status')->default('active')->comment('active | inactive — matches App\Enums\UserStatus');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Wrench, Plus, CheckCircle, XCircle, Edit2, Trash2, Calendar, AlertTriangle } from 'lucide-react'
+import { Wrench, Plus } from 'lucide-react'
 import { Badge, Button, EmptyState, Input, Modal, Spinner, Table, type Column } from '@/components/ui'
 import { maintenanceService, type CreateMaintenancePayload, type UpdateMaintenancePayload } from '@/services/maintenanceService'
 import type { MaintenanceRequest } from '@/types'

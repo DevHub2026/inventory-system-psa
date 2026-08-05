@@ -131,7 +131,7 @@ export function WorkflowVersionHistoryModal({
                           </h5>
                         </div>
                         <div className="grid gap-2">
-                          {ver.approval_levels.map((lvl, lvlIdx) => (
+                          {ver.approval_levels.map((lvl) => (
                             <div
                               key={lvl.id || lvl.level_order}
                               className="flex items-center justify-between p-3 rounded-lg border border-slate-200/80 bg-white hover:border-slate-300 transition-all"

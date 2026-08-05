@@ -14,11 +14,6 @@ class AssetResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $psaQrIdentifier = $this->whenLoaded(
-            'identifiers',
-            fn () => $this->identifiers->firstWhere('identifier_type', IdentifierType::PSA_QR->value),
-        );
-
         // Attach lightweight reservation context only when the asset is RESERVED.
         // This tells the frontend WHY the asset is reserved without requiring an
         // extra API call. We only read the single most-relevant reservation.
@@ -85,8 +80,12 @@ class AssetResource extends JsonResource
                 ],
             ),
             'is_unlinked_holder' => $this->issued_to_user_id === null && filled($this->issued_to),
-            'psa_qr_identifier' => $psaQrIdentifier?->identifier_value,
-            'psa_qr_payload' => $psaQrIdentifier?->identifier_value,
+            'psa_qr_identifier' => $this->relationLoaded('identifiers')
+                ? ($this->identifiers->firstWhere('identifier_type', IdentifierType::PSA_QR->value)?->identifier_value)
+                : null,
+            'psa_qr_payload'    => $this->relationLoaded('identifiers')
+                ? ($this->identifiers->firstWhere('identifier_type', IdentifierType::PSA_QR->value)?->identifier_value)
+                : null,
             'category' => AssetCategoryResource::make($this->whenLoaded('category')),
             'manufacturer' => ManufacturerResource::make($this->whenLoaded('manufacturer')),
             'office' => OfficeResource::make($this->whenLoaded('office')),
@@ -102,6 +101,16 @@ class AssetResource extends JsonResource
             // Inline reservation context — only present when status = RESERVED.
             // null when asset is not reserved.
             'reservation_context' => $reservationContext,
+
+            // Inventory linkage — surfaces the linked InventoryItem's borrowable
+            // flag and ID so the frontend can show the toggle and navigate to the
+            // Inventory edit page without an extra API call.
+            'inventory_item_id' => $this->relationLoaded('inventoryItem')
+                ? $this->inventoryItem?->id
+                : \App\Modules\Inventory\Models\InventoryItem::query()->where('asset_id', $this->id)->value('id'),
+            'is_borrowable' => $this->relationLoaded('inventoryItem')
+                ? (bool) ($this->inventoryItem?->is_borrowable ?? true)
+                : (bool) (\App\Modules\Inventory\Models\InventoryItem::query()->where('asset_id', $this->id)->value('is_borrowable') ?? true),
         ];
     }
 }

@@ -10,6 +10,8 @@ Route::middleware([
 ])->group(function (): void {
     Route::get('inventory/validate-sku', [InventoryController::class, 'validateSku']);
     Route::get('inventory', [InventoryController::class, 'index']);
+    Route::get('inventory/simple', [InventoryController::class, 'simpleList']);
+    Route::get('inventory/{item}', [InventoryController::class, 'show']);
     Route::post('inventory', [InventoryController::class, 'store']);
     Route::put('inventory/{item}', [InventoryController::class, 'update']);
     Route::delete('inventory/{item}', [InventoryController::class, 'destroy']);

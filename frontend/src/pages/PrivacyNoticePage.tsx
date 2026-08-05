@@ -1,4 +1,4 @@
-import { Shield, FileText, Lock, Users, Clock, Trash2, Mail, Phone } from 'lucide-react'
+import { Shield, FileText, Lock, Users, Clock, Mail, Phone } from 'lucide-react'
 
 /* ── Design tokens ── */
 const T = {

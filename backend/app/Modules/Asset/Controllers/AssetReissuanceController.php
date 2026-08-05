@@ -211,7 +211,9 @@ class AssetReissuanceController extends Controller
     {
         $this->authorizeReissuance();
 
-        $format = $request->query('format', 'excel');
+        // Normalise 'excel' → 'xlsx' so the Spreadsheet writer key is consistent.
+        $rawFormat = strtolower((string) $request->query('format', 'excel'));
+        $format = $rawFormat === 'csv' ? 'csv' : 'xlsx';
         $query = $this->buildReportQuery($request);
         $records = $query->orderByDesc('transfer_date')->get();
 
@@ -259,13 +261,17 @@ class AssetReissuanceController extends Controller
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Csv($spreadsheet);
             $path = storage_path('app/' . $filename . '.csv');
             $writer->save($path);
-            return response()->download($path)->deleteFileAfterSend(true);
+            return response()->download($path, $filename . '.csv', [
+                'Content-Type' => 'text/csv',
+            ])->deleteFileAfterSend(true);
         }
 
         $writer = new Xlsx($spreadsheet);
         $path = storage_path('app/' . $filename . '.xlsx');
         $writer->save($path);
-        return response()->download($path)->deleteFileAfterSend(true);
+        return response()->download($path, $filename . '.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     private function buildReportQuery(Request $request)

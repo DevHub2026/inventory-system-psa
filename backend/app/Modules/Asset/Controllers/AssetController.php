@@ -3,6 +3,7 @@
 namespace App\Modules\Asset\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\Asset\Models\Asset;
 use App\Modules\Asset\Requests\StoreAssetRequest;
 use App\Modules\Asset\Requests\TransferAssetRequest;
@@ -10,6 +11,9 @@ use App\Modules\Asset\Requests\UpdateAssetRequest;
 use App\Modules\Asset\Resources\AssetResource;
 use App\Modules\Asset\Services\AssetService;
 use App\Modules\Asset\Traits\RespondsWithJson;
+use App\Modules\Borrowing\Models\Borrowing;
+use App\Modules\Inventory\Models\InventoryItem;
+use App\Modules\Reservation\Models\Reservation;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -157,6 +161,124 @@ class AssetController extends Controller
         return $this->success(
             AssetResource::make($asset),
             'Asset retrieved successfully.',
+        );
+    }
+
+    /**
+     * PATCH /api/v1/assets/{asset}/borrowable
+     *
+     * Toggle the is_borrowable flag on the linked InventoryItem.
+     *
+     * Business rules
+     * ──────────────
+     * Disabling (true → false):
+     *   • Rejected if the asset is currently BORROWED or has an active
+     *     borrowing record (status = BORROWED / ACTIVE / OVERDUE).
+     *   • Rejected if the asset has an open reservation (PENDING or APPROVED).
+     *   • Rejected if the asset is permanently issued (has an accountable
+     *     holder) AND currently BORROWED — the check above already covers
+     *     this, but the message is explicit.
+     *   • Allowed in all other states: AVAILABLE, MAINTENANCE, UNAVAILABLE,
+     *     RETIRED, FOR_DISPOSAL, DISPOSED.  A non-borrowable item can still
+     *     be permanently issued or maintained; it simply cannot enter the
+     *     borrowing workflow.
+     *
+     * Enabling (false → true):
+     *   • Always allowed — no active-borrow conflict is possible because the
+     *     item was not available for borrowing in the first place.
+     *   • Rejected only if the linked InventoryItem is a SUPPLY item
+     *     (is_borrowable must not be enabled for consumable supplies).
+     *
+     * No-op:
+     *   • Returns 200 with the current state when the requested value matches
+     *     the stored value (idempotent).
+     *
+     * Standalone assets (no linked InventoryItem):
+     *   • Return 422 — the borrowable concept is tied to the Inventory layer.
+     */
+    public function setBorrowable(Request $request, Asset $asset): JsonResponse
+    {
+        $this->authorize('update', $asset);
+
+        $validated = $request->validate([
+            'is_borrowable' => ['required', 'boolean'],
+        ]);
+
+        $isBorrowable = (bool) $validated['is_borrowable'];
+
+        // Locate the linked inventory item
+        $inventoryItem = InventoryItem::query()
+            ->where('asset_id', $asset->id)
+            ->first();
+
+        if (! $inventoryItem) {
+            return $this->error(
+                'This asset has no linked inventory item. The borrowable setting is only available for assets created through the Inventory module.',
+                null,
+                422,
+            );
+        }
+
+        // Guard: supply items must never be made borrowable
+        if ($isBorrowable && $inventoryItem->classification === 'SUPPLY') {
+            return $this->error(
+                'Supply items cannot be made borrowable. Only individually-tracked PPE or SE items support the borrowing workflow.',
+                null,
+                422,
+            );
+        }
+
+        // No-op — value already matches
+        if ((bool) $inventoryItem->is_borrowable === $isBorrowable) {
+            return $this->success(
+                [
+                    'is_borrowable'        => $isBorrowable,
+                    'inventory_item_id'    => $inventoryItem->id,
+                ],
+                'Borrowable setting is already '.($isBorrowable ? 'enabled' : 'disabled').'.',
+            );
+        }
+
+        // Guard: cannot disable borrowing while the asset is actively borrowed or reserved
+        if (! $isBorrowable) {
+            $activeBorrowing = Borrowing::query()
+                ->where('asset_id', $asset->id)
+                ->whereIn('status', ['BORROWED', 'ACTIVE', 'OVERDUE'])
+                ->exists();
+
+            if ($activeBorrowing) {
+                return $this->error(
+                    'Cannot disable borrowing while this asset has an active borrowing transaction. Complete or revoke the borrowing first.',
+                    null,
+                    422,
+                );
+            }
+
+            $openReservation = Reservation::query()
+                ->whereIn('status', ['PENDING', 'APPROVED'])
+                ->whereHas('assets', fn ($q) => $q
+                    ->where('assets.id', $asset->id)
+                    ->whereNull('reservation_items.fulfilled_at'))
+                ->exists();
+
+            if ($openReservation) {
+                return $this->error(
+                    'Cannot disable borrowing while this asset has an open borrow request. Resolve the pending or approved request first.',
+                    null,
+                    422,
+                );
+            }
+        }
+
+        // Apply the change to the inventory item
+        $inventoryItem->update(['is_borrowable' => $isBorrowable]);
+
+        return $this->success(
+            [
+                'is_borrowable'        => $isBorrowable,
+                'inventory_item_id'    => $inventoryItem->id,
+            ],
+            'Borrowable setting '.($isBorrowable ? 'enabled' : 'disabled').' successfully.',
         );
     }
 

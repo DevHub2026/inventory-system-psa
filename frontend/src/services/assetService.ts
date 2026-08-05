@@ -43,21 +43,18 @@ interface BackendAsset {
   office?: { name?: string } | string | null
   identifiers?: Asset['identifiers']
   reservation_context?: Asset['reservation_context']
+  inventory_item_id?: number | null
+  is_borrowable?: boolean
 }
 
 export interface UpdateAssetPayload {
-  asset_number?: string
-  property_number?: string | null
-  name?: string
-  description?: string | null
-  asset_category_id?: number | null
-  manufacturer_id?: number | null
-  office_id?: number | null
-  location_id?: number | null
-  model?: string | null
+  /** Asset-operational fields — the only ones the backend now accepts. */
   status?: AssetStatus
   condition_status?: string | null
   remarks?: string | null
+  purchase_date?: string | null
+  purchase_cost?: number | null
+  warranty_until?: string | null
 }
 
 function mapAsset(asset: BackendAsset): Asset {
@@ -104,6 +101,8 @@ function mapAsset(asset: BackendAsset): Asset {
     updated_at: asset.updated_at,
     identifiers: asset.identifiers,
     reservation_context: asset.reservation_context ?? null,
+    inventory_item_id: asset.inventory_item_id ?? null,
+    is_borrowable: asset.is_borrowable ?? true,
   }
 }
 
@@ -191,6 +190,14 @@ export const assetService = {
 
   async getIssuanceHistory(assetId: number): Promise<any[]> {
     const { data } = await api.get<ApiResponse<any[]>>(`/assets/${assetId}/issuance-history`)
+    return unwrapData(data)
+  },
+
+  async setBorrowable(assetId: number, isBorrowable: boolean): Promise<{ is_borrowable: boolean; inventory_item_id: number | null }> {
+    const { data } = await api.patch<ApiResponse<{ is_borrowable: boolean; inventory_item_id: number | null }>>(
+      `/assets/${assetId}/borrowable`,
+      { is_borrowable: isBorrowable },
+    )
     return unwrapData(data)
   },
 }
