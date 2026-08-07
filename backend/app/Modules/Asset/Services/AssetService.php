@@ -26,6 +26,16 @@ class AssetService
             ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser', 'inventoryItem'])
             ->search($filters['search'] ?? null);
 
+        // ── track_as_asset visibility filter ────────────────────────────────
+        // Inventory-linked assets are only surfaced in Asset Management when their
+        // parent InventoryItem has track_as_asset = true.
+        // Standalone assets (no linked InventoryItem) are always shown — they were
+        // created directly in the Asset module and have no Inventory parent.
+        $query->where(function ($q): void {
+            $q->whereDoesntHave('inventoryItem')
+              ->orWhereHas('inventoryItem', fn ($inv) => $inv->where('track_as_asset', true));
+        });
+
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
@@ -56,7 +66,6 @@ class AssetService
             'status',
             'created_at',
             'updated_at',
-            'purchase_date',
         ];
 
         if (! in_array($column, $allowed, true)) {
@@ -72,6 +81,11 @@ class AssetService
         return Asset::query()
             ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser', 'inventoryItem'])
             ->search($term)
+            // Same visibility rule as list() — honour track_as_asset on linked items.
+            ->where(function ($q): void {
+                $q->whereDoesntHave('inventoryItem')
+                  ->orWhereHas('inventoryItem', fn ($inv) => $inv->where('track_as_asset', true));
+            })
             ->orderBy('asset_number')
             ->paginate($perPage);
     }
@@ -88,7 +102,7 @@ class AssetService
             'issuedToUser.office',
             'issuedToUser.roles',
             'issuedByUser',
-            'inventoryItem',
+            'inventoryItem.supplier',
         ]);
     }
 
@@ -131,13 +145,23 @@ class AssetService
         // Allowing them to be written here would create a conflicting write path.
         // The UpdateAssetRequest already rejects them with 422; this is a
         // defence-in-depth guard in case the service is called directly.
+        //
+        // property_number is intentionally NOT stripped — it is ASSET-OWNED
+        // (identifies one physical instance) and is editable via the Asset module.
         $inventoryOwned = [
-            'name', 'description', 'asset_number', 'property_number',
+            'name', 'description', 'asset_number',
             'asset_category_id', 'manufacturer_id', 'office_id', 'location_id', 'model',
         ];
         foreach ($inventoryOwned as $field) {
             unset($data[$field]);
         }
+
+        // ── Strip deprecated procurement fields ──────────────────────────────
+        // purchase_date, purchase_cost, warranty_until are now owned by Inventory.
+        // The DB columns still exist for historical data but must not be written
+        // via this path.  Inventory's values are the authoritative source;
+        // the Asset record's copies are kept read-only until the columns are dropped.
+        unset($data['purchase_date'], $data['purchase_cost'], $data['warranty_until']);
 
         // Permanent-issuance fields are managed by PermanentIssuanceController only.
         unset($data['issued_to'], $data['issued_to_user_id'], $data['issued_by_user_id'], $data['date_issued']);

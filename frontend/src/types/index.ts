@@ -4,6 +4,7 @@ export type AssetStatus =
   | 'BORROWED'
   | 'MAINTENANCE'
   | 'UNAVAILABLE'
+  | 'FOR_DISPOSAL'
   | 'RETIRED'
   | 'DISPOSED'
 
@@ -77,8 +78,23 @@ export interface Asset {
   location?: string | null
   office?: string | null
   remarks?: string | null
+  /**
+   * @deprecated Procurement is now owned by Inventory.
+   * Read from `asset.inventory.procurement.purchase_date` instead.
+   * DB column kept for historical data. Backend no longer accepts writes via Asset Edit.
+   */
   purchase_date?: string | null
+  /**
+   * @deprecated Procurement is now owned by Inventory.
+   * Read from `asset.inventory.procurement.unit_cost` instead.
+   * DB column kept for historical data. Backend no longer accepts writes via Asset Edit.
+   */
   purchase_cost?: string | number | null
+  /**
+   * @deprecated Procurement is now owned by Inventory.
+   * Read from `asset.inventory.procurement.warranty_until` instead.
+   * DB column kept for historical data. Backend no longer accepts writes via Asset Edit.
+   */
   warranty_until?: string | null
   issued_to?: string | null
   issued_to_user_id?: number | null
@@ -95,6 +111,15 @@ export interface Asset {
   issued_by_user_id?: number | null
   date_issued?: string | null
   issued_by_name?: string | null
+  disposal_reason?: string | null
+  disposal_date?: string | null
+  disposal_method?: string | null
+  disposal_approval_ref?: string | null
+  disposal_approved_by?: number | null
+  disposal_approved_by_name?: string | null
+  disposal_marked_at?: string | null
+  disposal_cancelled_at?: string | null
+  disposal_cancel_reason?: string | null
   created_by?: number | null
   updated_by?: number | null
   created_by_name?: string | null
@@ -125,6 +150,33 @@ export interface Asset {
   inventory_item_id?: number | null
   /** Whether this asset participates in the borrowing workflow. */
   is_borrowable?: boolean
+  /**
+   * Inventory-owned fields exposed for read-only display in Asset Edit / View Asset.
+   * Present when the asset has a linked InventoryItem and the relation was eager-loaded.
+   * null for standalone assets (no Inventory parent).
+   */
+  inventory?: {
+    id: number
+    name: string
+    sku?: string | null
+    description?: string | null
+    classification?: string | null
+    type?: string | null
+    model?: string | null
+    manufacturer_id?: number | null
+    manufacturer?: string | null
+    asset_category_id?: number | null
+    is_borrowable: boolean
+    track_as_asset: boolean
+    /** Procurement is fully owned by Inventory. These values are authoritative. */
+    procurement: {
+      unit_cost?: number | null
+      purchase_date?: string | null
+      warranty_until?: string | null
+      supplier_id?: number | null
+      supplier_name?: string | null
+    }
+  } | null
 }
 
 export interface Reservation {
@@ -180,43 +232,65 @@ export interface Borrowing {
 export interface InventoryItem {
   id: number
   asset_id?: number | null
+  // ── Asset-reference identifiers (read-only in Inventory context) ───────
+  /** Read-only. The linked Asset's auto-generated number. */
   asset_number?: string | null
+  /** Read-only. The linked Asset's Property Number (Asset-owned, not editable via Inventory). */
   property_number?: string | null
+  // ── Classification ────────────────────────────────────────────────────
   type?: 'non_expendable' | 'expendable' | string | null
   classification?: 'PPE' | 'SE' | 'SUPPLY' | string | null
   item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY' | string | null
   classification_reason?: string | null
+  // ── Core identity (inventory-owned) ──────────────────────────────────
   name: string
   sku?: string
+  /** Inventory-owned description. Synced to linked Asset at initial creation only. */
+  description?: string | null
+  // ── Stock & cost (inventory-owned) ───────────────────────────────────
   quantity: number
   /**
-   * Unit cost in PHP (decimal). Used to auto-classify PPE (>= ₱50,000)
-   * or SE (> ₱0 and < ₱50,000) for accountable items.
-   * Supply items may carry a cost here for procurement tracking only —
-   * it does NOT drive PPE/SE classification for supply items.
+   * Unit cost in PHP. Drives PPE (≥ ₱50,000) / SE (< ₱50,000) auto-classification
+   * for accountable items. Supply items may carry a cost for procurement tracking only.
    */
   unit_cost?: number | null
+  // ── Procurement (inventory-owned) ───────────────────────────────────
+  purchase_date?: string | null
+  warranty_until?: string | null
+  supplier_id?: number | null
+  /** Resolved supplier name. Populated when the supplier relation is eager-loaded. */
+  supplier_name?: string | null
   status: string
   unit: string
   unit_id?: number | null
   unit_name?: string | null
   reorder_level?: number
+  // ── Borrowing & tracking flags ───────────────────────────────────────
   is_borrowable?: boolean
+  /**
+   * Visibility controller. true = item surfaces in Asset Management.
+   * false = Inventory only. The linked asset record is preserved (not deleted).
+   * Re-enabling restores the same Asset record.
+   */
+  track_as_asset?: boolean
   remarks?: string | null
-  description?: string | null
+  // ── Shared item details (inventory-owned) ────────────────────────────
+  model?: string | null
   asset_category_id?: number | null
+  asset_category_name?: string | null
   manufacturer_id?: number | null
   manufacturer_name?: string | null
+  // ── Default assignment (inventory-owned; initial value for linked Asset creation) ─
   office_id?: number | null
   office_name?: string | null
   location_id?: number | null
   location_name?: string | null
+  // ── Asset-reference display fields (read-only in Inventory) ──────────
+  /** Derived from linked Asset. Read-only. */
+  asset_status?: string | null
   accountability?: string | null
   is_unlinked_holder?: boolean
-  // Asset-level fields for Inventory-as-primary-form
-  model?: string | null
-  condition_status?: string | null
-  asset_status?: string | null
+  // ── Audit ─────────────────────────────────────────────────────────────
   created_by?: number | null
   updated_by?: number | null
   created_by_name?: string | null

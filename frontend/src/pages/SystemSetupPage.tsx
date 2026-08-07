@@ -29,7 +29,7 @@ export function SystemSetupPage() {
   const navigate = useNavigate()
   const [activeResource, setActiveResource] = useState<SetupResource>('asset-categories')
   const [records, setRecords] = useState<Record<SetupResource, SetupRecord[]>>({
-    'asset-categories': [], offices: [], departments: [], locations: [], manufacturers: [],
+    'asset-categories': [], offices: [], departments: [], locations: [], manufacturers: [], units: [],
   })
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -57,7 +57,7 @@ export function SystemSetupPage() {
         setupService.list('locations'),
         setupService.list('manufacturers'),
       ])
-      setRecords({ 'asset-categories': assetCategories, offices, departments, locations, manufacturers })
+      setRecords({ 'asset-categories': assetCategories, offices, departments, locations, manufacturers, units: [] })
     } catch (error: unknown) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load setup records.' })
     } finally {

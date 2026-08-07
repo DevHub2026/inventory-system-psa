@@ -1,0 +1,78 @@
+﻿        
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Inventory\InventoryOwnershipRulesTest[39m
+  [32;1mΓ£ô[39;22m[90m [39m[90mcondition status is prohibited in inventory create[39m[90m                  [39m [90m0.90s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mcondition status is prohibited in inventory update[39m[90m                  [39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mproperty number is prohibited in inventory create[39m[90m                   [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mmodel description asset category accepted in create[39m[90m                 [39m [90m0.06s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90minitial office and location used when creating linked asset[39m[90m         [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mediting office in inventory does not overwrite asset office[39m[90m         [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mediting model syncs to linked asset[39m[90m                                 [39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90msupply item does not create linked asset[39m[90m                            [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90masset update still rejects inventory owned fields[39m[90m                   [39m [90m0.05s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90minventory export does not include condition column[39m[90m                  [39m [90m0.21s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90minventory list response does not expose condition status[39m[90m            [39m [90m0.05s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90minventory item asset category relationship[39m[90m                          [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mmanufacturer id is stored and returned[39m[90m                              [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Inventory\InventoryBorrowableAndUnitnessTest[39m
+  [32;1mΓ£ô[39;22m[90m [39m[90mppe item defaults to borrowable[39m[90m                                     [39m [90m0.07s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90msupply item defaults to non borrowable[39m[90m                              [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90madmin can explicitly set ppe item non borrowable[39m[90m                    [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mnon borrowable item cannot be borrowed via api[39m[90m                      [39m [90m0.05s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90msku validation endpoint passes for own sku during edit[39m[90m              [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90msku validation endpoint reports duplicate for different item[39m[90m        [39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90msku validation does not flag own linked asset number[39m[90m                [39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mbackend rejects duplicate sku at store level[39m[90m                        [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mcan create two individually tracked items with same model different[39m[90mΓÇª[39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90msupply item can have quantity greater than one[39m[90m                      [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90marchiving asset also soft deletes linked inventory item[39m[90m             [39m [90m0.06s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90marchived item is hidden from active inventory[39m[90m                       [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90minventory export includes is borrowable column[39m[90m                      [39m [90m0.06s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mprofile update persists name fields[39m[90m                                 [39m [90m0.07s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mprofile update rejects duplicate email[39m[90m                              [39m [90m0.05s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mprofile update allows keeping own email[39m[90m                             [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Asset\AssetBorrowableToggleTest[39m
+  [32;1mΓ£ô[39;22m[90m [39m[90madmin can disable borrowing on available ppe item[39m[90m                   [39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90madmin can re enable borrowing[39m[90m                                       [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90msetting same borrowable value is idempotent[39m[90m                         [39m [90m0.06s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mcannot disable borrowing while asset is actively borrowed[39m[90m           [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mcannot disable borrowing while open reservation exists[39m[90m              [39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90msupply item cannot be made borrowable[39m[90m                               [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mstandalone asset without inventory item returns 422[39m[90m                 [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90munauthenticated request is rejected[39m[90m                                 [39m [90m0.02s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90masset update endpoint rejects name field[39m[90m                            [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90masset update endpoint rejects model field[39m[90m                           [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90masset update endpoint accepts operational fields[39m[90m                    [39m [90m0.06s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90masset resource exposes inventory item id and is borrowable[39m[90m          [39m [90m0.06s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90masset resource exposes is borrowable false after toggle[39m[90m             [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Asset\PermanentIssuanceTest[39m
+  [32;1mΓ£ô[39;22m[90m [39m[90madmin can permanently issue asset and derives holder name[39m[90m           [39m [90m0.07s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mproperty custodian can perform initial issuance[39m[90m                     [39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mcannot issue already issued asset[39m[90m                                   [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90memployee cannot access directory[39m[90m                                    [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90memployee can view only own permanent issuances[39m[90m                      [39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mdepartment head cannot access directory[39m[90m                             [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mrepeated issue does not duplicate initial history[39m[90m                   [39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90masset update strips issuance fields[39m[90m                                 [39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90masset update rejects inventory owned name field[39m[90m                     [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mpermanently issued asset remains visible in assets listing without[39m[90mΓÇª [39m [90m0.08s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mlegacy unlinked holder is exposed as fallback not verified user rel[39m[90mΓÇª[39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mactive borrowing blocks permanent issuance[39m[90m                          [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mpending reservation blocks permanent issuance[39m[90m                       [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Asset\DisposalLifecycleTest[39m
+  [32;1mΓ£ô[39;22m[90m [39m[90meligible asset can be marked for disposal[39m[90m                           [39m [90m0.04s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mcannot mark borrowed asset for disposal[39m[90m                             [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mcannot mark reserved asset for disposal[39m[90m                             [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mcannot mark permanently issued asset for disposal[39m[90m                   [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90munauthorized user cannot mark for disposal[39m[90m                          [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mfor disposal can be finalized as disposed[39m[90m                           [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mdisposed asset cannot be modified[39m[90m                                   [39m [90m0.06s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mfor disposal can be cancelled with authorization and reason[39m[90m         [39m [90m0.03s[39m  
+  [32;1mΓ£ô[39;22m[90m [39m[90mdisposed asset remains in history[39m[90m                                   [39m [90m0.02s[39m  
+
+  [90mTests:[39m    [32;1m64 passed[39;22m[90m (204 assertions)[39m
+  [90mDuration:[39m [39m4.30s[39m
+

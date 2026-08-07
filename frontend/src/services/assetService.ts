@@ -1,12 +1,20 @@
 import { api, unwrapData } from '@/services/api'
-
 import type { ApiResponse, Asset, AssetStatus, Borrowing, BorrowRequestResult, Paginated } from '@/types'
+
+export interface IssuanceHistoryEntry {
+  id?: number
+  transfer_date?: string
+  new_employee?: { full_name?: string } | string | null
+  previous_employee?: { full_name?: string } | string | null
+  officer?: { full_name?: string } | string | null
+  reason?: string | null
+  remarks?: string | null
+}
 
 
 
 
 interface BackendAsset {
-
   id: number
   asset_number: string
   property_number?: string | null
@@ -22,8 +30,20 @@ interface BackendAsset {
   status: AssetStatus
   condition_status?: string | null
   remarks?: string | null
+  /**
+   * @deprecated Procurement owned by Inventory. Read from `inventory.procurement.purchase_date`.
+   * Kept in the type for historical display fallback only.
+   */
   purchase_date?: string | null
+  /**
+   * @deprecated Procurement owned by Inventory. Read from `inventory.procurement.unit_cost`.
+   * Kept in the type for historical display fallback only.
+   */
   purchase_cost?: string | number | null
+  /**
+   * @deprecated Procurement owned by Inventory. Read from `inventory.procurement.warranty_until`.
+   * Kept in the type for historical display fallback only.
+   */
   warranty_until?: string | null
   issued_to?: string | null
   issued_to_user_id?: number | null
@@ -32,6 +52,15 @@ interface BackendAsset {
   issued_by_user_id?: number | null
   date_issued?: string | null
   issued_by_name?: string | null
+  disposal_reason?: string | null
+  disposal_date?: string | null
+  disposal_method?: string | null
+  disposal_approval_ref?: string | null
+  disposal_approved_by?: number | null
+  disposal_approved_by_name?: string | null
+  disposal_marked_at?: string | null
+  disposal_cancelled_at?: string | null
+  disposal_cancel_reason?: string | null
   created_by?: number | null
   updated_by?: number | null
   created_by_name?: string | null
@@ -45,16 +74,27 @@ interface BackendAsset {
   reservation_context?: Asset['reservation_context']
   inventory_item_id?: number | null
   is_borrowable?: boolean
+  /** Nested Inventory-owned block. Present when inventoryItem relation is eager-loaded. */
+  inventory?: Asset['inventory']
 }
 
 export interface UpdateAssetPayload {
-  /** Asset-operational fields — the only ones the backend now accepts. */
+  /**
+   * Asset-operational fields — the only ones the backend accepts on PUT /assets/:id.
+   *
+   * PROHIBITED (backend returns 422 if sent):
+   *   purchase_date, purchase_cost, warranty_until  → now owned by Inventory
+   *   name, description, model, manufacturer_id     → Inventory-owned
+   *   office_id, location_id, asset_category_id     → Inventory-owned
+   *   asset_number                                  → auto-generated, never editable
+   *
+   * To edit procurement, navigate to the linked Inventory Item.
+   */
   status?: AssetStatus
   condition_status?: string | null
   remarks?: string | null
-  purchase_date?: string | null
-  purchase_cost?: number | null
-  warranty_until?: string | null
+  /** ASSET-OWNED — identifies one physical unit instance. Editable here. */
+  property_number?: string | null
 }
 
 function mapAsset(asset: BackendAsset): Asset {
@@ -93,6 +133,15 @@ function mapAsset(asset: BackendAsset): Asset {
     issued_by_user_id: asset.issued_by_user_id,
     date_issued: asset.date_issued,
     issued_by_name: asset.issued_by_name,
+    disposal_reason: asset.disposal_reason,
+    disposal_date: asset.disposal_date,
+    disposal_method: asset.disposal_method,
+    disposal_approval_ref: asset.disposal_approval_ref,
+    disposal_approved_by: asset.disposal_approved_by,
+    disposal_approved_by_name: asset.disposal_approved_by_name,
+    disposal_marked_at: asset.disposal_marked_at,
+    disposal_cancelled_at: asset.disposal_cancelled_at,
+    disposal_cancel_reason: asset.disposal_cancel_reason,
     created_by: asset.created_by,
     updated_by: asset.updated_by,
     created_by_name: asset.created_by_name,
@@ -103,6 +152,7 @@ function mapAsset(asset: BackendAsset): Asset {
     reservation_context: asset.reservation_context ?? null,
     inventory_item_id: asset.inventory_item_id ?? null,
     is_borrowable: asset.is_borrowable ?? true,
+    inventory: asset.inventory ?? null,
   }
 }
 
@@ -188,8 +238,8 @@ export const assetService = {
     }
   },
 
-  async getIssuanceHistory(assetId: number): Promise<any[]> {
-    const { data } = await api.get<ApiResponse<any[]>>(`/assets/${assetId}/issuance-history`)
+  async getIssuanceHistory(assetId: number): Promise<IssuanceHistoryEntry[]> {
+    const { data } = await api.get<ApiResponse<IssuanceHistoryEntry[]>>(`/assets/${assetId}/issuance-history`)
     return unwrapData(data)
   },
 
@@ -199,6 +249,21 @@ export const assetService = {
       { is_borrowable: isBorrowable },
     )
     return unwrapData(data)
+  },
+
+  async markForDisposal(assetId: number, payload: { disposal_reason: string; disposal_date: string; disposal_method?: string; disposal_approval_ref?: string }): Promise<Asset> {
+    const { data } = await api.post<ApiResponse<BackendAsset>>(`/assets/${assetId}/dispose`, payload)
+    return mapAsset(unwrapData(data))
+  },
+
+  async finalizeDisposal(assetId: number, payload: { disposal_date: string; disposal_method: string; disposal_approval_ref?: string }): Promise<Asset> {
+    const { data } = await api.post<ApiResponse<BackendAsset>>(`/assets/${assetId}/dispose/finalize`, payload)
+    return mapAsset(unwrapData(data))
+  },
+
+  async cancelDisposal(assetId: number, payload: { disposal_cancel_reason: string }): Promise<Asset> {
+    const { data } = await api.post<ApiResponse<BackendAsset>>(`/assets/${assetId}/dispose/cancel`, payload)
+    return mapAsset(unwrapData(data))
   },
 }
 

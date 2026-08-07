@@ -44,7 +44,7 @@ class InventoryService
     public function export(array $filters = [], string $format = 'xlsx'): string
     {
         $items = InventoryItem::query()
-            ->with(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location'])
+            ->with(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location', 'assetCategory'])
             ->when(! empty($filters['classification']), function ($query) use ($filters) {
                 $query->where('classification', $filters['classification']);
             })
@@ -78,34 +78,39 @@ class InventoryService
         if ($this->templateRenderingService !== null) {
             $documentType = $format === 'csv' ? DocumentType::CSV_EXPORT : DocumentType::EXCEL_EXPORT;
             $rows = $items->map(fn ($item) => [
+                // ── INVENTORY-OWNED fields ─────────────────────────────────
                 'id'               => $item->id,
-                'type'             => $item->classification ?? ucfirst(str_replace('_', '-', $item->type ?? '')),
+                'classification'   => $item->classification ?? ucfirst(str_replace('_', '-', $item->type ?? '')),
                 'item_name'        => $item->name,
                 'sku'              => $item->sku ?? '',
-                'property_number'  => $item->asset?->property_number ?? '',
+                'description'      => $item->description ?? '',
                 'unit'             => $item->unit?->name ?? $item->unit ?? '',
                 'manufacturer'     => $item->manufacturer?->name ?? '',
-                'office'           => $item->office?->name ?? '',
-                'location'         => $item->location?->name ?? '',
+                'model'            => $item->model ?? '',
+                'asset_category'   => $item->assetCategory?->name ?? ($item->asset?->category?->name ?? ''),
+                'default_office'   => $item->office?->name ?? '',
+                'default_location' => $item->location?->name ?? '',
                 'quantity'         => $item->quantity,
                 'reorder_level'    => $item->reorder_level ?? '',
-                'status'           => match (true) {
+                'stock_status'     => match (true) {
                     $item->quantity <= 0 => 'Out of Stock',
                     $item->reorder_level !== null && $item->quantity <= $item->reorder_level => 'Low Stock',
                     default => 'In Stock',
                 },
-                'model'            => $item->asset?->model ?? '',
-                'condition'        => $item->asset?->condition_status instanceof \App\Modules\Asset\Enums\ConditionStatus
-                    ? $item->asset->condition_status->value
-                    : ($item->asset?->condition_status ?? ''),
-                'is_borrowable'    => ($item->is_borrowable ?? true) ? 'Yes' : 'No',
-                'accountability'   => $item->asset?->issued_to_user_id
-                    ? 'Issued to '.($item->asset?->issuedToUser?->full_name ?? $item->asset?->issued_to ?? 'N/A')
-                    : ($item->classification === self::CLASSIFICATION_SUPPLY
-                        ? '—'
-                        : (filled($item->asset?->issued_to) ? 'Issued to '.$item->asset?->issued_to : 'Unassigned')),
                 'unit_cost'        => $item->unit_cost !== null ? (float) $item->unit_cost : '',
+                'is_borrowable'    => ($item->is_borrowable ?? true) ? 'Yes' : 'No',
                 'remarks'          => $item->remarks ?? '',
+                // ── ASSET-REFERENCE fields (read-only, labeled clearly) ────
+                'asset_number'     => $item->asset?->asset_number ?? '',
+                'property_number'  => $item->asset?->property_number ?? '',
+                'asset_status'     => ($item->asset?->status instanceof \App\Modules\Asset\Enums\AssetStatus
+                                        ? $item->asset->status->value
+                                        : ($item->asset?->status ?? '')),
+                'accountability'   => $item->classification === self::CLASSIFICATION_SUPPLY
+                    ? '—'
+                    : ($item->asset?->issued_to_user_id
+                        ? 'Issued to '.($item->asset?->issuedToUser?->full_name ?? $item->asset?->issued_to ?? 'N/A')
+                        : (filled($item->asset?->issued_to) ? 'Issued to '.$item->asset?->issued_to : 'Unassigned')),
                 'created_at'       => $item->created_at?->format('Y-m-d H:i:s') ?? '',
                 'updated_at'       => $item->updated_at?->format('Y-m-d H:i:s') ?? '',
             ])->toArray();
@@ -122,66 +127,94 @@ class InventoryService
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Inventory Export');
 
-        // Headers
+        // ── SECTION A: Inventory-owned columns (cols A–P) ─────────────────
+        // ── SECTION B: Asset-reference columns (cols Q–T, labeled clearly) ─
         $headers = [
-            'ID', 'Inventory Type', 'Item Name', 'SKU/Code', 'Property Number',
-            'Unit', 'Manufacturer', 'Office', 'Location',
-            'Quantity', 'Reorder Level', 'Stock Status',
-            'Model Number', 'Condition', 'Asset Status',
-            'Borrowable', 'Accountability', 'Remarks',
-            'Unit Cost', 'Created At', 'Updated At',
+            // Inventory-owned
+            'A' => 'ID',
+            'B' => 'Inventory Type',
+            'C' => 'Item Name',
+            'D' => 'SKU / Item Code',
+            'E' => 'Description',
+            'F' => 'Unit of Measure',
+            'G' => 'Manufacturer',
+            'H' => 'Model Number',
+            'I' => 'Asset Category',
+            'J' => 'Default Office',
+            'K' => 'Default Location',
+            'L' => 'Quantity',
+            'M' => 'Low Stock Alert',
+            'N' => 'Stock Status',
+            'O' => 'Unit Cost (₱)',
+            'P' => 'Borrowable',
+            'Q' => 'Inventory Remarks',
+            // Asset-reference (read-only, clearly labeled)
+            'R' => '[Asset] Asset Number',
+            'S' => '[Asset] Property Number',
+            'T' => '[Asset] Asset Status',
+            'U' => '[Asset] Accountability',
+            'V' => 'Created At',
+            'W' => 'Updated At',
         ];
-        foreach (array_values($headers) as $i => $header) {
-            $sheet->setCellValue(chr(65 + $i).'1', $header);
-            $sheet->getStyle(chr(65 + $i).'1')->getFont()->setBold(true);
+
+        foreach ($headers as $col => $header) {
+            $sheet->setCellValue($col.'1', $header);
+            $sheet->getStyle($col.'1')->getFont()->setBold(true);
+            // Light blue for inventory-owned headers, light grey for asset-reference
+            $fillColor = str_starts_with($header, '[Asset]') ? 'F1F5F9' : 'EFF6FF';
+            $sheet->getStyle($col.'1')->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setRGB($fillColor);
         }
 
         // Data rows
         $row = 2;
         foreach ($items as $item) {
-            $status = match (true) {
+            $stockStatus = match (true) {
                 $item->quantity <= 0 => 'Out of Stock',
                 $item->reorder_level !== null && $item->quantity <= $item->reorder_level => 'Low Stock',
                 default => 'In Stock',
             };
 
-            $conditionStatus = $item->asset?->condition_status instanceof \App\Modules\Asset\Enums\ConditionStatus
-                ? $item->asset->condition_status->value
-                : ($item->asset?->condition_status ?? '');
-
             $assetStatus = $item->asset?->status instanceof \App\Modules\Asset\Enums\AssetStatus
                 ? $item->asset->status->value
                 : ($item->asset?->status ?? '');
 
+            $accountability = $item->classification === self::CLASSIFICATION_SUPPLY
+                ? '—'
+                : ($item->asset?->issued_to_user_id
+                    ? 'Issued to '.($item->asset?->issuedToUser?->full_name ?? $item->asset?->issued_to ?? 'N/A')
+                    : (filled($item->asset?->issued_to) ? 'Issued to '.$item->asset?->issued_to : 'Unassigned'));
+
+            // Inventory-owned
             $sheet->setCellValue('A'.$row, $item->id);
             $sheet->setCellValue('B'.$row, $item->classification ?? ucfirst(str_replace('_', '-', $item->type ?? '')));
             $sheet->setCellValue('C'.$row, $item->name);
             $sheet->setCellValue('D'.$row, $item->sku ?? '');
-            $sheet->setCellValue('E'.$row, $item->asset?->property_number ?? '');
+            $sheet->setCellValue('E'.$row, $item->description ?? '');
             $sheet->setCellValue('F'.$row, $item->unit?->name ?? $item->unit ?? '');
             $sheet->setCellValue('G'.$row, $item->manufacturer?->name ?? '');
-            $sheet->setCellValue('H'.$row, $item->office?->name ?? '');
-            $sheet->setCellValue('I'.$row, $item->location?->name ?? '');
-            $sheet->setCellValue('J'.$row, $item->quantity);
-            $sheet->setCellValue('K'.$row, $item->reorder_level ?? '');
-            $sheet->setCellValue('L'.$row, $status);
-            $sheet->setCellValue('M'.$row, $item->asset?->model ?? '');
-            $sheet->setCellValue('N'.$row, $conditionStatus);
-            $sheet->setCellValue('O'.$row, $assetStatus);
+            $sheet->setCellValue('H'.$row, $item->model ?? '');
+            $sheet->setCellValue('I'.$row, $item->assetCategory?->name ?? ($item->asset?->category?->name ?? ''));
+            $sheet->setCellValue('J'.$row, $item->office?->name ?? '');
+            $sheet->setCellValue('K'.$row, $item->location?->name ?? '');
+            $sheet->setCellValue('L'.$row, $item->quantity);
+            $sheet->setCellValue('M'.$row, $item->reorder_level ?? '');
+            $sheet->setCellValue('N'.$row, $stockStatus);
+            $sheet->setCellValue('O'.$row, $item->unit_cost !== null ? (float) $item->unit_cost : '');
             $sheet->setCellValue('P'.$row, ($item->is_borrowable ?? true) ? 'Yes' : 'No');
-            $sheet->setCellValue('Q'.$row, $item->classification === self::CLASSIFICATION_SUPPLY
-                ? '—'
-                : ($item->asset?->issued_to_user_id
-                    ? 'Issued to '.($item->asset?->issuedToUser?->full_name ?? $item->asset?->issued_to ?? 'N/A')
-                    : (filled($item->asset?->issued_to) ? 'Issued to '.$item->asset?->issued_to : 'Unassigned')));
-            $sheet->setCellValue('R'.$row, $item->remarks ?? '');
-            $sheet->setCellValue('S'.$row, $item->unit_cost !== null ? (float) $item->unit_cost : '');
-            $sheet->setCellValue('T'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
-            $sheet->setCellValue('U'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');
+            $sheet->setCellValue('Q'.$row, $item->remarks ?? '');
+            // Asset-reference (read-only display)
+            $sheet->setCellValue('R'.$row, $item->asset?->asset_number ?? '');
+            $sheet->setCellValue('S'.$row, $item->asset?->property_number ?? '');
+            $sheet->setCellValue('T'.$row, $assetStatus);
+            $sheet->setCellValue('U'.$row, $accountability);
+            $sheet->setCellValue('V'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
+            $sheet->setCellValue('W'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');
             $row++;
         }
 
-        foreach (range('A', 'U') as $col) {
+        foreach (range('A', 'W') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -351,7 +384,7 @@ class InventoryService
     }
     public function list(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
-        $query = InventoryItem::query()->with(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location']);
+        $query = InventoryItem::query()->with(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location', 'assetCategory', 'supplier']);
 
         if (! empty($filters['classification'])) {
             $query->where('classification', $filters['classification']);
@@ -395,12 +428,17 @@ class InventoryService
     public function create(array $data, ?User $user = null): InventoryItem
     {
         return DB::transaction(function () use ($data, $user) {
-            // Extract asset-level fields before normalizing inventory data
-            $assetLevelFields = [];
-            foreach (['model', 'condition_status', 'description', 'asset_category_id', 'property_number'] as $field) {
+            // ── Extract INITIAL-ASSET-ONLY fields ─────────────────────────
+            // model, description, asset_category_id live on BOTH inventory_items
+            // (as inventory-owned truth) AND are copied to the linked asset at
+            // creation as initial values.  We do NOT extract them from $data here;
+            // InventoryItem::create($data) will persist them directly.
+            // We separately build the $initialAssetFields for createAssetForInventoryItem.
+            $initialAssetFields = [];
+            foreach (['model', 'description', 'asset_category_id'] as $field) {
                 if (array_key_exists($field, $data)) {
-                    $assetLevelFields[$field] = $data[$field];
-                    unset($data[$field]);
+                    $initialAssetFields[$field] = $data[$field];
+                    // Keep in $data so InventoryItem::create saves them
                 }
             }
 
@@ -413,6 +451,7 @@ class InventoryService
                 $data['is_borrowable'] = true;
             }
 
+            // $data now contains track_as_asset (persisted by normalizeClassificationData).
             $item = InventoryItem::create($data);
 
             if ($item->quantity > 0) {
@@ -428,27 +467,23 @@ class InventoryService
             }
 
             if ($trackAsAsset) {
+                // Build the initial Asset payload.
+                // office_id and location_id come from the InventoryItem record
+                // (stored as "Default Office/Location") and are used ONCE at
+                // creation.  syncLinkedAsset() will never overwrite them again.
                 $assetPayload = [
-                    'name'        => $item->name,
-                    'description' => $assetLevelFields['description'] ?? 'Linked from inventory item #'.$item->id.'.',
-                    'model'       => $assetLevelFields['model'] ?? null,
-                    'condition_status' => $assetLevelFields['condition_status'] ?? ConditionStatus::GOOD->value,
-                    'asset_category_id' => $assetLevelFields['asset_category_id'] ?? null,
+                    'description'      => $initialAssetFields['description']
+                                          ?? 'Linked from inventory item #'.$item->id.'.',
+                    'model'            => $initialAssetFields['model'] ?? null,
+                    'asset_category_id' => $initialAssetFields['asset_category_id'] ?? null,
+                    // Initial condition defaults to GOOD; asset owner can change it later
+                    'condition_status' => ConditionStatus::GOOD->value,
                 ];
 
-                // Handle property_number uniqueness
-                if (! empty($assetLevelFields['property_number'])) {
-                    // Only set if not already taken
-                    $propNumTaken = Asset::query()
-                        ->where('property_number', $assetLevelFields['property_number'])
-                        ->exists();
-                    if (! $propNumTaken) {
-                        $assetPayload['property_number'] = $assetLevelFields['property_number'];
-                    }
-                }
-
                 $asset = $this->createAssetForInventoryItem($item, $assetPayload);
-                $item->update(['asset_id' => $asset->id]);
+                // Persist both asset_id and track_as_asset = true so the column
+                // accurately reflects the active tracked state.
+                $item->update(['asset_id' => $asset->id, 'track_as_asset' => true]);
             }
 
             return $item->fresh('asset');
@@ -461,14 +496,25 @@ class InventoryService
         $classificationPayload['classification'] ??= $item->classification;
         $classificationPayload['item_nature'] ??= $item->item_nature;
         $classificationPayload['type'] ??= $item->type;
-        $classificationPayload['track_as_asset'] ??= (bool) $item->asset_id;
+        // Default to the persisted column value, not (bool) $item->asset_id.
+        // This ensures a deliberate track_as_asset = false is honoured even when
+        // an asset_id already exists (i.e. the asset is hidden, not deleted).
+        $classificationPayload['track_as_asset'] ??= (bool) $item->track_as_asset;
 
-        // Extract asset-level fields before processing inventory fields
+        // ── Extract inventory-shared fields that may update the linked Asset ─
+        // These are fields that Inventory owns and that the linked Asset should
+        // also reflect when changed (model, description, asset_category_id).
+        // They remain in $classificationPayload so $item->update() saves them
+        // on inventory_items; we also keep a separate copy for the asset sync.
+        //
+        // Asset-OWNED fields are NOT extracted here:
+        //   condition_status  → only editable from Asset module
+        //   property_number   → only editable from Asset module
         $assetLevelFields = [];
-        foreach (['model', 'condition_status', 'description', 'asset_category_id', 'property_number'] as $field) {
+        foreach (['model', 'description', 'asset_category_id'] as $field) {
             if (array_key_exists($field, $data)) {
                 $assetLevelFields[$field] = $data[$field];
-                unset($classificationPayload[$field]);
+                unset($classificationPayload[$field]); // removed so normalizeClassificationData skips it
             }
         }
 
@@ -477,7 +523,7 @@ class InventoryService
             $classificationPayload['is_borrowable'] = (bool) $classificationPayload['is_borrowable'];
         }
 
-        [$data, $trackAsAsset] = $this->normalizeClassificationData($classificationPayload, (bool) $item->asset_id);
+        [$data, $trackAsAsset] = $this->normalizeClassificationData($classificationPayload, (bool) $item->track_as_asset);
 
         // SUPPLY items are never borrowable
         if (($data['classification'] ?? $item->classification) === self::CLASSIFICATION_SUPPLY) {
@@ -506,17 +552,31 @@ class InventoryService
 
         $item->update($data);
 
+        // Re-add the inventory-shared fields so they are saved on inventory_items too
+        if (! empty($assetLevelFields)) {
+            $item->update($assetLevelFields);
+        }
+
+        // ── track_as_asset toggle ─────────────────────────────────────────
+        // Turning ON (true) when no asset exists yet → create one.
+        // Turning ON when an asset exists but was hidden → simply re-exposing it
+        //   (track_as_asset = true was already saved by $item->update($data) above).
+        // Turning OFF → asset_id is preserved (not nulled); the column flag does
+        //   the hiding. History, audit, maintenance all remain intact.
         if ($trackAsAsset && ! $item->asset_id) {
             $asset = $this->createAssetForInventoryItem($item->fresh());
             $item->update(['asset_id' => $asset->id]);
         }
 
-        // Apply asset-level field updates through the linked asset
+        // Apply inventory-shared field updates to the linked Asset.
+        // Only model, description, asset_category_id are allowed here.
+        // office_id, location_id, manufacturer_id are NOT pushed to the asset
+        // on update — changing them in Inventory must not silently move an
+        // existing asset to a new office/location.
         if (! empty($assetLevelFields) && $item->asset_id) {
             $item->load('asset');
             if ($item->asset) {
-                $validAssetFields = array_filter($assetLevelFields, fn ($v) => $v !== null || true);
-                $item->asset->update($validAssetFields);
+                $item->asset->update($assetLevelFields);
             }
         }
 
@@ -635,6 +695,9 @@ class InventoryService
             'asset_number'      => $this->uniqueAssetNumber($item->sku ?: 'INV-'.$item->id),
             'name'              => $item->name,
             'description'       => 'Linked from inventory item #'.$item->id.'.',
+            // Use the inventory item's FK values as initial defaults.
+            // These are only written at Asset creation — syncLinkedAsset()
+            // will NOT overwrite them on subsequent Inventory edits.
             'asset_category_id' => $this->defaultInventoryCategory()->id,
             'office_id'         => $item->office_id ?? $this->defaultOffice()->id,
             'location_id'       => $item->location_id,
@@ -642,9 +705,14 @@ class InventoryService
             'status'            => $item->quantity > 0 ? AssetStatus::AVAILABLE->value : AssetStatus::UNAVAILABLE->value,
             'condition_status'  => ConditionStatus::GOOD->value,
             'remarks'           => $item->remarks,
+            // Procurement values are inherited from Inventory at creation only.
+            // The Asset displays them read-only; Inventory is the source of truth.
+            'purchase_date'     => $item->purchase_date,
+            'warranty_until'    => $item->warranty_until,
         ];
 
-        // Merge additional payload (overrides base where present, but never overrides asset_number)
+        // additionalPayload overrides base (e.g. model, description, asset_category_id).
+        // Never allow asset_number to be overridden from outside.
         unset($additionalPayload['asset_number']);
         $payload = array_merge($basePayload, array_filter($additionalPayload, fn ($v) => $v !== null));
 
@@ -675,24 +743,25 @@ class InventoryService
             return;
         }
 
-        $payload = [
+        // Sync only fields that Inventory authoritatively owns and that should
+        // always stay in sync with the linked Asset:
+        //   name   — the item name is the same for the Asset
+        //   status — derived from stock quantity (available vs unavailable)
+        //   remarks — inventory-level remarks mirror to the asset
+        //
+        // NOT synced here (asset-specific, editable only from Asset module):
+        //   manufacturer_id  — synced at creation only
+        //   office_id        — synced at creation only ("Default Office")
+        //   location_id      — synced at creation only ("Default Location")
+        //   condition_status — asset-owned
+        //   property_number  — asset-owned
+        $item->asset->update([
             'name'    => $item->name,
-            'status'  => $item->quantity > 0 ? AssetStatus::AVAILABLE->value : AssetStatus::UNAVAILABLE->value,
+            'status'  => $item->quantity > 0
+                ? AssetStatus::AVAILABLE->value
+                : AssetStatus::UNAVAILABLE->value,
             'remarks' => $item->remarks,
-        ];
-
-        // Sync manufacturer and office/location if set on inventory item
-        if ($item->manufacturer_id !== null) {
-            $payload['manufacturer_id'] = $item->manufacturer_id;
-        }
-        if ($item->office_id !== null) {
-            $payload['office_id'] = $item->office_id;
-        }
-        if ($item->location_id !== null) {
-            $payload['location_id'] = $item->location_id;
-        }
-
-        $item->asset->update($payload);
+        ]);
     }
 
     /**
@@ -701,7 +770,7 @@ class InventoryService
     private function normalizeClassificationData(array $data, bool $defaultTrackAsAsset): array
     {
         $trackAsAsset = (bool) ($data['track_as_asset'] ?? $defaultTrackAsAsset);
-        unset($data['track_as_asset']);
+        // Do NOT unset — we persist it to the column so Asset queries can filter by it.
 
         $classification = strtoupper((string) ($data['classification'] ?? ''));
         $itemNature = strtoupper((string) ($data['item_nature'] ?? ''));
@@ -769,8 +838,10 @@ class InventoryService
             $data['type'] = 'non_expendable';
         }
 
-        $data['classification'] = $classification;  // null = manual review required
-        $data['item_nature'] = $itemNature;
+        $data['classification']  = $classification;  // null = manual review required
+        $data['item_nature']     = $itemNature;
+        // Persist the resolved flag so Asset Management queries can filter by it.
+        $data['track_as_asset']  = $trackAsAsset;
 
         return [$data, $trackAsAsset];
     }

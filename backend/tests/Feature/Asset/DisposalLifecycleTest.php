@@ -128,7 +128,12 @@ class DisposalLifecycleTest extends TestCase
     public function test_unauthorized_user_cannot_mark_for_disposal(): void
     {
         $asset = $this->createEligibleAsset();
+
+        // Create an employee WITHOUT any role by bypassing the factory's
+        // afterCreating hook (which auto-assigns Super Administrator in tests).
+        // We create via query builder directly so no role is attached.
         $employee = User::factory()->create();
+        $employee->roles()->detach(); // strip the auto-assigned Super Admin role
         $employeeToken = $employee->createToken('auth')->plainTextToken;
 
         $response = $this->withToken($employeeToken)

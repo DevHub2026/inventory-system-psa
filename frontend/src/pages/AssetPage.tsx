@@ -1,15 +1,15 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ScanLine, Printer, Search, Filter, ExternalLink,
+  ScanLine, CheckCircle2, Printer, Search, Filter, ExternalLink,
   Eye, QrCode as QrIcon, Edit3, Trash2, ArrowUpRight, RotateCcw,
   Package, Wrench, Clock, Send, ToggleLeft, ToggleRight,
 } from 'lucide-react'
 import {
   Alert, Badge, Button, ConfirmDialog, EmptyState,
-  Input, Modal, Pagination, Spinner, Card,
+  Modal, Pagination, Spinner, Card,
 } from '@/components/ui'
-import { assetService, type UpdateAssetPayload } from '@/services/assetService'
+import { assetService, type UpdateAssetPayload, type IssuanceHistoryEntry } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
 import { useAuth } from '@/hooks/useAuth'
@@ -25,7 +25,8 @@ import { PermanentIssueModal } from '@/components/issuance/PermanentIssueModal'
 import { IssuanceUserSearchSelect } from '@/components/issuance/IssuanceUserSearchSelect'
 import { permanentIssuanceService } from '@/services/permanentIssuanceService'
 import type { IssuanceUserSummary } from '@/types/permanentIssuance'
-import { canManageIssuance, isAdmin, isStaff } from '@/utils/roleHelpers'
+import { canManageDisposal, canManageIssuance, isAdmin, isStaff, hasAnyRole } from '@/utils/roleHelpers'
+import { listAuditLogs } from '@/services/auditService'
 
 
 /* ── shared select / textarea style ── */
@@ -46,7 +47,7 @@ function hasPermanentHolder(asset: Asset): boolean {
 }
 
 function canPermanentIssueAsset(asset: Asset): boolean {
-  return !['BORROWED', 'RESERVED', 'MAINTENANCE', 'RETIRED', 'DISPOSED'].includes(asset.status)
+  return !['BORROWED', 'RESERVED', 'MAINTENANCE', 'FOR_DISPOSAL', 'RETIRED', 'DISPOSED'].includes(asset.status)
 }
 
 // ─── Color palette for summary cards ──────────────────────────────────────────
@@ -233,7 +234,7 @@ function ActionCell({
             {canManageIssuance && !hasPermanentHolder(asset) && canPermanentIssueAsset(asset) && (
               menuItem(<Package size={14} />, 'Permanent Issue', onPermanentIssue)
             )}
-            {canManageAssets && menuItem(<Edit3 size={14} />, 'Edit Asset', onEdit)}
+            {canManageAssets && asset.status !== 'FOR_DISPOSAL' && asset.status !== 'DISPOSED' && menuItem(<Edit3 size={14} />, 'Edit Asset', onEdit)}
             {canManageAssets && (
               <>
                 <div style={{ height: 1, background: '#F1F5F9', margin: '4px 0' }} />
@@ -253,6 +254,7 @@ export function AssetPage() {
   const [searchParams] = useSearchParams()
   const canManageAssets     = isAdmin(user)
   const canIssueAssets      = canManageIssuance(user)
+  const canManageDisposalActions = canManageDisposal(user)
   const canCompleteBorrowing = isAdmin(user) || isStaff(user)
 
   const [rows,      setRows]      = useState<Asset[]>([])
@@ -290,23 +292,52 @@ export function AssetPage() {
   const [printIssuanceId, setPrintIssuanceId] = useState<number | null>(null)
 
   // Summary counts
-  const [summary, setSummary] = useState({ available: 0, borrowed: 0, reserved: 0, maintenance: 0, total: 0 })
+  const [summary, setSummary] = useState({ available: 0, borrowed: 0, reserved: 0, maintenance: 0, total: 0, disposalPending: 0, disposalDisposed: 0, disposalTotal: 0 })
+  const [activeSection, setActiveSection] = useState<'all' | 'available' | 'disposal'>('all')
+  const [disposalPending, setDisposalPending] = useState<Asset[]>([])
+  const [disposalDisposed, setDisposalDisposed] = useState<Asset[]>([])
+  const [disposalLoading, setDisposalLoading] = useState(false)
+  const [finalizeAsset, setFinalizeAsset] = useState<Asset | null>(null)
+  const [cancelAsset, setCancelAsset] = useState<Asset | null>(null)
+  const [finalizeDate, setFinalizeDate] = useState(new Date().toISOString().slice(0, 10))
+  const [finalizeMethod, setFinalizeMethod] = useState('')
+  const [finalizeApprovalRef, setFinalizeApprovalRef] = useState('')
+  const [cancelReason, setCancelReason] = useState('')
+  const [markForDisposalAsset, setMarkForDisposalAsset] = useState<Asset | null>(null)
+  const [markReason, setMarkReason] = useState('')
+  const [markDate, setMarkDate] = useState(new Date().toISOString().slice(0, 10))
+  const [markMethod, setMarkMethod] = useState('')
+  const [markApprovalRef, setMarkApprovalRef] = useState('')
+  const [disposalActionLoading, setDisposalActionLoading] = useState(false)
 
   // Re-issuance State
   const [reissueAsset, setReissueAsset] = useState<Asset | null>(null)
   const [detailTab, setDetailTab] = useState<'info' | 'history'>('info')
-  const [issuanceHistory, setIssuanceHistory] = useState<any[]>([])
+  const [issuanceHistory, setIssuanceHistory] = useState<IssuanceHistoryEntry[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+
+  type AuditLogItem = {
+    id: number
+    user?: string | null
+    action: string
+    module?: string
+    description?: string | null
+    old_values?: Record<string, unknown> | null
+    new_values?: Record<string, unknown> | null
+    created_at?: string
+  }
+
+  const [disposalAudit, setDisposalAudit] = useState<AuditLogItem[]>([])
+  const [loadingDisposalAudit, setLoadingDisposalAudit] = useState(false)
 
   // Borrowable toggle state
   const [borrowableLoading, setBorrowableLoading] = useState(false)
 
   const [editForm, setEditForm] = useState<UpdateAssetPayload>({
-    status: 'AVAILABLE', condition_status: '', remarks: '',
-    purchase_date: null, purchase_cost: null, warranty_until: null,
+    status: 'AVAILABLE', condition_status: '', remarks: '', property_number: '',
   })
 
-  async function load(nextPage = page, nextSearch = search) {
+  const load = useCallback(async (nextPage: number = 1, nextSearch?: string) => {
     setLoading(true)
     try {
       const result = await assetService.list({ page: nextPage, search: nextSearch || undefined, status: status || undefined })
@@ -317,12 +348,30 @@ export function AssetPage() {
     } finally {
       setLoading(false)
     }
+  }, [status])
+
+  async function loadDisposalData() {
+    setDisposalLoading(true)
+    try {
+      const [pending, disposed] = await Promise.all([
+        assetService.list({ status: 'FOR_DISPOSAL', per_page: 9999 }),
+        assetService.list({ status: 'DISPOSED', per_page: 9999 }),
+      ])
+      setDisposalPending(pending.items)
+      setDisposalDisposed(disposed.items)
+    } finally {
+      setDisposalLoading(false)
+    }
   }
 
   // Load summary counts
   const loadSummary = useCallback(async () => {
     try {
-      const all = await assetService.list({ per_page: 9999 })
+      const [all, pending, disposed] = await Promise.all([
+        assetService.list({ per_page: 9999 }),
+        assetService.list({ status: 'FOR_DISPOSAL', per_page: 9999 }),
+        assetService.list({ status: 'DISPOSED', per_page: 9999 }),
+      ])
       const count = (s: AssetStatus) => all.items.filter((a) => a.status === s).length
       setSummary({
         available: count('AVAILABLE'),
@@ -330,43 +379,82 @@ export function AssetPage() {
         reserved: count('RESERVED'),
         maintenance: count('MAINTENANCE'),
         total: all.meta.total,
+        disposalPending: pending.meta.total,
+        disposalDisposed: disposed.meta.total,
+        disposalTotal: pending.meta.total + disposed.meta.total,
       })
+      setDisposalPending(pending.items)
+      setDisposalDisposed(disposed.items)
     } catch { /* best effort */ }
   }, [])
 
   useEffect(() => { void loadSummary() }, [loadSummary])
 
-  async function openView(id: number) {
+  const loadDisposalAudit = useCallback(async (assetId: number) => {
+    setLoadingDisposalAudit(true)
+    try {
+      const logs = (await listAuditLogs({ module: 'Asset' })) as AuditLogItem[]
+      // Filter logs that reference this asset by id, asset number, or name
+      const filtered = (logs || []).filter((l: AuditLogItem) => {
+        const desc = (l.description || '')?.toString?.() ?? ''
+        const oldVals = l.old_values ? JSON.stringify(l.old_values) : ''
+        const newVals = l.new_values ? JSON.stringify(l.new_values) : ''
+        const containsId = oldVals.includes(`"id":${assetId}`) || newVals.includes(`"id":${assetId}`) || desc.includes(`#${assetId}`)
+        const containsAssetNumber = viewAsset && desc.includes(viewAsset.asset_number || '')
+        return containsId || containsAssetNumber || desc.toLowerCase().includes('disposal') || ['ASSET_MARKED_FOR_DISPOSAL', 'ASSET_DISPOSED', 'ASSET_DISPOSAL_CANCELLED'].includes(l.action)
+      })
+      setDisposalAudit(filtered)
+    } catch (_e) {
+      // non-fatal - ignore
+    } finally {
+      setLoadingDisposalAudit(false)
+    }
+  }, [viewAsset])
+
+  const openView = useCallback(async (id: number) => {
     setMessage(null)
     setDetailTab('info')
     setIssuanceHistory([])
+    setDisposalAudit([])
     try {
       const assetData = await assetService.show(id)
       setViewAsset(assetData)
-      
+
       setLoadingHistory(true)
       const historyData = await assetService.getIssuanceHistory(id)
       setIssuanceHistory(historyData)
+
+      // Load disposal-related audit logs for this asset if the current user has permission
+      try {
+        // Only admins or auditors can call the audit log API per backend middleware
+        if (hasAnyRole(user, ['Super Administrator', 'System Administrator', 'Auditor'])) {
+          void loadDisposalAudit(id)
+        }
+      } catch {
+        // ignore non-fatal errors here
+      }
     } catch (e: unknown) {
       setMessage(e instanceof Error ? e.message : 'Unable to load asset details.')
     } finally {
       setLoadingHistory(false)
     }
-  }
+  }, [user, loadDisposalAudit])
 
   async function openEdit(id: number) {
     if (!canManageAssets) { setMessage('Only administrators can edit asset records.'); return }
     setMessage(null)
     try {
       const a = await assetService.show(id)
+      if (a.status === 'FOR_DISPOSAL' || a.status === 'DISPOSED') {
+        setMessage('Disposal assets cannot be edited through the regular asset modal. Use the Disposal workflow instead.')
+        return
+      }
       setEditAsset(a)
       setEditForm({
         status: a.status,
         condition_status: a.condition_status ?? '',
         remarks: a.remarks ?? '',
-        purchase_date: a.purchase_date ?? null,
-        purchase_cost: typeof a.purchase_cost === 'string' ? parseFloat(a.purchase_cost) || null : (a.purchase_cost ?? null),
-        warranty_until: a.warranty_until ?? null,
+        property_number: a.property_number ?? '',
       })
       setIssueUserId(a.issued_to_user_id ?? null)
       setIssueUser(a.issued_to_user ? {
@@ -401,9 +489,7 @@ export function AssetPage() {
         status:           editForm.status,
         condition_status: editForm.condition_status || null,
         remarks:          editForm.remarks || null,
-        purchase_date:    editForm.purchase_date || null,
-        purchase_cost:    editForm.purchase_cost ?? null,
-        warranty_until:   editForm.warranty_until || null,
+        property_number:  editForm.property_number || null,
       })
 
       if (shouldIssue) {
@@ -441,21 +527,37 @@ export function AssetPage() {
     }
   }
 
-  useEffect(() => { void load(1) }, [status])
+  useEffect(() => {
+    if (activeSection === 'disposal') {
+      void loadDisposalData()
+      return
+    }
+    void load(1)
+  }, [activeSection, load, status])
+
   useEffect(() => {
     const q = searchParams.get('search') ?? ''
-    setSearch(q); void load(1, q)
-  }, [searchParams])
+    setSearch(q)
+    if (activeSection === 'disposal') {
+      void loadDisposalData()
+      return
+    }
+    void load(1, q)
+  }, [activeSection, load, searchParams])
 
   /* Cross-component data refresh subscription */
   useEffect(() => onDataChanged((scope) => {
     if (affectsScope(scope, 'assets') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
-      void load(page)
+      if (activeSection === 'disposal') {
+        void loadDisposalData()
+      } else {
+        void load(page)
+      }
       void loadSummary()
       if (viewAsset) void openView(viewAsset.id)
       if (qrAsset)   void openQrLabel(qrAsset.id)
     }
-  }), [page, search, status, viewAsset?.id, qrAsset?.id])
+  }), [activeSection, page, search, status, viewAsset?.id, qrAsset?.id, load, loadSummary, viewAsset, qrAsset, openView])
 
   // ── Table styles ─────────────────────────────────────────────────────────────
   const th: React.CSSProperties = {
@@ -477,6 +579,112 @@ export function AssetPage() {
     color: '#374151',
     borderBottom: '1px solid #F1F5F9',
     verticalAlign: 'middle',
+  }
+
+  const renderDisposalField = (label: string, value: React.ReactNode) => (
+    <div style={{ background: '#F8FAFC', border: '1px solid #F1F5F9', borderRadius: 10, padding: '10px 12px' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontSize: 13, color: '#0F172A', marginTop: 4, fontWeight: 600, overflowWrap: 'anywhere' }}>{value ?? '—'}</div>
+    </div>
+  )
+
+  async function handleMarkForDisposal() {
+    if (!markForDisposalAsset) return
+    if (!markReason.trim()) {
+      setMessage('Please provide a disposal reason before marking the asset for disposal.')
+      return
+    }
+    if (!markDate.trim()) {
+      setMessage('Please provide a disposal date before marking the asset for disposal.')
+      return
+    }
+
+    setDisposalActionLoading(true)
+    try {
+      const updated = await assetService.markForDisposal(markForDisposalAsset.id, {
+        disposal_reason: markReason.trim(),
+        disposal_date: markDate,
+        disposal_method: markMethod.trim() || undefined,
+        disposal_approval_ref: markApprovalRef.trim() || undefined,
+      })
+      setMarkForDisposalAsset(null)
+      setMarkReason('')
+      setMarkDate(new Date().toISOString().slice(0, 10))
+      setMarkMethod('')
+      setMarkApprovalRef('')
+      if (viewAsset?.id === updated.id) {
+        setViewAsset(updated)
+      }
+      setMessage('Asset marked for disposal successfully.')
+      notifyDataChanged('assets')
+      void load(page)
+      void loadSummary()
+      void loadDisposalData()
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Unable to mark asset for disposal.')
+    } finally {
+      setDisposalActionLoading(false)
+    }
+  }
+
+  async function handleFinalizeDisposal() {
+    if (!finalizeAsset) return
+    if (!finalizeMethod.trim()) {
+      setMessage('Please provide a disposal method before finalizing the asset.')
+      return
+    }
+
+    setDisposalActionLoading(true)
+    try {
+      const updated = await assetService.finalizeDisposal(finalizeAsset.id, {
+        disposal_date: finalizeDate,
+        disposal_method: finalizeMethod.trim(),
+        disposal_approval_ref: finalizeApprovalRef.trim() || undefined,
+      })
+      setFinalizeAsset(null)
+      setFinalizeDate(new Date().toISOString().slice(0, 10))
+      setFinalizeMethod('')
+      setFinalizeApprovalRef('')
+      if (viewAsset?.id === updated.id) {
+        setViewAsset(updated)
+      }
+      setMessage('Asset finalized as disposed successfully.')
+      notifyDataChanged('assets')
+      void load(page)
+      void loadSummary()
+      void loadDisposalData()
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Unable to finalize disposal.')
+    } finally {
+      setDisposalActionLoading(false)
+    }
+  }
+
+  async function handleCancelDisposal() {
+    if (!cancelAsset) return
+    if (!cancelReason.trim()) {
+      setMessage('A cancellation reason is required to reverse the disposal proposal.')
+      return
+    }
+
+    setDisposalActionLoading(true)
+    try {
+      const updated = await assetService.cancelDisposal(cancelAsset.id, { disposal_cancel_reason: cancelReason.trim() })
+      setCancelAsset(null)
+      setCancelReason('')
+      if (viewAsset?.id === updated.id) {
+        setViewAsset(updated)
+      }
+      setMessage('Disposal proposal cancelled. The asset is available again.')
+      notifyDataChanged('assets')
+      void load(page)
+      void loadSummary()
+      void loadDisposalData()
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Unable to cancel disposal.')
+    } finally {
+      setDisposalActionLoading(false)
+    }
   }
 
   return (
@@ -528,6 +736,51 @@ export function AssetPage() {
       {/* Alert message */}
       {message && <Alert tone="info" onClose={() => setMessage(null)}>{message}</Alert>}
 
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {[
+            { key: 'all', label: 'All Assets' },
+            { key: 'available', label: 'Available Assets' },
+            { key: 'disposal', label: 'Disposal' },
+          ].map((entry) => {
+            const active = activeSection === entry.key
+            return (
+              <button
+                key={entry.key}
+                type="button"
+                onClick={() => {
+                  if (entry.key === 'disposal') {
+                    setActiveSection('disposal')
+                    void loadDisposalData()
+                    return
+                  }
+                  setActiveSection(entry.key as 'all' | 'available')
+                  setStatus(entry.key === 'available' ? 'AVAILABLE' : '')
+                  void load(1)
+                }}
+                style={{
+                  borderRadius: 999,
+                  border: active ? '1px solid #1E40AF' : '1px solid #E2E8F0',
+                  background: active ? '#EFF6FF' : '#fff',
+                  color: active ? '#1E40AF' : '#475569',
+                  padding: '8px 14px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  boxShadow: active ? '0 4px 12px rgba(30,64,175,0.12)' : 'none',
+                }}
+              >
+                {entry.label}
+              </button>
+            )
+          })}
+        </div>
+        <div style={{ fontSize: 13, color: '#64748B' }}>
+          {activeSection === 'disposal' ? 'Manage disposal workflow and lifecycle actions.' : 'Browse operational asset states and workflows.'}
+        </div>
+      </div>
+
       {/* ── Summary cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
         <SummaryCard
@@ -535,45 +788,190 @@ export function AssetPage() {
           color={colors.blue}
           label="Total Assets"
           value={summary.total}
-          onClick={() => { setStatus(''); void load(1) }}
-          active={status === ''}
+          onClick={() => { setActiveSection('all'); setStatus(''); void load(1) }}
+          active={activeSection === 'all' && status === ''}
         />
         <SummaryCard
           icon={<CheckCircle2 size={20} style={{ color: colors.green.icon }} />}
           color={colors.green}
           label="Available"
           value={summary.available}
-          onClick={() => { setStatus('AVAILABLE'); void load(1) }}
-          active={status === 'AVAILABLE'}
+          onClick={() => { setActiveSection('available'); setStatus('AVAILABLE'); void load(1) }}
+          active={activeSection === 'available' && status === 'AVAILABLE'}
         />
         <SummaryCard
           icon={<ArrowUpRight size={20} style={{ color: colors.amber.icon }} />}
           color={colors.amber}
           label="Borrowed"
           value={summary.borrowed}
-          onClick={() => { setStatus('BORROWED'); void load(1) }}
-          active={status === 'BORROWED'}
+          onClick={() => { setActiveSection('all'); setStatus('BORROWED'); void load(1) }}
+          active={activeSection === 'all' && status === 'BORROWED'}
         />
         <SummaryCard
           icon={<Clock size={20} style={{ color: colors.violet.icon }} />}
           color={colors.violet}
           label="Reserved"
           value={summary.reserved}
-          onClick={() => { setStatus('RESERVED'); void load(1) }}
-          active={status === 'RESERVED'}
+          onClick={() => { setActiveSection('all'); setStatus('RESERVED'); void load(1) }}
+          active={activeSection === 'all' && status === 'RESERVED'}
         />
         <SummaryCard
           icon={<Wrench size={20} style={{ color: colors.red.icon }} />}
           color={colors.red}
           label="Maintenance"
           value={summary.maintenance}
-          onClick={() => { setStatus('MAINTENANCE'); void load(1) }}
-          active={status === 'MAINTENANCE'}
+          onClick={() => { setActiveSection('all'); setStatus('MAINTENANCE'); void load(1) }}
+          active={activeSection === 'all' && status === 'MAINTENANCE'}
+        />
+        <SummaryCard
+          icon={<Trash2 size={20} style={{ color: colors.gray.icon }} />}
+          color={colors.gray}
+          label="Disposal"
+          value={summary.disposalTotal}
+          onClick={() => { setActiveSection('disposal'); void loadDisposalData() }}
+          active={activeSection === 'disposal'}
         />
       </div>
 
       {/* ── Table card ── */}
-      <Card noPadding>
+      {activeSection === 'disposal' ? (
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            <Card noPadding>
+              <div style={{ padding: '18px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending / For Disposal</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginTop: 4 }}>{summary.disposalPending}</div>
+                </div>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: '#FFFBEB', border: '1px solid #FDE68A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={18} style={{ color: '#D97706' }} />
+                </div>
+              </div>
+            </Card>
+            <Card noPadding>
+              <div style={{ padding: '18px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Disposed</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginTop: 4 }}>{summary.disposalDisposed}</div>
+                </div>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CheckCircle2 size={18} style={{ color: '#64748B' }} />
+                </div>
+              </div>
+            </Card>
+            <Card noPadding>
+              <div style={{ padding: '18px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Disposal Records</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginTop: 4 }}>{summary.disposalTotal}</div>
+                </div>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Package size={18} style={{ color: '#2563EB' }} />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div style={{ display: 'grid', gap: 16 }}>
+            <Card noPadding>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>Pending / For Disposal</h2>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748B' }}>Assets marked for disposal but not yet finalized.</p>
+                </div>
+                <Badge tone="orange">{disposalPending.length} pending</Badge>
+              </div>
+              <div style={{ padding: 20 }}>
+                {disposalLoading ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}><Spinner /></div>
+                ) : disposalPending.length === 0 ? (
+                  <EmptyState title="No pending disposal records" description="Assets marked for disposal will appear here once they are submitted for review." />
+                ) : (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {disposalPending.map((asset) => (
+                      <div key={asset.id} style={{ border: '1px solid #E2E8F0', borderRadius: 14, padding: 16, background: '#fff' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                          <div>
+                            <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A' }}>{asset.name}</div>
+                            <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>Asset No. {asset.asset_number} • Property {asset.property_number ?? '—'}</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <Badge tone="orange">For Disposal</Badge>
+                            <button type="button" onClick={() => void openView(asset.id)} style={{ border: '1px solid #D1D5DB', borderRadius: 8, background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>View Details</button>
+                            {canManageDisposalActions && (
+                              <>
+                                <button type="button" onClick={() => { setFinalizeAsset(asset); setFinalizeDate(asset.disposal_date ?? new Date().toISOString().slice(0, 10)); setFinalizeMethod(asset.disposal_method ?? ''); setFinalizeApprovalRef(asset.disposal_approval_ref ?? ''); }} style={{ border: '1px solid #1E40AF', borderRadius: 8, background: '#1E40AF', color: '#fff', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Finalize</button>
+                                <button type="button" onClick={() => { setCancelAsset(asset); setCancelReason(''); }} style={{ border: '1px solid #DC2626', borderRadius: 8, background: '#fff', color: '#DC2626', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 14 }}>
+                          {renderDisposalField('Category', asset.category ?? '—')}
+                          {renderDisposalField('Current / Last Office', asset.office ?? '—')}
+                          {renderDisposalField('Status', 'FOR_DISPOSAL')}
+                          {renderDisposalField('Reason', asset.disposal_reason ?? '—')}
+                          {renderDisposalField('Disposal Date', asset.disposal_date ?? '—')}
+                          {renderDisposalField('Method', asset.disposal_method ?? '—')}
+                          {renderDisposalField('Approval Reference', asset.disposal_approval_ref ?? '—')}
+                          {renderDisposalField('Approved By', asset.disposal_approved_by_name ?? '—')}
+                          {renderDisposalField('Marked / Updated', asset.disposal_marked_at ?? asset.updated_at ?? '—')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            <Card noPadding>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>Disposed</h2>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748B' }}>Assets whose disposal has been finalized.</p>
+                </div>
+                <Badge tone="gray">{disposalDisposed.length} disposed</Badge>
+              </div>
+              <div style={{ padding: 20 }}>
+                {disposalLoading ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}><Spinner /></div>
+                ) : disposalDisposed.length === 0 ? (
+                  <EmptyState title="No disposed assets" description="Finalized disposal records will appear here once the workflow is completed." />
+                ) : (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {disposalDisposed.map((asset) => (
+                      <div key={asset.id} style={{ border: '1px solid #E2E8F0', borderRadius: 14, padding: 16, background: '#fff' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                          <div>
+                            <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A' }}>{asset.name}</div>
+                            <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>Asset No. {asset.asset_number} • Property {asset.property_number ?? '—'}</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <Badge tone="gray">Disposed</Badge>
+                            <button type="button" onClick={() => void openView(asset.id)} style={{ border: '1px solid #D1D5DB', borderRadius: 8, background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>View Details</button>
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 14 }}>
+                          {renderDisposalField('Category', asset.category ?? '—')}
+                          {renderDisposalField('Current / Last Office', asset.office ?? '—')}
+                          {renderDisposalField('Status', 'DISPOSED')}
+                          {renderDisposalField('Reason', asset.disposal_reason ?? '—')}
+                          {renderDisposalField('Disposal Date', asset.disposal_date ?? '—')}
+                          {renderDisposalField('Method', asset.disposal_method ?? '—')}
+                          {renderDisposalField('Approval Reference', asset.disposal_approval_ref ?? '—')}
+                          {renderDisposalField('Approved By', asset.disposal_approved_by_name ?? '—')}
+                          {renderDisposalField('Cancellation', asset.disposal_cancel_reason ?? '—')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+        </div>
+      ) : (
+        <Card noPadding>
         {/* Toolbar */}
         <div style={{
           display: 'flex', gap: 10, alignItems: 'center',
@@ -633,6 +1031,7 @@ export function AssetPage() {
             <option value="RESERVED">Reserved</option>
             <option value="MAINTENANCE">Maintenance</option>
             <option value="UNAVAILABLE">Unavailable</option>
+            <option value="FOR_DISPOSAL">For Disposal</option>
             <option value="RETIRED">Retired</option>
             <option value="DISPOSED">Disposed</option>
           </select>
@@ -830,8 +1229,84 @@ export function AssetPage() {
           <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void load(p)} />
         </div>
       </Card>
+      )}
 
       {/* ── Dialogs ── */}
+      <ConfirmDialog
+        open={markForDisposalAsset !== null}
+        title="Mark Asset for Disposal"
+        message={
+          <div className="space-y-3">
+            <p className="text-[14px] text-[#374151]">This will move the asset into the disposal workflow. The asset can still be cancelled before final disposal.</p>
+            <div>
+              <label className={LABEL_CLS}>Disposal Reason</label>
+              <textarea className={TEXTAREA_CLS} rows={3} placeholder="Required reason" value={markReason} onChange={(e) => setMarkReason(e.target.value)} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={LABEL_CLS}>Disposal Date</label>
+                <input type="date" className={SELECT_CLS} value={markDate} onChange={(e) => setMarkDate(e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Disposal Method</label>
+                <input className={SELECT_CLS} placeholder="Optional" value={markMethod} onChange={(e) => setMarkMethod(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label className={LABEL_CLS}>Approval Reference</label>
+              <input className={SELECT_CLS} placeholder="Optional" value={markApprovalRef} onChange={(e) => setMarkApprovalRef(e.target.value)} />
+            </div>
+          </div>
+        }
+        confirmLabel={disposalActionLoading ? 'Working…' : 'Mark for Disposal'}
+        onCancel={() => { setMarkForDisposalAsset(null); setMarkReason(''); setMarkDate(new Date().toISOString().slice(0, 10)); setMarkMethod(''); setMarkApprovalRef('') }}
+        onConfirm={() => { void handleMarkForDisposal() }}
+      />
+
+      <ConfirmDialog
+        open={finalizeAsset !== null}
+        title="Finalize Disposal"
+        message={
+          <div className="space-y-3">
+            <p className="text-[14px] text-[#374151]">This will move the asset from FOR_DISPOSAL to DISPOSED. DISPOSED is terminal under the current lifecycle, so confirm this action carefully.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={LABEL_CLS}>Disposal Date</label>
+                <input type="date" className={SELECT_CLS} value={finalizeDate} onChange={(e) => setFinalizeDate(e.target.value)} />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Disposal Method</label>
+                <input className={SELECT_CLS} placeholder="e.g. Public Auction" value={finalizeMethod} onChange={(e) => setFinalizeMethod(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label className={LABEL_CLS}>Approval Reference</label>
+              <input className={SELECT_CLS} placeholder="Optional" value={finalizeApprovalRef} onChange={(e) => setFinalizeApprovalRef(e.target.value)} />
+            </div>
+          </div>
+        }
+        confirmLabel={disposalActionLoading ? 'Working…' : 'Finalize Disposal'}
+        onCancel={() => { setFinalizeAsset(null); setFinalizeDate(new Date().toISOString().slice(0, 10)); setFinalizeMethod(''); setFinalizeApprovalRef('') }}
+        onConfirm={() => { void handleFinalizeDisposal() }}
+      />
+
+      <ConfirmDialog
+        open={cancelAsset !== null}
+        title="Cancel Disposal"
+        message={
+          <div className="space-y-3">
+            <p className="text-[14px] text-[#374151]">Cancel this disposal proposal and restore the asset to normal availability. A cancellation reason is required.</p>
+            <div>
+              <label className={LABEL_CLS}>Cancellation Reason</label>
+              <textarea className={TEXTAREA_CLS} rows={3} placeholder="Required reason" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
+            </div>
+          </div>
+        }
+        confirmLabel={disposalActionLoading ? 'Working…' : 'Cancel Disposal'}
+        onCancel={() => { setCancelAsset(null); setCancelReason('') }}
+        onConfirm={() => { void handleCancelDisposal() }}
+      />
+
       <ConfirmDialog
         open={deleteId !== null} title="Archive Asset"
         message="Are you sure you want to archive this asset? It will no longer appear as an active item."
@@ -1071,45 +1546,280 @@ export function AssetPage() {
             </div>
 
             {detailTab === 'info' ? (
-              <dl className="grid gap-4 text-sm sm:grid-cols-2 mt-2">
-                {[
-                  { label: 'Asset Number', value: viewAsset.asset_number, mono: true },
-                  { label: 'Property Number', value: viewAsset.property_number ?? '—', mono: true },
-                  { label: 'Status', value: (() => {
-                    const eff = getEffectiveAssetStatus(viewAsset)
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                        <Badge tone={eff.tone}>{eff.label}</Badge>
-                        {eff.subtext && eff.subtextTone && (
-                          <Badge tone={eff.subtextTone}>
-                            {eff.subtext}
-                            {viewAsset.reservation_context?.requester_name && (
-                              <span style={{ fontWeight: 400, opacity: 0.75 }}> · {viewAsset.reservation_context.requester_name}</span>
-                            )}
-                          </Badge>
-                        )}
+              <div className="space-y-4 mt-2">
+                {/* Disposal workflow block — only shown when relevant */}
+                {(viewAsset.status === 'FOR_DISPOSAL' || viewAsset.status === 'DISPOSED' || viewAsset.disposal_reason || viewAsset.disposal_date || viewAsset.disposal_method || viewAsset.disposal_approval_ref || viewAsset.disposal_cancel_reason) && (
+                  <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#94A3B8]">Disposal workflow</div>
+                        <div className="mt-1 text-[15px] font-semibold text-[#0F172A]">
+                          {viewAsset.status === 'FOR_DISPOSAL' ? 'Pending finalization' : viewAsset.status === 'DISPOSED' ? 'Finalized disposal' : 'Disposal information'}
+                        </div>
+                        <p className="mt-1 text-sm text-[#64748B]">
+                          {viewAsset.status === 'FOR_DISPOSAL'
+                            ? 'This asset is awaiting final disposal action. A cancellation reason is required if the proposal is reversed.'
+                            : viewAsset.status === 'DISPOSED'
+                              ? 'This asset is in the terminal disposed state and remains read-only under the current lifecycle.'
+                              : 'This asset has disposal metadata recorded.'}
+                        </p>
                       </div>
-                    )
-                  })() },
-                  { label: 'Name',         value: viewAsset.name },
-                  { label: 'Category',     value: viewAsset.category ?? '—' },
-                  { label: 'Office',       value: viewAsset.office ?? '—' },
-                  { label: 'Location',     value: viewAsset.location ?? '—' },
-                  { label: 'Model',        value: viewAsset.model ?? '—' },
-                  { label: 'Condition',    value: viewAsset.condition_status ?? '—' },
-                  { label: 'Description',  value: viewAsset.description ?? '—', full: true },
-                  { label: 'Remarks',      value: viewAsset.remarks ?? '—',     full: true },
-                  { label: 'Accountable To', value: viewAsset.issued_to_user?.full_name ?? viewAsset.issued_to ?? '—' },
-                  { label: 'Employee No.', value: viewAsset.issued_to_user?.employee_number ?? (viewAsset.is_unlinked_holder ? 'Unlinked record' : '—') },
-                  { label: 'Issued By', value: viewAsset.issued_by_name ?? '—' },
-                  { label: 'Date Issued', value: viewAsset.date_issued ?? '—', full: true },
-                ].map((item) => (
-                  <div key={item.label} className={item.full ? 'sm:col-span-2' : ''}>
-                    <dt className="text-[11px] font-bold uppercase tracking-wide text-[#9CA3AF]">{item.label}</dt>
-                    <dd className={`mt-0.5 font-medium text-[#1F2937] ${item.mono ? 'font-mono text-xs' : 'text-[14px]'}`}>{item.value}</dd>
+                      {canManageDisposalActions && (
+                        <div className="flex flex-wrap gap-2">
+                          {viewAsset.status === 'FOR_DISPOSAL' ? (
+                            <>
+                              <Button size="sm" onClick={() => { setFinalizeAsset(viewAsset); setFinalizeDate(viewAsset.disposal_date ?? new Date().toISOString().slice(0, 10)); setFinalizeMethod(viewAsset.disposal_method ?? ''); setFinalizeApprovalRef(viewAsset.disposal_approval_ref ?? ''); }}>
+                                Finalize Disposal
+                              </Button>
+                              <Button size="sm" variant="secondary" onClick={() => { setCancelAsset(viewAsset); setCancelReason('') }}>
+                                Cancel Disposal
+                              </Button>
+                            </>
+                          ) : (
+                            <Button size="sm" variant="secondary" onClick={() => { setMarkForDisposalAsset(viewAsset); setMarkReason(viewAsset.disposal_reason ?? ''); setMarkDate(viewAsset.disposal_date ?? new Date().toISOString().slice(0, 10)); setMarkMethod(viewAsset.disposal_method ?? ''); setMarkApprovalRef(viewAsset.disposal_approval_ref ?? ''); }}>
+                              Mark for Disposal
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      {renderDisposalField('Status', viewAsset.status === 'FOR_DISPOSAL' ? 'FOR_DISPOSAL' : viewAsset.status === 'DISPOSED' ? 'DISPOSED' : '—')}
+                      {renderDisposalField('Reason', viewAsset.disposal_reason ?? '—')}
+                      {renderDisposalField('Disposal Date', viewAsset.disposal_date ?? '—')}
+                      {renderDisposalField('Method', viewAsset.disposal_method ?? '—')}
+                      {renderDisposalField('Approval Reference', viewAsset.disposal_approval_ref ?? '—')}
+                      {renderDisposalField('Approved By', viewAsset.disposal_approved_by_name ?? '—')}
+                      {renderDisposalField('Marked / Updated', viewAsset.disposal_marked_at ?? viewAsset.updated_at ?? '—')}
+                      {renderDisposalField('Cancellation', viewAsset.disposal_cancel_reason ?? '—')}
+                    </div>
                   </div>
-                ))}
-              </dl>
+                )}
+
+                {/* ── Item Information (from Inventory) ── */}
+                {viewAsset.inventory && (
+                  <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+                    <div style={{
+                      padding: '12px 16px', background: '#F8FAFC',
+                      borderBottom: '1px solid #E2E8F0',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>
+                        Item Information
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { setViewAsset(null); navigate(`/inventory?highlight=${viewAsset.inventory_item_id}`) }}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          borderRadius: 7, border: '1px solid #BFDBFE', background: '#EFF6FF',
+                          color: '#1D4ED8', fontSize: 11.5, fontWeight: 700, padding: '4px 10px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <ExternalLink size={11} />
+                        Open in Inventory
+                      </button>
+                    </div>
+                    <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      {[
+                        { label: 'Item Name', value: viewAsset.inventory.name },
+                        { label: 'SKU / Item Code', value: viewAsset.inventory.sku ?? '—', mono: true },
+                        { label: 'Classification', value: viewAsset.inventory.classification ?? viewAsset.inventory.type ?? '—' },
+                        { label: 'Manufacturer', value: viewAsset.inventory.manufacturer ?? '—' },
+                        { label: 'Model', value: viewAsset.inventory.model ?? '—' },
+                        { label: 'Description', value: viewAsset.inventory.description ?? '—', full: true },
+                      ].map(({ label, value, mono, full }) => (
+                        <div key={label} style={full ? { gridColumn: '1 / -1' } : {}}>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B', fontFamily: mono ? 'ui-monospace,monospace' : undefined }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Asset Identity ── */}
+                <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>Asset Identity</span>
+                  </div>
+                  <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    {[
+                      { label: 'Asset Number', value: viewAsset.asset_number, mono: true },
+                      { label: 'Property Number', value: viewAsset.property_number ?? '—', mono: true },
+                    ].map(({ label, value, mono }) => (
+                      <div key={label}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B', fontFamily: mono ? 'ui-monospace,monospace' : undefined }}>{value}</div>
+                      </div>
+                    ))}
+                    {/* Identifiers */}
+                    {(viewAsset.identifiers?.length ?? 0) > 0 && (
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 6 }}>Identifiers</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {viewAsset.identifiers!.map((id) => (
+                            <span key={id.id} style={{
+                              fontSize: 11.5, padding: '3px 10px', borderRadius: 20,
+                              background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#475569',
+                              fontFamily: 'ui-monospace,monospace',
+                            }}>
+                              {id.identifier_type}: {id.identifier_value}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Operational Status ── */}
+                <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>Operational Status</span>
+                  </div>
+                  <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 4 }}>Status</div>
+                      {(() => {
+                        const eff = getEffectiveAssetStatus(viewAsset)
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                            <Badge tone={eff.tone}>{eff.label}</Badge>
+                            {eff.subtext && eff.subtextTone && (
+                              <Badge tone={eff.subtextTone}>
+                                {eff.subtext}
+                                {viewAsset.reservation_context?.requester_name && (
+                                  <span style={{ fontWeight: 400, opacity: 0.75 }}> · {viewAsset.reservation_context.requester_name}</span>
+                                )}
+                              </Badge>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 4 }}>Condition</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: viewAsset.condition_status ? '#1E293B' : '#CBD5E1' }}>
+                        {viewAsset.condition_status ?? '—'}
+                      </div>
+                    </div>
+                    {[
+                      { label: 'Current Office', value: viewAsset.office ?? '—' },
+                      { label: 'Current Location', value: viewAsset.location ?? '—' },
+                    ].map(({ label, value }) => (
+                      <div key={label}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B' }}>{value}</div>
+                      </div>
+                    ))}
+                    {viewAsset.remarks && (
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>Operational Notes</div>
+                        <div style={{ fontSize: 13, color: '#475569', whiteSpace: 'pre-line' }}>{viewAsset.remarks}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Accountability / Issuance ── */}
+                <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>Accountability</span>
+                  </div>
+                  <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    {[
+                      { label: 'Accountable To', value: viewAsset.issued_to_user?.full_name ?? viewAsset.issued_to ?? '—', full: true },
+                      { label: 'Employee No.', value: viewAsset.issued_to_user?.employee_number ?? (viewAsset.is_unlinked_holder ? 'Unlinked record' : '—') },
+                      { label: 'Issued By', value: viewAsset.issued_by_name ?? '—' },
+                      { label: 'Date Issued', value: viewAsset.date_issued ?? '—' },
+                    ].map(({ label, value, full }) => (
+                      <div key={label} style={full ? { gridColumn: '1 / -1' } : {}}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' || value === 'Unlinked record' ? '#CBD5E1' : '#1E293B' }}>{value}</div>
+                      </div>
+                    ))}
+                    {viewAsset.is_unlinked_holder && (
+                      <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: '#B45309', fontStyle: 'italic' }}>
+                        ⚠ This record uses a legacy unlinked holder name.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Procurement Information (read-only from Inventory) ── */}
+                {viewAsset.inventory && (
+                  <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+                    <div style={{
+                      padding: '12px 16px', background: '#F8FAFC',
+                      borderBottom: '1px solid #E2E8F0',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>
+                        Procurement Information
+                      </span>
+                      <span style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic' }}>owned by Inventory</span>
+                    </div>
+                    <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                      {[
+                        {
+                          label: 'Unit Cost',
+                          value: viewAsset.inventory.procurement.unit_cost !== null && viewAsset.inventory.procurement.unit_cost !== undefined
+                            ? `₱${Number(viewAsset.inventory.procurement.unit_cost).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : '—',
+                        },
+                        { label: 'Purchase Date', value: viewAsset.inventory.procurement.purchase_date ?? '—' },
+                        { label: 'Warranty Until', value: viewAsset.inventory.procurement.warranty_until ?? '—' },
+                      ].map(({ label, value }) => (
+                        <div key={label}>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B' }}>{value}</div>
+                        </div>
+                      ))}
+                      {viewAsset.inventory.procurement.supplier_name && (
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>Supplier</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{viewAsset.inventory.procurement.supplier_name}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Insurance ── */}
+                {(viewAsset as unknown as Record<string, unknown>)['insurance_provider'] && (
+                  <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>Insurance</span>
+                    </div>
+                    <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      {[
+                        { label: 'Provider', value: String((viewAsset as unknown as Record<string, unknown>)['insurance_provider'] ?? '—') },
+                        { label: 'Policy Number', value: String((viewAsset as unknown as Record<string, unknown>)['insurance_policy_number'] ?? '—') },
+                        { label: 'Expiration', value: String((viewAsset as unknown as Record<string, unknown>)['insurance_expiration_date'] ?? '—') },
+                      ].map(({ label, value }) => (
+                        <div key={label}>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B' }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Audit ── */}
+                <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', background: '#F8FAFC', padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>Audit</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12, color: '#64748B' }}>
+                    <div><span style={{ fontWeight: 700, color: '#475569' }}>Created By:</span> {viewAsset.created_by_name ?? 'System'}</div>
+                    <div><span style={{ fontWeight: 700, color: '#475569' }}>Created At:</span> {viewAsset.created_at ? new Date(viewAsset.created_at).toLocaleString() : '—'}</div>
+                    <div><span style={{ fontWeight: 700, color: '#475569' }}>Updated By:</span> {viewAsset.updated_by_name ?? '—'}</div>
+                    <div><span style={{ fontWeight: 700, color: '#475569' }}>Updated At:</span> {viewAsset.updated_at ? new Date(viewAsset.updated_at).toLocaleString() : '—'}</div>
+                  </div>
+                </div>
+
+              </div>
             ) : (
               <div className="mt-2 space-y-4">
                 {loadingHistory ? (
@@ -1131,13 +1841,15 @@ export function AssetPage() {
                         
                         <div className="text-[11px] font-semibold text-slate-400">{h.transfer_date}</div>
                         <div className="mt-0.5 text-sm font-medium text-slate-800">
-                          Accountability reassigned to <strong className="text-[#0D47A1]">{h.new_employee?.full_name || h.new_employee || 'N/A'}</strong>
+                          Accountability reassigned to <strong className="text-[#0D47A1]">{
+                            typeof h.new_employee === 'object' ? (h.new_employee?.full_name ?? 'N/A') : (h.new_employee || 'N/A')
+                          }</strong>
                         </div>
                         <div className="text-xs text-slate-500 mt-0.5">
-                          Previous Holder: {h.previous_employee?.full_name || h.previous_employee || 'N/A'}
+                          Previous Holder: {typeof h.previous_employee === 'object' ? (h.previous_employee?.full_name ?? 'N/A') : (h.previous_employee || 'N/A')}
                         </div>
                         <div className="text-xs text-slate-400">
-                          Authorized by: {h.officer?.full_name || h.officer || 'N/A'}
+                          Authorized by: {typeof h.officer === 'object' ? (h.officer?.full_name ?? 'N/A') : (h.officer || 'N/A')}
                         </div>
                         {h.reason && (
                           <div className="mt-1.5 text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg p-2 max-w-md">
@@ -1151,6 +1863,41 @@ export function AssetPage() {
                         )}
                       </div>
                     ))}
+
+                    {/* Disposal audit events (Admin/Auditor only) */}
+                    {hasAnyRole(user, ['Super Administrator', 'System Administrator', 'Auditor']) && (
+                      <div className="mt-6">
+                        <h3 className="text-sm font-semibold text-slate-700 mb-3">Disposal audit events</h3>
+                        {loadingDisposalAudit ? (
+                          <div className="flex justify-center py-6"><Spinner label="Loading disposal audit..." /></div>
+                        ) : disposalAudit.length === 0 ? (
+                          <div className="py-3 text-xs text-slate-500 italic">No disposal audit entries found for this asset.</div>
+                        ) : (
+                          <div className="relative border-l border-slate-200 ml-4 pl-6 space-y-6 py-2">
+                            {disposalAudit.map((log) => (
+                              <div key={log.id} className="relative">
+                                <span className="absolute -left-[31px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white border-2 border-[#64748B]">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-[#64748B]" />
+                                </span>
+                                <div className="text-[11px] font-semibold text-slate-400">{log.created_at}</div>
+                                <div className="mt-0.5 text-sm font-medium text-slate-800">{log.action}</div>
+                                <div className="text-xs text-slate-500 mt-0.5">{log.user ?? 'System'}</div>
+                                {log.description && (
+                                  <div className="mt-1.5 text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg p-2 max-w-md">
+                                    {log.description}
+                                  </div>
+                                )}
+                                {(log.new_values || log.old_values) && (
+                                  <div className="mt-1 text-xs text-slate-400 italic">
+                                    <pre className="whitespace-pre-wrap text-[11px]">{JSON.stringify(log.new_values || log.old_values)}</pre>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1295,7 +2042,7 @@ export function AssetPage() {
                     Item details are managed in Inventory
                   </p>
                   <p style={{ margin: '3px 0 0', fontSize: 12, color: '#3B82F6', lineHeight: 1.5 }}>
-                    Name, category, manufacturer, office, location, model and property number are edited from the linked Inventory Item only.
+                    Name, category, manufacturer, office, location and model are edited from the linked Inventory Item only. Property Number is edited here in Asset Management.
                   </p>
                 </div>
                 <button
@@ -1346,7 +2093,47 @@ export function AssetPage() {
               </div>
             </div>
 
-            {/* B: Operational status */}
+            {canManageDisposalActions && !['FOR_DISPOSAL', 'DISPOSED', 'RETIRED'].includes(editAsset.status) && (
+              <div className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-[#92400E]">Disposal workflow</p>
+                    <p className="mt-1 text-sm text-[#B45309]">Start the formal disposal lifecycle for this asset. The backend will enforce the current blocking rules and transition history.</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setMarkForDisposalAsset(editAsset)
+                      setMarkReason(editAsset.disposal_reason ?? '')
+                      setMarkDate(editAsset.disposal_date ?? new Date().toISOString().slice(0, 10))
+                      setMarkMethod(editAsset.disposal_method ?? '')
+                      setMarkApprovalRef(editAsset.disposal_approval_ref ?? '')
+                    }}
+                  >
+                    Mark for Disposal
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* B: Asset Identity (editable) */}
+            <div>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Asset Identity</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className={LABEL_CLS}>Property Number</label>
+                  <input
+                    className={SELECT_CLS}
+                    value={editForm.property_number ?? ''}
+                    onChange={(e) => setEditForm({ ...editForm, property_number: e.target.value })}
+                    placeholder="e.g. PROP-0001"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* C: Operational status */}
             <div>
               <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Operational Status</p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1360,9 +2147,7 @@ export function AssetPage() {
                     <option value="AVAILABLE">Available</option>
                     <option value="MAINTENANCE">Maintenance</option>
                     <option value="UNAVAILABLE">Unavailable</option>
-                    <option value="FOR_DISPOSAL">For Disposal</option>
                     <option value="RETIRED">Retired</option>
-                    <option value="DISPOSED">Disposed</option>
                   </select>
                 </div>
                 <div>
@@ -1383,30 +2168,67 @@ export function AssetPage() {
               </div>
             </div>
 
-            {/* C: Procurement */}
-            <div>
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Procurement</p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <label className={LABEL_CLS}>Purchase Date</label>
-                  <input type="date" className={SELECT_CLS}
-                    value={editForm.purchase_date ?? ''}
-                    onChange={(e) => setEditForm({ ...editForm, purchase_date: e.target.value || null })} />
+            {/* C: Procurement Information (read-only from Inventory) */}
+            {editAsset.inventory && (
+              <div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  marginBottom: 12,
+                }}>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Procurement Information</p>
+                  <button
+                    type="button"
+                    onClick={() => { setEditAsset(null); navigate(`/inventory?highlight=${editAsset.inventory_item_id}`) }}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      borderRadius: 8, border: '1.5px solid #93C5FD', background: '#fff',
+                      color: '#1D4ED8', fontSize: 12, fontWeight: 700, padding: '5px 12px',
+                      cursor: 'pointer', transition: 'background 0.12s',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#DBEAFE' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#fff' }}
+                  >
+                    <Edit3 size={12} />
+                    Edit in Inventory
+                  </button>
                 </div>
-                <div>
-                  <label className={LABEL_CLS}>Purchase Cost (₱)</label>
-                  <input type="number" min={0} step="0.01" className={SELECT_CLS} placeholder="0.00"
-                    value={editForm.purchase_cost ?? ''}
-                    onChange={(e) => setEditForm({ ...editForm, purchase_cost: e.target.value ? parseFloat(e.target.value) : null })} />
+                <p style={{ marginBottom: 12, fontSize: 12, color: '#64748B' }}>
+                  Procurement is fully owned by Inventory. These values are read-only here and always reflect the linked Inventory Item's procurement data.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {([
+                    { label: 'Unit Cost', value: editAsset.inventory.procurement.unit_cost !== null && editAsset.inventory.procurement.unit_cost !== undefined ? `₱${Number(editAsset.inventory.procurement.unit_cost).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—' },
+                    { label: 'Purchase Date', value: editAsset.inventory.procurement.purchase_date ?? '—' },
+                    { label: 'Warranty Until', value: editAsset.inventory.procurement.warranty_until ?? '—' },
+                  ]).map((item) => (
+                    <div key={item.label}>
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8] mb-0.5">{item.label}</p>
+                      <p style={{
+                        fontSize: 13.5, margin: 0, color: item.value === '—' ? '#CBD5E1' : '#1E293B',
+                        fontWeight: 500, padding: '7px 12px', borderRadius: 8,
+                        border: '1px solid #F1F5F9', background: '#F8FAFC',
+                      }}>
+                        {item.value}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <label className={LABEL_CLS}>Warranty Until</label>
-                  <input type="date" className={SELECT_CLS}
-                    value={editForm.warranty_until ?? ''}
-                    onChange={(e) => setEditForm({ ...editForm, warranty_until: e.target.value || null })} />
-                </div>
+                {editAsset.inventory.procurement.supplier_name && (
+                  <div style={{
+                    marginTop: 12, padding: '10px 14px', borderRadius: 10,
+                    border: '1px dashed #E2E8F0', background: '#FAFBFC',
+                    fontSize: 12.5, color: '#64748B',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <span style={{ fontSize: 16 }}>🏭</span>
+                    <span>
+                      <strong style={{ color: '#334155' }}>Supplier:</strong>{' '}
+                      <span style={{ color: '#0F172A', fontWeight: 600 }}>{editAsset.inventory.procurement.supplier_name}</span>
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
             {/* D: Borrowable toggle */}
             {editAsset.inventory_item_id && (

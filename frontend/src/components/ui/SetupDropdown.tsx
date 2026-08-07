@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, Pencil, Search, ChevronDown, Check, X } from 'lucide-react'
 import { Modal, Button, Input } from '@/components/ui'
 import { setupService, type SetupPayload, type SetupRecord, type SetupResource } from '@/services/setupService'
@@ -29,6 +30,7 @@ const RESOURCE_LABELS: Record<SetupResource, string> = {
   'locations': 'Location',
   'manufacturers': 'Manufacturer',
   'departments': 'Department',
+  'units': 'Unit',
 }
 
 export function SetupDropdown({
@@ -47,6 +49,13 @@ export function SetupDropdown({
   const [open, setOpen]             = useState(false)
   const [search, setSearch]         = useState('')
   const containerRef                = useRef<HTMLDivElement>(null)
+  // Refs used to anchor the dropdown popup to its trigger and to detect
+  // outside clicks. The popup is portaled to document.body so it is never
+  // clipped by a parent modal's overflow/scroll containers; therefore it is
+  // NOT a DOM descendant of containerRef and must be tracked separately.
+  const selectRef                   = useRef<HTMLButtonElement>(null)
+  const popupRef                    = useRef<HTMLDivElement>(null)
+  const [popupPos, setPopupPos]     = useState<React.CSSProperties>({})
 
   // Quick Add / Quick Edit Modal state
   const [addModalOpen, setAddModalOpen]   = useState(false)
@@ -65,13 +74,63 @@ export function SetupDropdown({
   const selectedOpt = options.find((o) => String(o.value) === String(value))
   const displayLabel = selectedOpt?.label ?? placeholder
 
-  /* Close dropdown when clicking outside */
+  /* Position the portaled popup relative to the trigger button. Because the
+     popup is rendered at document.body it escapes any modal overflow/scroll
+     clipping, but it must be repositioned whenever the trigger moves (scroll /
+     resize) and dismissed once the trigger scrolls out of view. */
+  const updatePopupPosition = useCallback(() => {
+    const el = selectRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) {
+      setOpen(false)
+      return
+    }
+    const gap = 4
+    const spaceBelow = window.innerHeight - r.bottom - gap - 8
+    const spaceAbove = r.top - gap - 8
+    const MAX = 240
+    let top: number
+    let maxHeight: number
+    if (spaceBelow >= 160 || spaceBelow >= spaceAbove) {
+      top = r.bottom + gap
+      maxHeight = Math.min(MAX, spaceBelow)
+    } else {
+      top = Math.max(8, r.top - gap - Math.min(MAX, spaceAbove))
+      maxHeight = Math.min(MAX, spaceAbove)
+    }
+    setPopupPos({
+      position: 'fixed',
+      left: r.left,
+      top,
+      width: r.width,
+      maxHeight,
+      zIndex: 9999,
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    updatePopupPosition()
+    const reposition = () => updatePopupPosition()
+    // capture phase: scroll events do not bubble, so we catch them here even
+    // when they originate from a scrollable modal body.
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+    }
+  }, [open, updatePopupPosition])
+
+  /* Close dropdown when clicking outside the trigger AND the popup. */
   useEffect(() => {
     if (!open) return
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      const target = e.target as Node
+      if (containerRef.current?.contains(target)) return
+      if (popupRef.current?.contains(target)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -90,6 +149,9 @@ export function SetupDropdown({
   const handleOpenAdd = (e: React.MouseEvent) => {
     e.stopPropagation()
     setErrorMsg(null)
+    // The popup is portaled above the modal stack; hide it so the Quick Add
+    // modal (which sits inside the parent modal) is not covered by the popup.
+    setOpen(false)
     setForm({
       name: '',
       code: '',
@@ -105,6 +167,7 @@ export function SetupDropdown({
     e.stopPropagation()
     if (!selectedOpt) return
     setErrorMsg(null)
+    setOpen(false)
     const rec = selectedOpt.raw
     setForm({
       name: rec?.name ?? selectedOpt.label,
@@ -180,6 +243,7 @@ export function SetupDropdown({
         <button
           type="button"
           disabled={disabled}
+          ref={selectRef}
           onClick={() => setOpen((v) => !v)}
           className={`flex h-11 flex-1 items-center justify-between rounded-[10px] border border-[#E5E7EB] bg-white px-3.5 text-[14px] shadow-[0_1px_2px_rgba(0,0,0,.05)] transition-colors focus:border-[#0D47A1] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/15 ${
             disabled ? 'cursor-not-allowed bg-slate-50 text-slate-400' : 'text-[#1F2937]'
@@ -218,10 +282,12 @@ export function SetupDropdown({
         </button>
       </div>
 
-      {/* Searchable Dropdown Popup */}
-      {open && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full min-w-[220px] overflow-hidden rounded-[12px] border border-[#E2E8F0] bg-white shadow-lg">
-          <div className="flex items-center border-b border-[#F1F5F9] px-3 py-2">
+      {/* Searchable Dropdown Popup — portaled to document.body so it is never
+          clipped by a parent modal's overflow/scroll containers and stays
+          anchored to the trigger button (selectRef) above. */}
+      {open && createPortal(
+        <div ref={popupRef} style={popupPos} className="flex min-w-[220px] flex-col overflow-hidden rounded-[12px] border border-[#E2E8F0] bg-white shadow-lg">
+          <div className="flex flex-shrink-0 items-center border-b border-[#F1F5F9] px-3 py-2">
             <Search size={14} className="mr-2 text-slate-400" />
             <input
               type="text"
@@ -242,7 +308,7 @@ export function SetupDropdown({
             )}
           </div>
 
-          <div className="max-h-48 overflow-y-auto p-1">
+          <div className="flex-1 overflow-y-auto p-1">
             {filteredOptions.length === 0 ? (
               <div className="px-3 py-4 text-center text-xs text-slate-400">
                 No matching {titleName.toLowerCase()}s found.
@@ -271,7 +337,8 @@ export function SetupDropdown({
               })
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Quick Add Modal */}

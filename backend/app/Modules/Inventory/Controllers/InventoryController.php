@@ -30,16 +30,24 @@ class InventoryController extends Controller
         // Handle unit - could be string (old) or Unit model (new)
         $unitName = is_string($item->unit) ? $item->unit : ($item->unit?->name ?? '');
 
+        // Asset-level display fields (read-only in Inventory context)
+        $assetStatus = $item->asset?->status instanceof \App\Modules\Asset\Enums\AssetStatus
+            ? $item->asset->status->value
+            : ($item->asset?->status ?? null);
+
         return [
             'id'                     => $item->id,
             'asset_id'               => $item->asset_id,
             'asset_number'           => $item->asset?->asset_number,
-            'property_number'        => $item->asset?->property_number,
+            'property_number'        => $item->asset?->property_number,  // read-only display
+            // ── Inventory-owned fields ─────────────────────────────────────
             'type'                   => $item->type,
             'classification'         => $item->classification,
             'item_nature'            => $item->item_nature,
             'classification_reason'  => $item->classification_reason,
             'name'                   => $item->name,
+            'description'            => $item->description
+                                        ?? ($item->asset?->description),  // show asset description if no inv. description
             'sku'                    => $item->sku,
             'quantity'               => $item->quantity,
             'unit'                   => $unitName,
@@ -47,13 +55,29 @@ class InventoryController extends Controller
             'unit_name'              => $unitName,
             'manufacturer_id'        => $item->manufacturer_id,
             'manufacturer_name'      => $item->manufacturer?->name,
+            'model'                  => $item->model ?? $item->asset?->model, // prefer inv-level model
+            'asset_category_id'      => $item->asset_category_id
+                                        ?? $item->asset?->asset_category_id,
+            'asset_category_name'    => $item->assetCategory?->name
+                                        ?? $item->asset?->category?->name,
             'office_id'              => $item->office_id,
             'office_name'            => $item->office?->name,
             'location_id'            => $item->location_id,
             'location_name'          => $item->location?->name,
             'reorder_level'          => $item->reorder_level,
             'is_borrowable'          => (bool) ($item->is_borrowable ?? true),
+            'track_as_asset'         => (bool) ($item->track_as_asset ?? false),
+            'remarks'                => $item->remarks,
+            'unit_cost'              => $item->unit_cost !== null ? (float) $item->unit_cost : null,
+            // ── Procurement (inventory-owned) ──────────────────────────────
+            'purchase_date'          => $item->purchase_date?->format('Y-m-d'),
+            'warranty_until'         => $item->warranty_until?->format('Y-m-d'),
+            'supplier_id'            => $item->supplier_id,
+            'supplier_name'          => $item->relationLoaded('supplier') ? $item->supplier?->name : null,
+            // ── Stock status ───────────────────────────────────────────────
             'status'                 => $status,
+            // ── Asset-reference fields (read-only display from linked Asset) ─
+            'asset_status'           => $assetStatus,
             'accountability'         => $item->classification === 'SUPPLY'
                 ? '—'
                 : ($item->asset?->issued_to_user_id
@@ -62,18 +86,9 @@ class InventoryController extends Controller
                         ? 'Issued to '.$item->asset?->issued_to
                         : 'Unassigned')),
             'is_unlinked_holder'     => $item->asset?->issued_to_user_id === null && filled($item->asset?->issued_to),
-            'remarks'                => $item->remarks,
-            'unit_cost'              => $item->unit_cost !== null ? (float) $item->unit_cost : null,
-            // Asset-level fields for Inventory-as-primary-form display
-            'model'                  => $item->asset?->model,
-            'condition_status'       => $item->asset?->condition_status instanceof \App\Modules\Asset\Enums\ConditionStatus
-                ? $item->asset->condition_status->value
-                : ($item->asset?->condition_status ?? null),
-            'asset_status'           => $item->asset?->status instanceof \App\Modules\Asset\Enums\AssetStatus
-                ? $item->asset->status->value
-                : ($item->asset?->status ?? null),
-            'description'            => $item->asset?->description,
-            'asset_category_id'      => $item->asset?->asset_category_id,
+            // ── Timestamps ────────────────────────────────────────────────
+            'created_at'             => $item->created_at?->toISOString(),
+            'updated_at'             => $item->updated_at?->toISOString(),
         ];
     }
 
@@ -174,7 +189,7 @@ class InventoryController extends Controller
 
     public function show(InventoryItem $item): JsonResponse
     {
-        $item->load(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location']);
+        $item->load(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location', 'assetCategory', 'supplier']);
         return $this->success($this->transform($item), 'Inventory item retrieved successfully.');
     }
 

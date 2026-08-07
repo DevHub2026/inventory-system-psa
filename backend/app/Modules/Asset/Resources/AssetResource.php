@@ -80,6 +80,17 @@ class AssetResource extends JsonResource
                 ],
             ),
             'is_unlinked_holder' => $this->issued_to_user_id === null && filled($this->issued_to),
+            'disposal_reason' => $this->disposal_reason,
+            'disposal_date' => $this->disposal_date?->format('Y-m-d'),
+            'disposal_method' => $this->disposal_method,
+            'disposal_approval_ref' => $this->disposal_approval_ref,
+            'disposal_approved_by' => $this->disposal_approved_by,
+            'disposal_approved_by_name' => $this->disposal_approved_by ? optional(\App\Models\User::find($this->disposal_approved_by))->full_name : null,
+            'disposal_marked_at' => in_array($this->status, [AssetStatus::FOR_DISPOSAL, AssetStatus::DISPOSED], true)
+                ? $this->updated_at?->format('Y-m-d H:i:s')
+                : null,
+            'disposal_cancelled_at' => $this->disposal_cancelled_at?->format('Y-m-d H:i:s'),
+            'disposal_cancel_reason' => $this->disposal_cancel_reason,
             'psa_qr_identifier' => $this->relationLoaded('identifiers')
                 ? ($this->identifiers->firstWhere('identifier_type', IdentifierType::PSA_QR->value)?->identifier_value)
                 : null,
@@ -102,15 +113,56 @@ class AssetResource extends JsonResource
             // null when asset is not reserved.
             'reservation_context' => $reservationContext,
 
-            // Inventory linkage — surfaces the linked InventoryItem's borrowable
-            // flag and ID so the frontend can show the toggle and navigate to the
-            // Inventory edit page without an extra API call.
+            // ── Inventory linkage ────────────────────────────────────────────
+            // Top-level shorthands kept for backward compatibility so existing
+            // frontend code continues to work.  inventoryItem is always eager-loaded
+            // from AssetService methods, so these fallback queries rarely execute.
             'inventory_item_id' => $this->relationLoaded('inventoryItem')
                 ? $this->inventoryItem?->id
                 : \App\Modules\Inventory\Models\InventoryItem::query()->where('asset_id', $this->id)->value('id'),
             'is_borrowable' => $this->relationLoaded('inventoryItem')
                 ? (bool) ($this->inventoryItem?->is_borrowable ?? true)
                 : (bool) (\App\Modules\Inventory\Models\InventoryItem::query()->where('asset_id', $this->id)->value('is_borrowable') ?? true),
+
+            // ── Nested inventory block ───────────────────────────────────────
+            // All Inventory-owned fields the frontend needs for read-only display
+            // in Asset Edit / View Asset.  Only present when inventoryItem is loaded.
+            // null when there is no linked item.  The `procurement` sub-key groups
+            // cost/date fields so the frontend can render a clean "Procurement
+            // Information" read-only panel without mixing them with asset fields.
+            'inventory' => $this->when(
+                $this->relationLoaded('inventoryItem') && $this->inventoryItem !== null,
+                fn () => [
+                    'id'               => $this->inventoryItem->id,
+                    'name'             => $this->inventoryItem->name,
+                    'sku'              => $this->inventoryItem->sku,
+                    'description'      => $this->inventoryItem->description,
+                    'classification'   => $this->inventoryItem->classification,
+                    'type'             => $this->inventoryItem->type,
+                    'model'            => $this->inventoryItem->model,
+                    'manufacturer_id'  => $this->inventoryItem->manufacturer_id,
+                    'manufacturer'     => $this->inventoryItem->relationLoaded('manufacturer')
+                        ? $this->inventoryItem->manufacturer?->name
+                        : null,
+                    'asset_category_id' => $this->inventoryItem->asset_category_id,
+                    'is_borrowable'    => (bool) ($this->inventoryItem->is_borrowable ?? true),
+                    'track_as_asset'   => (bool) ($this->inventoryItem->track_as_asset ?? false),
+                    // Procurement — Inventory is the single source of truth.
+                    // Asset Edit shows these read-only; editing happens in Inventory only.
+                    'procurement' => [
+                        'unit_cost'      => $this->inventoryItem->unit_cost !== null
+                            ? (float) $this->inventoryItem->unit_cost
+                            : null,
+                        'purchase_date'  => $this->inventoryItem->purchase_date?->format('Y-m-d'),
+                        'warranty_until' => $this->inventoryItem->warranty_until?->format('Y-m-d'),
+                        'supplier_id'    => $this->inventoryItem->supplier_id,
+                        // supplier name populated when the relation is loaded (Phase 5)
+                        'supplier_name'  => $this->inventoryItem->relationLoaded('supplier')
+                            ? $this->inventoryItem->supplier?->name
+                            : null,
+                    ],
+                ],
+            ),
         ];
     }
 }

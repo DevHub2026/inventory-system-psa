@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode } from 'lucide-react'
 import {
   Alert, Button, EmptyState, Input,
-  Modal, Spinner, Badge, Card,
+  Modal, Spinner, Badge, Card, SetupDropdown,
 } from '@/components/ui'
 import {
   inventoryService,
   type CreateInventoryItemPayload,
   type UpdateInventoryItemPayload,
 } from '@/services/inventoryService'
+import { setupService, type SetupRecord } from '@/services/setupService'
 import { api, unwrapData } from '@/services/api'
 import type { ApiResponse, InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
@@ -420,21 +421,40 @@ export function InventoryPage() {
   // Live SKU validation state
   const [codeValidation, setCodeValidation]   = useState<{ exists: boolean; message: string } | null>(null)
 
-  const [formData, setFormData] = useState<CreateInventoryItemPayload & {
-    asset_category_id?: number | null
-    manufacturer_id?: number | null
-    office_id?: number | null
-    location_id?: number | null
-    description?: string
-    model?: string | null
-    condition_status?: string | null
-    property_number?: string | null
-  }>({
+  // Setup/master-data options for the Add/Edit form dropdowns
+  const [manufacturers,   setManufacturers]   = useState<SetupRecord[]>([])
+  const [assetCategories, setAssetCategories] = useState<SetupRecord[]>([])
+  const [offices,         setOffices]         = useState<SetupRecord[]>([])
+  const [locations,       setLocations]       = useState<SetupRecord[]>([])
+  const [units,           setUnits]           = useState<SetupRecord[]>([])
+
+  const loadSetupOptions = useCallback(async () => {
+    try {
+      const [mfr, cats, offs, locs, uns] = await Promise.all([
+        setupService.list('manufacturers'),
+        setupService.list('asset-categories'),
+        setupService.list('offices'),
+        setupService.list('locations'),
+        setupService.list('units'),
+      ])
+      setManufacturers(mfr)
+      setAssetCategories(cats)
+      setOffices(offs)
+      setLocations(locs)
+      setUnits(uns)
+    } catch { /* best-effort — dropdowns degrade gracefully if unavailable */ }
+  }, [])
+
+  const [formData, setFormData] = useState<CreateInventoryItemPayload>({
     name: '', sku: '', quantity: 0, unit_cost: null, unit: '', unit_id: null, reorder_level: 0,
     is_borrowable: true,
     track_as_asset: true, type: 'non_expendable', classification: 'PPE', item_nature: 'ACCOUNTABLE_PROPERTY',
-    asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
-    model: null, condition_status: null, property_number: null,
+    description: '', model: null,
+    asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null,
+    // Procurement — inventory-owned
+    purchase_date: null,
+    warranty_until: null,
+    supplier_id: null,
   })
 
   useEffect(() => {
@@ -552,21 +572,17 @@ export function InventoryPage() {
   const handleCreate = () => {
     setEditingItem(null)
     setCodeValidation(null)
+    void loadSetupOptions()
     setFormData({
       name: '', sku: '', quantity: 0, unit_cost: null, unit: '', unit_id: null, reorder_level: 0,
       is_borrowable: activeTab !== 'supply',
       track_as_asset: activeTab !== 'supply',
-      classification: activeTab === 'all'
-        ? 'PPE'
-        : activeTab === 'ppe'
-          ? 'PPE'
-          : activeTab === 'se'
-            ? 'SE'
-            : 'SUPPLY',
+      classification: activeTab === 'all' ? 'PPE' : activeTab === 'ppe' ? 'PPE' : activeTab === 'se' ? 'SE' : 'SUPPLY',
       item_nature: activeTab === 'supply' ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY',
       type: activeTab === 'supply' ? 'expendable' : 'non_expendable',
-      asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null, description: '',
-      model: null, condition_status: null, property_number: null,
+      description: '', model: null,
+      asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null,
+      purchase_date: null, warranty_until: null, supplier_id: null,
     })
     setModalOpen(true)
   }
@@ -574,6 +590,7 @@ export function InventoryPage() {
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item)
     setCodeValidation(null)
+    void loadSetupOptions()
     setFormData({
       name: item.name,
       sku: item.sku ?? '',
@@ -583,18 +600,19 @@ export function InventoryPage() {
       unit_id: item.unit_id ?? null,
       reorder_level: item.reorder_level || 0,
       is_borrowable: item.is_borrowable !== false,
-      track_as_asset: Boolean(item.asset_id),
+      track_as_asset: item.track_as_asset !== false,
       classification: (item.classification as 'PPE' | 'SE' | 'SUPPLY') ?? ((item.type === 'expendable') ? 'SUPPLY' : 'PPE'),
       item_nature: (item.item_nature as 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY') ?? ((item.type === 'expendable') ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY'),
       type: (item.type as 'non_expendable' | 'expendable') ?? 'non_expendable',
+      description: item.description ?? '',
+      model: item.model ?? null,
       asset_category_id: item.asset_category_id ?? null,
       manufacturer_id: item.manufacturer_id ?? null,
       office_id: item.office_id ?? null,
       location_id: item.location_id ?? null,
-      description: item.description ?? '',
-      model: item.model ?? null,
-      condition_status: item.condition_status ?? null,
-      property_number: item.property_number ?? null,
+      purchase_date: item.purchase_date ?? null,
+      warranty_until: item.warranty_until ?? null,
+      supplier_id: item.supplier_id ?? null,
     })
     setModalOpen(true)
   }
@@ -1096,214 +1114,286 @@ export function InventoryPage() {
       </Card>
 
       {/* ── Add / Edit modal ── */}
+      {/* ── Add / Edit modal ── */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingItem ? 'Edit Item' : 'Add Item'}
+        maxWidth={660}
         footer={<><Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button><Button onClick={handleSubmit} disabled={saving || Boolean(codeValidation?.exists)}>{saving ? 'Saving...' : editingItem ? 'Save Changes' : 'Add Item'}</Button></>}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-          {/* Section: Basic Information */}
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: '#94A3B8' }}>
-            Basic Information
-          </div>
-
-          <Input label="Item Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Laptop EB-X1 001" />
-
-          {/* SKU with live validation */}
+          {/* ── A. BASIC INFORMATION ── */}
           <div>
-            <Input
-              label="Item Code / SKU"
-              helperText={editingItem ? 'Editing the code is optional — leave unchanged to keep the existing code.' : 'Use a unique code for this item.'}
-              value={formData.sku || ''}
-              onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-              placeholder="e.g. SKU-001"
-            />
-            {codeValidation && formData.sku && (
-              <div style={{ marginTop: 4, fontSize: 12, fontWeight: 600, color: codeValidation.exists ? '#DC2626' : '#16A34A' }}>
-                {codeValidation.exists ? '❌ ' : '✓ '}{codeValidation.message}
-              </div>
-            )}
-          </div>
-
-          {/* Inventory Type */}
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Inventory Type</div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {(['PPE', 'SE', 'SUPPLY'] as const).map((c) => {
-                const active = formData.classification === c
-                return (
-                  <button key={c} type="button" onClick={() => setFormData({
-                    ...formData,
-                    classification: c,
-                    item_nature: c === 'SUPPLY' ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY',
-                    is_borrowable: c !== 'SUPPLY',
-                    track_as_asset: c !== 'SUPPLY',
-                    type: c === 'SUPPLY' ? 'expendable' : 'non_expendable',
-                  })}
-                    style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`, background: active ? '#EFF6FF' : '#fff', color: active ? '#1E40AF' : '#64748B', fontWeight: active ? 700 : 500, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
-                    {c === 'SUPPLY' ? 'Supply' : c}
-                  </button>
-                )
-              })}
-            </div>
-            <div style={{ marginTop: 6, fontSize: 12, color: '#94A3B8' }}>
-              {formData.classification === 'PPE' && 'Property, Plant & Equipment — unit cost ≥ ₱50,000'}
-              {formData.classification === 'SE' && 'Semi-Expendable — unit cost below ₱50,000'}
-              {formData.classification === 'SUPPLY' && 'Consumable supply — quantity-based, not individually tracked'}
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Input
-              label="Available Quantity"
-              type="number"
-              value={formData.quantity.toString()}
-              disabled={Boolean(editingItem)}
-              helperText={editingItem ? 'Use Stock In/Out/Adjust to change quantity.' : undefined}
-              onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
-            />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Unit of Measure</div>
-              <input
-                value={formData.unit || ''}
-                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                placeholder="e.g. piece, unit, ream"
-                list="unit-suggestions"
-                style={{
-                  width: '100%', height: 38, paddingInline: 12, borderRadius: 10,
-                  border: '1.5px solid #E2E8F0', fontSize: 13.5, color: '#1E293B',
-                  outline: 'none', boxSizing: 'border-box' as const, fontFamily: 'inherit',
-                  background: '#F8FAFC',
-                }}
-              />
-              <datalist id="unit-suggestions">
-                {['piece', 'unit', 'ream', 'box', 'cartridge', 'pack', 'set', 'bottle', 'roll', 'bundle'].map((u) => (
-                  <option key={u} value={u} />
-                ))}
-              </datalist>
-              <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 3 }}>
-                e.g. piece, unit, ream, box, cartridge
-              </div>
-            </div>
-          </div>
-
-          <Input
-            label="Low Stock Alert"
-            helperText="Show a warning when quantity reaches this number."
-            type="number"
-            value={formData.reorder_level?.toString() || '0'}
-            onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })}
-          />
-
-          {/* Unit Cost — drives PPE/SE auto-classification for accountable items */}
-          {formData.classification !== 'SUPPLY' && (
-            <div>
-              <Input
-                label="Unit Cost (₱)"
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="e.g. 75000.00"
-                value={formData.unit_cost !== null && formData.unit_cost !== undefined ? String(formData.unit_cost) : ''}
-                onChange={(e) => {
-                  const raw = e.target.value
-                  setFormData({
-                    ...formData,
-                    unit_cost: raw === '' ? null : parseFloat(raw) || 0,
-                  })
-                }}
-              />
-              <div style={{
-                marginTop: 5, padding: '6px 10px', borderRadius: 7,
-                background: '#F8FAFC', border: '1px solid #E2E8F0',
-                fontSize: 11, color: '#64748B', lineHeight: 1.5,
-              }}>
-                <span style={{ fontWeight: 600, color: '#0F172A' }}>Auto-classification: </span>
-                {formData.unit_cost !== null && formData.unit_cost !== undefined && formData.unit_cost >= 50000
-                  ? <span style={{ color: '#1D4ED8', fontWeight: 600 }}>PPE (₱50,000 and above)</span>
-                  : formData.unit_cost !== null && formData.unit_cost !== undefined && formData.unit_cost > 0
-                    ? <span style={{ color: '#15803D', fontWeight: 600 }}>SE (above ₱0, below ₱50,000)</span>
-                    : <span style={{ color: '#94A3B8' }}>Leave blank to keep current classification ({formData.classification ?? 'manual review'})</span>}
-              </div>
-            </div>
-          )}
-
-          {/* Section: Equipment Details — PPE/SE only */}
-          {formData.classification !== 'SUPPLY' && (
-            <>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: '#94A3B8', marginTop: 8 }}>
-                Equipment Details
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <Input
-                    label="Property Number"
-                    value={formData.property_number || ''}
-                    onChange={(e) => setFormData({ ...formData, property_number: e.target.value || null })}
-                    placeholder="e.g. PPE-2026-001"
-                  />
-                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 3 }}>Optional — leave blank if not yet assigned.</div>
-                </div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 14 }}>Basic Information</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <Input label="Item Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Laptop EB-X1 001" />
+              <div>
                 <Input
-                  label="Model Number"
-                  value={formData.model || ''}
-                  onChange={(e) => setFormData({ ...formData, model: e.target.value || null })}
-                  placeholder="e.g. ThinkPad X1"
+                  label="Item Code / SKU"
+                  helperText={editingItem ? 'Leave unchanged to keep the existing code.' : 'A unique identifier for this item.'}
+                  value={formData.sku || ''}
+                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                  placeholder="e.g. SKU-001"
+                />
+                {codeValidation && formData.sku && (
+                  <div style={{ marginTop: 4, fontSize: 12, fontWeight: 600, color: codeValidation.exists ? '#DC2626' : '#16A34A' }}>
+                    {codeValidation.exists ? '❌ ' : '✓ '}{codeValidation.message}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Description</label>
+                <textarea
+                  value={formData.description || ''}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Optional item description…"
+                  rows={2}
+                  style={{ width: '100%', borderRadius: 10, border: '1.5px solid #E2E8F0', background: '#F8FAFC', padding: '8px 12px', fontSize: 13.5, color: '#1E293B', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' as const, outline: 'none' }}
                 />
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Condition</div>
-                  <select
-                    value={formData.condition_status || ''}
-                    onChange={(e) => setFormData({ ...formData, condition_status: e.target.value || null })}
-                    style={{
-                      width: '100%', height: 38, paddingInline: '12px 32px', borderRadius: 10,
-                      border: '1.5px solid #E2E8F0', fontSize: 13, color: formData.condition_status ? '#1E293B' : '#94A3B8',
-                      background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 12px center`,
-                      backgroundSize: '10px 6px', appearance: 'none', cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
-                    }}
-                  >
-                    <option value="">Select condition</option>
-                    <option value="GOOD">Good</option>
-                    <option value="FAIR">Fair</option>
-                    <option value="POOR">Poor</option>
-                    <option value="DAMAGED">Damaged</option>
-                    <option value="FOR_REPAIR">For Repair</option>
-                  </select>
+              {/* Inventory Type */}
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Inventory Type</div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {(['PPE', 'SE', 'SUPPLY'] as const).map((c) => {
+                    const active = formData.classification === c
+                    return (
+                      <button key={c} type="button"
+                        onClick={() => setFormData({ ...formData, classification: c, item_nature: c === 'SUPPLY' ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY', is_borrowable: c !== 'SUPPLY', track_as_asset: c !== 'SUPPLY', type: c === 'SUPPLY' ? 'expendable' : 'non_expendable' })}
+                        style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`, background: active ? '#EFF6FF' : '#fff', color: active ? '#1E40AF' : '#64748B', fontWeight: active ? 700 : 500, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                        {c === 'SUPPLY' ? 'Supply' : c}
+                      </button>
+                    )
+                  })}
                 </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Borrowable</div>
-                  <select
-                    value={formData.is_borrowable !== false ? 'true' : 'false'}
-                    onChange={(e) => setFormData({ ...formData, is_borrowable: e.target.value === 'true' })}
-                    style={{
-                      width: '100%', height: 38, paddingInline: '12px 32px', borderRadius: 10,
-                      border: '1.5px solid #E2E8F0', fontSize: 13, color: '#1E293B',
-                      background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 12px center`,
-                      backgroundSize: '10px 6px', appearance: 'none', cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
-                    }}
-                  >
-                    <option value="true">Yes — can be borrowed</option>
-                    <option value="false">No — not available for borrowing</option>
-                  </select>
+                <div style={{ marginTop: 6, fontSize: 11.5, color: '#94A3B8' }}>
+                  {formData.classification === 'PPE' && 'Property, Plant & Equipment — unit cost ≥ ₱50,000'}
+                  {formData.classification === 'SE' && 'Semi-Expendable — unit cost below ₱50,000'}
+                  {formData.classification === 'SUPPLY' && 'Consumable supply — quantity-based, not individually tracked'}
                 </div>
               </div>
-            </>
+            </div>
+          </div>
+
+          {/* ── B. STOCK AND COST ── */}
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 14 }}>Stock and Cost</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <Input
+                  label="Available Quantity"
+                  type="number"
+                  value={formData.quantity.toString()}
+                  disabled={Boolean(editingItem)}
+                  helperText={editingItem ? 'Use Stock In/Out/Adjust to change.' : undefined}
+                  onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
+                />
+                <div style={{ position: 'relative' }}>
+                  <SetupDropdown
+                    label="Unit of Measure"
+                    resource="units"
+                    options={units.map((u) => ({ label: u.name, value: u.id, raw: u }))}
+                    value={formData.unit_id}
+                    onChange={(val) => {
+                      const selected = units.find((u) => u.id === val)
+                      setFormData({ ...formData, unit_id: val, unit: selected?.name ?? formData.unit })
+                    }}
+                    onRefreshNeeded={loadSetupOptions}
+                    placeholder="e.g. piece, unit, ream"
+                  />
+                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 3 }}>e.g. piece, unit, ream, box, cartridge</div>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <Input
+                  label="Low Stock Alert"
+                  helperText="Warn when quantity reaches this."
+                  type="number"
+                  value={formData.reorder_level?.toString() || '0'}
+                  onChange={(e) => setFormData({ ...formData, reorder_level: parseInt(e.target.value) || 0 })}
+                />
+                <div>
+                  <Input
+                    label="Unit Cost (₱)"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="e.g. 75000.00"
+                    value={formData.unit_cost !== null && formData.unit_cost !== undefined ? String(formData.unit_cost) : ''}
+                    onChange={(e) => { const r = e.target.value; setFormData({ ...formData, unit_cost: r === '' ? null : parseFloat(r) || 0 }) }}
+                  />
+                  <div style={{ marginTop: 4, fontSize: 11, color: '#94A3B8' }}>
+                    {formData.classification !== 'SUPPLY' && (
+                      formData.unit_cost != null && formData.unit_cost >= 50000
+                        ? <span style={{ color: '#1D4ED8', fontWeight: 600 }}>→ PPE (≥ ₱50,000)</span>
+                        : formData.unit_cost != null && formData.unit_cost > 0
+                          ? <span style={{ color: '#15803D', fontWeight: 600 }}>→ SE (&lt; ₱50,000)</span>
+                          : 'Drives PPE / SE auto-classification'
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── C. PROCUREMENT ── */}
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 6 }}>Procurement</div>
+            <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: 12 }}>
+              Inventory is the single source of truth for procurement information. These values appear read-only in Asset Management.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <Input
+                  label="Purchase Date"
+                  type="date"
+                  value={formData.purchase_date ?? ''}
+                  onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value || null })}
+                />
+                <Input
+                  label="Warranty Until"
+                  type="date"
+                  value={formData.warranty_until ?? ''}
+                  onChange={(e) => setFormData({ ...formData, warranty_until: e.target.value || null })}
+                />
+              </div>
+              {/* Supplier — display-only for now; full management in future Supplier module */}
+              <div style={{
+                padding: '10px 14px', borderRadius: 10,
+                border: '1px dashed #E2E8F0', background: '#FAFBFC',
+                fontSize: 12.5, color: '#94A3B8',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{ fontSize: 16 }}>🏭</span>
+                <span>
+                  <strong style={{ color: '#64748B' }}>Supplier:</strong>{' '}
+                  {editingItem?.supplier_name
+                    ? <span style={{ color: '#334155', fontWeight: 600 }}>{editingItem.supplier_name}</span>
+                    : <span style={{ fontStyle: 'italic' }}>Not assigned — Supplier module coming soon</span>
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── D. SHARED ITEM DETAILS (PPE / SE) ── */}
+          {formData.classification !== 'SUPPLY' && (
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 14 }}>Shared Item Details</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <SetupDropdown
+                    label="Manufacturer"
+                    resource="manufacturers"
+                    options={manufacturers.map((m) => ({ label: m.name, value: m.id, raw: m }))}
+                    value={formData.manufacturer_id}
+                    onChange={(val) => setFormData({ ...formData, manufacturer_id: val })}
+                    onRefreshNeeded={loadSetupOptions}
+                    placeholder="Select manufacturer"
+                  />
+                  <Input
+                    label="Model Number"
+                    value={formData.model || ''}
+                    onChange={(e) => setFormData({ ...formData, model: e.target.value || null })}
+                    placeholder="e.g. ThinkPad X1 Carbon"
+                  />
+                </div>
+                <SetupDropdown
+                  label="Asset Category"
+                  resource="asset-categories"
+                  options={assetCategories.map((c) => ({ label: c.name, value: c.id, raw: c }))}
+                  value={formData.asset_category_id}
+                  onChange={(val) => setFormData({ ...formData, asset_category_id: val })}
+                  onRefreshNeeded={loadSetupOptions}
+                  placeholder="Select category"
+                />
+              </div>
+            </div>
           )}
 
-          {/* Remarks */}
-          <Input
-            label="Remarks / Internal Notes"
-            value={formData.remarks || ''}
-            onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-            placeholder="Optional notes"
-          />
+          {/* ── E. DEFAULT ASSIGNMENT ── */}
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 6 }}>
+              Default Assignment
+              {editingItem && editingItem.asset_id && (
+                <span style={{ marginLeft: 8, fontWeight: 400, fontSize: 10, color: '#F59E0B', textTransform: 'none' as const }}>
+                  ⚠ Editing default office/location will not move the existing asset.
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: 12 }}>
+              {formData.classification === 'SUPPLY'
+                ? 'Office and location for supply storage tracking.'
+                : 'Initial office and location used when a new linked asset is created. Does not override an existing asset\'s current location.'}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <SetupDropdown
+                label="Default Office"
+                resource="offices"
+                options={offices.map((o) => ({ label: o.name, value: o.id, raw: o }))}
+                value={formData.office_id}
+                onChange={(val) => setFormData({ ...formData, office_id: val, location_id: null })}
+                onRefreshNeeded={loadSetupOptions}
+                placeholder="Select office"
+              />
+              <SetupDropdown
+                label="Default Location"
+                resource="locations"
+                options={locations.filter((l) => !formData.office_id || l.office_id === formData.office_id).map((l) => ({ label: l.name, value: l.id, raw: l }))}
+                value={formData.location_id}
+                onChange={(val) => setFormData({ ...formData, location_id: val })}
+                onRefreshNeeded={loadSetupOptions}
+                needsOffice
+                currentOfficeId={formData.office_id}
+                placeholder="Select location"
+              />
+            </div>
+          </div>
+
+          {/* ── E. BORROWING POLICY (PPE / SE only) ── */}
+          {formData.classification !== 'SUPPLY' && (
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>Borrowing Policy</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, border: '1px solid #E2E8F0', background: '#FAFBFC', padding: '12px 16px', gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0F172A' }}>
+                    {formData.is_borrowable !== false ? 'Borrowing enabled' : 'Borrowing disabled'}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                    {formData.is_borrowable !== false
+                      ? 'This item can be selected in borrow requests when its asset status allows.'
+                      : 'This item will not appear in borrow requests. Permanent issuance is still possible.'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, is_borrowable: formData.is_borrowable === false })}
+                  style={{
+                    flexShrink: 0, borderRadius: 9,
+                    border: `1.5px solid ${formData.is_borrowable !== false ? '#BBF7D0' : '#E2E8F0'}`,
+                    background: formData.is_borrowable !== false ? '#F0FDF4' : '#fff',
+                    color: formData.is_borrowable !== false ? '#166534' : '#64748B',
+                    fontSize: 13, fontWeight: 700, padding: '6px 14px',
+                    cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit',
+                  }}
+                >
+                  {formData.is_borrowable !== false ? 'Disable' : 'Enable'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── F. NOTES ── */}
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>Notes</div>
+            <Input
+              label="Inventory Remarks"
+              value={formData.remarks || ''}
+              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+              placeholder="Optional internal notes…"
+            />
+          </div>
 
         </div>
       </Modal>
-
-      {/* ── Stock In / Out modal ── */}
       <Modal
         open={stockModalOpen}
         onClose={() => setStockModalOpen(false)}

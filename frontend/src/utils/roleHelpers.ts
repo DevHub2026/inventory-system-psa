@@ -33,8 +33,20 @@ const ISSUANCE_MANAGER_ROLES = [
   'Inventory Officer',
 ]
 
+const DISPOSAL_MANAGER_ROLES = [
+  'Super Administrator',
+  'System Administrator',
+  'Property Custodian',
+  'Inventory Officer',
+  'Department Head',
+]
+
 export function canManageIssuance(user: User | null): boolean {
   return hasAnyRole(user, ISSUANCE_MANAGER_ROLES)
+}
+
+export function canManageDisposal(user: User | null): boolean {
+  return hasAnyRole(user, DISPOSAL_MANAGER_ROLES)
 }
 
 export function getUserRoleCategory(user: User | null): 'admin' | 'staff' | 'employee' | null {

@@ -6,55 +6,73 @@ import type { ApiResponse, ImportResult, InventoryItem, Paginated, StockMovement
 
 
 export interface CreateInventoryItemPayload {
+  // ── Core identity ──────────────────────────────────────────────────────
   name: string
   sku?: string
+  description?: string | null
+  // ── Classification ─────────────────────────────────────────────────────
   type?: 'non_expendable' | 'expendable'
   classification?: 'PPE' | 'SE' | 'SUPPLY'
   item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY'
   classification_reason?: string
+  // ── Stock & cost ───────────────────────────────────────────────────────
   quantity: number
   unit_cost?: number | null
+  purchase_date?: string | null
+  warranty_until?: string | null
+  supplier_id?: number | null
+  reorder_level?: number
+  // ── Unit of measure (FK preferred, legacy string fallback) ─────────────
   unit?: string
   unit_id?: number | null
-  reorder_level?: number
-  remarks?: string
-  is_borrowable?: boolean
-  track_as_asset?: boolean
+  // ── Shared item details (inventory-owned) ─────────────────────────────
   manufacturer_id?: number | null
+  model?: string | null
+  asset_category_id?: number | null
+  // ── Default assignment (initial values for newly created linked Asset) ─
   office_id?: number | null
   location_id?: number | null
-  // Asset-level fields written through linked asset
-  model?: string | null
-  condition_status?: string | null
-  description?: string | null
-  asset_category_id?: number | null
-  property_number?: string | null
+  // ── Borrowing policy ──────────────────────────────────────────────────
+  is_borrowable?: boolean
+  // ── Notes ─────────────────────────────────────────────────────────────
+  remarks?: string
+  // ── Internal flags ────────────────────────────────────────────────────
+  track_as_asset?: boolean
 }
 
 export interface UpdateInventoryItemPayload {
+  // ── Core identity ──────────────────────────────────────────────────────
   name?: string
   sku?: string
+  description?: string | null
+  // ── Classification ─────────────────────────────────────────────────────
   type?: 'non_expendable' | 'expendable'
   classification?: 'PPE' | 'SE' | 'SUPPLY'
   item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY'
   classification_reason?: string
-  quantity?: number
+  // ── Stock & cost ───────────────────────────────────────────────────────
   unit_cost?: number | null
+  // Procurement (inventory-owned)
+  purchase_date?: string | null
+  warranty_until?: string | null
+  supplier_id?: number | null
+  reorder_level?: number
+  // ── Unit of measure ───────────────────────────────────────────────────
   unit?: string
   unit_id?: number | null
-  reorder_level?: number
-  remarks?: string
-  is_borrowable?: boolean
-  track_as_asset?: boolean
+  // ── Shared item details (inventory-owned) ─────────────────────────────
   manufacturer_id?: number | null
+  model?: string | null
+  asset_category_id?: number | null
+  // ── Default assignment (stored on inventory item, NOT pushed to asset) ─
   office_id?: number | null
   location_id?: number | null
-  // Asset-level fields written through linked asset
-  model?: string | null
-  condition_status?: string | null
-  description?: string | null
-  asset_category_id?: number | null
-  property_number?: string | null
+  // ── Borrowing policy ──────────────────────────────────────────────────
+  is_borrowable?: boolean
+  // ── Notes ─────────────────────────────────────────────────────────────
+  remarks?: string
+  // ── Internal flags ────────────────────────────────────────────────────
+  track_as_asset?: boolean
 }
 
 export interface InventoryFilters {
@@ -196,3 +214,4 @@ export const inventoryService = {
     return importService.history('inventory')
   },
 }
+

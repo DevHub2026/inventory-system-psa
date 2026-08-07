@@ -15,6 +15,7 @@ export function assetStatusLabel(status: AssetStatus | string): string {
     RESERVED: 'Reserved',
     MAINTENANCE: 'Under Maintenance',
     UNAVAILABLE: 'Unavailable',
+    FOR_DISPOSAL: 'For Disposal',
     RETIRED: 'Retired',
     DISPOSED: 'Disposed',
   }
@@ -85,6 +86,8 @@ export function getEffectiveAssetStatus(asset: Pick<Asset, 'status' | 'reservati
     AVAILABLE: 'green',
     BORROWED: 'blue',
     MAINTENANCE: 'red',
+    FOR_DISPOSAL: 'orange',
+    DISPOSED: 'gray',
   }
 
   return {
