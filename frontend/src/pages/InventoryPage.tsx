@@ -420,6 +420,8 @@ export function InventoryPage() {
 
   // Live SKU validation state
   const [codeValidation, setCodeValidation]   = useState<{ exists: boolean; message: string } | null>(null)
+  // SKU generation state
+  const [skuGenerating,  setSkuGenerating]    = useState(false)
 
   // Setup/master-data options for the Add/Edit form dropdowns
   const [manufacturers,   setManufacturers]   = useState<SetupRecord[]>([])
@@ -427,21 +429,24 @@ export function InventoryPage() {
   const [offices,         setOffices]         = useState<SetupRecord[]>([])
   const [locations,       setLocations]       = useState<SetupRecord[]>([])
   const [units,           setUnits]           = useState<SetupRecord[]>([])
-
+  const [inventoryItemTypes, setInventoryItemTypes] = useState<SetupRecord[]>([])
+ 
   const loadSetupOptions = useCallback(async () => {
     try {
-      const [mfr, cats, offs, locs, uns] = await Promise.all([
+      const [mfr, cats, offs, locs, uns, itemTypes] = await Promise.all([
         setupService.list('manufacturers'),
         setupService.list('asset-categories'),
         setupService.list('offices'),
         setupService.list('locations'),
         setupService.list('units'),
+        setupService.list('inventory-item-types'),
       ])
       setManufacturers(mfr)
       setAssetCategories(cats)
       setOffices(offs)
       setLocations(locs)
       setUnits(uns)
+      setInventoryItemTypes(itemTypes)
     } catch { /* best-effort — dropdowns degrade gracefully if unavailable */ }
   }, [])
 
@@ -451,10 +456,14 @@ export function InventoryPage() {
     track_as_asset: true, type: 'non_expendable', classification: 'PPE', item_nature: 'ACCOUNTABLE_PROPERTY',
     description: '', model: null,
     asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null,
+    item_type_id: null,
     // Procurement — inventory-owned
     purchase_date: null,
     warranty_until: null,
     supplier_id: null,
+    // Identifiers — synced to linked Asset on save
+    property_number: null,
+    serial_number: null,
   })
 
   useEffect(() => {
@@ -582,9 +591,20 @@ export function InventoryPage() {
       type: activeTab === 'supply' ? 'expendable' : 'non_expendable',
       description: '', model: null,
       asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null,
+      item_type_id: null,
       purchase_date: null, warranty_until: null, supplier_id: null,
+      // Identifier fields — empty on create
+      property_number: null,
+      serial_number: null,
     })
     setModalOpen(true)
+    // Auto-generate SKU after opening the modal
+    setSkuGenerating(true)
+    inventoryService.generateSku().then((sku) => {
+      setFormData((prev) => ({ ...prev, sku }))
+    }).catch(() => {
+      // If generation fails, leave SKU empty so user can enter manually
+    }).finally(() => setSkuGenerating(false))
   }
 
   const handleEdit = (item: InventoryItem) => {
@@ -610,9 +630,13 @@ export function InventoryPage() {
       manufacturer_id: item.manufacturer_id ?? null,
       office_id: item.office_id ?? null,
       location_id: item.location_id ?? null,
+      item_type_id: item.item_type_id ?? null,
       purchase_date: item.purchase_date ?? null,
       warranty_until: item.warranty_until ?? null,
       supplier_id: item.supplier_id ?? null,
+      // Identifier fields — populate from linked Asset (read from API response)
+      property_number: item.property_number ?? null,
+      serial_number: item.serial_number ?? null,
     })
     setModalOpen(true)
   }
@@ -707,7 +731,7 @@ export function InventoryPage() {
         URL.revokeObjectURL(url)
       } else if (exportFormat === 'csv') {
         const result = await inventoryService.list({ per_page: 9999, search: search || undefined, classification: scopeFilter })
-        const headers = ['id', 'name', 'type', 'classification', 'sku', 'property_number', 'asset_number', 'accountability', 'quantity', 'unit', 'status', 'reorder_level', 'remarks']
+        const headers = ['id', 'name', 'type', 'classification', 'sku', 'property_number', 'asset_number', 'serial_number', 'accountability', 'quantity', 'unit', 'status', 'reorder_level', 'remarks']
         const lines   = [headers.join(',')]
         for (const item of result.items) {
           const itemMap = item as unknown as Record<string, unknown>
@@ -935,8 +959,9 @@ export function InventoryPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
               <colgroup>
                 <col style={{ minWidth: 200 }} />
-                <col style={{ width: 160 }} />
-                <col style={{ width: 160 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 130 }} />
                 <col style={{ width: 120 }} />
                 <col style={{ width: 170 }} />
                 <col style={{ width: 72 }} />
@@ -947,8 +972,9 @@ export function InventoryPage() {
               <thead>
                 <tr>
                   <th style={th}>Item</th>
-                  <th style={th}>Property Number</th>
-                  <th style={th}>Asset Number</th>
+                  <th style={th}>SKU</th>
+                  <th style={th}>Property No.</th>
+                  <th style={th}>Asset No.</th>
                   <th style={th}>Unit Cost</th>
                   <th style={th}>Accountability</th>
                   <th style={{ ...th, textAlign: 'center' as const }}>Qty</th>
@@ -995,6 +1021,23 @@ export function InventoryPage() {
                       )}
                     </td>
 
+                    {/* SKU */}
+                    <td style={td}>
+                      {r.sku ? (
+                        <code style={{
+                          fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                          fontSize: 11.5, color: '#475569',
+                          background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                          display: 'inline-block', maxWidth: 130,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {r.sku}
+                        </code>
+                      ) : (
+                        <span style={{ color: '#CBD5E1' }}>—</span>
+                      )}
+                    </td>
+
                     {/* Property Number */}
                     <td style={td}>
                       {r.classification === 'SUPPLY' ? (
@@ -1004,7 +1047,7 @@ export function InventoryPage() {
                           fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
                           fontSize: 11.5, color: '#475569',
                           background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
-                          display: 'inline-block', maxWidth: 160,
+                          display: 'inline-block', maxWidth: 130,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>
                           {r.property_number}
@@ -1023,7 +1066,7 @@ export function InventoryPage() {
                           fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
                           fontSize: 11.5, color: '#475569',
                           background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
-                          display: 'inline-block', maxWidth: 160,
+                          display: 'inline-block', maxWidth: 130,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>
                           {r.asset_number}
@@ -1125,20 +1168,105 @@ export function InventoryPage() {
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 14 }}>Basic Information</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <Input label="Item Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Laptop EB-X1 001" />
-              <div>
-                <Input
-                  label="Item Code / SKU"
-                  helperText={editingItem ? 'Leave unchanged to keep the existing code.' : 'A unique identifier for this item.'}
-                  value={formData.sku || ''}
-                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                  placeholder="e.g. SKU-001"
-                />
-                {codeValidation && formData.sku && (
-                  <div style={{ marginTop: 4, fontSize: 12, fontWeight: 600, color: codeValidation.exists ? '#DC2626' : '#16A34A' }}>
-                    {codeValidation.exists ? '❌ ' : '✓ '}{codeValidation.message}
+
+              {/* ── Item Identification group ── */}
+              <div style={{ borderRadius: 12, border: '1px solid #E2E8F0', background: '#FAFBFC', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#64748B' }}>Item Identification</div>
+
+                {/* SKU / Item Code */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Item Code / SKU</label>
+                    {!editingItem && (
+                      <button
+                        type="button"
+                        disabled={skuGenerating}
+                        onClick={() => {
+                          setSkuGenerating(true)
+                          inventoryService.generateSku().then((sku) => {
+                            setFormData((prev) => ({ ...prev, sku }))
+                          }).catch(() => {}).finally(() => setSkuGenerating(false))
+                        }}
+                        style={{
+                          fontSize: 11.5, fontWeight: 600, color: '#1E40AF',
+                          background: 'none', border: 'none', cursor: skuGenerating ? 'wait' : 'pointer',
+                          padding: 0, textDecoration: 'underline', fontFamily: 'inherit',
+                          opacity: skuGenerating ? 0.5 : 1,
+                        }}
+                      >
+                        {skuGenerating ? 'Generating…' : '↻ Re-generate'}
+                      </button>
+                    )}
                   </div>
+                  <Input
+                    value={formData.sku || ''}
+                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    placeholder={skuGenerating ? 'Generating SKU…' : 'e.g. INV-20260809-A1B2'}
+                  />
+                  <div style={{ marginTop: 4, fontSize: 11.5, color: '#94A3B8' }}>
+                    {editingItem
+                      ? 'Leave unchanged to keep the existing code.'
+                      : skuGenerating
+                        ? 'Generating a unique SKU…'
+                        : 'Auto-generated SKU — edit if needed.'}
+                  </div>
+                  {codeValidation && formData.sku && (
+                    <div style={{ marginTop: 4, fontSize: 12, fontWeight: 600, color: codeValidation.exists ? '#DC2626' : '#16A34A' }}>
+                      {codeValidation.exists ? '❌ ' : '✓ '}{codeValidation.message}
+                    </div>
+                  )}
+                </div>
+
+                {/* Asset-linked identifier fields — only when track_as_asset is on */}
+                {formData.track_as_asset && formData.classification !== 'SUPPLY' && (
+                  <>
+                    {/* Asset Number — read-only display on edit; empty hint on create */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                        Asset Number
+                      </label>
+                      <div style={{
+                        padding: '8px 12px', borderRadius: 10,
+                        border: '1px solid #E2E8F0', background: '#F1F5F9',
+                        fontSize: 13, fontFamily: "'SF Mono','Fira Code',ui-monospace,monospace",
+                        color: editingItem?.asset_number ? '#1E293B' : '#94A3B8',
+                      }}>
+                        {editingItem?.asset_number ?? 'Auto-generated by the system on save'}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 3 }}>
+                        Asset Number is system-generated and cannot be changed.
+                      </div>
+                    </div>
+
+                    {/* Property Number */}
+                    <div>
+                      <Input
+                        label="Property Number"
+                        value={formData.property_number ?? ''}
+                        onChange={(e) => setFormData({ ...formData, property_number: e.target.value || null })}
+                        placeholder="e.g. PROP-2026-0001"
+                      />
+                      <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 3 }}>
+                        Government property record number for this asset instance.
+                      </div>
+                    </div>
+
+                    {/* Serial Number */}
+                    <div>
+                      <Input
+                        label="Serial Number"
+                        value={formData.serial_number ?? ''}
+                        onChange={(e) => setFormData({ ...formData, serial_number: e.target.value || null })}
+                        placeholder="e.g. SN-ABCD-1234567"
+                      />
+                      <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 3 }}>
+                        Manufacturer's serial number printed on the physical unit.
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Description</label>
                 <textarea
@@ -1148,6 +1276,21 @@ export function InventoryPage() {
                   rows={2}
                   style={{ width: '100%', borderRadius: 10, border: '1.5px solid #E2E8F0', background: '#F8FAFC', padding: '8px 12px', fontSize: 13.5, color: '#1E293B', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' as const, outline: 'none' }}
                 />
+              </div>
+              <div>
+                <SetupDropdown
+                  label="Type"
+                  resource="inventory-item-types"
+                  options={inventoryItemTypes.map((type) => ({ label: type.name, value: type.id, raw: type }))}
+                  value={formData.item_type_id ?? null}
+                  onChange={(val) => setFormData({ ...formData, item_type_id: val })}
+                  onRefreshNeeded={loadSetupOptions}
+                  placeholder="Select or add a type"
+                  codeLabel="Type Code"
+                />
+                <div style={{ marginTop: 4, fontSize: 11.5, color: '#94A3B8' }}>
+                  Select an existing type or add a new one.
+                </div>
               </div>
               {/* Inventory Type */}
               <div>

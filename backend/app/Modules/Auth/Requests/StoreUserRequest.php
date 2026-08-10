@@ -20,8 +20,19 @@ class StoreUserRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        $lastName       = (string) ($this->input('last_name') ?? '');
-        $employeeNumber = (string) ($this->input('employee_number') ?? '');
+        $lastName       = trim((string) ($this->input('last_name') ?? ''));
+        $employeeNumber = trim((string) ($this->input('employee_number') ?? ''));
+
+        $blankToNull = [];
+        foreach (['employee_number', 'username', 'first_name', 'middle_name', 'last_name'] as $field) {
+            if ($this->has($field) && trim((string) $this->input($field)) === '') {
+                $blankToNull[$field] = null;
+            }
+        }
+
+        if ($blankToNull !== []) {
+            $this->merge($blankToNull);
+        }
 
         if (empty($this->input('username')) && $lastName !== '' && $employeeNumber !== '') {
             $this->merge([
@@ -36,18 +47,19 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'employee_number' => ['required', 'string', 'unique:users,employee_number'],
-            'username'        => ['required', 'string', 'max:255', 'unique:users,username'],
-            'first_name'      => ['required', 'string', 'max:255'],
+            'employee_number' => ['nullable', 'string', 'unique:users,employee_number'],
+            'username'        => ['nullable', 'string', 'max:255', 'unique:users,username'],
+            'first_name'      => ['nullable', 'string', 'max:255'],
             'middle_name'     => ['nullable', 'string', 'max:255'],
-            'last_name'       => ['required', 'string', 'max:255'],
+            'last_name'       => ['nullable', 'string', 'max:255'],
             'email'           => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password'        => ['required', 'string', Password::min(8)->letters()->numbers()],
+            'password'        => ['nullable', 'string', Password::min(8)->letters()->numbers()],
             'department_id'   => ['nullable', 'exists:departments,id'],
             'office_id'       => ['nullable', 'exists:offices,id'],
             'status'          => ['sometimes', 'string', Rule::in(UserStatus::values())],
             'roles'           => ['sometimes', 'array'],
             'roles.*'         => ['exists:roles,id'],
+            'email_notifications_enabled' => ['sometimes', 'boolean'],
         ];
     }
 

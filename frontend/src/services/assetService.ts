@@ -11,9 +11,6 @@ export interface IssuanceHistoryEntry {
   remarks?: string | null
 }
 
-
-
-
 interface BackendAsset {
   id: number
   asset_number: string
@@ -67,6 +64,7 @@ interface BackendAsset {
   updated_by_name?: string | null
   created_at?: string | null
   updated_at?: string | null
+  deleted_at?: string | null
   category?: { name?: string } | string | null
   location?: { name?: string } | string | null
   office?: { name?: string } | string | null
@@ -155,8 +153,6 @@ function mapAsset(asset: BackendAsset): Asset {
     inventory: asset.inventory ?? null,
   }
 }
-
-
 
 export const assetService = {
   async list(params: {
@@ -265,5 +261,39 @@ export const assetService = {
     const { data } = await api.post<ApiResponse<BackendAsset>>(`/assets/${assetId}/dispose/cancel`, payload)
     return mapAsset(unwrapData(data))
   },
-}
 
+  // ── Task 11: Asset Archive ────────────────────────────────────────────────
+
+  /** Archive an asset. Uses POST /assets/{id}/archive (NOT DELETE). */
+  async archive(assetId: number): Promise<Asset> {
+    const { data } = await api.post<ApiResponse<BackendAsset>>(`/assets/${assetId}/archive`)
+    return mapAsset(unwrapData(data))
+  },
+
+  /** List archived (soft-deleted) Assets — GET /assets/archived. */
+  async listArchived(params: {
+    page?: number
+    per_page?: number
+    search?: string
+  } = {}): Promise<Paginated<Asset>> {
+    const { data } = await api.get<
+      ApiResponse<{
+        items: BackendAsset[]
+        meta: Paginated<Asset>['meta']
+      }>
+    >('/assets/archived', { params })
+
+    const payload = unwrapData(data)
+
+    return {
+      items: Array.isArray(payload.items) ? payload.items.map(mapAsset) : [],
+      meta: payload.meta,
+    }
+  },
+
+  /** Restore an archived Asset — POST /assets/{id}/restore. Restores the SAME Asset. */
+  async restore(assetId: number): Promise<Asset> {
+    const { data } = await api.post<ApiResponse<BackendAsset>>(`/assets/${assetId}/restore`)
+    return mapAsset(unwrapData(data))
+  },
+}

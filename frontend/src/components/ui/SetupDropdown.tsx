@@ -31,6 +31,7 @@ const RESOURCE_LABELS: Record<SetupResource, string> = {
   'manufacturers': 'Manufacturer',
   'departments': 'Department',
   'units': 'Unit',
+  'inventory-item-types': 'Type',
 }
 
 export function SetupDropdown({

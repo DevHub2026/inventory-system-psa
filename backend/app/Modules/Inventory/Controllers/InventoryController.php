@@ -35,13 +35,25 @@ class InventoryController extends Controller
             ? $item->asset->status->value
             : ($item->asset?->status ?? null);
 
+        // Serial number — stored as AssetIdentifier(SERIAL_NUMBER) on the linked asset
+        $serialNumber = null;
+        if ($item->asset) {
+            $item->asset->loadMissing('identifiers');
+            $serialNumber = $item->asset->identifiers
+                ->firstWhere('identifier_type', \App\Modules\Asset\Enums\IdentifierType::SERIAL_NUMBER->value)
+                ?->identifier_value;
+        }
+
         return [
             'id'                     => $item->id,
             'asset_id'               => $item->asset_id,
             'asset_number'           => $item->asset?->asset_number,
-            'property_number'        => $item->asset?->property_number,  // read-only display
+            'property_number'        => $item->asset?->property_number,
+            'serial_number'          => $serialNumber,
             // ── Inventory-owned fields ─────────────────────────────────────
             'type'                   => $item->type,
+            'item_type_id'           => $item->item_type_id,
+            'item_type_name'         => $item->itemType?->name,
             'classification'         => $item->classification,
             'item_nature'            => $item->item_nature,
             'classification_reason'  => $item->classification_reason,
@@ -131,6 +143,39 @@ class InventoryController extends Controller
         ], 'Inventory items retrieved successfully.');
     }
 
+    /**
+     * Generate a unique SKU suggestion.
+     *
+     * Returns a candidate SKU the user can accept or override.
+     * Format: INV-YYYYMMDD-XXXX  (date + 4-char random hex)
+     * The returned value is guaranteed unique in inventory_items at the time of
+     * the call but the user is free to edit it before saving — final uniqueness
+     * is enforced by the StoreInventoryItemRequest validation rule.
+     */
+    public function generateSku(Request $request): JsonResponse
+    {
+        $prefix = strtoupper(trim((string) $request->query('prefix', '')));
+        $prefix = $prefix !== '' ? $prefix : 'INV';
+
+        $date = now()->format('Ymd');
+        $sku  = null;
+        $attempts = 0;
+        $maxAttempts = 20;
+
+        do {
+            $candidate = $prefix.'-'.$date.'-'.strtoupper(bin2hex(random_bytes(2)));
+            $exists    = InventoryItem::query()->where('sku', $candidate)->exists();
+            $attempts++;
+        } while ($exists && $attempts < $maxAttempts);
+
+        $sku = $candidate ?? ($prefix.'-'.$date.'-'.strtoupper(bin2hex(random_bytes(2))));
+
+        return $this->success([
+            'sku'     => $sku,
+            'unique'  => ! $exists,
+        ], 'SKU generated.');
+    }
+
     public function validateSku(Request $request): JsonResponse
     {
         $sku = trim((string) $request->query('sku', ''));
@@ -189,7 +234,7 @@ class InventoryController extends Controller
 
     public function show(InventoryItem $item): JsonResponse
     {
-        $item->load(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location', 'assetCategory', 'supplier']);
+        $item->load(['asset.issuedToUser', 'asset.identifiers', 'unit', 'manufacturer', 'office', 'location', 'assetCategory', 'supplier', 'itemType']);
         return $this->success($this->transform($item), 'Inventory item retrieved successfully.');
     }
 

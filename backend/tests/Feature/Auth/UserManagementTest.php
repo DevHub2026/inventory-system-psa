@@ -86,6 +86,53 @@ class UserManagementTest extends TestCase
         ]);
     }
 
+    public function test_authenticated_user_can_create_user_without_employee_number_or_names(): void
+    {
+        $admin = User::factory()->create();
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/users', [
+                'email' => 'anon@example.com',
+                'password' => 'password123',
+                'status' => 'active',
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJson([
+                'success' => true,
+                'message' => 'User created successfully.',
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'anon@example.com',
+            'employee_number' => null,
+            'username' => null,
+        ]);
+    }
+
+    public function test_authenticated_user_can_create_user_without_password_uses_default_password(): void
+    {
+        $admin = User::factory()->create();
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/users', [
+                'email' => 'defaultpass@example.com',
+                'status' => 'active',
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJson([
+                'success' => true,
+                'message' => 'User created successfully.',
+            ]);
+
+        $user = User::query()->where('email', 'defaultpass@example.com')->first();
+        $this->assertNotNull($user);
+        $this->assertTrue(Hash::check('psasargen9500', $user->password));
+    }
+
     public function test_username_is_auto_generated_from_last_name_and_employee_number(): void
     {
         $admin = User::factory()->create();
@@ -247,6 +294,39 @@ class UserManagementTest extends TestCase
         $this->assertSame('doeEMP001', $user->username);
     }
 
+    public function test_employee_import_can_import_user_without_id_number(): void
+    {
+        $admin = User::factory()->create();
+        Role::query()->firstOrCreate(
+            ['name' => UserRole::EMPLOYEE->value],
+            ['description' => UserRole::EMPLOYEE->name],
+        );
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->post('/api/v1/users/import', [
+                'file' => $this->csvUpload(
+                    "first_name,last_name,id_number,email,role\n" .
+                    ",Garcia,,garcia@example.com,Employee\n",
+                ),
+            ], ['Accept' => 'application/json']);
+
+        $response->assertOk()
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'imported' => 1,
+                    'failed' => 0,
+                    'initial_password' => 'psasargen9500',
+                ],
+            ]);
+
+        $importedUser = User::query()->where('email', 'garcia@example.com')->first();
+        $this->assertNotNull($importedUser);
+        $this->assertNull($importedUser->employee_number);
+        $this->assertTrue(Hash::check('psasargen9500', $importedUser->password));
+    }
+
     public function test_employee_import_accepts_file_without_department_and_hashes_default_password(): void
     {
         $admin = User::factory()->create();
@@ -271,21 +351,21 @@ class UserManagementTest extends TestCase
                 'data' => [
                     'imported' => 1,
                     'failed' => 0,
-                    'initial_password' => 'psagens9500',
+                    'initial_password' => 'psasargen9500',
                 ],
             ]);
 
         $importedUser = User::query()->where('email', 'maria.santos@example.com')->firstOrFail();
 
         $this->assertNull($importedUser->department_id);
-        $this->assertNotSame('psagens9500', $importedUser->password);
-        $this->assertTrue(Hash::check('psagens9500', $importedUser->password));
+        $this->assertNotSame('psasargen9500', $importedUser->password);
+        $this->assertTrue(Hash::check('psasargen9500', $importedUser->password));
         $this->assertTrue($importedUser->roles()->whereKey($employeeRole->id)->exists());
         $this->assertSame($existingPassword, $admin->fresh()->password);
 
         $this->assertTrue(Auth::guard('web')->attempt([
             'email' => 'maria.santos@example.com',
-            'password' => 'psagens9500',
+            'password' => 'psasargen9500',
         ]));
     }
 

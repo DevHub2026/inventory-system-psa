@@ -20,6 +20,7 @@ const sections: SetupSection[] = [
   { resource: 'departments',      title: 'Departments',      description: 'Maintain organizational departments for employee alignment.',               codeLabel: 'Department Code' },
   { resource: 'locations',        title: 'Locations',        description: 'Maintain rooms, storage areas, or deployment locations under offices.',      codeLabel: 'Location Code', needsOffice: true },
   { resource: 'manufacturers',    title: 'Manufacturers',    description: 'Maintain brands, suppliers, and manufacturers used by asset records.' },
+  { resource: 'inventory-item-types', title: 'Inventory Item Types', description: 'Maintain reusable item types for faster inventory entry and reporting.', codeLabel: 'Type Code' },
 ]
 
 const emptyForm: SetupPayload = { name: '', code: '', description: '', office_id: null, is_active: true }
@@ -29,7 +30,7 @@ export function SystemSetupPage() {
   const navigate = useNavigate()
   const [activeResource, setActiveResource] = useState<SetupResource>('asset-categories')
   const [records, setRecords] = useState<Record<SetupResource, SetupRecord[]>>({
-    'asset-categories': [], offices: [], departments: [], locations: [], manufacturers: [], units: [],
+    'asset-categories': [], offices: [], departments: [], locations: [], manufacturers: [], units: [], 'inventory-item-types': [],
   })
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -50,14 +51,15 @@ export function SystemSetupPage() {
   async function loadSetupData() {
     setLoading(true)
     try {
-      const [assetCategories, offices, departments, locations, manufacturers] = await Promise.all([
+      const [assetCategories, offices, departments, locations, manufacturers, inventoryItemTypes] = await Promise.all([
         setupService.list('asset-categories'),
         setupService.list('offices'),
         setupService.list('departments'),
         setupService.list('locations'),
         setupService.list('manufacturers'),
+        setupService.list('inventory-item-types'),
       ])
-      setRecords({ 'asset-categories': assetCategories, offices, departments, locations, manufacturers, units: [] })
+      setRecords({ 'asset-categories': assetCategories, offices, departments, locations, manufacturers, units: [], 'inventory-item-types': inventoryItemTypes })
     } catch (error: unknown) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load setup records.' })
     } finally {

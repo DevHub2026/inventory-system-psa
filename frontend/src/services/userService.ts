@@ -26,6 +26,7 @@ export interface CreateUserPayload {
   office_id?: number | null
   status?: string
   roles?: number[]
+  email_notifications_enabled?: boolean
 }
 
 export interface UpdateUserPayload {
@@ -40,6 +41,7 @@ export interface UpdateUserPayload {
   office_id?: number | null
   status?: string
   roles?: number[]
+  email_notifications_enabled?: boolean
 }
 
 export interface ChangePasswordPayload {

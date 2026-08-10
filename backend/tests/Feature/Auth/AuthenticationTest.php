@@ -133,19 +133,19 @@ class AuthenticationTest extends TestCase
             'last_name' => 'Doe',
         ]);
         $token = $user->createToken('auth')->plainTextToken;
-
+ 
         $response = $this->withToken($token)
             ->putJson('/api/v1/profile', [
                 'first_name' => 'Jane',
                 'last_name' => 'Smith',
             ]);
-
+ 
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
                 'message' => 'Profile updated successfully.',
             ]);
-
+ 
         $this->assertDatabaseHas('users', [
             'id' => $user->id,
             'first_name' => 'Jane',
@@ -153,6 +153,32 @@ class AuthenticationTest extends TestCase
         ]);
     }
 
+    public function test_authenticated_user_can_update_email_notification_preference(): void
+    {
+        $user = User::factory()->create([
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email_notifications_enabled' => true,
+        ]);
+        $token = $user->createToken('auth')->plainTextToken;
+ 
+        $response = $this->withToken($token)
+            ->putJson('/api/v1/profile', [
+                'email_notifications_enabled' => false,
+            ]);
+ 
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Profile updated successfully.',
+            ]);
+ 
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'email_notifications_enabled' => false,
+        ]);
+    }
+ 
     public function test_authenticated_user_can_change_password(): void
     {
         $user = User::factory()->create([

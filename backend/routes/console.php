@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('insurance:check-expiration')->daily();
+Schedule::command('borrowings:send-overdue-reminders')->daily();

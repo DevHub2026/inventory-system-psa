@@ -15,6 +15,7 @@ export interface CreateInventoryItemPayload {
   classification?: 'PPE' | 'SE' | 'SUPPLY'
   item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY'
   classification_reason?: string
+  item_type_id?: number | null
   // ── Stock & cost ───────────────────────────────────────────────────────
   quantity: number
   unit_cost?: number | null
@@ -38,6 +39,12 @@ export interface CreateInventoryItemPayload {
   remarks?: string
   // ── Internal flags ────────────────────────────────────────────────────
   track_as_asset?: boolean
+  // ── Identifier fields (synced to linked Asset on save) ────────────────
+  // These are NOT stored on inventory_items; they are sent to the backend
+  // which writes them to the linked Asset / AssetIdentifier records.
+  // Only relevant when track_as_asset = true.
+  property_number?: string | null
+  serial_number?: string | null
 }
 
 export interface UpdateInventoryItemPayload {
@@ -50,6 +57,7 @@ export interface UpdateInventoryItemPayload {
   classification?: 'PPE' | 'SE' | 'SUPPLY'
   item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY'
   classification_reason?: string
+  item_type_id?: number | null
   // ── Stock & cost ───────────────────────────────────────────────────────
   unit_cost?: number | null
   // Procurement (inventory-owned)
@@ -73,6 +81,12 @@ export interface UpdateInventoryItemPayload {
   remarks?: string
   // ── Internal flags ────────────────────────────────────────────────────
   track_as_asset?: boolean
+  // ── Identifier fields (synced to linked Asset on save) ────────────────
+  // Sending these updates the linked Asset / AssetIdentifier records.
+  // Changing property_number or serial_number does NOT affect SKU.
+  // Only relevant when track_as_asset = true.
+  property_number?: string | null
+  serial_number?: string | null
 }
 
 export interface InventoryFilters {
@@ -81,6 +95,7 @@ export interface InventoryFilters {
   search?: string
   status?: string
   type?: 'non_expendable' | 'expendable'
+  item_type_id?: number | null
   classification?: 'PPE' | 'SE' | 'SUPPLY'
   low_stock?: boolean
 }
@@ -212,6 +227,18 @@ export const inventoryService = {
 
   async importWizardHistory(): Promise<ImportHistoryItem[]> {
     return importService.history('inventory')
+  },
+
+  /**
+   * Ask the backend to generate a unique SKU suggestion.
+   * The returned value is NOT reserved — the user can freely edit it.
+   * Final uniqueness is enforced by the backend on save.
+   */
+  async generateSku(prefix?: string): Promise<string> {
+    const params: Record<string, string> = {}
+    if (prefix) params.prefix = prefix
+    const { data } = await api.get<ApiResponse<{ sku: string; unique: boolean }>>('/inventory/generate-sku', { params })
+    return unwrapData(data).sku
   },
 }
 

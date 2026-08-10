@@ -52,6 +52,7 @@ export interface User {
     name: string
   } | null
   status?: string
+  email_notifications_enabled?: boolean
   roles?: Array<{
     id: number
     name: string
@@ -235,10 +236,23 @@ export interface InventoryItem {
   // ── Asset-reference identifiers (read-only in Inventory context) ───────
   /** Read-only. The linked Asset's auto-generated number. */
   asset_number?: string | null
-  /** Read-only. The linked Asset's Property Number (Asset-owned, not editable via Inventory). */
+  /**
+   * The linked Asset's Property Number.
+   * Editable from Inventory Edit when track_as_asset = true.
+   * Synced to assets.property_number by InventoryService.
+   */
   property_number?: string | null
+  /**
+   * The linked Asset's Serial Number (stored as AssetIdentifier SERIAL_NUMBER).
+   * Editable from Inventory Edit when track_as_asset = true.
+   * Synced to asset_identifiers by InventoryService.
+   */
+  serial_number?: string | null
   // ── Classification ────────────────────────────────────────────────────
   type?: 'non_expendable' | 'expendable' | string | null
+  /** Inventory Item Type (master data). Selectable / manageable from Inventory workflow. */
+  item_type_id?: number | null
+  item_type_name?: string | null
   classification?: 'PPE' | 'SE' | 'SUPPLY' | string | null
   item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY' | string | null
   classification_reason?: string | null

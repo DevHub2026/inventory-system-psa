@@ -46,6 +46,11 @@ class AssetPolicy
         return $this->canManageAssets($user);
     }
 
+    public function restore(?User $user, Asset $asset): bool
+    {
+        return $this->canManageAssets($user);
+    }
+
     public function transfer(?User $user, Asset $asset): bool
     {
         return $this->canManageAssets($user);

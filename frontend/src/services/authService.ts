@@ -13,6 +13,7 @@ export interface UpdateProfilePayload {
   middle_name?: string | null
   last_name?: string
   email?: string
+  email_notifications_enabled?: boolean
 }
 
 export interface ChangePasswordPayload {

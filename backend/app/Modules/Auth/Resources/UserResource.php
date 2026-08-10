@@ -33,6 +33,7 @@ class UserResource extends JsonResource
                 'name' => $this->office?->name,
             ]),
             'status' => $this->status,
+            'email_notifications_enabled' => $this->email_notifications_enabled,
             'roles' => $this->whenLoaded('roles', function () {
                 return $this->roles->map(fn ($role) => [
                     'id' => $role->id,

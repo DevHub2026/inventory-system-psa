@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ScanLine, CheckCircle2, Printer, Search, Filter, ExternalLink,
@@ -293,7 +293,7 @@ export function AssetPage() {
 
   // Summary counts
   const [summary, setSummary] = useState({ available: 0, borrowed: 0, reserved: 0, maintenance: 0, total: 0, disposalPending: 0, disposalDisposed: 0, disposalTotal: 0 })
-  const [activeSection, setActiveSection] = useState<'all' | 'available' | 'disposal'>('all')
+  const [activeSection, setActiveSection] = useState<'all' | 'available' | 'disposal' | 'archived'>('all')
   const [disposalPending, setDisposalPending] = useState<Asset[]>([])
   const [disposalDisposed, setDisposalDisposed] = useState<Asset[]>([])
   const [disposalLoading, setDisposalLoading] = useState(false)
@@ -330,6 +330,14 @@ export function AssetPage() {
   const [disposalAudit, setDisposalAudit] = useState<AuditLogItem[]>([])
   const [loadingDisposalAudit, setLoadingDisposalAudit] = useState(false)
 
+  const [archivedRows, setArchivedRows] = useState<Asset[]>([])
+  const [archivedPage, setArchivedPage] = useState(1)
+  const [archivedLastPage, setArchivedLastPage] = useState(1)
+  const [archivedTotal, setArchivedTotal] = useState(0)
+  const [archivedLoading, setArchivedLoading] = useState(false)
+  const [restoreAsset, setRestoreAsset] = useState<Asset | null>(null)
+  const [restoreLoading, setRestoreLoading] = useState(false)
+
   // Borrowable toggle state
   const [borrowableLoading, setBorrowableLoading] = useState(false)
 
@@ -349,6 +357,19 @@ export function AssetPage() {
       setLoading(false)
     }
   }, [status])
+
+  const loadArchived = useCallback(async (nextPage: number = 1, nextSearch?: string) => {
+    setArchivedLoading(true)
+    try {
+      const result = await assetService.listArchived({ page: nextPage, search: nextSearch || undefined })
+      setArchivedRows(result.items)
+      setArchivedPage(result.meta.current_page)
+      setArchivedLastPage(result.meta.last_page)
+      setArchivedTotal(result.meta.total)
+    } finally {
+      setArchivedLoading(false)
+    }
+  }, [])
 
   async function loadDisposalData() {
     setDisposalLoading(true)
@@ -440,6 +461,14 @@ export function AssetPage() {
     }
   }, [user, loadDisposalAudit])
 
+  const openArchivedView = useCallback((asset: Asset) => {
+    setMessage(null)
+    setDetailTab('info')
+    setIssuanceHistory([])
+    setDisposalAudit([])
+    setViewAsset(asset)
+  }, [])
+
   async function openEdit(id: number) {
     if (!canManageAssets) { setMessage('Only administrators can edit asset records.'); return }
     setMessage(null)
@@ -489,7 +518,9 @@ export function AssetPage() {
         status:           editForm.status,
         condition_status: editForm.condition_status || null,
         remarks:          editForm.remarks || null,
-        property_number:  editForm.property_number || null,
+        // property_number is only editable here for standalone assets (no linked InventoryItem).
+        // For inventory-linked assets, Property Number is edited from Inventory Edit.
+        ...(editAsset.inventory_item_id ? {} : { property_number: editForm.property_number || null }),
       })
 
       if (shouldIssue) {
@@ -532,8 +563,12 @@ export function AssetPage() {
       void loadDisposalData()
       return
     }
+    if (activeSection === 'archived') {
+      void loadArchived(1)
+      return
+    }
     void load(1)
-  }, [activeSection, load, status])
+  }, [activeSection, load, loadArchived])
 
   useEffect(() => {
     const q = searchParams.get('search') ?? ''
@@ -542,14 +577,20 @@ export function AssetPage() {
       void loadDisposalData()
       return
     }
+    if (activeSection === 'archived') {
+      void loadArchived(1, q)
+      return
+    }
     void load(1, q)
-  }, [activeSection, load, searchParams])
+  }, [activeSection, load, loadArchived, searchParams])
 
   /* Cross-component data refresh subscription */
   useEffect(() => onDataChanged((scope) => {
     if (affectsScope(scope, 'assets') || affectsScope(scope, 'borrowings') || affectsScope(scope, 'reservations')) {
       if (activeSection === 'disposal') {
         void loadDisposalData()
+      } else if (activeSection === 'archived') {
+        void loadArchived(archivedPage, search)
       } else {
         void load(page)
       }
@@ -557,7 +598,7 @@ export function AssetPage() {
       if (viewAsset) void openView(viewAsset.id)
       if (qrAsset)   void openQrLabel(qrAsset.id)
     }
-  }), [activeSection, page, search, status, viewAsset?.id, qrAsset?.id, load, loadSummary, viewAsset, qrAsset, openView])
+  }), [activeSection, archivedPage, page, search, status, viewAsset?.id, qrAsset?.id, load, loadArchived, loadSummary, viewAsset, qrAsset, openView])
 
   // ── Table styles ─────────────────────────────────────────────────────────────
   const th: React.CSSProperties = {
@@ -742,6 +783,7 @@ export function AssetPage() {
             { key: 'all', label: 'All Assets' },
             { key: 'available', label: 'Available Assets' },
             { key: 'disposal', label: 'Disposal' },
+            { key: 'archived', label: 'Archived Assets' },
           ].map((entry) => {
             const active = activeSection === entry.key
             return (
@@ -754,9 +796,15 @@ export function AssetPage() {
                     void loadDisposalData()
                     return
                   }
+                  if (entry.key === 'archived') {
+                    setActiveSection('archived')
+                    setStatus('')
+                    void loadArchived(1, search)
+                    return
+                  }
                   setActiveSection(entry.key as 'all' | 'available')
                   setStatus(entry.key === 'available' ? 'AVAILABLE' : '')
-                  void load(1)
+                  void load(1, search)
                 }}
                 style={{
                   borderRadius: 999,
@@ -777,7 +825,7 @@ export function AssetPage() {
           })}
         </div>
         <div style={{ fontSize: 13, color: '#64748B' }}>
-          {activeSection === 'disposal' ? 'Manage disposal workflow and lifecycle actions.' : 'Browse operational asset states and workflows.'}
+          {activeSection === 'disposal' ? 'Manage disposal workflow and lifecycle actions.' : activeSection === 'archived' ? 'Review archived assets and restore them when permitted.' : 'Browse operational asset states and workflows.'}
         </div>
       </div>
 
@@ -970,6 +1018,81 @@ export function AssetPage() {
             </Card>
           </div>
         </div>
+      ) : activeSection === 'archived' ? (
+        <Card noPadding>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>Archived Assets</h2>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748B' }}>Archived assets remain linked to their inventory records and can be restored when permitted.</p>
+            </div>
+            <Badge tone="gray">{archivedTotal} archived</Badge>
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #E2E8F0', background: '#fff' }}>
+            <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
+              <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void loadArchived(1, search) }}
+                placeholder="Search archived assets..."
+                style={{ width: '100%', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 12px 10px 40px', fontSize: 13.5, outline: 'none', fontFamily: 'inherit' }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadArchived(1, search)}
+              style={{ border: '1px solid #E2E8F0', borderRadius: 10, background: '#fff', color: '#475569', padding: '9px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            >
+              Refresh
+            </button>
+          </div>
+          <div style={{ padding: 20 }}>
+            {archivedLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}><Spinner /></div>
+            ) : archivedRows.length === 0 ? (
+              <EmptyState title="No archived assets" description="Assets archived from the active list will appear here for review and restoration." />
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={th}>Asset Number</th>
+                      <th style={th}>Property Number</th>
+                      <th style={th}>Name</th>
+                      <th style={th}>Category</th>
+                      <th style={th}>Status</th>
+                      <th style={th}>Location</th>
+                      <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20 }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {archivedRows.map((r, idx) => (
+                      <tr key={r.id} style={{ background: idx % 2 === 0 ? '#fff' : '#FAFBFC', transition: 'background 0.1s' }} onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F1F5F9' }} onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? '#fff' : '#FAFBFC' }}>
+                        <td style={td}><code style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace", fontSize: 11.5, color: '#475569', background: '#F1F5F9', padding: '3px 8px', borderRadius: 6, display: 'inline-block' }}>{r.asset_number}</code></td>
+                        <td style={td}>{r.property_number ? <code style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace", fontSize: 11.5, color: '#475569', background: '#F1F5F9', padding: '3px 8px', borderRadius: 6, display: 'inline-block' }}>{r.property_number}</code> : <span style={{ color: '#94A3B8' }}>—</span>}</td>
+                        <td style={td}><div><span style={{ fontWeight: 600, color: '#0F172A', fontSize: 13.5 }}>{r.name}</span>{r.description && <div style={{ fontSize: 11.5, color: '#9CA3AF', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{r.description}</div>}</div></td>
+                        <td style={td}><span style={{ color: '#64748B', fontSize: 13 }}>{r.category ?? '—'}</span></td>
+                        <td style={td}>{(() => { const eff = getEffectiveAssetStatus(r); return <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}><Badge tone={eff.tone}>{eff.label}</Badge>{eff.subtext && eff.subtextTone && <Badge tone={eff.subtextTone}>{eff.subtext}</Badge>}</div> })()}</td>
+                        <td style={td}><span style={{ color: '#64748B', fontSize: 13 }}>{r.location ?? '—'}</span></td>
+                        <td style={{ ...td, textAlign: 'right' as const, paddingRight: 20 }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                            <button type="button" onClick={() => openArchivedView(r)} style={{ border: '1px solid #D1D5DB', borderRadius: 8, background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>View</button>
+                            {canManageAssets && (
+                              <button type="button" onClick={() => setRestoreAsset(r)} style={{ border: '1px solid #1E40AF', borderRadius: 8, background: '#1E40AF', color: '#fff', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Restore</button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          <div style={{ borderTop: '1px solid #F1F5F9', padding: '10px 20px' }}>
+            <Pagination page={archivedPage} lastPage={archivedLastPage} total={archivedTotal} onPageChange={(p) => void loadArchived(p, search)} />
+          </div>
+        </Card>
       ) : (
         <Card noPadding>
         {/* Toolbar */}
@@ -988,7 +1111,7 @@ export function AssetPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void load(1) }}
+              onKeyDown={(e) => { if (e.key === 'Enter') void load(1, search) }}
               placeholder="Search by asset number, name, or category..."
               style={{
                 width: '100%', height: 38, paddingLeft: 34, paddingRight: 14,
@@ -1012,7 +1135,7 @@ export function AssetPage() {
           {/* Status filter */}
           <select
             value={status}
-            onChange={(e) => { setStatus(e.target.value); void load(1) }}
+            onChange={(e) => { setStatus(e.target.value); void load(1, search) }}
             style={{
               height: 38, paddingInline: '12px 32px', borderRadius: 10,
               border: '1.5px solid #E2E8F0', fontSize: 13, color: status ? '#1E293B' : '#94A3B8',
@@ -1038,7 +1161,7 @@ export function AssetPage() {
 
           {/* Search button */}
           <button
-            onClick={() => void load(1)}
+            onClick={() => void load(1, search)}
             style={{
               height: 38, paddingInline: 14, borderRadius: 10,
               border: '1.5px solid #E2E8F0', background: '#F8FAFC',
@@ -1166,7 +1289,7 @@ export function AssetPage() {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
                             <Badge tone={eff.tone}>{eff.label}</Badge>
                             {eff.subtext && eff.subtextTone && (
-                              <Badge tone={eff.subtextTone}>{eff.subtext}</Badge>
+                              <Badge tone={eff.subtextTone}>{String(eff.subtext)}</Badge>
                             )}
                           </div>
                         )
@@ -1314,7 +1437,15 @@ export function AssetPage() {
         onCancel={() => setDeleteId(null)}
         onConfirm={() => {
           if (deleteId === null) return
-          void assetService.remove(deleteId).then(() => { setDeleteId(null); setMessage('Asset archived.'); void load(page); void loadSummary() })
+          void assetService.archive(deleteId).then(() => {
+            setDeleteId(null)
+            setMessage('Asset archived.')
+            setActiveSection('archived')
+            setStatus('')
+            void loadArchived(1, search)
+            void load(1, search)
+            void loadSummary()
+          })
         }}
       />
 
@@ -1461,6 +1592,28 @@ export function AssetPage() {
         }}
       />
  
+      <ConfirmDialog
+        open={restoreAsset !== null}
+        title="Restore Asset"
+        message="Restore this archived asset and make it active again?"
+        confirmLabel={restoreLoading ? 'Restoring…' : 'Restore Asset'}
+        onCancel={() => setRestoreAsset(null)}
+        onConfirm={() => {
+          if (!restoreAsset) return
+          setRestoreLoading(true)
+          void assetService.restore(restoreAsset.id)
+            .then(() => {
+              setRestoreAsset(null)
+              setMessage('Asset restored successfully.')
+              notifyDataChanged('assets')
+              void load(1, search)
+              void loadArchived(1, search)
+              void loadSummary()
+            })
+            .finally(() => setRestoreLoading(false))
+        }}
+      />
+
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
       <SharedQrScanner open={scannerOpen} onClose={() => setScannerOpen(false)} scanSource="assets_page_scanner" mode="modal" onCompleted={() => { void load(page); void loadSummary() }} />
 
@@ -1684,16 +1837,30 @@ export function AssetPage() {
                       <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 4 }}>Status</div>
                       {(() => {
                         const eff = getEffectiveAssetStatus(viewAsset)
+                        const labelText = String(eff.label ?? '')
+                        const subtextText = eff.subtext ? String(eff.subtext) : null
+                        const tone = (eff.tone ?? 'gray') as import('@/components/ui').Tone
+                        const subtextTone = (eff.subtextTone ?? null) as import('@/components/ui').Tone | null
+                        const toneStyle = {
+                          gray: { background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' },
+                          blue: { background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' },
+                          green: { background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' },
+                          red: { background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' },
+                          yellow: { background: '#fefce8', color: '#854d0e', border: '1px solid #fde68a' },
+                          teal: { background: '#f0fdfa', color: '#0f766e', border: '1px solid #99f6e4' },
+                          violet: { background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' },
+                          orange: { background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' },
+                        }[tone]
                         return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                            <Badge tone={eff.tone}>{eff.label}</Badge>
-                            {eff.subtext && eff.subtextTone && (
-                              <Badge tone={eff.subtextTone}>
-                                {eff.subtext}
-                                {viewAsset.reservation_context?.requester_name && (
-                                  <span style={{ fontWeight: 400, opacity: 0.75 }}> · {viewAsset.reservation_context.requester_name}</span>
-                                )}
-                              </Badge>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '2px 10px', fontSize: 12, fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap', background: toneStyle.background, color: toneStyle.color, border: toneStyle.border, boxSizing: 'border-box' }}>{labelText}</span>
+                            {subtextText && subtextTone && (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '2px 10px', fontSize: 12, fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap', background: toneStyle.background, color: toneStyle.color, border: toneStyle.border, boxSizing: 'border-box' }}>
+                                {subtextText}
+                                {viewAsset.reservation_context?.requester_name ? (
+                                  <span style={{ fontWeight: 400, opacity: 0.75 }}> · {String(viewAsset.reservation_context.requester_name)}</span>
+                                ) : null}
+                              </span>
                             )}
                           </div>
                         )
@@ -2042,7 +2209,7 @@ export function AssetPage() {
                     Item details are managed in Inventory
                   </p>
                   <p style={{ margin: '3px 0 0', fontSize: 12, color: '#3B82F6', lineHeight: 1.5 }}>
-                    Name, category, manufacturer, office, location and model are edited from the linked Inventory Item only. Property Number is edited here in Asset Management.
+                    Name, category, manufacturer, office, location and model are edited from the linked Inventory Item only. Property Number, Serial Number, and Asset Number are also managed from Inventory Edit.
                   </p>
                 </div>
                 <button
@@ -2120,17 +2287,36 @@ export function AssetPage() {
             {/* B: Asset Identity (editable) */}
             <div>
               <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Asset Identity</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className={LABEL_CLS}>Property Number</label>
-                  <input
-                    className={SELECT_CLS}
-                    value={editForm.property_number ?? ''}
-                    onChange={(e) => setEditForm({ ...editForm, property_number: e.target.value })}
-                    placeholder="e.g. PROP-0001"
-                  />
+              {editAsset.inventory_item_id ? (
+                /* Inventory-linked asset: Property Number is edited from Inventory Edit */
+                <div style={{
+                  padding: '10px 14px', borderRadius: 10,
+                  border: '1px solid #BFDBFE', background: '#EFF6FF',
+                  fontSize: 12.5, color: '#1E40AF',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style={{ flexShrink: 0 }}>
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <span>
+                    Property Number, Serial Number, and Asset Number are managed from the linked{' '}
+                    <strong>Inventory Item</strong>. Use the "Open Inventory Item" button above to edit them.
+                  </span>
                 </div>
-              </div>
+              ) : (
+                /* Standalone asset: Property Number editable here */
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className={LABEL_CLS}>Property Number</label>
+                    <input
+                      className={SELECT_CLS}
+                      value={editForm.property_number ?? ''}
+                      onChange={(e) => setEditForm({ ...editForm, property_number: e.target.value })}
+                      placeholder="e.g. PROP-0001"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* C: Operational status */}

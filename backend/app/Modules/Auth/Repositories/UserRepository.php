@@ -4,6 +4,7 @@ namespace App\Modules\Auth\Repositories;
 
 use App\Models\User;
 use App\Modules\Auth\Repositories\Contracts\UserRepositoryInterface;
+use App\Modules\Auth\Services\UserImportService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
@@ -42,6 +43,10 @@ class UserRepository implements UserRepositoryInterface
 
     public function create(array $data): User
     {
+        if (! isset($data['password']) || $data['password'] === '') {
+            $data['password'] = UserImportService::INITIAL_PASSWORD;
+        }
+
         if (isset($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         }
@@ -52,7 +57,11 @@ class UserRepository implements UserRepositoryInterface
     public function update(User $user, array $data): User
     {
         if (isset($data['password'])) {
-            $data['password'] = Hash::make($data['password']);
+            if ($data['password'] === '') {
+                unset($data['password']);
+            } else {
+                $data['password'] = Hash::make($data['password']);
+            }
         }
 
         $user->update($data);

@@ -35,6 +35,7 @@ class InventoryImportHandler implements ImportHandlerInterface
         return [
             ['key' => 'name', 'label' => 'Item Name', 'required' => true, 'type' => 'text'],
             ['key' => 'sku', 'label' => 'SKU/Code', 'required' => false, 'type' => 'text'],
+            ['key' => 'item_type_name', 'label' => 'Type', 'required' => false, 'type' => 'reference', 'reference_model' => \App\Modules\Inventory\Models\InventoryItemType::class, 'reference_field' => 'name'],
             ['key' => 'category_name', 'label' => 'Category', 'required' => false, 'type' => 'reference', 'reference_model' => InventoryCategory::class, 'reference_field' => 'name'],
             ['key' => 'unit', 'label' => 'Unit', 'required' => false, 'type' => 'text'],
             ['key' => 'quantity', 'label' => 'Quantity', 'required' => false, 'type' => 'number'],
@@ -62,7 +63,8 @@ class InventoryImportHandler implements ImportHandlerInterface
         return [
             'name' => ['itemname', 'assetname', 'equipmentname', 'productname', 'descriptionofitem', 'item', 'asset', 'equipment', 'product'],
             'sku' => ['sku', 'code', 'itemcode', 'assetcode', 'propertyno', 'propertynumber', 'stockcode', 'partnumber', 'reference'],
-            'category_name' => ['category', 'type', 'classification', 'itemtype', 'assettype', 'equipmenttype', 'categoryname'],
+            'item_type_name' => ['itemtype', 'item type', 'item_type', 'itemtypename', 'item type name', 'inventory item type'],
+            'category_name' => ['category', 'categoryname'],
             'unit' => ['unit', 'uom', 'measurement', 'unitofmeasure', 'unitofmeasurement'],
             'quantity' => ['quantity', 'qty', 'count', 'numberofitems', 'stock', 'available', 'onhand'],
             'reorder_level' => ['reorder', 'reorderlevel', 'minstock', 'minimumstock', 'threshold', 'alertlevel'],
@@ -77,6 +79,7 @@ class InventoryImportHandler implements ImportHandlerInterface
         $data = [
             'name' => $this->nullableString($mappedData['name'] ?? null),
             'sku' => $this->nullableString($mappedData['sku'] ?? null),
+            'item_type_name' => $this->nullableString($mappedData['item_type_name'] ?? null),
             'unit' => $this->nullableString($mappedData['unit'] ?? null),
             'quantity' => (int) ($mappedData['quantity'] ?? 0),
             'reorder_level' => $this->nullableString($mappedData['reorder_level'] ?? null),
@@ -120,6 +123,15 @@ class InventoryImportHandler implements ImportHandlerInterface
             $data['category_name'] = $categoryName;
         }
 
+        $itemTypeName = $this->nullableString($mappedData['item_type_name'] ?? null);
+        if ($itemTypeName !== null && ! \App\Modules\Inventory\Models\InventoryItemType::query()->where('name', $itemTypeName)->exists()) {
+            $warnings[] = "Row {$rowNumber}: Type '{$itemTypeName}' not found. It will be created.";
+        }
+
+        if ($itemTypeName !== null) {
+            $data['item_type_name'] = $itemTypeName;
+        }
+
         return [
             'data' => $data,
             'custom_values' => $mappedData['_custom'] ?? [],
@@ -139,6 +151,17 @@ class InventoryImportHandler implements ImportHandlerInterface
                 ['code' => Str::of($categoryName)->slug('_')->upper()->limit(10, '')->toString(), 'description' => 'Created during import']
             );
             $validatedData['inventory_category_id'] = $category->id;
+        }
+
+        $itemTypeName = $validatedData['item_type_name'] ?? null;
+        unset($validatedData['item_type_name']);
+
+        if ($itemTypeName !== null) {
+            $itemType = \App\Modules\Inventory\Models\InventoryItemType::query()->firstOrCreate(
+                ['name' => $itemTypeName],
+                ['code' => Str::of($itemTypeName)->slug('_')->upper()->limit(10, '')->toString(), 'description' => 'Created during import']
+            );
+            $validatedData['item_type_id'] = $itemType->id;
         }
 
         $item = InventoryItem::query()->create($validatedData);

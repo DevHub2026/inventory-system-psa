@@ -1,7 +1,14 @@
 import { api, unwrapData } from '@/services/api'
 import type { ApiResponse } from '@/types'
 
-export type SetupResource = 'asset-categories' | 'offices' | 'locations' | 'manufacturers' | 'departments' | 'units'
+export type SetupResource =
+  | 'asset-categories'
+  | 'offices'
+  | 'locations'
+  | 'manufacturers'
+  | 'departments'
+  | 'units'
+  | 'inventory-item-types'
 
 export interface SetupRecord {
   id: number

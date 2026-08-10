@@ -19,13 +19,19 @@ use Illuminate\Validation\Rules\Enum;
  *
  * Locked fields (rejected silently — stripped before DB write):
  *   name, description, asset_category_id, manufacturer_id,
- *   office_id, location_id, model, property_number, asset_number
+ *   office_id, location_id, model, asset_number
+ *
+ * IDENTIFIER FIELDS — now managed from Inventory Edit
+ * ────────────────────────────────────────────────────
+ *   property_number  → edit from Inventory Edit (synced to assets table by InventoryService)
+ *   serial_number    → edit from Inventory Edit (synced to AssetIdentifier by InventoryService)
+ *
+ * For inventory-linked assets: Property Number is edited in Inventory → Asset Edit.
+ * For standalone assets (no linked Inventory item): Property Number remains editable here.
  *
  * The only editable fields through this endpoint are asset-operational:
- *   status, condition_status, remarks, property_number
- *
- * property_number is ASSET-OWNED — it identifies one physical instance
- * (e.g. one of 20 laptops → 20 property numbers). It is editable here.
+ *   status, condition_status, remarks
+ *   property_number (standalone assets only — inventory-linked assets use Inventory Edit)
  *
  * DEPRECATED (read-only going forward)
  * ─────────────────────────────────────
@@ -51,6 +57,12 @@ class UpdateAssetRequest extends FormRequest
             'status'           => ['sometimes', 'required', new Enum(AssetStatus::class)],
             'condition_status' => ['nullable', new Enum(ConditionStatus::class)],
             'remarks'          => ['nullable', 'string'],
+
+            // property_number: editable here ONLY for standalone assets (no linked
+            // InventoryItem). For inventory-linked assets, editing happens in Inventory Edit
+            // which calls InventoryService→syncIdentifiersToAsset().
+            // We accept it here to avoid breaking standalone Asset workflows.
+            // The frontend conditionally hides the field for inventory-linked assets.
             'property_number'  => [
                 'nullable', 'string', 'max:100',
                 \Illuminate\Validation\Rule::unique('assets', 'property_number')->ignore($this->route('asset')?->id),

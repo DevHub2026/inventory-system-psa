@@ -44,7 +44,7 @@ class InventoryService
     public function export(array $filters = [], string $format = 'xlsx'): string
     {
         $items = InventoryItem::query()
-            ->with(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location', 'assetCategory'])
+            ->with(['asset.issuedToUser', 'asset.identifiers', 'unit', 'manufacturer', 'office', 'location', 'assetCategory', 'itemType'])
             ->when(! empty($filters['classification']), function ($query) use ($filters) {
                 $query->where('classification', $filters['classification']);
             })
@@ -81,8 +81,10 @@ class InventoryService
                 // ── INVENTORY-OWNED fields ─────────────────────────────────
                 'id'               => $item->id,
                 'classification'   => $item->classification ?? ucfirst(str_replace('_', '-', $item->type ?? '')),
+                'item_type'        => $item->itemType?->name ?? '',
                 'item_name'        => $item->name,
                 'sku'              => $item->sku ?? '',
+                'item_type_name'   => $item->itemType?->name ?? '',
                 'description'      => $item->description ?? '',
                 'unit'             => $item->unit?->name ?? $item->unit ?? '',
                 'manufacturer'     => $item->manufacturer?->name ?? '',
@@ -103,6 +105,9 @@ class InventoryService
                 // ── ASSET-REFERENCE fields (read-only, labeled clearly) ────
                 'asset_number'     => $item->asset?->asset_number ?? '',
                 'property_number'  => $item->asset?->property_number ?? '',
+                'serial_number'    => $item->asset?->identifiers
+                    ?->firstWhere('identifier_type', 'SERIAL_NUMBER')
+                    ?->identifier_value ?? '',
                 'asset_status'     => ($item->asset?->status instanceof \App\Modules\Asset\Enums\AssetStatus
                                         ? $item->asset->status->value
                                         : ($item->asset?->status ?? '')),
@@ -133,6 +138,7 @@ class InventoryService
             // Inventory-owned
             'A' => 'ID',
             'B' => 'Inventory Type',
+            'B2' => 'Item Type',
             'C' => 'Item Name',
             'D' => 'SKU / Item Code',
             'E' => 'Description',
@@ -151,10 +157,11 @@ class InventoryService
             // Asset-reference (read-only, clearly labeled)
             'R' => '[Asset] Asset Number',
             'S' => '[Asset] Property Number',
-            'T' => '[Asset] Asset Status',
-            'U' => '[Asset] Accountability',
-            'V' => 'Created At',
-            'W' => 'Updated At',
+            'T' => '[Asset] Serial Number',
+            'U' => '[Asset] Asset Status',
+            'V' => '[Asset] Accountability',
+            'W' => 'Created At',
+            'X' => 'Updated At',
         ];
 
         foreach ($headers as $col => $header) {
@@ -207,14 +214,15 @@ class InventoryService
             // Asset-reference (read-only display)
             $sheet->setCellValue('R'.$row, $item->asset?->asset_number ?? '');
             $sheet->setCellValue('S'.$row, $item->asset?->property_number ?? '');
-            $sheet->setCellValue('T'.$row, $assetStatus);
-            $sheet->setCellValue('U'.$row, $accountability);
-            $sheet->setCellValue('V'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
-            $sheet->setCellValue('W'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');
+            $sheet->setCellValue('T'.$row, $item->asset?->identifiers?->firstWhere('identifier_type', 'SERIAL_NUMBER')?->identifier_value ?? '');
+            $sheet->setCellValue('U'.$row, $assetStatus);
+            $sheet->setCellValue('V'.$row, $accountability);
+            $sheet->setCellValue('W'.$row, $item->created_at?->format('Y-m-d H:i:s') ?? '');
+            $sheet->setCellValue('X'.$row, $item->updated_at?->format('Y-m-d H:i:s') ?? '');
             $row++;
         }
 
-        foreach (range('A', 'W') as $col) {
+        foreach (range('A', 'X') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -384,7 +392,7 @@ class InventoryService
     }
     public function list(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
-        $query = InventoryItem::query()->with(['asset.issuedToUser', 'unit', 'manufacturer', 'office', 'location', 'assetCategory', 'supplier']);
+        $query = InventoryItem::query()->with(['asset.issuedToUser', 'asset.identifiers', 'unit', 'manufacturer', 'office', 'location', 'assetCategory', 'supplier', 'itemType']);
 
         if (! empty($filters['classification'])) {
             $query->where('classification', $filters['classification']);
@@ -442,6 +450,11 @@ class InventoryService
                 }
             }
 
+            // ── Extract identifier fields (not stored on inventory_items) ──
+            $propertyNumber = array_key_exists('property_number', $data) ? $data['property_number'] : null;
+            $serialNumber   = array_key_exists('serial_number', $data)   ? $data['serial_number']   : null;
+            unset($data['property_number'], $data['serial_number']);
+
             [$data, $trackAsAsset] = $this->normalizeClassificationData($data, true);
 
             // SUPPLY items are never borrowable
@@ -480,10 +493,20 @@ class InventoryService
                     'condition_status' => ConditionStatus::GOOD->value,
                 ];
 
+                // Set property_number on the asset at creation if provided
+                if (filled($propertyNumber)) {
+                    $assetPayload['property_number'] = $propertyNumber;
+                }
+
                 $asset = $this->createAssetForInventoryItem($item, $assetPayload);
                 // Persist both asset_id and track_as_asset = true so the column
                 // accurately reflects the active tracked state.
                 $item->update(['asset_id' => $asset->id, 'track_as_asset' => true]);
+
+                // Sync serial number identifier if provided
+                if (filled($serialNumber)) {
+                    $this->syncSerialNumber($asset, $serialNumber);
+                }
             }
 
             return $item->fresh('asset');
@@ -501,6 +524,17 @@ class InventoryService
         // an asset_id already exists (i.e. the asset is hidden, not deleted).
         $classificationPayload['track_as_asset'] ??= (bool) $item->track_as_asset;
 
+        // ── Extract identifier fields (not stored on inventory_items) ──────
+        // property_number → assets.property_number (asset-owned column)
+        // serial_number   → asset_identifiers(SERIAL_NUMBER) row
+        $propertyNumber     = array_key_exists('property_number', $classificationPayload)
+            ? $classificationPayload['property_number']
+            : false; // false = not present in this request (do not touch)
+        $serialNumber       = array_key_exists('serial_number', $classificationPayload)
+            ? $classificationPayload['serial_number']
+            : false;
+        unset($classificationPayload['property_number'], $classificationPayload['serial_number']);
+
         // ── Extract inventory-shared fields that may update the linked Asset ─
         // These are fields that Inventory owns and that the linked Asset should
         // also reflect when changed (model, description, asset_category_id).
@@ -509,11 +543,10 @@ class InventoryService
         //
         // Asset-OWNED fields are NOT extracted here:
         //   condition_status  → only editable from Asset module
-        //   property_number   → only editable from Asset module
         $assetLevelFields = [];
         foreach (['model', 'description', 'asset_category_id'] as $field) {
-            if (array_key_exists($field, $data)) {
-                $assetLevelFields[$field] = $data[$field];
+            if (array_key_exists($field, $classificationPayload)) {
+                $assetLevelFields[$field] = $classificationPayload[$field];
                 unset($classificationPayload[$field]); // removed so normalizeClassificationData skips it
             }
         }
@@ -577,6 +610,20 @@ class InventoryService
             $item->load('asset');
             if ($item->asset) {
                 $item->asset->update($assetLevelFields);
+            }
+        }
+
+        // ── Sync identifier fields to the linked Asset ────────────────────
+        // Only touch these if they were present in the incoming request.
+        if ($item->asset_id) {
+            $item->load('asset');
+            if ($item->asset) {
+                if ($propertyNumber !== false) {
+                    $item->asset->update(['property_number' => $propertyNumber ?: null]);
+                }
+                if ($serialNumber !== false) {
+                    $this->syncSerialNumber($item->asset, $serialNumber ?: null);
+                }
             }
         }
 
@@ -844,6 +891,41 @@ class InventoryService
         $data['track_as_asset']  = $trackAsAsset;
 
         return [$data, $trackAsAsset];
+    }
+
+    /**
+     * Sync a serial number to the linked Asset's AssetIdentifier record.
+     *
+     * - $value = non-empty string  → create or update the SERIAL_NUMBER identifier
+     * - $value = null / ''         → delete the SERIAL_NUMBER identifier if it exists
+     *
+     * Only one SERIAL_NUMBER per asset is maintained (the first one found).
+     * PSA_QR identifiers are never touched here.
+     */
+    private function syncSerialNumber(Asset $asset, ?string $value): void
+    {
+        $existing = AssetIdentifier::query()
+            ->where('asset_id', $asset->id)
+            ->where('identifier_type', IdentifierType::SERIAL_NUMBER->value)
+            ->first();
+
+        if (filled($value)) {
+            if ($existing) {
+                $existing->update(['identifier_value' => $value]);
+            } else {
+                AssetIdentifier::query()->create([
+                    'asset_id'         => $asset->id,
+                    'identifier_type'  => IdentifierType::SERIAL_NUMBER->value,
+                    'identifier_value' => $value,
+                    'is_primary'       => false,
+                ]);
+            }
+        } else {
+            // Clear the serial number
+            if ($existing) {
+                $existing->delete();
+            }
+        }
     }
 
     private function uniqueAssetNumber(string $baseAssetNumber): string

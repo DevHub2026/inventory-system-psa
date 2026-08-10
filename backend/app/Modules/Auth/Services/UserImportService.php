@@ -14,7 +14,7 @@ use ZipArchive;
 
 class UserImportService
 {
-    public const INITIAL_PASSWORD = 'psagens9500';
+    public const INITIAL_PASSWORD = 'psasargen9500';
 
     /**
      * @return array<string, mixed>
@@ -42,11 +42,15 @@ class UserImportService
             }
 
             $email = strtolower(trim((string) $normalizedRow['email']));
-            $idNumber = trim((string) $normalizedRow['id_number']);
+            $idNumber = $this->nullableString($normalizedRow['id_number'] ?? null);
             $providedUsername = $this->nullableString($normalizedRow['username'] ?? null);
 
             // Use provided username or generate one
-            $username = $providedUsername ?? $this->generateUsername((string) $normalizedRow['last_name'], $idNumber);
+            $username = $providedUsername ?? $this->generateUsername(
+                trim((string) $normalizedRow['last_name']),
+                $idNumber,
+                $email,
+            );
 
             // Collision-safe username: append _1, _2, ... if taken
             $originalUsername = $username;
@@ -62,7 +66,7 @@ class UserImportService
                 continue;
             }
 
-            if (isset($seenIdNumbers[$idNumber])) {
+            if ($idNumber !== null && isset($seenIdNumbers[$idNumber])) {
                 $skipped++;
                 $results[] = $this->result($rowNumber, 'skipped', $normalizedRow, 'Duplicate ID number within import file.', $username);
                 continue;
@@ -74,7 +78,7 @@ class UserImportService
                 continue;
             }
 
-            if (User::query()->where('employee_number', $idNumber)->exists()) {
+            if ($idNumber !== null && User::query()->where('employee_number', $idNumber)->exists()) {
                 $skipped++;
                 $results[] = $this->result($rowNumber, 'skipped', $normalizedRow, 'ID number already exists.', $username);
                 continue;
@@ -90,10 +94,10 @@ class UserImportService
             DB::transaction(function () use ($normalizedRow, $email, $idNumber, $username, $role): void {
                 $user = User::query()->create([
                     'employee_number' => $idNumber,
-                    'username' => $username,
-                    'first_name' => trim((string) $normalizedRow['first_name']),
+                    'username' => $username ?: null,
+                    'first_name' => $this->nullableString($normalizedRow['first_name'] ?? null),
                     'middle_name' => $this->nullableString($normalizedRow['middle_name'] ?? null),
-                    'last_name' => trim((string) $normalizedRow['last_name']),
+                    'last_name' => $this->nullableString($normalizedRow['last_name'] ?? null),
                     'email' => $email,
                     'password' => \Illuminate\Support\Facades\Hash::make(self::INITIAL_PASSWORD),
                     'status' => UserStatus::ACTIVE->value,
@@ -103,8 +107,12 @@ class UserImportService
             });
 
             $seenEmails[$email] = true;
-            $seenIdNumbers[$idNumber] = true;
-            $seenUsernames[$username] = true;
+            if ($idNumber !== null) {
+                $seenIdNumbers[$idNumber] = true;
+            }
+            if ($username !== null && $username !== '') {
+                $seenUsernames[$username] = true;
+            }
             $imported++;
             $results[] = $this->result($rowNumber, 'imported', $normalizedRow, 'Imported successfully.', $username);
         }
@@ -115,7 +123,7 @@ class UserImportService
             'skipped' => $skipped,
             'failed' => $failed,
             'initial_password' => self::INITIAL_PASSWORD,
-            'username_rule' => 'Auto-generated as lowercase(last_name)+employee_number; duplicates get a _1, _2 suffix',
+            'username_rule' => 'Auto-generated as lowercase(last_name)+employee_number when available, otherwise email local part; duplicates get a _1, _2 suffix',
             'rows' => $results,
         ];
     }
@@ -326,10 +334,10 @@ class UserImportService
     private function validateRow(array $row): array
     {
         $validator = Validator::make($row, [
-            'first_name' => ['required', 'string', 'max:255'],
+            'first_name' => ['nullable', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'id_number' => ['required', 'string', 'max:50'],
+            'last_name' => ['nullable', 'string', 'max:255'],
+            'id_number' => ['nullable', 'string', 'max:50'],
             'email' => ['required', 'string', 'email', 'max:255'],
             'role_id' => ['nullable', 'integer'],
             'role' => ['nullable', 'string', 'max:255'],
@@ -342,12 +350,22 @@ class UserImportService
         return $validator->errors()->all();
     }
 
-    private function generateUsername(string $lastName, string $idNumber): string
+    private function generateUsername(string $lastName, ?string $idNumber, string $email): string
     {
         // Strip anything that isn't a-z or 0-9 (after lowercasing).
-        $sanitized = preg_replace('/[^a-z0-9]/', '', strtolower(trim($lastName))) ?? '';
+        $sanitizedLastName = preg_replace('/[^a-z0-9]/', '', strtolower(trim($lastName))) ?? '';
+        $usernameBase = $sanitizedLastName;
 
-        return $sanitized . $idNumber;
+        if ($idNumber !== null && $idNumber !== '') {
+            return $usernameBase . $idNumber;
+        }
+
+        if ($usernameBase !== '') {
+            return $usernameBase;
+        }
+
+        $localPart = strtolower(explode('@', $email)[0]);
+        return preg_replace('/[^a-z0-9]/', '', $localPart) ?? '';
     }
 
     /**

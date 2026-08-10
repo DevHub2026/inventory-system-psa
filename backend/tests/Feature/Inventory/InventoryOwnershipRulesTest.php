@@ -74,7 +74,7 @@ class InventoryOwnershipRulesTest extends TestCase
 
     // ── property_number is PROHIBITED ────────────────────────────────────────
 
-    public function test_property_number_is_prohibited_in_inventory_create(): void
+    public function test_property_number_is_accepted_in_inventory_create_and_synced_to_asset(): void
     {
         [, $token] = $this->adminToken();
 
@@ -83,11 +83,13 @@ class InventoryOwnershipRulesTest extends TestCase
             'sku'             => 'TEST-PROP-001',
             'quantity'        => 1,
             'classification'  => 'PPE',
-            'property_number' => 'PSA-001',  // ASSET-OWNED — must be rejected
+            'track_as_asset'  => true,
+            'property_number' => 'PSA-PROP-001',  // now accepted — synced to linked Asset
         ]);
 
-        $response->assertStatus(422);
-        $this->assertArrayHasKey('property_number', $response->json('errors'));
+        $response->assertStatus(201);
+        // The property number should be returned in the response via the linked asset
+        $this->assertEquals('PSA-PROP-001', $response->json('data.property_number'));
     }
 
     // ── model, description, asset_category_id ARE accepted ───────────────────

@@ -187,15 +187,94 @@ class AssetService
         $asset->update(['status' => AssetStatus::RETIRED]);
         $asset->delete();
 
-        // Also soft-delete the linked inventory item so the counts stay consistent.
-        // The inventory item's deletion is NOT permanent — it can be restored via
-        // InventoryItem::withTrashed()->find($id)->restore() if needed.
-        \App\Modules\Inventory\Models\InventoryItem::query()
-            ->where('asset_id', $asset->id)
-            ->whereNull('deleted_at')
-            ->update(['deleted_at' => now()]);
+        // The InventoryItem is NOT soft-deleted. Inventory owns the Inventory Item;
+        // Asset owns the Asset instance. Archiving the Asset must not destroy the
+        // Inventory to Asset relationship nor hide the Inventory Item from active
+        // Inventory lists.
+        return Asset::withTrashed()->findOrFail($asset->id);
+    }
 
-        return $asset;
+    public function restore(Asset $asset): Asset
+    {
+        // Only restore assets that are currently soft-deleted.
+        if ($asset->trashed()) {
+            $asset->restore();
+        }
+
+        // If the asset was RETIRED as part of archiving, bring it back to
+        // AVAILABLE so it surfaces in active Asset Management again.
+        if ($asset->status === AssetStatus::RETIRED) {
+            $asset->update(['status' => AssetStatus::AVAILABLE]);
+        }
+
+        return $asset->fresh()->load(['category', 'manufacturer', 'office', 'location', 'identifiers', 'inventoryItem']);
+    }
+
+    public function listArchived(array $filters = []): LengthAwarePaginator
+    {
+        $perPage = (int) ($filters['per_page'] ?? 20);
+
+        $query = Asset::query()
+            ->onlyTrashed()
+            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser', 'inventoryItem']);
+
+        if (! empty($filters['search'])) {
+            $like = '%'.$filters['search'].'%';
+            $operator = $query->getConnection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+            $query->where(function ($q) use ($like, $operator) {
+                $q->where('asset_number', $operator, $like)
+                    ->orWhere('property_number', $operator, $like)
+                    ->orWhere('name', $operator, $like)
+                    ->orWhere('model', $operator, $like)
+                    ->orWhereHas('identifiers', function ($identifiers) use ($like, $operator) {
+                        $identifiers->where('identifier_value', $operator, $like);
+                    })
+                    ->orWhereHas('inventoryItem', function ($inv) use ($like, $operator) {
+                        $inv->where('name', $operator, $like)
+                            ->orWhere('sku', $operator, $like);
+                    });
+            });
+        }
+
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (! empty($filters['office_id'])) {
+            $query->where('office_id', $filters['office_id']);
+        }
+
+        if (! empty($filters['location_id'])) {
+            $query->where('location_id', $filters['location_id']);
+        }
+
+        if (! empty($filters['asset_category_id'])) {
+            $query->where('asset_category_id', $filters['asset_category_id']);
+        }
+
+        if (! empty($filters['manufacturer_id'])) {
+            $query->where('manufacturer_id', $filters['manufacturer_id']);
+        }
+
+        $sort = $filters['sort'] ?? '-created_at';
+        $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
+        $column = ltrim($sort, '-');
+
+        $allowed = [
+            'asset_number',
+            'name',
+            'status',
+            'created_at',
+            'updated_at',
+        ];
+
+        if (! in_array($column, $allowed, true)) {
+            $column = 'created_at';
+            $direction = 'desc';
+        }
+
+        // Only trashed Assets are returned - never active ones.
+        return $query->orderBy($column, $direction)->paginate($perPage);
     }
 
     public function transfer(Asset $asset, array $data): Asset

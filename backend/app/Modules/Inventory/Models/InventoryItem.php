@@ -29,6 +29,7 @@ class InventoryItem extends Model
     protected $fillable = [
         'asset_id',
         'type',
+        'item_type_id',
         'classification',
         'item_nature',
         'classification_reason',
@@ -96,6 +97,11 @@ class InventoryItem extends Model
     public function assetCategory(): BelongsTo
     {
         return $this->belongsTo(AssetCategory::class, 'asset_category_id');
+    }
+
+    public function itemType(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItemType::class, 'item_type_id');
     }
 
     /**

@@ -208,6 +208,7 @@ export function SettingsPage() {
   const [profileForm, setProfileForm] = useState<UpdateProfilePayload>({
     name:  displayName(user),
     email: user?.email || '',
+    email_notifications_enabled: user?.email_notifications_enabled ?? true,
   })
 
   useEffect(() => {
@@ -215,9 +216,10 @@ export function SettingsPage() {
       setProfileForm({
         name:  displayName(user),
         email: user?.email || '',
+        email_notifications_enabled: user?.email_notifications_enabled ?? true,
       })
     }
-  }, [user?.id, user?.name, user?.full_name, user?.first_name, user?.last_name, user?.email, isEditing])
+  }, [user?.id, user?.name, user?.full_name, user?.first_name, user?.last_name, user?.email, user?.email_notifications_enabled, isEditing])
 
   const [passwordForm, setPasswordForm] = useState<ChangePasswordPayload>({
     current_password: '', password: '', password_confirmation: '',
@@ -240,6 +242,7 @@ export function SettingsPage() {
         first_name: firstName || undefined,
         last_name: lastName,
         email: profileForm.email?.trim() || undefined,
+        email_notifications_enabled: profileForm.email_notifications_enabled,
       })
       // Ensure the new name is set in the user object even if the backend
       // doesn't return it in the response
@@ -399,6 +402,23 @@ export function SettingsPage() {
                 readOnly={!isEditing}
                 placeholder="your@email.com"
               />
+            </div>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 10, cursor: isEditing ? 'pointer' : 'not-allowed' }}>
+              <input
+                type="checkbox"
+                checked={profileForm.email_notifications_enabled ?? true}
+                disabled={!isEditing}
+                onChange={(e) => setProfileForm({ ...profileForm, email_notifications_enabled: e.target.checked })}
+                className="h-4 w-4 rounded border border-[#D1D5DB] bg-white accent-[#0D47A1]"
+              />
+              <span style={{ fontSize: 14, color: T.text, fontWeight: 500 }}>
+                Receive application emails and reminders
+              </span>
+            </label>
+            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 6 }}>
+              Turn this off to stop email notifications while still keeping in-app alerts.
             </div>
           </div>
 

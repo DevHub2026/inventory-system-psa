@@ -26,6 +26,7 @@ class UpdateProfileRequest extends FormRequest
             'name'            => ['sometimes', 'nullable', 'string', 'max:500'],
             'username'        => ['sometimes', 'nullable', 'string', 'max:50'],
             'employee_number' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'email_notifications_enabled' => ['sometimes', 'boolean'],
             'email'           => [
                 'sometimes',
                 'nullable',

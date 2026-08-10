@@ -20,6 +20,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('assets/search', [AssetController::class, 'search']);
     Route::get('assets/scan', [AssetController::class, 'scan']);
     Route::post('assets/{asset}/archive', [AssetController::class, 'archive']);
+    // IMPORTANT: /assets/archived must be registered BEFORE apiResource('assets')
+    // otherwise 'archived' would be treated as the {asset} route parameter.
+    Route::get('assets/archived', [AssetController::class, 'archived']);
+    Route::post('assets/{asset}/restore', [AssetController::class, 'restore']);
     Route::post('assets/{asset}/transfer', [AssetController::class, 'transfer']);
     Route::patch('assets/{asset}/borrowable', [AssetController::class, 'setBorrowable']);
 

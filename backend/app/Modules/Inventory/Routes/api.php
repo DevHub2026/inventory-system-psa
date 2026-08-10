@@ -2,6 +2,7 @@
 
 use App\Modules\Inventory\Controllers\InventoryController;
 use App\Modules\Inventory\Controllers\InventoryImportWizardController;
+use App\Modules\Inventory\Controllers\InventoryItemTypeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware([
@@ -9,6 +10,7 @@ Route::middleware([
     'role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head',
 ])->group(function (): void {
     Route::get('inventory/validate-sku', [InventoryController::class, 'validateSku']);
+    Route::get('inventory/generate-sku', [InventoryController::class, 'generateSku']);
     Route::get('inventory', [InventoryController::class, 'index']);
     Route::get('inventory/simple', [InventoryController::class, 'simpleList']);
     Route::get('inventory/{item}', [InventoryController::class, 'show']);
@@ -32,4 +34,8 @@ Route::middleware([
     Route::post('inventory/import-wizard/execute', [InventoryImportWizardController::class, 'execute']);
     Route::get('inventory/import-wizard/history', [InventoryImportWizardController::class, 'history']);
     Route::get('inventory/import-wizard/system-fields', [InventoryImportWizardController::class, 'systemFields']);
+
+    // Inventory Item Type master data
+    Route::apiResource('inventory-item-types', InventoryItemTypeController::class)
+        ->parameters(['inventory-item-types' => 'inventoryItemType']);
 });

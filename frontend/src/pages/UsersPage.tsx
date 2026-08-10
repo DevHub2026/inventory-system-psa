@@ -50,6 +50,7 @@ export function UsersPage() {
   const [formData, setFormData] = useState<CreateUserPayload>({
     employee_number: '', username: '', first_name: '', middle_name: '', last_name: '',
     email: '', password: '', department_id: null, office_id: null, status: 'active', roles: [],
+    email_notifications_enabled: true,
   })
 
   /** Update username whenever last_name or employee_number change (create mode only). */
@@ -125,7 +126,7 @@ export function UsersPage() {
 
   const handleCreate = () => {
     setEditingUser(null)
-    setFormData({ employee_number: '', username: '', first_name: '', middle_name: '', last_name: '', email: '', password: '', department_id: null, office_id: null, status: 'active', roles: [] })
+    setFormData({ employee_number: '', username: '', first_name: '', middle_name: '', last_name: '', email: '', password: '', department_id: null, office_id: null, status: 'active', roles: [], email_notifications_enabled: true })
     setModalOpen(true)
   }
 
@@ -143,6 +144,7 @@ export function UsersPage() {
       office_id: u.office_id || null,
       status: u.status || 'active',
       roles: u.roles?.map((role) => role.id) ?? [],
+      email_notifications_enabled: u.email_notifications_enabled ?? true,
     })
     setModalOpen(true)
   }
@@ -173,6 +175,7 @@ export function UsersPage() {
           office_id: formData.office_id,
           status: formData.status,
           roles: formData.roles,
+          email_notifications_enabled: formData.email_notifications_enabled,
         }
         await userService.updateUser(editingUser.id, updatePayload)
         setMessage({ type: 'success', text: 'User updated successfully.' })
@@ -386,6 +389,15 @@ export function UsersPage() {
               {!editingUser && (
                 <Input label="Password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
               )}
+              <label className="flex items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white px-3 py-3 text-sm text-[#1F2937]">
+                <input
+                  type="checkbox"
+                  checked={formData.email_notifications_enabled ?? true}
+                  className="h-4 w-4 rounded accent-[#0D47A1]"
+                  onChange={(e) => setFormData({ ...formData, email_notifications_enabled: e.target.checked })}
+                />
+                <span>Email notifications enabled</span>
+              </label>
               <div className="grid gap-3 sm:grid-cols-3">
                 {/* Department selector */}
                 <div>
@@ -532,7 +544,7 @@ export function UsersPage() {
                 }}>R</span>
                 <div style={{ fontSize: 12.5, color: '#1E3A8A', lineHeight: 1.5 }}>
                   <span style={{ fontWeight: 500 }}>Required: </span>
-                  {['first_name','last_name','id_number','email'].map((f, i, a) => (
+                  {['email'].map((f, i, a) => (
                     <span key={f}>
                       <code style={{ fontFamily: 'ui-monospace,monospace', fontWeight: 700, background: '#DBEAFE', borderRadius: 3, padding: '0 4px' }}>{f}</code>
                       {i < a.length - 1 && <span style={{ color: '#93C5FD' }}>, </span>}
@@ -542,17 +554,17 @@ export function UsersPage() {
               </div>
               <div className="flex items-start gap-2">
                 <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#BFDBFE] text-[10px] font-bold text-[#1E40AF]">O</span>
-                <span>Optional: <strong>middle_name</strong>, <strong>role</strong> (defaults to Employee)</span>
+                <span>Optional: <strong>first_name</strong>, <strong>middle_name</strong>, <strong>last_name</strong>, <strong>id_number</strong>, <strong>role</strong> (defaults to Employee)</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#BFDBFE] text-[10px] font-bold text-[#1E40AF]">⚡</span>
-                <span><strong>Username is auto-generated</strong> as <code className="rounded bg-white/60 px-1">lastname + id_number</code> (e.g. <em>santos20250012</em>). Duplicates get <em>_1</em>, <em>_2</em> suffixes.</span>
+                <span><strong>Username is auto-generated</strong> as <code className="rounded bg-white/60 px-1">lastname + id_number</code> when available, otherwise the email local part. Duplicates get <em>_1</em>, <em>_2</em> suffixes.</span>
               </div>
               {/* Divider */}
               <div style={{ borderTop: '1px solid #BFDBFE', paddingTop: 8, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12, color: '#1E3A8A' }}>
                   <span style={{ fontWeight: 500 }}>Default password: </span>
-                  <code style={{ fontFamily: 'ui-monospace,monospace', fontWeight: 700, background: '#DBEAFE', borderRadius: 3, padding: '0 5px' }}>psagens9500</code>
+                  <code style={{ fontFamily: 'ui-monospace,monospace', fontWeight: 700, background: '#DBEAFE', borderRadius: 3, padding: '0 5px' }}>psasargen9500</code>
                 </span>
                 <span style={{ fontSize: 12, color: '#3B82F6' }}>Formats: CSV · JSON · XLSX</span>
               </div>

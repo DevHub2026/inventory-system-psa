@@ -16,11 +16,13 @@ use Illuminate\Validation\Rule;
  *   manufacturer_id, office_id, location_id,
  *   model, description, asset_category_id
  *
- * ASSET-OWNED (NOT accepted here — belong to the individual Asset):
- *   condition_status   → edit via Asset module
- *   property_number    → edit via Asset module
- *   asset_number       → auto-generated, never editable
- *   serial_number      → edit via Asset identifier management
+ * IDENTIFIER FIELDS (editable here — Inventory is the user-facing management point):
+ *   property_number    → stored on assets.property_number, synced via InventoryService
+ *   serial_number      → stored as AssetIdentifier(SERIAL_NUMBER), synced via InventoryService
+ *
+ * ASSET-OWNED (NOT accepted here):
+ *   condition_status   → edit via Asset module only
+ *   asset_number       → auto-generated; editable via asset_number field below
  *
  * office_id / location_id are accepted here as "Default Office /
  * Default Location" used only when a new linked Asset is first created.
@@ -53,6 +55,7 @@ class StoreInventoryItemRequest extends FormRequest
 
             // ── Classification ────────────────────────────────────────────
             'type'                  => ['nullable', 'string', Rule::in(['non_expendable', 'expendable'])],
+            'item_type_id'          => ['nullable', 'integer', 'exists:inventory_item_types,id'],
             'classification'        => ['nullable', 'string', Rule::in(['PPE', 'SE', 'SUPPLY'])],
             'item_nature'           => ['nullable', 'string', Rule::in(['ACCOUNTABLE_PROPERTY', 'CONSUMABLE_SUPPLY'])],
             'classification_reason' => ['nullable', 'string', 'max:1000'],
@@ -87,9 +90,23 @@ class StoreInventoryItemRequest extends FormRequest
             // ── Internal flags ────────────────────────────────────────────
             'track_as_asset'        => ['nullable', 'boolean'],
 
-            // ── Asset-owned fields — explicitly prohibited ─────────────────
+            // ── Identifier fields (Inventory is the user-facing management point) ──
+            // These are stored on the linked Asset / AssetIdentifier, not on inventory_items.
+            // InventoryService syncs them to the appropriate records on save.
+            'property_number'       => [
+                'nullable', 'string', 'max:100',
+                // Uniqueness is checked against assets.property_number; ignore the
+                // asset that is already linked to this inventory item.
+                \Illuminate\Validation\Rule::unique('assets', 'property_number')
+                    ->ignore(
+                        $item?->asset_id,  // null on create (no asset yet)
+                    )
+                    ->whereNull('deleted_at'),
+            ],
+            'serial_number'         => ['nullable', 'string', 'max:255'],
+
+            // ── Asset-operational fields — NOT accepted here ───────────────
             'condition_status'      => ['prohibited'],
-            'property_number'       => ['prohibited'],
         ];
     }
 
@@ -99,8 +116,8 @@ class StoreInventoryItemRequest extends FormRequest
 
         return [
             'sku.unique'                    => 'An item with this Item Code / SKU already exists.',
+            'property_number.unique'        => 'A different asset already uses this Property Number.',
             'condition_status.prohibited'   => $assetMsg,
-            'property_number.prohibited'    => $assetMsg,
         ];
     }
 }

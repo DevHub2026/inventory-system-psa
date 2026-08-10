@@ -304,9 +304,8 @@ class AssetBorrowableToggleTest extends TestCase
                 'status'           => AssetStatus::MAINTENANCE->value,
                 'condition_status' => 'FAIR',
                 'remarks'          => 'Sent to technician.',
-                'purchase_cost'    => 75000.00,
-                'purchase_date'    => '2026-01-15',
-                'warranty_until'   => '2029-01-15',
+                // purchase_cost, purchase_date, warranty_until are now owned by Inventory
+                // and are prohibited on the Asset update endpoint — removed from this test.
             ])
             ->assertOk();
 

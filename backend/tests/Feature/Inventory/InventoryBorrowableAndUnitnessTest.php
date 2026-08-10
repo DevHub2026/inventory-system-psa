@@ -15,7 +15,7 @@ use Tests\TestCase;
  *  - SKU uniqueness ignores the current record on edit
  *  - SKU uniqueness ignores the item's own linked asset_number
  *  - Archived inventory item hidden from active list
- *  - Archive asset also soft-deletes the linked inventory item
+ *  - Archive asset does NOT soft-delete the linked inventory item
  *  - Inventory export includes saved fields
  *  - Individual PPE item quantity defaults to 1
  *  - Creating two items with same model but different names
@@ -323,7 +323,7 @@ class InventoryBorrowableAndUnitnessTest extends TestCase
     // Archive behavior
     // ────────────────────────────────────────────────────────────────────────
 
-    public function test_archiving_asset_also_soft_deletes_linked_inventory_item(): void
+    public function test_archiving_asset_does_not_soft_delete_linked_inventory_item(): void
     {
         $user = User::factory()->create();
         $token = $user->createToken('auth')->plainTextToken;
@@ -346,17 +346,32 @@ class InventoryBorrowableAndUnitnessTest extends TestCase
             ->postJson("/api/v1/assets/{$assetId}/archive")
             ->assertOk();
 
-        // Inventory item should be soft-deleted
-        $this->assertSoftDeleted('inventory_items', ['id' => $itemId]);
-
-        // Asset should be soft-deleted
+        // Asset should be soft-deleted (archived)
         $this->assertSoftDeleted('assets', ['id' => $assetId]);
 
-        // The item should NOT appear in the active inventory list
+        // The asset should be RETIRED per the archive behavior
+        $this->assertDatabaseHas('assets', [
+            'id' => $assetId,
+            'status' => 'RETIRED',
+        ]);
+
+        // Inventory item should NOT be soft-deleted
+        $this->assertDatabaseHas('inventory_items', [
+            'id' => $itemId,
+            'deleted_at' => null,
+        ]);
+
+        // The item should STILL appear in the active inventory list
         $response = $this->withToken($token)->getJson('/api/v1/inventory');
         $items = $response->json('data.items');
         $ids = array_column($items, 'id');
-        $this->assertNotContains($itemId, $ids, 'Archived item should not appear in active inventory list.');
+        $this->assertContains($itemId, $ids, 'Archived asset must not hide the linked inventory item.');
+
+        // The Inventory to Asset relationship remains intact
+        $this->assertDatabaseHas('inventory_items', [
+            'id' => $itemId,
+            'asset_id' => $assetId,
+        ]);
     }
 
     public function test_archived_item_is_hidden_from_active_inventory(): void

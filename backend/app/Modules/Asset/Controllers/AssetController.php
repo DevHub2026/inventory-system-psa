@@ -121,6 +121,41 @@ class AssetController extends Controller
         );
     }
 
+    public function archived(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Asset::class);
+
+        $assets = $this->assetService->listArchived($request->all());
+
+        return $this->success([
+            'items' => AssetResource::collection($assets)->resolve(),
+            'meta' => [
+                'current_page' => $assets->currentPage(),
+                'per_page' => $assets->perPage(),
+                'total' => $assets->total(),
+                'last_page' => $assets->lastPage(),
+            ],
+            'links' => [
+                'first' => $assets->url(1),
+                'last' => $assets->url($assets->lastPage()),
+                'prev' => $assets->previousPageUrl(),
+                'next' => $assets->nextPageUrl(),
+            ],
+        ], 'Archived assets retrieved successfully.');
+    }
+
+    public function restore(Asset $asset): JsonResponse
+    {
+        $this->authorize('restore', $asset);
+
+        $asset = $this->assetService->restore($asset);
+
+        return $this->success(
+            AssetResource::make($asset),
+            'Asset restored successfully.',
+        );
+    }
+
     public function transfer(TransferAssetRequest $request, Asset $asset): JsonResponse
     {
         $this->authorize('transfer', $asset);

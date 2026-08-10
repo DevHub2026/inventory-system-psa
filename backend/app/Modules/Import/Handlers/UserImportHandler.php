@@ -34,10 +34,10 @@ class UserImportHandler implements ImportHandlerInterface
     public function systemFields(): array
     {
         return [
-            ['key' => 'first_name', 'label' => 'First Name', 'required' => true, 'type' => 'text'],
+            ['key' => 'first_name', 'label' => 'First Name', 'required' => false, 'type' => 'text'],
             ['key' => 'middle_name', 'label' => 'Middle Name', 'required' => false, 'type' => 'text'],
-            ['key' => 'last_name', 'label' => 'Last Name', 'required' => true, 'type' => 'text'],
-            ['key' => 'id_number', 'label' => 'ID Number', 'required' => true, 'type' => 'text'],
+            ['key' => 'last_name', 'label' => 'Last Name', 'required' => false, 'type' => 'text'],
+            ['key' => 'id_number', 'label' => 'ID Number', 'required' => false, 'type' => 'text'],
             ['key' => 'email', 'label' => 'Email', 'required' => true, 'type' => 'email'],
             ['key' => 'role', 'label' => 'Role', 'required' => false, 'type' => 'reference', 'reference_model' => Role::class, 'reference_field' => 'name'],
             ['key' => 'username', 'label' => 'Username', 'required' => false, 'type' => 'text'],
@@ -75,10 +75,10 @@ class UserImportHandler implements ImportHandlerInterface
         ];
 
         $validator = Validator::make($data, [
-            'first_name' => ['required', 'string', 'max:255'],
+            'first_name' => ['nullable', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'id_number' => ['required', 'string', 'regex:/^\d{4}-\d{4}$/'],
+            'last_name' => ['nullable', 'string', 'max:255'],
+            'id_number' => ['nullable', 'string', 'regex:/^\d{4}-\d{4}$/'],
             'email' => ['required', 'string', 'email', 'max:255'],
             'username' => ['nullable', 'string', 'max:255'],
             'role' => ['nullable', 'string', 'max:255'],
@@ -90,7 +90,11 @@ class UserImportHandler implements ImportHandlerInterface
         // Use provided username or generate one
         $username = $data['username'] ?? '';
         if ($username === '') {
-            $username = $this->generateUsername((string) $data['last_name'], (string) $data['id_number']);
+            $username = $this->generateUsername(
+                (string) $data['last_name'], 
+                $data['id_number'], 
+                $data['email'],
+            );
         }
 
         // Collision-safe username: append _1, _2, ... if taken
@@ -157,6 +161,8 @@ class UserImportHandler implements ImportHandlerInterface
 
             $created = User::query()->create([
                 ...$validatedData,
+                'username' => $validatedData['username'] ?: null,
+                'employee_number' => $validatedData['employee_number'] ?? null,
                 'password' => bcrypt(UserImportService::INITIAL_PASSWORD),
                 'status' => UserStatus::ACTIVE->value,
             ]);
@@ -177,11 +183,20 @@ class UserImportHandler implements ImportHandlerInterface
         return null;
     }
 
-    private function generateUsername(string $lastName, string $idNumber): string
+    private function generateUsername(string $lastName, ?string $idNumber, string $email): string
     {
-        // Strip anything that isn't a-z or 0-9 (after lowercasing).
-        $sanitized = preg_replace('/[^a-z0-9]/', '', strtolower(trim($lastName))) ?? '';
+        $sanitizedLastName = preg_replace('/[^a-z0-9]/', '', strtolower(trim($lastName))) ?? '';
+        $usernameBase = $sanitizedLastName;
 
-        return $sanitized . $idNumber;
+        if ($idNumber !== null && $idNumber !== '') {
+            return $usernameBase . $idNumber;
+        }
+
+        if ($usernameBase !== '') {
+            return $usernameBase;
+        }
+
+        $localPart = strtolower(explode('@', $email)[0]);
+        return preg_replace('/[^a-z0-9]/', '', $localPart) ?? '';
     }
 }
