@@ -43,12 +43,18 @@ class UserRepository implements UserRepositoryInterface
 
     public function create(array $data): User
     {
+        $usedDefault = false;
         if (! isset($data['password']) || $data['password'] === '') {
             $data['password'] = UserImportService::INITIAL_PASSWORD;
+            $usedDefault = true;
         }
 
         if (isset($data['password'])) {
             $data['password'] = Hash::make($data['password']);
+        }
+
+        if ($usedDefault) {
+            $data['must_reset_password'] = true;
         }
 
         return User::create($data);
@@ -61,6 +67,8 @@ class UserRepository implements UserRepositoryInterface
                 unset($data['password']);
             } else {
                 $data['password'] = Hash::make($data['password']);
+                // When an explicit password is set (admin or user action), clear the reset flag
+                $data['must_reset_password'] = false;
             }
         }
 

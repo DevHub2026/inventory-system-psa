@@ -67,6 +67,7 @@ class UpdateAssetRequest extends FormRequest
                 'nullable', 'string', 'max:100',
                 \Illuminate\Validation\Rule::unique('assets', 'property_number')->ignore($this->route('asset')?->id),
             ],
+            'custodian_id' => ['nullable', 'integer', 'exists:users,id'],
 
             // ── Inventory-owned fields — explicitly forbidden ───────────────
             // The framework returns a clear 422 if any of these are sent,

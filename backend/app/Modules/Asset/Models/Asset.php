@@ -59,6 +59,7 @@ class Asset extends Model
         'disposal_approved_by',
         'disposal_cancelled_at',
         'disposal_cancel_reason',
+        'custodian_id',
     ];
 
     protected function casts(): array
@@ -134,6 +135,14 @@ class Asset extends Model
     public function disposalApprover(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'disposal_approved_by');
+    }
+
+    /**
+     * Current custodian (person responsible for the physical asset instance).
+     */
+    public function custodian(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'custodian_id');
     }
 
     public function scopeAvailable(Builder $query): Builder

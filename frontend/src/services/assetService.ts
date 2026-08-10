@@ -18,6 +18,8 @@ interface BackendAsset {
   psa_qr_identifier?: string | null
   psa_qr_payload?: string | null
   name: string
+  custodian_id?: number | null
+  custodian?: { id: number; full_name?: string; employee_number?: string | null; email?: string | null } | null
   description?: string | null
   asset_category_id?: number
   manufacturer_id?: number | null
@@ -93,6 +95,8 @@ export interface UpdateAssetPayload {
   remarks?: string | null
   /** ASSET-OWNED — identifies one physical unit instance. Editable here. */
   property_number?: string | null
+  /** Optional custodian assignment (nullable user id). */
+  custodian_id?: number | null
 }
 
 function mapAsset(asset: BackendAsset): Asset {
@@ -151,6 +155,8 @@ function mapAsset(asset: BackendAsset): Asset {
     inventory_item_id: asset.inventory_item_id ?? null,
     is_borrowable: asset.is_borrowable ?? true,
     inventory: asset.inventory ?? null,
+    custodian_id: asset.custodian_id ?? null,
+    custodian: asset.custodian ?? null,
   }
 }
 

@@ -79,6 +79,20 @@ class AssetResource extends JsonResource
                     'roles' => $this->issuedToUser?->roles?->pluck('name')->values(),
                 ],
             ),
+
+            // Custodian — lightweight user object when relation loaded
+            'custodian_id' => $this->custodian_id ?? null,
+            'custodian' => $this->when(
+                $this->custodian_id && $this->relationLoaded('custodian'),
+                fn () => [
+                    'id' => $this->custodian?->id,
+                    'full_name' => $this->custodian?->full_name,
+                    'employee_number' => $this->custodian?->employee_number,
+                    'email' => $this->custodian?->email ?? null,
+                    'department' => $this->custodian?->department?->name ?? null,
+                    'office' => $this->custodian?->office?->name ?? null,
+                ],
+            ),
             'is_unlinked_holder' => $this->issued_to_user_id === null && filled($this->issued_to),
             'disposal_reason' => $this->disposal_reason,
             'disposal_date' => $this->disposal_date?->format('Y-m-d'),

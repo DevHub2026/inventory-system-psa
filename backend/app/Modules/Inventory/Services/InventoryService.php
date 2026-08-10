@@ -819,7 +819,16 @@ class InventoryService
         $trackAsAsset = (bool) ($data['track_as_asset'] ?? $defaultTrackAsAsset);
         // Do NOT unset — we persist it to the column so Asset queries can filter by it.
 
-        $classification = strtoupper((string) ($data['classification'] ?? ''));
+        // Preserve explicit null classification (client intends 'manual review').
+        // Distinguish between:
+        //  - key absent or empty string => defaulting behavior
+        //  - key present with null => explicit request for manual review (classification = null)
+        if (array_key_exists('classification', $data) && $data['classification'] === null) {
+            $classification = null;
+        } else {
+            $classification = strtoupper((string) ($data['classification'] ?? ''));
+        }
+
         $itemNature = strtoupper((string) ($data['item_nature'] ?? ''));
         $legacyType = (string) ($data['type'] ?? '');
 
@@ -839,7 +848,8 @@ class InventoryService
             }
         }
 
-        if (! in_array($classification, [self::CLASSIFICATION_PPE, self::CLASSIFICATION_SE, self::CLASSIFICATION_SUPPLY], true)) {
+        // Allow explicit null (manual review) to pass through. Only validate when non-null.
+        if ($classification !== null && ! in_array($classification, [self::CLASSIFICATION_PPE, self::CLASSIFICATION_SE, self::CLASSIFICATION_SUPPLY], true)) {
             throw new \InvalidArgumentException("Invalid classification '{$classification}'.");
         }
 

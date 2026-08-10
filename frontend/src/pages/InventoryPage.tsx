@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode } from 'lucide-react'
+import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode, CheckCircle2, XCircle } from 'lucide-react'
 import {
   Alert, Button, EmptyState, Input,
   Modal, Spinner, Badge, Card, SetupDropdown,
@@ -10,6 +10,7 @@ import {
   type CreateInventoryItemPayload,
   type UpdateInventoryItemPayload,
 } from '@/services/inventoryService'
+import { assetService } from '@/services/assetService'
 import { setupService, type SetupRecord } from '@/services/setupService'
 import { api, unwrapData } from '@/services/api'
 import type { ApiResponse, InventoryItem, StockMovement } from '@/types'
@@ -23,11 +24,12 @@ function movementTypeLabel(t: string) {
   return ({ stock_in: 'Stock Added', stock_out: 'Stock Removed', adjustment: 'Quantity Corrected' }[t] ?? t)
 }
 
-type TabKey = 'all' | 'ppe' | 'se' | 'supply'
+type TabKey = 'all' | 'ppe' | 'se' | 'supply' | 'disposal'
 
 interface SummaryData {
-  nonExp: { total: number; in_use: number; available: number; maintenance: number }
-  exp:    { total: number; in_stock: number; low_stock: number; out_of_stock: number }
+  ppe: { total: number; in_use: number; available: number; maintenance: number; disposed: number }
+  se:  { total: number; in_use: number; available: number; maintenance: number; disposed: number }
+  supply: { total: number; in_stock: number; low_stock: number; out_of_stock: number }
 }
 
 // ─── Color palette ───────────────────────────────────────────────────────────
@@ -72,7 +74,7 @@ function IconBox({ icon, color }: { icon: React.ReactNode; color: typeof colors.
 
 function SummaryCard({ data, onNavigate }: { data: SummaryData; onNavigate: (tab: TabKey) => void }) {
   const cardStyle: React.CSSProperties = {
-    flex: '1 1 0', minWidth: 300,
+    flex: '1 1 0', minWidth: 260,
     background: '#ffffff',
     borderRadius: 16,
     border: '1px solid #E2E8F0',
@@ -84,7 +86,7 @@ function SummaryCard({ data, onNavigate }: { data: SummaryData; onNavigate: (tab
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
       {/* PPE Card */}
       <SummaryCardInner
         style={cardStyle}
@@ -93,16 +95,17 @@ function SummaryCard({ data, onNavigate }: { data: SummaryData; onNavigate: (tab
         color={colors.blue}
         title="Property, Plant & Equipment"
         subtitle="PPE — Durable Assets"
-        total={data.nonExp.total}
+        total={data.ppe.total}
         totalLabel="Total Assets"
         stats={[
-          { label: 'In Use', value: data.nonExp.in_use, color: colors.blue.text },
-          { label: 'Available', value: data.nonExp.available, color: colors.green.text },
-          { label: 'Under Maintenance', value: data.nonExp.maintenance, color: colors.violet.text },
+          { label: 'In Use', value: data.ppe.in_use, color: colors.blue.text },
+          { label: 'Available', value: data.ppe.available, color: colors.green.text },
+          { label: 'Under Maintenance', value: data.ppe.maintenance, color: colors.violet.text },
+          { label: 'Disposed', value: data.ppe.disposed, color: colors.gray.text },
         ]}
       />
 
-      {/* SE Card */}
+      {/* SE Card (now aligned with PPE metrics) */}
       <SummaryCardInner
         style={cardStyle}
         onClick={() => onNavigate('se')}
@@ -110,12 +113,30 @@ function SummaryCard({ data, onNavigate }: { data: SummaryData; onNavigate: (tab
         color={colors.green}
         title="Semi-Expendable"
         subtitle="SE — Accountable Property"
-        total={data.exp.total}
+        total={data.se.total}
         totalLabel="Total Items"
         stats={[
-          { label: 'In Stock', value: data.exp.in_stock, color: colors.green.text },
-          { label: 'Low Stock', value: data.exp.low_stock, color: colors.amber.text },
-          { label: 'Out of Stock', value: data.exp.out_of_stock, color: colors.red.text },
+          { label: 'In Use', value: data.se.in_use, color: colors.blue.text },
+          { label: 'Available', value: data.se.available, color: colors.green.text },
+          { label: 'Under Maintenance', value: data.se.maintenance, color: colors.violet.text },
+          { label: 'Disposed', value: data.se.disposed, color: colors.gray.text },
+        ]}
+      />
+
+      {/* Supply Card (stock status metrics moved here) */}
+      <SummaryCardInner
+        style={cardStyle}
+        onClick={() => onNavigate('supply')}
+        icon={<Package size={22} style={{ color: colors.amber.icon }} />}
+        color={colors.amber}
+        title="Supply"
+        subtitle="Consumable Supplies"
+        total={data.supply.total}
+        totalLabel="Total Items"
+        stats={[
+          { label: 'In Stock', value: data.supply.in_stock, color: colors.green.text },
+          { label: 'Low Stock', value: data.supply.low_stock, color: colors.amber.text },
+          { label: 'Out of Stock', value: data.supply.out_of_stock, color: colors.red.text },
         ]}
       />
     </div>
@@ -194,6 +215,7 @@ function Tabs({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => v
     { key: 'ppe',           label: 'PPE' },
     { key: 'se',            label: 'Semi-Expendable' },
     { key: 'supply',        label: 'Supply' },
+    { key: 'disposal',      label: 'Disposal' },
   ]
   return (
     <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E2E8F0', background: '#FAFBFC' }}>
@@ -268,9 +290,13 @@ interface ActionCellProps {
   onEdit: () => void
   onAsset?: () => void
   onDelete: () => void
+  onMarkForDisposal?: () => void
+  onFinalizeDisposal?: () => void
+  onCancelDisposal?: () => void
+  onViewDisposal?: () => void
 }
 
-function ActionCell({ onStockIn, onStockOut, onAdjust, onHistory, onEdit, onAsset, onDelete }: ActionCellProps) {
+function ActionCell({ item, onStockIn, onStockOut, onAdjust, onHistory, onEdit, onAsset, onDelete, onMarkForDisposal, onFinalizeDisposal, onCancelDisposal, onViewDisposal }: ActionCellProps) {
   const [openMenu, setOpenMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
@@ -367,6 +393,16 @@ function ActionCell({ onStockIn, onStockOut, onAdjust, onHistory, onEdit, onAsse
             {menuItem(<History size={14} />, 'View History', onHistory)}
             {menuItem(<Edit3 size={14} />, 'Edit Item', onEdit)}
             {onAsset && menuItem(<Eye size={14} />, 'View Asset', onAsset)}
+            {onViewDisposal && menuItem(<Monitor size={14} />, 'View Disposal', onViewDisposal)}
+
+            {/* Disposal actions for linked assets */}
+            {item.asset_id && item.asset_status !== 'FOR_DISPOSAL' && item.asset_status !== 'DISPOSED' && onMarkForDisposal && (
+              <div style={{ marginTop: 6 }} />
+            )}
+            {item.asset_id && item.asset_status !== 'FOR_DISPOSAL' && item.asset_status !== 'DISPOSED' && onMarkForDisposal && menuItem(<Trash2 size={14} />, 'Mark for Disposal', onMarkForDisposal)}
+            {item.asset_id && item.asset_status === 'FOR_DISPOSAL' && onFinalizeDisposal && menuItem(<CheckCircle2 size={14} />, 'Finalize Disposal', onFinalizeDisposal)}
+            {item.asset_id && item.asset_status === 'FOR_DISPOSAL' && onCancelDisposal && menuItem(<XCircle size={14} />, 'Cancel Disposal', onCancelDisposal)}
+
             <div style={{ height: 1, background: '#F1F5F9', margin: '4px 0' }} />
             {menuItem(<Trash2 size={14} />, 'Delete Item', onDelete, 'danger')}
           </div>
@@ -396,8 +432,9 @@ export function InventoryPage() {
 
   // Summary
   const [summary,        setSummary]        = useState<SummaryData>({
-    nonExp: { total: 0, in_use: 0, available: 0, maintenance: 0 },
-    exp:    { total: 0, in_stock: 0, low_stock: 0, out_of_stock: 0 },
+    ppe:   { total: 0, in_use: 0, available: 0, maintenance: 0, disposed: 0 },
+    se:    { total: 0, in_use: 0, available: 0, maintenance: 0, disposed: 0 },
+    supply:{ total: 0, in_stock: 0, low_stock: 0, out_of_stock: 0 },
   })
 
   // Modal state
@@ -417,6 +454,45 @@ export function InventoryPage() {
   const [historyRows,    setHistoryRows]    = useState<StockMovement[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [wizardOpen,     setWizardOpen]     = useState(false)
+
+  // Disposal (inventory-initiated, operates on linked Asset when present)
+  const [disposeModalOpen, setDisposeModalOpen] = useState(false)
+  const [disposeItem, setDisposeItem] = useState<InventoryItem | null>(null)
+  const [disposeReason, setDisposeReason] = useState('')
+  const [disposeDate, setDisposeDate] = useState<string>(new Date().toISOString().slice(0,10))
+  const [disposeMethod, setDisposeMethod] = useState('')
+  const [disposeApprovalRef, setDisposeApprovalRef] = useState('')
+  const [disposalActionLoading, setDisposalActionLoading] = useState(false)
+
+  const [finalizeModalOpen, setFinalizeModalOpen] = useState(false)
+  const [finalizeItem, setFinalizeItem] = useState<InventoryItem | null>(null)
+  const [finalizeMethod, setFinalizeMethod] = useState('')
+  const [finalizeDate, setFinalizeDate] = useState<string>(new Date().toISOString().slice(0,10))
+  const [finalizeApprovalRef, setFinalizeApprovalRef] = useState('')
+
+  const [cancelModalOpen, setCancelModalOpen] = useState(false)
+  const [cancelItem, setCancelItem] = useState<InventoryItem | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+
+  // Export column selection (used for CSV/JSON client-side exports)
+  const availableExportColumns = [
+    { key: 'id', label: 'ID' },
+    { key: 'name', label: 'Item Name' },
+    { key: 'sku', label: 'SKU' },
+    { key: 'type', label: 'Type' },
+    { key: 'classification', label: 'Classification' },
+    { key: 'property_number', label: 'Property No.' },
+    { key: 'serial_number', label: 'Serial No.' },
+    { key: 'asset_number', label: 'Asset No.' },
+    { key: 'quantity', label: 'Quantity' },
+    { key: 'unit', label: 'Unit' },
+    { key: 'status', label: 'Status' },
+    { key: 'unit_cost', label: 'Unit Cost' },
+    { key: 'reorder_level', label: 'Low Stock Alert' },
+    { key: 'remarks', label: 'Remarks' },
+    { key: 'accountability', label: 'Accountability' },
+  ]
+  const [exportColumns, setExportColumns] = useState<string[]>(['id','name','sku','classification','property_number','asset_number','serial_number','quantity','unit','status'])
 
   // Live SKU validation state
   const [codeValidation, setCodeValidation]   = useState<{ exists: boolean; message: string } | null>(null)
@@ -453,7 +529,7 @@ export function InventoryPage() {
   const [formData, setFormData] = useState<CreateInventoryItemPayload>({
     name: '', sku: '', quantity: 0, unit_cost: null, unit: '', unit_id: null, reorder_level: 0,
     is_borrowable: true,
-    track_as_asset: true, type: 'non_expendable', classification: 'PPE', item_nature: 'ACCOUNTABLE_PROPERTY',
+    track_as_asset: true, type: 'non_expendable', classification: null, item_nature: 'ACCOUNTABLE_PROPERTY',
     description: '', model: null,
     asset_category_id: null, manufacturer_id: null, office_id: null, location_id: null,
     item_type_id: null,
@@ -522,25 +598,35 @@ export function InventoryPage() {
   // Load summary counts — fires once and on explicit refresh only
   const loadSummary = useCallback(async () => {
     try {
-      const [ppe, se, ppeAll, seAll] = await Promise.all([
+      const [ppeMeta, seMeta, supplyMeta, ppeAll, seAll, supplyAll] = await Promise.all([
         inventoryService.list({ classification: 'PPE', per_page: 1 }),
         inventoryService.list({ classification: 'SE', per_page: 1 }),
+        inventoryService.list({ classification: 'SUPPLY', per_page: 1 }),
         inventoryService.list({ classification: 'PPE', per_page: 100 }),
         inventoryService.list({ classification: 'SE', per_page: 100 }),
+        inventoryService.list({ classification: 'SUPPLY', per_page: 100 }),
       ])
       const count = (arr: InventoryItem[], s: string) => arr.filter((i) => i.status === s).length
       setSummary({
-        nonExp: {
-          total:       ppe.meta.total,
+        ppe: {
+          total:       ppeMeta.meta.total,
           in_use:      count(ppeAll.items, 'IN_USE'),
           available:   count(ppeAll.items, 'IN_STOCK'),
           maintenance: count(ppeAll.items, 'UNDER_MAINTENANCE'),
+          disposed:    count(ppeAll.items, 'DISPOSED'),
         },
-        exp: {
-          total:        se.meta.total,
-          in_stock:     count(seAll.items, 'IN_STOCK'),
-          low_stock:    count(seAll.items, 'LOW_STOCK'),
-          out_of_stock: count(seAll.items, 'OUT_OF_STOCK'),
+        se: {
+          total:       seMeta.meta.total,
+          in_use:      count(seAll.items, 'IN_USE'),
+          available:   count(seAll.items, 'IN_STOCK'),
+          maintenance: count(seAll.items, 'UNDER_MAINTENANCE'),
+          disposed:    count(seAll.items, 'DISPOSED'),
+        },
+        supply: {
+          total:        supplyMeta.meta.total,
+          in_stock:     count(supplyAll.items, 'IN_STOCK'),
+          low_stock:    count(supplyAll.items, 'LOW_STOCK'),
+          out_of_stock: count(supplyAll.items, 'OUT_OF_STOCK'),
         },
       })
     } catch { /* summary is best-effort */ }
@@ -572,7 +658,16 @@ export function InventoryPage() {
     return () => observer.disconnect()
   }, [page, lastPage, loading, loadingMore, loadInventory])
 
-  const handleTabChange = (t: TabKey) => { setActiveTab(t); setPage(1) }
+  const handleTabChange = (t: TabKey) => { 
+    setActiveTab(t); 
+    setPage(1);
+    // When switching to Disposal tab, show disposed items by setting status filter
+    if (t === 'disposal') {
+      setStatusFilter('DISPOSED')
+    } else {
+      setStatusFilter('')
+    }
+  }
   const handleFilter    = () => { void loadInventory(1) }
   const handleSearch    = (e: React.KeyboardEvent) => { if (e.key === 'Enter') void loadInventory(1) }
 
@@ -651,6 +746,90 @@ export function InventoryPage() {
     } catch (e: unknown) { setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to delete.' }) }
   }
 
+  // ── Disposal actions (inventory-initiated, operate on linked Asset when present) ──
+  const openMarkForDisposal = (item: InventoryItem) => {
+    setDisposeItem(item)
+    setDisposeReason('')
+    setDisposeMethod('')
+    setDisposeApprovalRef('')
+    setDisposeDate(new Date().toISOString().slice(0,10))
+    setDisposeModalOpen(true)
+  }
+
+  const openFinalizeDisposal = (item: InventoryItem) => {
+    setFinalizeItem(item)
+    setFinalizeMethod('')
+    setFinalizeApprovalRef('')
+    setFinalizeDate(new Date().toISOString().slice(0,10))
+    setFinalizeModalOpen(true)
+  }
+
+  const openCancelDisposal = (item: InventoryItem) => {
+    setCancelItem(item)
+    setCancelReason('')
+    setCancelModalOpen(true)
+  }
+
+  const submitMarkForDisposal = async () => {
+    if (!disposeItem || !disposeItem.asset_id) return
+    if (!disposeReason.trim()) { setMessage({ type: 'error', text: 'Please provide a disposal reason.' }); return }
+    setDisposalActionLoading(true)
+    try {
+      await assetService.markForDisposal(disposeItem.asset_id, {
+        disposal_reason: disposeReason.trim(),
+        disposal_date: disposeDate,
+        disposal_method: disposeMethod.trim() || undefined,
+        disposal_approval_ref: disposeApprovalRef.trim() || undefined,
+      })
+      setDisposeModalOpen(false)
+      setDisposeItem(null)
+      setMessage({ type: 'success', text: 'Asset marked for disposal.' })
+      notifyDataChanged('assets')
+      void loadInventory(page); void loadSummary()
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to mark asset for disposal.' })
+    } finally {
+      setDisposalActionLoading(false)
+    }
+  }
+
+  const submitFinalizeDisposal = async () => {
+    if (!finalizeItem || !finalizeItem.asset_id) return
+    if (!finalizeMethod.trim()) { setMessage({ type: 'error', text: 'Please provide a disposal method before finalizing.' }); return }
+    setDisposalActionLoading(true)
+    try {
+      await assetService.finalizeDisposal(finalizeItem.asset_id, {
+        disposal_date: finalizeDate,
+        disposal_method: finalizeMethod.trim(),
+        disposal_approval_ref: finalizeApprovalRef.trim() || undefined,
+      })
+      setFinalizeModalOpen(false)
+      setFinalizeItem(null)
+      setMessage({ type: 'success', text: 'Asset disposal finalized.' })
+      notifyDataChanged('assets')
+      void loadInventory(page); void loadSummary()
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to finalize disposal.' })
+    } finally { setDisposalActionLoading(false) }
+  }
+
+  const submitCancelDisposal = async () => {
+    if (!cancelItem || !cancelItem.asset_id) return
+    if (!cancelReason.trim()) { setMessage({ type: 'error', text: 'A cancellation reason is required.' }); return }
+    setDisposalActionLoading(true)
+    try {
+      await assetService.cancelDisposal(cancelItem.asset_id, { disposal_cancel_reason: cancelReason.trim() })
+      setCancelModalOpen(false)
+      setCancelItem(null)
+      setMessage({ type: 'success', text: 'Disposal proposal cancelled.' })
+      notifyDataChanged('assets')
+      void loadInventory(page); void loadSummary()
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to cancel disposal.' })
+    } finally { setDisposalActionLoading(false) }
+  }
+
+
   const handleSubmit = async () => {
     if (codeValidation?.exists) {
       setMessage({ type: 'error', text: 'Please fix duplicate Item Code / SKU before saving.' })
@@ -705,7 +884,7 @@ export function InventoryPage() {
   // ── Export modal state ─────────────────────────────────────────────────────
   const [exportModalOpen,  setExportModalOpen]  = useState(false)
   const [exportFormat,     setExportFormat]     = useState<'xlsx' | 'csv' | 'json'>('xlsx')
-  const [exportScope,      setExportScope]      = useState<'all' | 'ppe' | 'se' | 'supply'>('all')
+  const [exportScope,      setExportScope]      = useState<'all' | 'ppe' | 'se' | 'supply' | 'disposal'>('all')
   const [exporting,        setExporting]        = useState(false)
 
   const handleExport = async () => {
@@ -721,7 +900,15 @@ export function InventoryPage() {
 
       if (exportFormat === 'json') {
         const result = await inventoryService.list({ per_page: 9999, search: search || undefined, classification: scopeFilter })
-        const json = JSON.stringify(result.items, null, 2)
+        // Filter object keys based on selected exportColumns when exporting JSON
+        const filtered = result.items.map((it) => {
+          const obj: Record<string, unknown> = {}
+          for (const k of exportColumns) {
+            obj[k] = (it as any)[k]
+          }
+          return obj
+        })
+        const json = JSON.stringify(filtered, null, 2)
         const blob = new Blob([json], { type: 'application/json' })
         const url  = URL.createObjectURL(blob)
         const a    = document.createElement('a')
@@ -731,7 +918,7 @@ export function InventoryPage() {
         URL.revokeObjectURL(url)
       } else if (exportFormat === 'csv') {
         const result = await inventoryService.list({ per_page: 9999, search: search || undefined, classification: scopeFilter })
-        const headers = ['id', 'name', 'type', 'classification', 'sku', 'property_number', 'asset_number', 'serial_number', 'accountability', 'quantity', 'unit', 'status', 'reorder_level', 'remarks']
+        const headers = exportColumns.length ? exportColumns : ['id', 'name', 'type', 'classification', 'sku', 'property_number', 'asset_number', 'serial_number', 'accountability', 'quantity', 'unit', 'status', 'reorder_level', 'remarks']
         const lines   = [headers.join(',')]
         for (const item of result.items) {
           const itemMap = item as unknown as Record<string, unknown>
@@ -974,6 +1161,7 @@ export function InventoryPage() {
                   <th style={th}>Item</th>
                   <th style={th}>SKU</th>
                   <th style={th}>Property No.</th>
+                  <th style={th}>Serial No.</th>
                   <th style={th}>Asset No.</th>
                   <th style={th}>Unit Cost</th>
                   <th style={th}>Accountability</th>
@@ -1006,8 +1194,8 @@ export function InventoryPage() {
                         }}>
                           {r.name}
                         </span>
-                        <Badge tone={r.classification === 'SUPPLY' ? 'yellow' : r.classification === 'SE' ? 'green' : 'blue'}>
-                          {r.classification ?? (r.type === 'expendable' ? 'SUPPLY' : 'PPE')}
+                        <Badge tone={r.classification === 'SUPPLY' ? 'yellow' : r.classification === 'SE' ? 'green' : (r.classification === 'PPE' ? 'blue' : 'gray') }>
+                          {r.classification ?? '—'}
                         </Badge>
                       </div>
                       {r.remarks && (
@@ -1040,9 +1228,7 @@ export function InventoryPage() {
 
                     {/* Property Number */}
                     <td style={td}>
-                      {r.classification === 'SUPPLY' ? (
-                        <span style={{ color: '#CBD5E1' }}>—</span>
-                      ) : r.property_number ? (
+                      {r.property_number ? (
                         <code style={{
                           fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
                           fontSize: 11.5, color: '#475569',
@@ -1057,11 +1243,26 @@ export function InventoryPage() {
                       )}
                     </td>
 
+                    {/* Serial Number */}
+                    <td style={td}>
+                      {r.serial_number ? (
+                        <code style={{
+                          fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                          fontSize: 11.5, color: '#475569',
+                          background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                          display: 'inline-block', maxWidth: 130,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {r.serial_number}
+                        </code>
+                      ) : (
+                        <span style={{ color: '#CBD5E1' }}>—</span>
+                      )}
+                    </td>
+
                     {/* Asset Number */}
                     <td style={td}>
-                      {r.classification === 'SUPPLY' ? (
-                        <span style={{ color: '#CBD5E1' }}>—</span>
-                      ) : r.asset_number ? (
+                      {r.asset_number ? (
                         <code style={{
                           fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
                           fontSize: 11.5, color: '#475569',
@@ -1135,6 +1336,10 @@ export function InventoryPage() {
                         onEdit      ={() => handleEdit(r)}
                         onAsset     ={r.asset_number ? () => navigate(`/assets?search=${encodeURIComponent(r.asset_number ?? '')}`) : undefined}
                         onDelete    ={() => handleDelete(r)}
+                        onMarkForDisposal={r.asset_id ? () => openMarkForDisposal(r) : undefined}
+                        onFinalizeDisposal={r.asset_id ? () => openFinalizeDisposal(r) : undefined}
+                        onCancelDisposal={r.asset_id ? () => openCancelDisposal(r) : undefined}
+                        onViewDisposal={() => { setActiveTab('disposal'); setSearch(r.name ?? r.asset_number ?? r.sku ?? '') }}
                       />
                     </td>
                   </tr>
@@ -1215,6 +1420,33 @@ export function InventoryPage() {
                       {codeValidation.exists ? '❌ ' : '✓ '}{codeValidation.message}
                     </div>
                   )}
+                </div>
+
+                {/* Track as Asset control */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>Track as Asset</div>
+                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+                      When enabled this inventory item will be represented as an Asset in the Assets module. Disabling will hide the linked Asset from active asset lists but will not delete historical records.
+                    </div>
+                  </div>
+                  <div style={{ flexShrink: 0 }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formData.track_as_asset)}
+                        disabled={formData.classification === 'SUPPLY'}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                          if (!next && editingItem?.asset_number) {
+                            const ok = window.confirm('Disable Track as Asset?\n\nThis will hide the linked Asset record from active lists. The Asset record will NOT be deleted. Proceed?')
+                            if (!ok) return
+                          }
+                          setFormData({ ...formData, track_as_asset: next })
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 {/* Asset-linked identifier fields — only when track_as_asset is on */}
@@ -1300,7 +1532,16 @@ export function InventoryPage() {
                     const active = formData.classification === c
                     return (
                       <button key={c} type="button"
-                        onClick={() => setFormData({ ...formData, classification: c, item_nature: c === 'SUPPLY' ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY', is_borrowable: c !== 'SUPPLY', track_as_asset: c !== 'SUPPLY', type: c === 'SUPPLY' ? 'expendable' : 'non_expendable' })}
+                        onClick={() => {
+                          const isActive = formData.classification === c
+                          if (isActive) {
+                            // Deselect — allow unclassified items
+                            setFormData({ ...formData, classification: null })
+                          } else {
+                            // Select — apply inferred flags for the chosen classification
+                            setFormData({ ...formData, classification: c, item_nature: c === 'SUPPLY' ? 'CONSUMABLE_SUPPLY' : 'ACCOUNTABLE_PROPERTY', is_borrowable: c !== 'SUPPLY', track_as_asset: c !== 'SUPPLY', type: c === 'SUPPLY' ? 'expendable' : 'non_expendable' })
+                          }
+                        }}
                         style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: `2px solid ${active ? '#1E40AF' : '#E2E8F0'}`, background: active ? '#EFF6FF' : '#fff', color: active ? '#1E40AF' : '#64748B', fontWeight: active ? 700 : 500, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
                         {c === 'SUPPLY' ? 'Supply' : c}
                       </button>
@@ -1717,20 +1958,72 @@ export function InventoryPage() {
         )}
       </Modal>
 
-      {/* ── Export Modal ── */}
-      <Modal
-        open={exportModalOpen}
-        onClose={() => setExportModalOpen(false)}
-        title="Export Inventory"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setExportModalOpen(false)}>Cancel</Button>
-            <Button onClick={() => void handleExport()} disabled={exporting}>
-              {exporting ? 'Exporting...' : <><Download size={14} />Download</>}
-            </Button>
-          </>
-        }
-      >
+          {/* ── Disposal modals (inventory-initiated) ── */}
+          <Modal
+            open={disposeModalOpen}
+            onClose={() => setDisposeModalOpen(false)}
+            title={`Mark for Disposal — ${disposeItem?.name ?? ''}`}
+            footer={<>
+              <Button variant="secondary" onClick={() => setDisposeModalOpen(false)}>Cancel</Button>
+              <Button onClick={() => void submitMarkForDisposal()} disabled={disposalActionLoading}>{disposalActionLoading ? 'Working…' : 'Mark for Disposal'}</Button>
+            </>}
+            maxWidth={600}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Input label="Disposal Reason" value={disposeReason} onChange={(e) => setDisposeReason(e.target.value)} placeholder="Reason for disposal" />
+              <Input label="Disposal Date" type="date" value={disposeDate} onChange={(e) => setDisposeDate(e.target.value)} />
+              <Input label="Disposal Method" value={disposeMethod} onChange={(e) => setDisposeMethod(e.target.value)} placeholder="e.g. sale, recycling, donation" />
+              <Input label="Approval Ref (optional)" value={disposeApprovalRef} onChange={(e) => setDisposeApprovalRef(e.target.value)} placeholder="Reference or approval code" />
+            </div>
+          </Modal>
+
+          <Modal
+            open={finalizeModalOpen}
+            onClose={() => setFinalizeModalOpen(false)}
+            title={`Finalize Disposal — ${finalizeItem?.name ?? ''}`}
+            footer={<>
+              <Button variant="secondary" onClick={() => setFinalizeModalOpen(false)}>Cancel</Button>
+              <Button onClick={() => void submitFinalizeDisposal()} disabled={disposalActionLoading}>{disposalActionLoading ? 'Working…' : 'Finalize Disposal'}</Button>
+            </>}
+            maxWidth={600}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Input label="Disposal Date" type="date" value={finalizeDate} onChange={(e) => setFinalizeDate(e.target.value)} />
+              <Input label="Disposal Method (required)" value={finalizeMethod} onChange={(e) => setFinalizeMethod(e.target.value)} placeholder="e.g. sale, recycling, donation" />
+              <Input label="Approval Ref (optional)" value={finalizeApprovalRef} onChange={(e) => setFinalizeApprovalRef(e.target.value)} placeholder="Reference or approval code" />
+            </div>
+          </Modal>
+
+          <Modal
+            open={cancelModalOpen}
+            onClose={() => setCancelModalOpen(false)}
+            title={`Cancel Disposal — ${cancelItem?.name ?? ''}`}
+            footer={<>
+              <Button variant="secondary" onClick={() => setCancelModalOpen(false)}>Back</Button>
+              <Button onClick={() => void submitCancelDisposal()} disabled={disposalActionLoading}>{disposalActionLoading ? 'Working…' : 'Confirm Cancel'}</Button>
+            </>}
+            maxWidth={520}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ color: '#64748B', fontSize: 13 }}>Provide a brief reason for cancelling the disposal proposal.</div>
+              <textarea rows={4} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #E2E8F0', fontFamily: 'inherit' }} />
+            </div>
+          </Modal>
+
+          {/* ── Export Modal ── */}
+          <Modal
+            open={exportModalOpen}
+            onClose={() => setExportModalOpen(false)}
+            title="Export Inventory"
+            footer={
+              <>
+                <Button variant="secondary" onClick={() => setExportModalOpen(false)}>Cancel</Button>
+                <Button onClick={() => void handleExport()} disabled={exporting}>
+                  {exporting ? 'Exporting...' : <><Download size={14} />Download</>}
+                </Button>
+              </>
+            }
+          >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
           {/* Format */}
@@ -1822,6 +2115,29 @@ export function InventoryPage() {
                   </button>
                 )
               })}
+            </div>
+          </div>
+
+          {/* Columns selection (applies to CSV / JSON exports) */}
+          <div style={{ padding: '6px 0' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Columns</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => setExportColumns(availableExportColumns.map(c => c.key))} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', cursor: 'pointer' }}>Select all</button>
+              <button type="button" onClick={() => setExportColumns([])} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', cursor: 'pointer' }}>Clear</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, marginTop: 10 }}>
+              {availableExportColumns.map((col) => (
+                <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, border: `1px solid ${exportColumns.includes(col.key) ? '#1E40AF' : '#E2E8F0'}`, background: exportColumns.includes(col.key) ? '#EFF6FF' : '#fff', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={exportColumns.includes(col.key)} onChange={(e) => {
+                    if (e.currentTarget.checked) setExportColumns((prev) => Array.from(new Set([...prev, col.key])))
+                    else setExportColumns((prev) => prev.filter((k) => k !== col.key))
+                  }} />
+                  <span style={{ fontSize: 13 }}>{col.label}</span>
+                </label>
+              ))}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#64748B' }}>
+              Column selection will be applied to <strong>CSV</strong> and <strong>JSON</strong> exports. Excel (.xlsx) uses the server export (full dataset) for performance on large exports.
             </div>
           </div>
 

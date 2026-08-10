@@ -108,6 +108,13 @@ export interface Asset {
     office?: string | null
     roles?: string[]
   } | null
+  custodian_id?: number | null
+  custodian?: {
+    id: number
+    full_name?: string
+    employee_number?: string | null
+    email?: string | null
+  } | null
   is_unlinked_holder?: boolean
   issued_by_user_id?: number | null
   date_issued?: string | null

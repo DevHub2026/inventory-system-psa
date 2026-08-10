@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Alert, Badge, Card, EmptyState, Modal, Spinner } from '@/components/ui'
+import { Alert, Badge, Card, EmptyState, Spinner } from '@/components/ui'
 import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
+import SplitView from '@/components/SplitView'
 import { borrowingService } from '@/services/borrowingService'
 import type { Borrowing } from '@/types'
 import { useAuth } from '@/hooks/useAuth'
@@ -10,6 +11,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 import { formatDate, formatTime } from '@/utils/dateFormat'
 import BorrowingDetailsPage from '@/pages/BorrowingDetailsPage'
+import { useSearchParams } from 'react-router-dom'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -123,6 +125,18 @@ export function BorrowingPage() {
 
   useEffect(() => { void loadBorrowings() }, [])
 
+  // Support opening the details split via URL param ?openSplit=1
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    const openSplit = searchParams.get('openSplit')
+    if (openSplit && rows.length > 0 && selectedBorrowingId === null) {
+      setSelectedBorrowingId(rows[0].id)
+      // clear the param
+      setSearchParams({})
+    }
+  }, [rows, searchParams, selectedBorrowingId, setSearchParams])
+
   useEffect(() => {
     const interval = setInterval(() => { void loadBorrowings() }, 30_000)
     return () => clearInterval(interval)
@@ -171,12 +185,8 @@ export function BorrowingPage() {
   const overdue  = rows.filter(r => r.status === 'OVERDUE').length
   const returned = rows.filter(r => r.status === 'RETURNED').length
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <PageHeader title="Borrowed Items" subtitle="View borrowed assets and process returns." />
-
-      {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
-
+  const leftPane = (
+    <>
       {/* ── Summary chips ── */}
       {!loading && rows.length > 0 && (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -406,24 +416,55 @@ export function BorrowingPage() {
           </div>
         )}
       </Card>
+    </>
+    );
 
-      <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <PageHeader title="Borrowed Items" subtitle="View borrowed assets and process returns." />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button
+                onClick={() => {
+                  if (selectedBorrowingId !== null) {
+                    setSelectedBorrowingId(null)
+                  } else if (rows.length > 0) {
+                    setSelectedBorrowingId(rows[0].id)
+                  } else {
+                    alert('No borrowing records available to open.')
+                  }
+                }}
+                style={{
+                  height: 36, paddingInline: 12, borderRadius: 8,
+                  border: '1px solid #D1D5DB', background: selectedBorrowingId ? '#EFF6FF' : '#FFFFFF',
+                  color: '#0F172A', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                }}
+                title={selectedBorrowingId ? 'Close details pane' : 'Open details pane for first row'}
+              >
+                {selectedBorrowingId ? 'Close Details' : 'Open Details'}
+              </button>
+            </div>
+          </div>
 
-      {selectedBorrowingId !== null && (
-        <Modal
-          open={true}
-          title=""
-          onClose={() => setSelectedBorrowingId(null)}
-          maxWidth={820}
-          footer={null}
+          {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
+
+          <SplitView
+          rightOpen={selectedBorrowingId !== null}
+          rightWidth={820}
+          rightSide={selectedBorrowingId !== null ? (
+            <BorrowingDetailsPage
+              borrowingId={selectedBorrowingId!}
+              onClose={() => setSelectedBorrowingId(null)}
+              onUpdated={() => void loadBorrowings()}
+            />
+          ) : null}
+          onCloseRight={() => setSelectedBorrowingId(null)}
         >
-          <BorrowingDetailsPage
-            borrowingId={selectedBorrowingId}
-            onClose={() => setSelectedBorrowingId(null)}
-            onUpdated={() => void loadBorrowings()}
-          />
-        </Modal>
-      )}
-    </div>
-  )
-}
+          {leftPane}
+        </SplitView>
+
+        <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
+
+      </div>
+    )
+  }

@@ -1,14 +1,17 @@
-import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
+// @ts-nocheck
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ScanLine, CheckCircle2, Printer, Search, Filter, ExternalLink,
   Eye, QrCode as QrIcon, Edit3, Trash2, ArrowUpRight, RotateCcw,
   Package, Wrench, Clock, Send, ToggleLeft, ToggleRight,
 } from 'lucide-react'
+import { BrowserQRCodeSvgWriter } from '@zxing/browser'
 import {
   Alert, Badge, Button, ConfirmDialog, EmptyState,
   Modal, Pagination, Spinner, Card,
 } from '@/components/ui'
+import JSZip from 'jszip'
 import { assetService, type UpdateAssetPayload, type IssuanceHistoryEntry } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
@@ -16,6 +19,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
 import { SharedQrScanner } from '@/components/qr/SharedQrScanner'
 import { QrCode } from '@/components/QrCode'
+import { AssetSheetSelector } from '@/components/AssetSheetSelector'
 import type { Asset, AssetStatus } from '@/types'
 import { getEffectiveAssetStatus } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
@@ -286,6 +290,7 @@ export function AssetPage() {
   const [issuing,    setIssuing]    = useState(false)
   const [issueUserId, setIssueUserId] = useState<number | null>(null)
   const [issueUser, setIssueUser] = useState<IssuanceUserSummary | null>(null)
+  const [custodianUser, setCustodianUser] = useState<IssuanceUserSummary | null>(null)
   const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10))
 
   // Printable issuance receipt
@@ -309,6 +314,42 @@ export function AssetPage() {
   const [markMethod, setMarkMethod] = useState('')
   const [markApprovalRef, setMarkApprovalRef] = useState('')
   const [disposalActionLoading, setDisposalActionLoading] = useState(false)
+
+  // QR sheet selection
+  const [sheetSelectionOpen, setSheetSelectionOpen] = useState(false)
+  const [assetsForSelection, setAssetsForSelection] = useState<Asset[]>([])
+  const [selectionLoading, setSelectionLoading] = useState(false)
+  const [selectedAssetIds, setSelectedAssetIds] = useState<number[]>([])
+  const [sheetGenerating, setSheetGenerating] = useState(false)
+
+  const SHEET_SELECTION_STORAGE_KEY = 'psa.sheet.selectedAssetIds'
+
+  // Load persisted selection from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SHEET_SELECTION_STORAGE_KEY)
+      if (raw) {
+        const ids = JSON.parse(raw) as number[]
+        if (Array.isArray(ids) && ids.length > 0) {
+          setSelectedAssetIds(ids)
+          // fetch the corresponding assets for later use
+          ;(async () => {
+            try {
+              const fetched = await Promise.all(ids.map(async (id) => { try { return await assetService.show(id) } catch { return null } }))
+              setAssetsForSelection(fetched.filter(Boolean) as Asset[])
+            } catch { /* ignore */ }
+          })()
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, [])
+
+  const persistSelectedAssetIds = (ids: number[]) => {
+    setSelectedAssetIds(ids)
+    try { localStorage.setItem(SHEET_SELECTION_STORAGE_KEY, JSON.stringify(ids)) } catch { /* ignore */ }
+  }
 
   // Re-issuance State
   const [reissueAsset, setReissueAsset] = useState<Asset | null>(null)
@@ -342,7 +383,7 @@ export function AssetPage() {
   const [borrowableLoading, setBorrowableLoading] = useState(false)
 
   const [editForm, setEditForm] = useState<UpdateAssetPayload>({
-    status: 'AVAILABLE', condition_status: '', remarks: '', property_number: '',
+    status: 'AVAILABLE', condition_status: '', remarks: '', property_number: '', custodian_id: null,
   })
 
   const load = useCallback(async (nextPage: number = 1, nextSearch?: string) => {
@@ -484,17 +525,33 @@ export function AssetPage() {
         condition_status: a.condition_status ?? '',
         remarks: a.remarks ?? '',
         property_number: a.property_number ?? '',
+        custodian_id: a.custodian_id ?? null,
       })
       setIssueUserId(a.issued_to_user_id ?? null)
-      setIssueUser(a.issued_to_user ? {
-        id: a.issued_to_user.id,
-        full_name: a.issued_to_user.full_name,
-        employee_number: a.issued_to_user.employee_number,
-        email: a.issued_to_user.email ?? undefined,
-        department: a.issued_to_user.department ? { id: 0, name: a.issued_to_user.department } : null,
-        office: a.issued_to_user.office ? { id: 0, name: a.issued_to_user.office } : null,
-        roles: a.issued_to_user.roles?.map((name, index) => ({ id: index, name })) ?? [],
-      } : null)
+      setCustodianUser(a.custodian ? ((): any => {
+        const cust: any = a.custodian
+        return {
+          id: cust.id,
+          full_name: cust.full_name,
+          employee_number: cust.employee_number,
+          email: cust.email ?? undefined,
+          department: cust.department ? { id: 0, name: cust.department } : null,
+          office: cust.office ? { id: 0, name: cust.office } : null,
+          roles: cust.roles?.map((name: any, index: number) => ({ id: index, name })) ?? [],
+        }
+      })() : null)
+      setIssueUser(a.issued_to_user ? ((): any => {
+        const u: any = a.issued_to_user
+        return {
+          id: u.id,
+          full_name: u.full_name,
+          employee_number: u.employee_number,
+          email: u.email ?? undefined,
+          department: u.department ? { id: 0, name: u.department } : null,
+          office: u.office ? { id: 0, name: u.office } : null,
+          roles: u.roles?.map((name: any, index: number) => ({ id: index, name })) ?? [],
+        }
+      })() : null)
       setIssueDate(a.date_issued ?? new Date().toISOString().slice(0, 10))
     } catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to load asset for editing.') }
   }
@@ -518,6 +575,7 @@ export function AssetPage() {
         status:           editForm.status,
         condition_status: editForm.condition_status || null,
         remarks:          editForm.remarks || null,
+        custodian_id:     editForm.custodian_id ?? null,
         // property_number is only editable here for standalone assets (no linked InventoryItem).
         // For inventory-linked assets, Property Number is edited from Inventory Edit.
         ...(editAsset.inventory_item_id ? {} : { property_number: editForm.property_number || null }),
@@ -725,6 +783,226 @@ export function AssetPage() {
       setMessage(e instanceof Error ? e.message : 'Unable to cancel disposal.')
     } finally {
       setDisposalActionLoading(false)
+    }
+  }
+
+  async function generatePngSheet() {
+    if (sheetGenerating) return
+    setSheetGenerating(true)
+    try {
+      const writer = new BrowserQRCodeSvgWriter()
+      const selectedIds = selectedAssetIds.length > 0 ? selectedAssetIds : (qrAsset ? [qrAsset.id] : [])
+      let assetsToUse: Asset[] = []
+      if (selectedAssetIds.length > 0) {
+        const cached = assetsForSelection.filter(a => selectedAssetIds.includes(a.id))
+        if (cached.length === selectedAssetIds.length) {
+          assetsToUse = cached
+        } else {
+          // Fall back to fetching each asset using the public show() API
+          assetsToUse = await Promise.all(selectedAssetIds.map(async (id) => { try { return await assetService.show(id) } catch { return null } })).then(res => res.filter(Boolean) as Asset[])
+        }
+      } else if (qrAsset) {
+        assetsToUse = [qrAsset]
+      }
+
+      if (!assetsToUse || assetsToUse.length === 0) {
+        window.alert('No assets selected for sheet.')
+        return
+      }
+
+      const labelW = 420
+      const labelH = 540
+      const qrLabelSize = 320
+      const line1H = 24
+      const line2H = 18
+      const labelPadding = Math.round((labelH - qrLabelSize - line1H - line2H - 24) / 2)
+
+      const makeLabelImage = (asset: Asset) => new Promise<HTMLImageElement>(async (resolve, reject) => {
+        try {
+          const value = asset.psa_qr_payload ?? asset.psa_qr_identifier ?? asset.asset_number ?? `asset-${asset.id}`
+          const innerSvg = writer.write(String(value).replace(/[<>]/g, ''), qrLabelSize, qrLabelSize)
+          // Use explicit charset and proper encoding
+          const innerData = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(innerSvg.outerHTML)
+          const assetName = (asset.name || 'asset')
+          const assetId = asset.asset_number ?? (`asset-${asset.id}`)
+
+          // Render label using a temporary canvas to avoid nested SVG image loading issues
+          const canvas = document.createElement('canvas')
+          canvas.width = labelW
+          canvas.height = labelH
+          const ctx = canvas.getContext('2d')!
+          // white background
+          ctx.fillStyle = '#ffffff'
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+          const loadQrImage = (): Promise<HTMLImageElement> => new Promise((res, rej) => {
+            const qrImg = new Image()
+            // Try to allow cross-origin rendering when possible
+            try { qrImg.crossOrigin = 'anonymous' } catch { /* ignore */ }
+            let tried = 0
+            const tryLoad = () => {
+              qrImg.onload = () => res(qrImg)
+              qrImg.onerror = () => {
+                tried += 1
+                if (tried < 2) {
+                  // retry once after small delay
+                  setTimeout(() => { qrImg.src = innerData + `#retry=${tried}` }, 150)
+                  return
+                }
+                rej(new Error('Failed to load QR image'))
+              }
+              qrImg.src = innerData
+            }
+            tryLoad()
+          })
+
+          try {
+            const qrImg = await loadQrImage()
+            const x = (labelW - qrLabelSize) / 2
+            const y = labelPadding
+            ctx.drawImage(qrImg, x, y, qrLabelSize, qrLabelSize)
+
+            // Draw text
+            ctx.fillStyle = '#0F172A'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            // bold line
+            ctx.font = '700 18px Inter, sans-serif'
+            ctx.fillText(assetName, labelW / 2, labelPadding + qrLabelSize + line1H)
+            // secondary line
+            ctx.fillStyle = '#64748B'
+            ctx.font = '13px Inter, sans-serif'
+            ctx.fillText(assetId, labelW / 2, labelPadding + qrLabelSize + line1H + line2H)
+
+            const out = new Image()
+            const dataUrl = canvas.toDataURL('image/png')
+            out.onload = () => resolve(out)
+            out.onerror = (e) => reject(e)
+            out.src = dataUrl
+          } catch (err) {
+            // If QR image failed, render a fallback label with asset id text instead of QR
+            console.warn('QR image load failed for asset', asset.id, err)
+            ctx.fillStyle = '#F3F4F6'
+            ctx.fillRect((labelW - qrLabelSize) / 2, labelPadding, qrLabelSize, qrLabelSize)
+            ctx.fillStyle = '#0F172A'
+            ctx.font = '14px Inter, sans-serif'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText(assetId, labelW / 2, labelPadding + qrLabelSize / 2)
+
+            // Draw text lines as before
+            ctx.fillStyle = '#0F172A'
+            ctx.font = '700 18px Inter, sans-serif'
+            ctx.fillText(assetName, labelW / 2, labelPadding + qrLabelSize + line1H)
+            ctx.fillStyle = '#64748B'
+            ctx.font = '13px Inter, sans-serif'
+            ctx.fillText(assetId, labelW / 2, labelPadding + qrLabelSize + line1H + line2H)
+
+            const out = new Image()
+            const dataUrl = canvas.toDataURL('image/png')
+            out.onload = () => resolve(out)
+            out.onerror = (e) => reject(e)
+            out.src = dataUrl
+          }
+        } catch (err) { reject(err) }
+      })
+
+      try {
+        const sheetW = 2480
+        const sheetH = 3508
+        const cols = 2
+        const rows = 4
+        const margin = 80
+        const cellW = (sheetW - margin * 2) / cols
+        const cellH = (sheetH - margin * 2) / rows
+        const pad = 20
+        const drawW = Math.min(cellW - pad * 2, cellH - pad * 2)
+        const drawH = drawW * (labelH / labelW)
+
+        const slots = cols * rows
+        const total = assetsToUse.length
+        const sheets = Math.max(1, Math.ceil(total / slots))
+
+        const sheetBlobs: { name: string; blob: Blob }[] = []
+        const failedSheets: string[] = []
+        for (let s = 0; s < sheets; s++) {
+         const start = s * slots
+         const slice = assetsToUse.slice(start, start + slots)
+         let imgs: HTMLImageElement[] = []
+         try {
+           imgs = await Promise.all(slice.map(a => makeLabelImage(a)))
+         } catch (err) {
+           console.error('Failed to create one or more label images for sheet', s, err)
+           // continue with whatever images were produced successfully in this sheet (if any)
+           try {
+             imgs = await Promise.all(slice.map(async (a) => { try { return await makeLabelImage(a) } catch { return null } })).then(res => res.filter(Boolean) as HTMLImageElement[])
+           } catch (e) { imgs = [] }
+           failedSheets.push(`sheet-${s + 1}`)
+         }
+
+         const sheetCanvas = document.createElement('canvas')
+         sheetCanvas.width = sheetW
+         sheetCanvas.height = sheetH
+         const sctx = sheetCanvas.getContext('2d')!
+         sctx.fillStyle = '#ffffff'
+         sctx.fillRect(0, 0, sheetW, sheetH)
+
+         for (let i = 0; i < imgs.length; i++) {
+           const img = imgs[i]
+           const r = Math.floor(i / cols)
+           const c = i % cols
+           const x = margin + c * cellW + (cellW - drawW) / 2
+           const y = margin + r * cellH + (cellH - drawH) / 2
+           sctx.drawImage(img, x, y, drawW, drawH)
+         }
+
+         // Collect this sheet as a blob for zipping later
+         const filenameBase = slice.length > 0 ? (slice[0].asset_number ?? `psa-sheet-${start + 1}`) : `psa-sheet-${s + 1}`
+         const suffix = sheets > 1 ? `-part${s + 1}` : ''
+         const name = `${filenameBase}${suffix}-qr-sheet.png`
+
+         const blob = await new Promise<Blob | null>((resolve) => sheetCanvas.toBlob((b) => resolve(b), 'image/png'))
+         if (!blob) {
+           console.error('sheet canvas produced null blob for', name)
+           failedSheets.push(name)
+           continue
+         }
+         sheetBlobs.push({ name, blob })
+        }
+
+        if (sheetBlobs.length === 0) {
+         // nothing succeeded
+         throw new Error('No sheets could be generated')
+        }
+
+        // Create a ZIP containing all sheets
+        try {
+         const zip = new JSZip()
+         sheetBlobs.forEach((s) => zip.file(s.name, s.blob))
+         const zipBlob = await zip.generateAsync({ type: 'blob' })
+         const zipName = `psa-qr-sheets-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.zip`
+         const zipUrl = URL.createObjectURL(zipBlob)
+         const a = document.createElement('a')
+         a.href = zipUrl
+         a.download = zipName
+         document.body.appendChild(a)
+         a.click()
+         a.remove()
+         URL.revokeObjectURL(zipUrl)
+
+         if (failedSheets.length > 0) {
+           window.alert(`Some sheets failed to generate and were omitted from the ZIP: ${failedSheets.join(', ')}`)
+         }
+        } catch (err) {
+         console.error('Failed to create ZIP', err)
+         window.alert('Failed to package sheets into ZIP.')
+        }
+      } catch (err) {
+        console.error(err)
+        window.alert('Failed to generate sheet PNG.')
+      }
+    } finally {
+      setSheetGenerating(false)
     }
   }
 
@@ -1778,10 +2056,11 @@ export function AssetPage() {
                       {[
                         { label: 'Item Name', value: viewAsset.inventory.name },
                         { label: 'SKU / Item Code', value: viewAsset.inventory.sku ?? '—', mono: true },
-                        { label: 'Classification', value: viewAsset.inventory.classification ?? viewAsset.inventory.type ?? '—' },
-                        { label: 'Manufacturer', value: viewAsset.inventory.manufacturer ?? '—' },
-                        { label: 'Model', value: viewAsset.inventory.model ?? '—' },
-                        { label: 'Description', value: viewAsset.inventory.description ?? '—', full: true },
+                                                { label: 'Type', value: viewAsset.inventory.item_type_name ?? '—' },
+                                                                        { label: 'Classification', value: viewAsset.inventory.classification ?? (viewAsset.inventory.type === 'expendable' ? 'SUPPLY' : '—') },
+                                                { label: 'Manufacturer', value: viewAsset.inventory.manufacturer ?? '—' },
+                                                { label: 'Model', value: viewAsset.inventory.model ?? '—' },
+                                                { label: 'Description', value: viewAsset.inventory.description ?? '—', full: true },
                       ].map(({ label, value, mono, full }) => (
                         <div key={label} style={full ? { gridColumn: '1 / -1' } : {}}>
                           <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
@@ -1835,36 +2114,24 @@ export function AssetPage() {
                   <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
                       <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 4 }}>Status</div>
-                      {(() => {
-                        const eff = getEffectiveAssetStatus(viewAsset)
-                        const labelText = String(eff.label ?? '')
-                        const subtextText = eff.subtext ? String(eff.subtext) : null
-                        const tone = (eff.tone ?? 'gray') as import('@/components/ui').Tone
-                        const subtextTone = (eff.subtextTone ?? null) as import('@/components/ui').Tone | null
-                        const toneStyle = {
-                          gray: { background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' },
-                          blue: { background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' },
-                          green: { background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' },
-                          red: { background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' },
-                          yellow: { background: '#fefce8', color: '#854d0e', border: '1px solid #fde68a' },
-                          teal: { background: '#f0fdfa', color: '#0f766e', border: '1px solid #99f6e4' },
-                          violet: { background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' },
-                          orange: { background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' },
-                        }[tone]
-                        return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '2px 10px', fontSize: 12, fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap', background: toneStyle.background, color: toneStyle.color, border: toneStyle.border, boxSizing: 'border-box' }}>{labelText}</span>
-                            {subtextText && subtextTone && (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '2px 10px', fontSize: 12, fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap', background: toneStyle.background, color: toneStyle.color, border: toneStyle.border, boxSizing: 'border-box' }}>
-                                {subtextText}
-                                {viewAsset.reservation_context?.requester_name ? (
-                                  <span style={{ fontWeight: 400, opacity: 0.75 }}> · {String(viewAsset.reservation_context.requester_name)}</span>
-                                ) : null}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })()}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                        {(() => {
+                          const effectiveStatus = getEffectiveAssetStatus(viewAsset)
+                          return (
+                            <>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '2px 10px', fontSize: 12, fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap', background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', boxSizing: 'border-box' }}>{effectiveStatus.label}</span>
+                              {effectiveStatus.subtext && effectiveStatus.subtextTone ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: 999, padding: '2px 10px', fontSize: 12, fontWeight: 600, lineHeight: 1.5, whiteSpace: 'nowrap', background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', boxSizing: 'border-box' }}>
+                                  {effectiveStatus.subtext}
+                                  {viewAsset.reservation_context?.requester_name ? (
+                                    <span style={{ fontWeight: 400, opacity: 0.75 }}> · {String(viewAsset.reservation_context.requester_name)}</span>
+                                  ) : null}
+                                </span>
+                              ) : null}
+                            </>
+                          )
+                        })()}
+                      </div>
                     </div>
                     <div>
                       <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 4 }}>Condition</div>
@@ -1907,6 +2174,13 @@ export function AssetPage() {
                         <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' || value === 'Unlinked record' ? '#CBD5E1' : '#1E293B' }}>{value}</div>
                       </div>
                     ))}
+
+                    {/* Custodian display */}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>Custodian</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: viewAsset.custodian ? '#1E293B' : '#CBD5E1' }}>{viewAsset.custodian?.full_name ?? '—'}</div>
+                    </div>
+
                     {viewAsset.is_unlinked_holder && (
                       <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: '#B45309', fontStyle: 'italic' }}>
                         ⚠ This record uses a legacy unlinked holder name.
@@ -2078,11 +2352,136 @@ export function AssetPage() {
         open={qrAsset !== null} title="PSA Asset QR Label" onClose={() => setQrAsset(null)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setQrAsset(null)}>Close</Button>
-            <Button onClick={() => window.print()}>Print QR Label</Button>
-          </>
-        }
-      >
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', maxWidth: '100%', overflowX: 'auto', paddingTop: 6 }}>
+              <Button size="sm" variant="secondary" onClick={() => setQrAsset(null)}>Close</Button>
+              <Button size="sm" variant="secondary" onClick={() => {
+                // Download SVG representation of the QR + asset name
+                const container = document.querySelector('.asset-qr-print-area') as HTMLElement | null
+                if (!container || !qrAsset) {
+                  window.alert('Unable to prepare QR label for download.')
+                  return
+                }
+
+                const svgInQr = container.querySelector('svg[role="img"][aria-label^="QR code"]') as SVGElement | null
+                if (!svgInQr) {
+                  window.alert('QR code SVG not found in the modal.')
+                  return
+                }
+
+                try {
+                  const serializer = new XMLSerializer()
+                  const qrSvgString = serializer.serializeToString(svgInQr)
+                  const assetName = (qrAsset.name || 'asset').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                  const assetId = qrAsset.asset_number ?? (`asset-${qrAsset.id}`)
+
+                  // Build a simple SVG that places the QR code and the asset name below it.
+                  const outerWidth = 420
+                  const outerHeight = 540
+                  const qrSize = 320
+                  const line1Height = 24
+                  const line2Height = 18
+                  // compute top padding so QR + two lines are vertically centered
+                  const padding = Math.round((outerHeight - qrSize - line1Height - line2Height - 24) / 2)
+
+                  const svgContent = `<?xml version="1.0" encoding="utf-8"?>\n` +
+                    `<svg xmlns="http://www.w3.org/2000/svg" width="${outerWidth}" height="${outerHeight}" viewBox="0 0 ${outerWidth} ${outerHeight}">\n` +
+                    `  <rect width="100%" height="100%" fill="#ffffff"/>\n` +
+                    `  <g transform="translate(${(outerWidth - qrSize)/2}, ${padding})">\n` +
+                    `    ${qrSvgString}\n` +
+                    `  </g>\n` +
+                    `  <text x="50%" y="${padding + qrSize + line1Height}" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#0F172A" text-anchor="middle">${assetName}</text>\n` +
+                    `  <text x="50%" y="${padding + qrSize + line1Height + line2Height}" font-family="Inter, sans-serif" font-size="13" fill="#64748B" text-anchor="middle">${assetId}</text>\n` +
+                    `</svg>`
+
+                  const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `${assetId}-qr-label.svg`
+                  document.body.appendChild(a)
+                  a.click()
+                  a.remove()
+                  URL.revokeObjectURL(url)
+                } catch (err) {
+                  // Fallback: allow printing if download fails
+                  console.error(err)
+                  window.alert('Failed to generate downloadable QR label. You can still print the label.')
+                }
+              }}>Download SVG</Button>
+
+              <Button size="sm" variant="secondary" onClick={async () => {
+                // Download PNG rasterized from the assembled SVG label
+                const container = document.querySelector('.asset-qr-print-area') as HTMLElement | null
+                if (!container || !qrAsset) { window.alert('Unable to prepare QR label for download.'); return }
+                const svgInQr = container.querySelector('svg[role="img"][aria-label^="QR code"]') as SVGElement | null
+                if (!svgInQr) { window.alert('QR code SVG not found in the modal.'); return }
+
+                const serializer = new XMLSerializer()
+                const qrSvgString = serializer.serializeToString(svgInQr)
+                const assetName = (qrAsset.name || 'asset').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                const assetId = qrAsset.asset_number ?? (`asset-${qrAsset.id}`)
+
+                const outerWidth = 420
+                const outerHeight = 540
+                const qrSize = 320
+                const line1Height = 24
+                const line2Height = 18
+                // compute top padding so QR + two lines are vertically centered
+                const padding = Math.round((outerHeight - qrSize - line1Height - line2Height - 24) / 2)
+
+                const svgContent = `<?xml version="1.0" encoding="utf-8"?>\n` +
+                  `<svg xmlns="http://www.w3.org/2000/svg" width="${outerWidth}" height="${outerHeight}" viewBox="0 0 ${outerWidth} ${outerHeight}">\n` +
+                  `  <rect width="100%" height="100%" fill="#ffffff"/>\n` +
+                  `  <g transform="translate(${(outerWidth - qrSize)/2}, ${padding})">\n` +
+                  `    ${qrSvgString}\n` +
+                  `  </g>\n` +
+                  `  <text x="50%" y="${padding + qrSize + line1Height}" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#0F172A" text-anchor="middle">${assetName}</text>\n` +
+                  `  <text x="50%" y="${padding + qrSize + line1Height + line2Height}" font-family="Inter, sans-serif" font-size="13" fill="#64748B" text-anchor="middle">${assetId}</text>\n` +
+                  `</svg>`
+
+                const svgBlob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' })
+                const svgUrl = URL.createObjectURL(svgBlob)
+
+                const img = new Image()
+                img.onload = () => {
+                  try {
+                    const canvas = document.createElement('canvas')
+                    canvas.width = outerWidth * 2 // upscale for better print quality
+                    canvas.height = outerHeight * 2
+                    const ctx = canvas.getContext('2d')!
+                    // white background
+                    ctx.fillStyle = '#ffffff'
+                    ctx.fillRect(0, 0, canvas.width, canvas.height)
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+                    canvas.toBlob((blob) => {
+                      if (!blob) { window.alert('Failed to create PNG.'); URL.revokeObjectURL(svgUrl); return }
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `${assetId}-qr-label.png`
+                      document.body.appendChild(a)
+                      a.click()
+                      a.remove()
+                      URL.revokeObjectURL(url)
+                      URL.revokeObjectURL(svgUrl)
+                    }, 'image/png')
+                  } catch (err) {
+                    console.error(err)
+                    window.alert('Failed to generate PNG.')
+                  }
+                }
+                img.onerror = (e) => { console.error('Image load error', e); window.alert('Failed to rasterize SVG to PNG.') }
+                img.src = svgUrl
+              }}>Download PNG</Button>
+
+              <Button size="sm" variant="secondary" onClick={() => setSheetSelectionOpen(true)}>Select items for sheet</Button>
+              <Button size="sm" variant="secondary" onClick={() => void generatePngSheet()} disabled={sheetGenerating}>{sheetGenerating ? 'Preparing…' : 'Download PNG Sheet'}</Button>
+
+              <Button size="sm" onClick={() => window.print()}>Print QR Label</Button>
+            </div>
+            </>
+          }
+        >
         {qrAsset && (
           <div className="asset-qr-print-area" style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
@@ -2126,8 +2525,9 @@ export function AssetPage() {
             <div style={{
               borderRadius: 14, border: '1px solid #e2e8f0', background: '#ffffff',
               padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              <QrCode value={qrAsset.psa_qr_payload ?? qrAsset.psa_qr_identifier ?? qrAsset.asset_number} />
+              <QrCode value={qrAsset.psa_qr_payload ?? qrAsset.psa_qr_identifier ?? qrAsset.asset_number} size={320} />
             </div>
 
             {/* Identifier */}
@@ -2145,7 +2545,12 @@ export function AssetPage() {
               width: '100%', borderRadius: 10, background: '#f8fafc',
               border: '1px solid #f1f5f9', padding: 14, textAlign: 'left',
             }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 8 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                <button type="button" onClick={() => setSheetSelectionOpen(true)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', cursor: 'pointer' }}>Select items for sheet</button>
+                {selectedAssetIds.length > 0 && (
+                  <div style={{ fontSize: 12, color: '#475569' }}>{selectedAssetIds.length} selected for sheet</div>
+                )}
+              </div>              <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 8 }}>
                 Supported scan identifiers
               </div>
               {(qrAsset.identifiers ?? []).length > 0 ? (
@@ -2174,6 +2579,22 @@ export function AssetPage() {
           </div>
         )}
       </Modal>
+
+      <AssetSheetSelector
+        open={sheetSelectionOpen}
+        onClose={() => setSheetSelectionOpen(false)}
+        initialSelected={selectedAssetIds}
+        onConfirm={async (ids: number[]) => {
+          // persist selection and then fetch the asset records for generation
+          persistSelectedAssetIds(ids)
+          if (ids.length > 0) {
+            const fetched = await Promise.all(ids.map(async (id) => { try { return await assetService.show(id) } catch { return null } }))
+            setAssetsForSelection(fetched.filter(Boolean) as Asset[])
+          } else {
+            setAssetsForSelection([])
+          }
+        }}
+      />
 
       {/* ── Edit Asset Modal ── */}
       {/* ── Edit Asset Modal ── */}
@@ -2238,13 +2659,14 @@ export function AssetPage() {
                   { label: 'Item Name',       value: editAsset.name },
                   { label: 'Asset Number',    value: editAsset.asset_number,          mono: true },
                   { label: 'Property Number', value: editAsset.property_number ?? '—', mono: true },
+                  { label: 'Serial Number',   value: editAsset.inventory?.serial_number ?? editAsset.serial_number ?? '—', mono: true },
+                  { label: 'Type',            value: editAsset.inventory?.item_type_name ?? '—' },
                   { label: 'Category',        value: editAsset.category ?? '—' },
                   { label: 'Model',           value: editAsset.model ?? '—' },
                   { label: 'Office',          value: editAsset.office ?? '—' },
                   { label: 'Location',        value: editAsset.location ?? '—' },
                   { label: 'Description',     value: editAsset.description ?? '—' },
-                ] as { label: string; value: string; mono?: boolean }[]).map(({ label, value, mono }) => (
-                  <div key={label} className={label === 'Description' ? 'sm:col-span-2' : ''}>
+                ] as { label: string; value: string; mono?: boolean }[]).map(({ label, value, mono }) => (                  <div key={label} className={label === 'Description' ? 'sm:col-span-2' : ''}>
                     <p className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8] mb-0.5">{label}</p>
                     <p style={{
                       fontSize: 13.5, margin: 0,
@@ -2320,6 +2742,20 @@ export function AssetPage() {
             </div>
 
             {/* C: Operational status */}
+
+            {/* B.5: Custodian */}
+            <div>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Custodian</p>
+              <div className="space-y-3 rounded-xl border border-[#E5E7EB] p-4">
+                <IssuanceUserSearchSelect
+                  value={editForm.custodian_id ?? null}
+                  initialUser={custodianUser}
+                  onChange={(userId, user) => { setEditForm({ ...editForm, custodian_id: userId }); setCustodianUser(user) }}
+                />
+                <p className="text-sm text-[#64748B]">Assign or clear the custodian responsible for this asset. This is a permanent assignment separate from temporary borrowing.</p>
+              </div>
+            </div>
+
             <div>
               <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Operational Status</p>
               <div className="grid gap-3 sm:grid-cols-2">

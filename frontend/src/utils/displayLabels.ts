@@ -48,12 +48,14 @@ export function assetStatusLabel(status: AssetStatus | string): string {
  *
  * The backend asset.status is never changed by this helper.
  */
-export function getEffectiveAssetStatus(asset: Pick<Asset, 'status' | 'reservation_context'>): {
+export type EffectiveAssetStatus = {
   label: string
   tone: Tone
   subtext: string | null
   subtextTone: Tone | null
-} {
+}
+
+export function getEffectiveAssetStatus(asset: Pick<Asset, 'status' | 'reservation_context'>): EffectiveAssetStatus {
   if (asset.status === 'RESERVED') {
     const ctx = asset.reservation_context
     if (ctx?.status === 'APPROVED') {

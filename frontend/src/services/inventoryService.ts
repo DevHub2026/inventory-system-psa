@@ -12,7 +12,7 @@ export interface CreateInventoryItemPayload {
   description?: string | null
   // ── Classification ─────────────────────────────────────────────────────
   type?: 'non_expendable' | 'expendable'
-  classification?: 'PPE' | 'SE' | 'SUPPLY'
+  classification?: 'PPE' | 'SE' | 'SUPPLY' | null
   item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY'
   classification_reason?: string
   item_type_id?: number | null
@@ -54,7 +54,7 @@ export interface UpdateInventoryItemPayload {
   description?: string | null
   // ── Classification ─────────────────────────────────────────────────────
   type?: 'non_expendable' | 'expendable'
-  classification?: 'PPE' | 'SE' | 'SUPPLY'
+  classification?: 'PPE' | 'SE' | 'SUPPLY' | null
   item_nature?: 'ACCOUNTABLE_PROPERTY' | 'CONSUMABLE_SUPPLY'
   classification_reason?: string
   item_type_id?: number | null
@@ -96,7 +96,7 @@ export interface InventoryFilters {
   status?: string
   type?: 'non_expendable' | 'expendable'
   item_type_id?: number | null
-  classification?: 'PPE' | 'SE' | 'SUPPLY'
+  classification?: 'PPE' | 'SE' | 'SUPPLY' | null
   low_stock?: boolean
 }
 

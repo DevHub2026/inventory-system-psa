@@ -23,7 +23,7 @@ class AssetService
         $perPage = (int) ($filters['per_page'] ?? 20);
 
         $query = Asset::query()
-            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser', 'inventoryItem'])
+            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser', 'inventoryItem', 'custodian'])
             ->search($filters['search'] ?? null);
 
         // ── track_as_asset visibility filter ────────────────────────────────
@@ -79,7 +79,7 @@ class AssetService
     public function search(string $term, int $perPage = 20): LengthAwarePaginator
     {
         return Asset::query()
-            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser', 'inventoryItem'])
+            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser', 'inventoryItem', 'custodian'])
             ->search($term)
             // Same visibility rule as list() — honour track_as_asset on linked items.
             ->where(function ($q): void {
@@ -103,6 +103,7 @@ class AssetService
             'issuedToUser.roles',
             'issuedByUser',
             'inventoryItem.supplier',
+            'custodian',
         ]);
     }
 
@@ -130,7 +131,7 @@ class AssetService
                 ]);
             }
 
-            return $asset->load(['category', 'manufacturer', 'office', 'location', 'identifiers']);
+            return $asset->load(['category', 'manufacturer', 'office', 'location', 'identifiers', 'custodian']);
         });
     }
 
@@ -170,7 +171,7 @@ class AssetService
 
         $asset->update($data);
 
-        return $asset->fresh()->load(['category', 'manufacturer', 'office', 'location', 'identifiers']);
+        return $asset->fresh()->load(['category', 'manufacturer', 'office', 'location', 'identifiers', 'custodian']);
     }
 
     public function delete(Asset $asset): void
@@ -207,7 +208,7 @@ class AssetService
             $asset->update(['status' => AssetStatus::AVAILABLE]);
         }
 
-        return $asset->fresh()->load(['category', 'manufacturer', 'office', 'location', 'identifiers', 'inventoryItem']);
+        return $asset->fresh()->load(['category', 'manufacturer', 'office', 'location', 'identifiers', 'inventoryItem', 'custodian']);
     }
 
     public function listArchived(array $filters = []): LengthAwarePaginator
@@ -216,7 +217,7 @@ class AssetService
 
         $query = Asset::query()
             ->onlyTrashed()
-            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser', 'inventoryItem']);
+            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'issuedToUser', 'issuedByUser', 'inventoryItem', 'custodian']);
 
         if (! empty($filters['search'])) {
             $like = '%'.$filters['search'].'%';
@@ -294,7 +295,7 @@ class AssetService
 
         $asset->update($payload);
 
-        return $asset->fresh()->load(['category', 'manufacturer', 'office', 'location', 'identifiers']);
+        return $asset->fresh()->load(['category', 'manufacturer', 'office', 'location', 'identifiers', 'custodian']);
     }
 
     public function findByIdentifier(string $value): ?Asset
@@ -306,7 +307,7 @@ class AssetService
         }
 
         return $identifier->asset()
-            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers'])
+            ->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'custodian'])
             ->first();
     }
 
