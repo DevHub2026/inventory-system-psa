@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Generate QR Sheets from Assets JSON</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial; padding: 18px; }
+    .card { border: 1px solid #e6eef8; padding: 12px; border-radius: 8px; max-width: 900px }
+    header { display:flex; gap:12px; align-items:center; margin-bottom:12px }
+    button { padding:8px 12px; border-radius:8px; cursor:pointer }
+    pre { background:#f8fafc; padding:12px; border-radius:6px; overflow:auto }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Generate QR Sheets from Assets JSON</h1>
+  </header>
+
+  <div class="card">
+    <p>This tool accepts an exported JSON file containing an array of asset objects (similar to the frontend <code>Asset</code> type). It will generate printable PNG sheets (2×4 per A4 page) and package them into a ZIP for download.</p>
+
+    <p><strong>How to use</strong></p>
+    <ol>
+      <li>Export assets JSON from your server (see instructions below) or use the frontend API to save a JSON file.</li>
+      <li>On the target PC open this file in the browser (double-click the file).</li>
+      <li>Choose the JSON file and click "Generate ZIP".</li>
+      <li>Download the resulting ZIP and extract to inspect PNG sheets.</li>
+    </ol>
+
+    <p><strong>Export example (server API)</strong></p>
+    <pre>curl -H "Authorization: Bearer YOUR_TOKEN" "http://your-host/api/assets?per_page=9999" -o assets.json</pre>
+
+    <label>Choose exported JSON file: <input id="file" type="file" accept="application/json" /></label>
+    <div style="margin-top:10px">
+      <button id="generate">Generate ZIP</button>
+      <span id="status" style="margin-left:12px;color:#374151"></span>
+    </div>
+
+    <hr />
+    <div id="log" style="margin-top:10px"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@4.0.0/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+  <script>
+    // Config
+    const sheetW = 2480; // A4 @ 300dpi
+    const sheetH = 3508;
+    const cols = 2, rows = 4;
+    const labelW = 420, labelH = 540;
+    const qrLabelSize = 320;
+    const margin = 80;
+    const cellW = (sheetW - margin*2) / cols;
+    const cellH = (sheetH - margin*2) / rows;
+    const pad = 20;
+    const drawW = Math.min(cellW - pad*2, cellH - pad*2);
+    const drawH = drawW * (labelH / labelW);
+
+    function log(msg) {
+      const d = document.getElementById('log');
+      const p = document.createElement('div'); p.textContent = msg; d.prepend(p);
+    }
+
+    document.getElementById('generate').addEventListener('click', async () => {
+      const input = document.getElementById('file');
+      if (!input.files || input.files.length === 0) { alert('Please select a JSON file'); return }
+      const f = input.files[0];
+      document.getElementById('status').textContent = 'Reading file...';
+      const text = await f.text();
+      let data;
+      try { data = JSON.parse(text) } catch (e) { alert('Invalid JSON file'); console.error(e); return }
+      if (!Array.isArray(data)) { alert('Expected an array of assets'); return }
+
+      document.getElementById('status').textContent = `Preparing ${data.length} assets...`;
+
+      // Normalize function to pick payload
+      const resolvePayload = (asset) => {
+        if (asset.psa_qr_payload) return String(asset.psa_qr_payload)
+        if (asset.identifiers && Array.isArray(asset.identifiers)) {
+          const id = asset.identifiers.find(i => ['PSA_QR_PAYLOAD','QR_PAYLOAD','PSA_QR_IDENTIFIER','QR_IDENTIFIER','QR','PAYLOAD'].includes((i.identifier_type||'').toString().toUpperCase()))
+          if (id) return String(id.identifier_value)
+        }
+        if (asset.psa_qr_identifier) return String(asset.psa_qr_identifier)
+        if (asset.asset_number) return String(asset.asset_number)
+        if (asset.inventory && asset.inventory.sku) return String(asset.inventory.sku)
+        return `asset-${asset.id||'unknown'}`
+      }
+
+      // Make label image for an asset: returns Image element (PNG data URL)
+      async function makeLabelImage(asset) {
+        const payload = resolvePayload(asset)
+        // Generate QR as data URL using qrcode lib
+        const qrDataUrl = await QRCode.toDataURL(payload, { margin: 0, width: qrLabelSize })
+
+        // draw onto canvas
+        const canvas = document.createElement('canvas')
+        canvas.width = labelW; canvas.height = labelH; const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width, canvas.height)
+        // draw QR
+        const img = new Image(); img.src = qrDataUrl
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej })
+        const x = (labelW - qrLabelSize)/2; const y = Math.round((labelH - qrLabelSize - 24 - 18 - 24)/2)
+        ctx.drawImage(img, x, y, qrLabelSize, qrLabelSize)
+        // name and id
+        ctx.fillStyle = '#0F172A'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='700 18px sans-serif';
+        const name = asset.name || 'asset'; ctx.fillText(name, labelW/2, y + qrLabelSize + 18)
+        ctx.fillStyle = '#64748B'; ctx.font='13px sans-serif'; const id = asset.psa_qr_identifier||asset.asset_number||asset.inventory?.sku||('asset-'+(asset.id||'?'))
+        ctx.fillText(id, labelW/2, y + qrLabelSize + 18 + 18)
+        return canvas.toDataURL('image/png')
+      }
+
+      // Build sheets
+      const slots = cols * rows
+      const total = data.length
+      const sheets = Math.max(1, Math.ceil(total / slots))
+      const zip = new JSZip()
+      let sheetIndex = 0
+      for (let s = 0; s < sheets; s++) {
+        const start = s * slots
+        const slice = data.slice(start, start + slots)
+        const imgs = []
+        for (let i = 0; i < slice.length; i++) {
+          try {
+            const durl = await makeLabelImage(slice[i])
+            imgs.push(durl)
+          } catch (e) {
+            console.error('label render failed', e)
+            log('Label render failed for asset ' + (slice[i].asset_number || slice[i].id))
+          }
+        }
+
+        // draw sheet
+        const sheet = document.createElement('canvas'); sheet.width = sheetW; sheet.height = sheetH; const sctx = sheet.getContext('2d')
+        sctx.fillStyle = '#ffffff'; sctx.fillRect(0,0,sheetW,sheetH)
+        for (let i = 0; i < imgs.length; i++) {
+          const img = new Image(); img.src = imgs[i]
+          await new Promise((res, rej) => { img.onload = res; img.onerror = rej })
+          const r = Math.floor(i / cols); const c = i % cols
+          const x = margin + c * cellW + (cellW - drawW)/2
+          const y = margin + r * cellH + (cellH - drawH)/2
+          sctx.drawImage(img, x, y, drawW, drawH)
+        }
+
+        const blob = await new Promise(resolve => sheet.toBlob(resolve, 'image/png'))
+        const name = `psa-sheet-${s+1}.png`
+        zip.file(name, blob)
+        document.getElementById('status').textContent = `Generated ${s+1}/${sheets} sheets...`
+      }
+
+      document.getElementById('status').textContent = 'Packaging ZIP...'
+      const zblob = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(zblob)
+      const a = document.createElement('a'); a.href = url; a.download = `psa-qr-sheets-${Date.now()}.zip`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url)
+      document.getElementById('status').textContent = 'Done'
+    })
+  </script>
+</body>
+</html>

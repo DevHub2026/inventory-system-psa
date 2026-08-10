@@ -819,10 +819,19 @@ export function AssetPage() {
 
       const makeLabelImage = (asset: Asset) => new Promise<HTMLImageElement>(async (resolve, reject) => {
         try {
-          const value = asset.psa_qr_payload ?? asset.psa_qr_identifier ?? asset.asset_number ?? `asset-${asset.id}`
+          // Prefer explicit psa_qr_payload; if missing, try known identifier entries; then psa_qr_identifier, asset_number, and last-resort inventory.sku
+          const identifier = (asset.identifiers || []).find(i => {
+            const t = (i.identifier_type || '').toString().toUpperCase()
+            return ['PSA_QR_PAYLOAD','QR_PAYLOAD','PSA_QR_IDENTIFIER','QR_IDENTIFIER','QR','PAYLOAD'].includes(t)
+          })
+          const value = asset.psa_qr_payload ?? identifier?.identifier_value ?? asset.psa_qr_identifier ?? asset.asset_number ?? asset.inventory?.sku ?? `asset-${asset.id}`
           const innerSvg = writer.write(String(value).replace(/[<>]/g, ''), qrLabelSize, qrLabelSize)
-          // Use explicit charset and proper encoding
-          const innerData = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(innerSvg.outerHTML)
+          // Serialize the SVG and use a base64 data URL for better browser compatibility
+          const svgString = (new XMLSerializer()).serializeToString(innerSvg)
+          const base64 = typeof window.btoa === 'function'
+            ? window.btoa(unescape(encodeURIComponent(svgString)))
+            : Buffer.from(svgString, 'utf-8').toString('base64')
+          const innerData = 'data:image/svg+xml;base64,' + base64
           const assetName = (asset.name || 'asset')
           const assetId = asset.asset_number ?? (`asset-${asset.id}`)
 
@@ -837,20 +846,20 @@ export function AssetPage() {
 
           const loadQrImage = (): Promise<HTMLImageElement> => new Promise((res, rej) => {
             const qrImg = new Image()
-            // Try to allow cross-origin rendering when possible
-            try { qrImg.crossOrigin = 'anonymous' } catch { /* ignore */ }
-            let tried = 0
+            // Do NOT set crossOrigin for data URLs — that can cause failures in some browsers
+            let attempts = 0
             const tryLoad = () => {
+              attempts += 1
               qrImg.onload = () => res(qrImg)
               qrImg.onerror = () => {
-                tried += 1
-                if (tried < 2) {
+                if (attempts < 2) {
                   // retry once after small delay
-                  setTimeout(() => { qrImg.src = innerData + `#retry=${tried}` }, 150)
+                  setTimeout(() => tryLoad(), 120)
                   return
                 }
                 rej(new Error('Failed to load QR image'))
               }
+              // Assign the same base64 data URL
               qrImg.src = innerData
             }
             tryLoad()
@@ -2527,7 +2536,14 @@ export function AssetPage() {
               padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              <QrCode value={qrAsset.psa_qr_payload ?? qrAsset.psa_qr_identifier ?? qrAsset.asset_number} size={320} />
+              {/* Use the same identifier resolution as sheet generation: prefer psa_qr_payload, then identifier entries, then psa_qr_identifier, then asset_number */}
+              <QrCode value={(() => {
+                const identifier = (qrAsset.identifiers || []).find(i => {
+                  const t = (i.identifier_type || '').toString().toUpperCase()
+                  return ['PSA_QR_PAYLOAD','QR_PAYLOAD','PSA_QR_IDENTIFIER','QR_IDENTIFIER','QR','PAYLOAD'].includes(t)
+                })
+                return qrAsset.psa_qr_payload ?? identifier?.identifier_value ?? qrAsset.psa_qr_identifier ?? qrAsset.asset_number ?? (qrAsset.inventory?.sku ?? '')
+              })()} size={320} />
             </div>
 
             {/* Identifier */}
