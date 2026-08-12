@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios'
+﻿import axios, { AxiosError } from 'axios'
 import type { ApiResponse, Paginated } from '@/types'
 
 /** Set VITE_USE_MOCK=true to force mocks. Default: use the real API and surface errors. */
@@ -15,7 +15,10 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('prototype_token')
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    // ensure headers exist
+    config.headers = config.headers || {}
+    // attach bearer token
+    ;(config.headers as any).Authorization = `Bearer ${token}`
   }
   return config
 })
