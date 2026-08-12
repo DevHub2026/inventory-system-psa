@@ -20,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\HandleCors::class);
         $middleware->append(SecurityHeaders::class);
+        // Update active UserSession last_activity on authenticated requests
+        $middleware->append(\App\Http\Middleware\UpdateUserSessionActivity::class);
         $middleware->statefulApi();
         $middleware->redirectGuestsTo(
             fn (Request $request): ?string => $request->is('api/*') ? null : '/login',
@@ -28,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role'    => EnsureUserHasRole::class,
             'audit'   => AuditLog::class,
             'security.headers' => SecurityHeaders::class,
+        'session.token' => \App\Http\Middleware\EnsureSessionTokenActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -1,5 +1,8 @@
 import logo from '../assets/logo.png'
 import LoginForm from '../components/LoginForm'
+import { useState } from 'react'
+import { Modal } from '@/components/ui'
+import { PrivacyNoticePage } from './PrivacyNoticePage'
 
 /* ── Floating SVG particles for the brand panel ── */
 function Particles() {
@@ -39,6 +42,8 @@ function Particles() {
 }
 
 export default function LoginPage() {
+  const [showPrivacy, setShowPrivacy] = useState(false)
+
   return (
     <main className="auth-page">
 
@@ -169,6 +174,13 @@ export default function LoginPage() {
           </p>
 
         </div>
+
+        <div className="auth-card-links" style={{ textAlign: 'center', marginTop: 12 }}>
+          <button onClick={() => setShowPrivacy(true)} className="underline text-sm text-slate-600" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>Privacy Notice</button>
+        </div>
+        <Modal open={showPrivacy} onClose={() => setShowPrivacy(false)} title="Privacy Notice" maxWidth={900}>
+          <PrivacyNoticePage />
+        </Modal>
 
         <footer className="auth-footer">
           © 2025 Philippine Statistics Authority. All rights reserved.

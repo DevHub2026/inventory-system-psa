@@ -192,6 +192,7 @@ export interface Reservation {
   user_id?: number
   purpose?: string
   employee_name?: string
+  employee_id?: string | null
   status: ReservationStatus
   start_date?: string
   end_date?: string
@@ -462,13 +463,16 @@ export interface ApiResponse<T> {
 }
 
 export function displayName(user: User | null | undefined): string {
-  if (!user) return 'User'
+  // Avoid returning a literal placeholder that can be accidentally merged
+  // into user names. When user is not present return an empty string and
+  // let callers decide how to present a fallback (email, dash, etc.).
+  if (!user) return ''
   // Prefer the most specific/complete name available, trimmed
   if (user.full_name?.trim()) return user.full_name.trim()
   if (user.name?.trim()) return user.name.trim()
   const parts = [user.first_name, user.last_name].map((p) => p?.trim()).filter(Boolean)
   if (parts.length > 0) return parts.join(' ')
-  return user.email
+  return user.email || ''
 }
 
 /* ── Workflow Engine Types ── */

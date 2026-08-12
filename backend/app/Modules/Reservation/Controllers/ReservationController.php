@@ -23,6 +23,7 @@ class ReservationController extends Controller
             'id' => $reservation->id,
             'user_id' => $reservation->user_id,
             'employee_name' => $reservation->user?->full_name ?: $reservation->user?->email,
+            'employee_id' => $reservation->user?->employee_number ?? null,
             'status' => $reservation->status,
             'start_date' => $reservation->start_date?->format('Y-m-d'),
             'end_date' => $reservation->end_date?->format('Y-m-d'),
@@ -63,13 +64,17 @@ class ReservationController extends Controller
 
     public function store(StoreReservationRequest $request): JsonResponse
     {
-        $reservation = $this->reservationService->create($request->user(), $request->validated());
+        try {
+            $reservation = $this->reservationService->create($request->user(), $request->validated());
 
-        return $this->success(
-            $this->transform($reservation),
-            'Reservation created successfully.',
-            201,
-        );
+            return $this->success(
+                $this->transform($reservation),
+                'Reservation created successfully.',
+                201,
+            );
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), null, 422);
+        }
     }
 
     public function approve(Request $request, Reservation $reservation): JsonResponse

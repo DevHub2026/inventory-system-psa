@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('inventory_items', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('sku')->unique();
+            $table->string('sku')->unique()->nullable();
             $table->integer('quantity')->default(0);
             $table->string('unit')->nullable();
             $table->integer('reorder_level')->default(0);

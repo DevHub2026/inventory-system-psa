@@ -16,12 +16,14 @@ class UserSession extends Model
         'last_activity',
         'login_at',
         'is_active',
+        'personal_access_token_id',
     ];
 
     protected $casts = [
         'last_activity' => 'datetime',
         'login_at' => 'datetime',
         'is_active' => 'boolean',
+        'personal_access_token_id' => 'integer',
     ];
 
     public function user(): BelongsTo

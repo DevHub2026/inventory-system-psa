@@ -66,12 +66,38 @@ class SessionController extends Controller
             ->where('id', $id)
             ->firstOrFail();
 
+        // If this session has an associated Sanctum personal access token, delete it
+        // so revocation actually prevents further authenticated requests. Also try a
+        // best-effort deletion by tokenable and login time to cover edgecases where
+        // the exact token id may not match (older Sanctum versions / test env).
+        try {
+            $pat = \Laravel\Sanctum\PersonalAccessToken::query();
+
+            if ($session->personal_access_token_id) {
+                $pat->where('id', $session->personal_access_token_id);
+            } else {
+                // Fallback: match tokens created around the session login time.
+                // Use the recorded login_at time to avoid relying on current time
+                // which would miss older sessions being revoked later.
+                $loginAt = $session->login_at ?? now();
+
+                $pat->where('tokenable_id', $session->user_id)
+                    ->where('tokenable_type', \App\Models\User::class)
+                    ->where('name', 'auth')
+                    ->whereBetween('created_at', [$loginAt->copy()->subHours(1), $loginAt->copy()->addHours(1)]);
+            }
+
+            $pat->delete();
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to delete personal access token during session revoke: '.$e->getMessage());
+        }
+
         $session->deactivate();
 
         return response()->json([
             'success' => true,
             'message' => 'Session revoked successfully.',
-            'data'    => null,
+            'data' => null,
         ]);
     }
 
@@ -95,6 +121,28 @@ class SessionController extends Controller
 
         if ($currentSessionId !== null) {
             $query->where('id', '!=', $currentSessionId);
+        }
+
+        // Delete associated tokens for the sessions we are deactivating to ensure
+        // revocation also prevents bearer token use. We exclude the current session id
+        // which was used to compute the query above.
+        $sessionsToRevoke = $query->get();
+        try {
+            foreach ($sessionsToRevoke as $s) {
+                $pat = \Laravel\Sanctum\PersonalAccessToken::query();
+                if (! empty($s->personal_access_token_id)) {
+                    $pat->where('id', $s->personal_access_token_id);
+                } else {
+                    $loginAt = $s->login_at ?? now();
+                    $pat->where('tokenable_id', $s->user_id)
+                        ->where('tokenable_type', \App\Models\User::class)
+                        ->where('name', 'auth')
+                        ->whereBetween('created_at', [$loginAt->copy()->subHours(1), $loginAt->copy()->addHours(1)]);
+                }
+                $pat->delete();
+            }
+        } catch (\Throwable $e) {
+            logger()->warning('Failed to delete personal access tokens during revokeAll: '.$e->getMessage());
         }
 
         $query->update(['is_active' => false]);

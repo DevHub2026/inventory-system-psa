@@ -122,7 +122,6 @@ class UserImportService
             'imported' => $imported,
             'skipped' => $skipped,
             'failed' => $failed,
-            'initial_password' => self::INITIAL_PASSWORD,
             'username_rule' => 'Auto-generated as lowercase(last_name)+employee_number when available, otherwise email local part; duplicates get a _1, _2 suffix',
             'rows' => $results,
         ];

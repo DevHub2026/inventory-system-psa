@@ -248,8 +248,12 @@ export function SettingsPage() {
       // doesn't return it in the response
       const updatedUser = {
         ...updated,
-        name: profileForm.name?.trim() || updated.name,
-        full_name: profileForm.name?.trim() || updated.full_name,
+        // If the server returned authoritative fields prefer them. Only
+        // fall back to the locally-typed profileForm.name when the server
+        // response omitted these fields. This prevents accidental
+        // concatenation/duplication with client-side fallbacks.
+        full_name: (updated.full_name && updated.full_name.trim()) || profileForm.name?.trim() || undefined,
+        name: (updated.name && updated.name.trim()) || (updated.full_name && updated.full_name.trim()) || profileForm.name?.trim() || undefined,
       }
       setUser(updatedUser)
       setProfileForm({

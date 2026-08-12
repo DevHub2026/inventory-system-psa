@@ -11,7 +11,7 @@ import { reservationStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
 import { ApprovalHistoryTimeline } from '@/components/workflows/ApprovalHistoryTimeline'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
-import { formatDate } from '@/utils/dateFormat'
+import { formatDate, formatTime } from '@/utils/dateFormat'
 
 // ─── table styles (shared with BorrowingPage) ─────────────────────────────────
 
@@ -371,7 +371,8 @@ export function ReservationPage() {
                 <col style={{ width: 100 }} />
                 <col style={{ width: 180 }} />
                 <col style={{ width: 150 }} />
-              </colgroup>
+                              <col style={{ width: 150 }} />
+                            </colgroup>
 
               <thead>
                 <tr>
@@ -381,6 +382,7 @@ export function ReservationPage() {
                   <th style={th}>Purpose</th>
                   <th style={th}>Status</th>
                   <th style={th}>Schedule</th>
+                  <th style={th}>Time</th>
                   <th style={{ ...th, textAlign: 'right', paddingRight: 20 }}>Actions</th>
                 </tr>
               </thead>
@@ -404,11 +406,16 @@ export function ReservationPage() {
                       </span>
                     </td>
 
-                    {/* Employee */}
+                    {/* Employee (name + ID) */}
                     <td style={td}>
-                      <span style={{ fontWeight: 600, color: '#0F172A', fontSize: 13 }}>
-                        {r.employee_name ?? '—'}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <span style={{ fontWeight: 600, color: '#0F172A', fontSize: 13 }}>
+                          {r.employee_name ?? '—'}
+                        </span>
+                        <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#64748B' }}>
+                          {r.employee_id ?? '—'}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Asset */}
@@ -431,6 +438,18 @@ export function ReservationPage() {
                     {/* Schedule */}
                     <td style={td}>
                       <ScheduleCell from={r.reserved_from ?? r.start_date} until={r.reserved_until ?? r.end_date} />
+                    </td>
+
+                    {/* Time */}
+                    <td style={td}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ fontWeight: 600, color: '#0F172A', fontSize: 13 }}>
+                          {r.created_at ? formatDate(r.created_at) : '—'}
+                        </span>
+                        <span style={{ fontSize: 12, color: '#64748B' }}>
+                          {r.created_at ? formatTime(r.created_at) : ''}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Actions */}

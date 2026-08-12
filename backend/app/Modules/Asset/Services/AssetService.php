@@ -102,7 +102,13 @@ class AssetService
             'issuedToUser.office',
             'issuedToUser.roles',
             'issuedByUser',
+            // Ensure inventoryItem relations commonly read by AssetResource are loaded
+            'inventoryItem',
+            'inventoryItem.manufacturer',
             'inventoryItem.supplier',
+            'inventoryItem.itemType',
+            'inventoryItem.assetCategory',
+            'inventoryItem.unit',
             'custodian',
         ]);
     }

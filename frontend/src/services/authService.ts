@@ -48,8 +48,12 @@ function persistUser(user: User, token?: string): User {
    */
   const normalized: User = {
     ...user,
-    // Prefer the server-returned name/full_name; only derive if missing
-    name: user.name?.trim() || user.full_name?.trim() || displayName(user),
+    // Normalize and trim server-provided name fields. Prefer server values
+    // (full_name then name). If those are missing use the displayName
+    // fallback (which no longer returns the literal 'User'). Ensure both
+    // name and full_name are present to avoid later merge inconsistencies.
+    full_name: (user.full_name && user.full_name.trim()) || (user.name && user.name.trim()) || displayName(user) || '',
+    name: (user.name && user.name.trim()) || (user.full_name && user.full_name.trim()) || displayName(user) || '',
   }
   localStorage.setItem('prototype_user', JSON.stringify(normalized))
   if (token) {

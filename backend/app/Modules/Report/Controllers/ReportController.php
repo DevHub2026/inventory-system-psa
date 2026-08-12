@@ -69,11 +69,21 @@ class ReportController extends Controller
             'id' => $asset->id,
             'asset_number' => $asset->asset_number,
             'property_number' => $asset->property_number,
+            'serial_number' => (
+                // Look for a SERIAL_NUMBER identifier if identifiers were eager-loaded
+                $asset->relationLoaded('identifiers')
+                    ? optional($asset->identifiers->firstWhere('identifier_type', 'SERIAL_NUMBER'))->identifier_value
+                    : null
+            ),
             'name' => $asset->name,
             'category' => $asset->category->name ?? 'N/A',
             'manufacturer' => $asset->manufacturer->name ?? 'N/A',
             'office' => $asset->office->name ?? 'N/A',
             'location' => $asset->location->name ?? 'N/A',
+            'item_type' => $asset->relationLoaded('inventoryItem') && $asset->inventoryItem?->relationLoaded('itemType')
+                ? $asset->inventoryItem->itemType?->name
+                : ($asset->inventoryItem?->item_type_id ? 'ID:'.$asset->inventoryItem->item_type_id : null),
+            'custodian' => $asset->relationLoaded('custodian') ? ($asset->custodian?->full_name ?? null) : null,
             'status' => $asset->status,
             'accountability' => $asset->issued_to_user_id
                 ? 'Issued to '.($asset->issuedToUser?->full_name ?? $asset->issued_to ?? 'N/A')
@@ -91,8 +101,19 @@ class ReportController extends Controller
         return $this->success($report->map(fn ($borrowing) => [
             'id' => $borrowing->id,
             'asset_name' => $borrowing->asset->name ?? 'N/A',
+            'asset_number' => $borrowing->asset?->asset_number ?? null,
+            'property_number' => $borrowing->asset?->property_number ?? null,
+            'serial_number' => ($borrowing->asset && $borrowing->asset->relationLoaded('identifiers'))
+                ? optional($borrowing->asset->identifiers->firstWhere('identifier_type', 'SERIAL_NUMBER'))->identifier_value
+                : null,
+            'item_type' => $borrowing->asset?->relationLoaded('inventoryItem') && $borrowing->asset?->inventoryItem?->relationLoaded('itemType')
+                ? $borrowing->asset->inventoryItem->itemType?->name
+                : ($borrowing->asset?->inventoryItem?->item_type_id ? 'ID:'.$borrowing->asset->inventoryItem->item_type_id : null),
+            'custodian' => $borrowing->asset?->relationLoaded('custodian') ? ($borrowing->asset->custodian?->full_name ?? null) : null,
             'borrower' => ($borrowing->user?->full_name ?: $borrowing->user?->email) ?? 'N/A',
+            'employee_id' => $borrowing->user?->employee_number ?? null,
             'borrow_date' => $borrowing->borrow_date?->format('Y-m-d'),
+            'borrowed_at' => $borrowing->borrowed_at?->format('Y-m-d H:i:s'),
             'due_date' => $borrowing->due_date?->format('Y-m-d'),
             'status' => $borrowing->status,
             'remarks' => $borrowing->remarks,
@@ -106,10 +127,16 @@ class ReportController extends Controller
         return $this->success($report->map(fn ($reservation) => [
             'id' => $reservation->id,
             'user' => ($reservation->user?->full_name ?: $reservation->user?->email) ?? 'N/A',
+            'employee_id' => $reservation->user?->employee_number ?? null,
             'status' => $reservation->status,
             'start_date' => $reservation->start_date?->format('Y-m-d'),
             'end_date' => $reservation->end_date?->format('Y-m-d'),
+            'created_at' => $reservation->created_at?->format('Y-m-d H:i:s'),
             'asset_count' => $reservation->assets()->count(),
+            'asset_numbers' => $reservation->assets->pluck('asset_number')->values(),
+            'asset_serials' => ($reservation->relationLoaded('assets')
+                ? $reservation->assets->map(fn($a) => optional($a->relationLoaded('identifiers') ? $a->identifiers->firstWhere('identifier_type', 'SERIAL_NUMBER') : null)->identifier_value)->values()
+                : []),
             'remarks' => $reservation->remarks,
         ])->values(), 'Reservation report generated successfully.');
     }

@@ -43,6 +43,7 @@ interface BackendReservation {
   asset_names?: string[]
   asset_numbers?: string[]
   employee_name?: string | null
+  employee_id?: string | null
   receipt_code?: string
   receipt_payload?: string
   auto_released?: boolean
@@ -65,6 +66,7 @@ function mapReservation(reservation: BackendReservation): Reservation {
     authorized_at: reservation.authorized_at,
     purpose: reservation.remarks || 'Reservation request',
     employee_name: reservation.employee_name || `User #${reservation.user_id}`,
+    employee_id: reservation.employee_id ?? null,
     asset_ids: reservation.asset_ids ?? [],
     asset_names: reservation.asset_names ?? [],
     asset_numbers: reservation.asset_numbers ?? [],

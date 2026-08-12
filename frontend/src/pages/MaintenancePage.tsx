@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Wrench, Plus } from 'lucide-react'
 import { Badge, Button, EmptyState, Input, Modal, Spinner, Table, type Column } from '@/components/ui'
 import { maintenanceService, type CreateMaintenancePayload, type UpdateMaintenancePayload } from '@/services/maintenanceService'
+import { assetService } from '@/services/assetService'
 import type { MaintenanceRequest } from '@/types'
 import { maintenanceStatusTone } from '@/utils/statusTone'
 import { maintenanceStatusLabel } from '@/utils/displayLabels'
@@ -98,6 +99,13 @@ export function MaintenancePage() {
     asset_id: 0, type: 'preventive', status: 'scheduled', scheduled_date: '', description: '',
   })
 
+  // Asset search/select state for the modal
+  const [assetSearchTerm, setAssetSearchTerm] = useState('')
+  const [assetSearchResults, setAssetSearchResults] = useState<Array<{ id: number; asset_number: string; property_number?: string | null; name: string; identifiers?: any[] }>>([])
+  const [assetSearchLoading, setAssetSearchLoading] = useState(false)
+  const [selectedAsset, setSelectedAsset] = useState<{ id: number; label: string } | null>(null)
+  const searchTimer = useRef<number | null>(null)
+
   const loadMaintenance = async () => {
     setLoading(true)
     try {
@@ -113,12 +121,21 @@ export function MaintenancePage() {
   const handleCreate = () => {
     setEditingRequest(null)
     setFormData({ asset_id: 0, type: 'preventive', status: 'scheduled', scheduled_date: '', description: '' })
+    setSelectedAsset(null)
+    setAssetSearchTerm('')
     setModalOpen(true)
   }
 
   const handleEdit = (r: MaintenanceRequest) => {
     setEditingRequest(r)
-    setFormData({ asset_id: 0, type: 'preventive', status: 'scheduled', scheduled_date: r.scheduled_at ?? r.scheduled_date ?? '', description: r.description })
+    // Preserve the linked asset if present
+    setFormData({ asset_id: r.asset_id ?? 0, type: 'preventive', status: 'scheduled', scheduled_date: r.scheduled_at ?? r.scheduled_date ?? '', description: r.description })
+    if (r.asset_id) {
+      setSelectedAsset({ id: r.asset_id, label: `${r.asset_name}${r.asset_id ? ' · #' + r.asset_id : ''}` })
+    } else {
+      setSelectedAsset(null)
+    }
+    setAssetSearchTerm('')
     setModalOpen(true)
   }
 
@@ -288,7 +305,64 @@ export function MaintenancePage() {
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Input label="Asset ID / Identifier" helperText="Enter the asset ID used to identify the item needing maintenance." type="number" value={formData.asset_id.toString()} onChange={(e) => setFormData({ ...formData, asset_id: parseInt(e.target.value) || 0 })} />
+          {/* Asset search/select - supports name, asset_number, property number, identifiers (serial) */}
+          <div style={{ position: 'relative' }}>
+            <label className="mb-1.5 block text-[13px] font-medium text-[#1F2937]">Asset</label>
+            {selectedAsset ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <input className="w-full h-11 rounded-[10px] border border-[#E5E7EB] bg-white px-3.5 text-[14px] text-[#1F2937]" value={selectedAsset.label} readOnly />
+                </div>
+                <div>
+                  <Button variant="secondary" size="sm" onClick={() => { setSelectedAsset(null); setFormData({ ...formData, asset_id: 0 }) }}>Change</Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <input
+                  className="w-full h-11 rounded-[10px] border border-[#E5E7EB] bg-white px-3.5 text-[14px] text-[#1F2937]"
+                  value={assetSearchTerm}
+                  placeholder="Search by name, asset number, property number, or serial"
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setAssetSearchTerm(v)
+                    // debounce
+                    if (searchTimer.current) window.clearTimeout(searchTimer.current)
+                    searchTimer.current = window.setTimeout(async () => {
+                      if (!v || v.trim().length === 0) { setAssetSearchResults([]); return }
+                      setAssetSearchLoading(true)
+                      try {
+                        const res = await assetService.list({ per_page: 8, search: v })
+                        setAssetSearchResults(res.items.map(i => ({ id: i.id, asset_number: i.asset_number, property_number: i.property_number, name: i.name, identifiers: i.identifiers })))
+                      } catch (e) {
+                        setAssetSearchResults([])
+                      } finally { setAssetSearchLoading(false) }
+                    }, 250)
+                  }}
+                />
+                {assetSearchLoading && <div style={{ marginTop: 8 }}><Spinner /></div>}
+                {assetSearchResults.length > 0 && (
+                  <div style={{ position: 'absolute', left: 0, right: 0, top: '56px', zIndex: 60, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, boxShadow: '0 8px 30px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+                    {assetSearchResults.map(a => (
+                      <button key={a.id} type="button" onClick={() => {
+                        // select
+                        setSelectedAsset({ id: a.id, label: `${a.name} · ${a.asset_number}${a.property_number ? ' · ' + a.property_number : ''}` })
+                        setFormData({ ...formData, asset_id: a.id })
+                        setAssetSearchResults([])
+                        setAssetSearchTerm('')
+                      }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: '#1F2937' }}>{a.name}</div>
+                          <div style={{ fontSize: 12, color: '#6B7280' }}>{a.asset_number}{a.property_number ? ` · ${a.property_number}` : ''}{a.identifiers && a.identifiers.length ? ` · ${a.identifiers.map((id: any) => id.identifier_value).join(', ')}` : ''}</div>
+                        </div>
+                        <div style={{ color: '#94A3B8', fontSize: 12 }}>Select</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
             <div>
               <label className={LABEL_CLS}>Type</label>

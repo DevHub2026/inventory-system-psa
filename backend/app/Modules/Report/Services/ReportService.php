@@ -12,7 +12,9 @@ class ReportService
 {
     public function getAssetReport(array $filters = []): Collection
     {
-        $query = Asset::query()->with(['category', 'manufacturer', 'office', 'location']);
+        // Include identifiers, custodian and inventory linkage so reports can surface
+        // serial numbers, item type names, and custodian info without extra queries.
+        $query = Asset::query()->with(['category', 'manufacturer', 'office', 'location', 'identifiers', 'custodian', 'inventoryItem.itemType']);
 
         if (isset($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -39,7 +41,10 @@ class ReportService
 
     public function getBorrowingReport(array $filters = []): Collection
     {
-        $query = Borrowing::query()->with(['user', 'asset']);
+        // Eager-load asset sub-relations (identifiers, inventoryItem.itemType, custodian)
+        // so the report consumer can access serial numbers, item types, and custodian info
+        // without triggering N+1 queries.
+        $query = Borrowing::query()->with(['user', 'asset.identifiers', 'asset.inventoryItem.itemType', 'asset.custodian']);
 
         if (isset($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -58,7 +63,9 @@ class ReportService
 
     public function getReservationReport(array $filters = []): Collection
     {
-        $query = Reservation::query()->with(['user', 'assets']);
+        // Load asset identifiers and related inventory item/type and custodian to
+        // surface serial numbers and item types in reservation reports.
+        $query = Reservation::query()->with(['user', 'assets.identifiers', 'assets.inventoryItem.itemType', 'assets.custodian']);
 
         if (isset($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -124,7 +131,7 @@ class ReportService
 
     public function getUserActivityReport(array $filters = []): Collection
     {
-        $query = Borrowing::query()->with(['user', 'asset']);
+        $query = Borrowing::query()->with(['user', 'asset.identifiers', 'asset.inventoryItem.itemType', 'asset.custodian']);
 
         if (isset($filters['user_id'])) {
             $query->where('user_id', $filters['user_id']);

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode, CheckCircle2, XCircle } from 'lucide-react'
 import {
@@ -17,6 +18,7 @@ import type { ApiResponse, InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { InventoryImportWizard } from '@/components/InventoryImportWizard'
 import { notifyDataChanged } from '@/utils/dataRefresh'
+import ScrollableTableWrapper from '@/components/ui/ScrollableTableWrapper'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -298,18 +300,61 @@ interface ActionCellProps {
 
 function ActionCell({ item, onStockIn, onStockOut, onAdjust, onHistory, onEdit, onAsset, onDelete, onMarkForDisposal, onFinalizeDisposal, onCancelDisposal, onViewDisposal }: ActionCellProps) {
   const [openMenu, setOpenMenu] = useState(false)
-  const menuRef = useRef<HTMLDivElement | null>(null)
+  const menuContainerRef = useRef<HTMLDivElement | null>(null)
+  const selectRef = useRef<HTMLButtonElement | null>(null)
+  const popupRef = useRef<HTMLDivElement | null>(null)
+  const [popupPos, setPopupPos] = useState<React.CSSProperties>({})
 
-  // Close on click outside
+  // Close on click outside (check both trigger and popup since popup is portaled)
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenu(false)
-      }
+      const target = e.target as Node
+      if (selectRef.current?.contains(target)) return
+      if (popupRef.current?.contains(target)) return
+      setOpenMenu(false)
     }
     if (openMenu) document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [openMenu])
+
+  /* Position the portaled popup relative to the trigger button. */
+  const updatePopupPosition = useCallback(() => {
+    const el = selectRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) {
+      setOpenMenu(false)
+      return
+    }
+    const gap = 4
+    const MIN = 160
+    const spaceBelow = window.innerHeight - r.bottom - gap - 8
+    const spaceAbove = r.top - gap - 8
+    let top: number
+    if (spaceBelow >= 160 || spaceBelow >= spaceAbove) {
+      top = r.bottom + gap
+    } else {
+      top = Math.max(8, r.top - gap - 200)
+    }
+    // align to trigger right edge when possible
+    let left = Math.max(8, Math.min(r.right - MIN, window.innerWidth - MIN - 8))
+    setPopupPos({ position: 'fixed', left, top, minWidth: MIN, zIndex: 9999 })
+  }, [])
+
+  useEffect(() => {
+    if (!openMenu) return
+    updatePopupPosition()
+    const reposition = () => updatePopupPosition()
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenMenu(false) }
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [openMenu, updatePopupPosition])
 
   // Primary actions (most used)
   const primaryBtn = (icon: React.ReactNode, label: string, onClick: () => void, variant: 'primary' | 'secondary' | 'danger' = 'secondary') => {
@@ -346,21 +391,23 @@ function ActionCell({ item, onStockIn, onStockOut, onAdjust, onHistory, onEdit, 
   const menuItem = (icon: React.ReactNode, label: string, onClick: () => void, variant: 'normal' | 'danger' = 'normal') => (
     <button
       onClick={() => { onClick(); setOpenMenu(false) }}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-        padding: '8px 12px', border: 'none', background: 'transparent',
-        color: variant === 'danger' ? '#DC2626' : '#1E293B',
-        fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
-        fontFamily: 'inherit', borderRadius: 6,
-        transition: 'background 0.1s',
-      }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-    >
-      {icon}
-      <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
-    </button>
-  )
+        role="menuitem"
+        tabIndex={0}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+          padding: '8px 12px', border: 'none', background: 'transparent',
+          color: variant === 'danger' ? '#DC2626' : '#1E293B',
+          fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+          fontFamily: 'inherit', borderRadius: 6,
+          transition: 'background 0.1s',
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+      >
+        {icon}
+        <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
+      </button>
+    )
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
@@ -371,24 +418,29 @@ function ActionCell({ item, onStockIn, onStockOut, onAdjust, onHistory, onEdit, 
       {primaryBtn(<TrendingDown size={14} />, 'Remove Stock', onStockOut)}
 
       {/* More actions dropdown */}
-      <div ref={menuRef} style={{ position: 'relative' }}>
-        {primaryBtn(
+      <div ref={menuContainerRef} style={{ position: 'relative' }}>
+        {/* Use a dedicated trigger button so we can anchor the portaled popup */}
+        <button
+          ref={selectRef}
+          onClick={() => setOpenMenu((v) => !v)}
+          title="More actions"
+                  aria-haspopup="menu"
+                  aria-expanded={openMenu}
+                  style={{
+                    height: 32, width: 32, padding: 0,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1px solid #D1D5DB', borderRadius: 8, background: '#fff', cursor: 'pointer'
+                  }}
+                >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
             <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
             <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
-          </svg>,
-          'More actions',
-          () => setOpenMenu(!openMenu),
-        )}
+          </svg>
+        </button>
 
-        {openMenu && (
-          <div style={{
-            position: 'absolute', right: 0, top: '100%', marginTop: 4,
-            background: '#fff', border: '1px solid #E2E8F0',
-            borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-            padding: 6, zIndex: 50, minWidth: 160,
-          }}>
+        {openMenu && createPortal(
+                  <div ref={popupRef} role="menu" aria-label="Row actions" style={{ ...popupPos, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6 }}>
             {menuItem(<RotateCcw size={14} />, 'Adjust Quantity', onAdjust)}
             {menuItem(<History size={14} />, 'View History', onHistory)}
             {menuItem(<Edit3 size={14} />, 'Edit Item', onEdit)}
@@ -405,7 +457,8 @@ function ActionCell({ item, onStockIn, onStockOut, onAdjust, onHistory, onEdit, 
 
             <div style={{ height: 1, background: '#F1F5F9', margin: '4px 0' }} />
             {menuItem(<Trash2 size={14} />, 'Delete Item', onDelete, 'danger')}
-          </div>
+          </div>,
+          document.body,
         )}
       </div>
     </div>
@@ -1143,7 +1196,7 @@ export function InventoryPage() {
               />
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
+            <ScrollableTableWrapper><table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
               <colgroup>
                 <col style={{ minWidth: 200 }} />
                 <col style={{ width: 130 }} />
@@ -1168,7 +1221,7 @@ export function InventoryPage() {
                   <th style={{ ...th, textAlign: 'center' as const }}>Qty</th>
                   <th style={th}>Unit</th>
                   <th style={th}>Status</th>
-                  <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20 }}>Actions</th>
+                  <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20, position: 'sticky' as const, right: 0, background: '#fff', zIndex: 10 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1326,6 +1379,7 @@ export function InventoryPage() {
                     <td style={{
                       ...td, textAlign: 'right' as const,
                       paddingRight: 20, paddingTop: 10, paddingBottom: 10,
+                      position: 'sticky' as const, right: 0, background: '#fff', zIndex: 5,
                     }}>
                       <ActionCell
                         item={r}
@@ -1345,7 +1399,7 @@ export function InventoryPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></ScrollableTableWrapper>
           )}
         </div>
 

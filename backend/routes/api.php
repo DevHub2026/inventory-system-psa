@@ -14,7 +14,7 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:3,1');
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:3,1');
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware(['auth:sanctum', 'session.token'])->group(function (): void {
         // Global rate limit: 120 requests per minute per authenticated user
         Route::middleware('throttle:120,1')->group(function (): void {
 

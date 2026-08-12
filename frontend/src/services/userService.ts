@@ -62,7 +62,6 @@ export interface ImportUsersResult {
   imported: number
   skipped: number
   failed: number
-  initial_password: string
   username_rule: string
   rows: ImportUserResultRow[]
 }

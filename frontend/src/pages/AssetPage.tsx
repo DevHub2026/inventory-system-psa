@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ScanLine, CheckCircle2, Printer, Search, Filter, ExternalLink,
@@ -22,6 +23,7 @@ import { QrCode } from '@/components/QrCode'
 import { AssetSheetSelector } from '@/components/AssetSheetSelector'
 import type { Asset, AssetStatus } from '@/types'
 import { getEffectiveAssetStatus } from '@/utils/displayLabels'
+import PrintQrModal from '@/components/PrintQrModal'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 import { GenerateDocumentModal } from '@/components/documents/GenerateDocumentModal'
 import { ReissueAssetModal } from '@/components/assets/ReissueAssetModal'
@@ -31,6 +33,7 @@ import { permanentIssuanceService } from '@/services/permanentIssuanceService'
 import type { IssuanceUserSummary } from '@/types/permanentIssuance'
 import { canManageDisposal, canManageIssuance, isAdmin, isStaff, hasAnyRole } from '@/utils/roleHelpers'
 import { listAuditLogs } from '@/services/auditService'
+import ScrollableTableWrapper from '@/components/ui/ScrollableTableWrapper'
 
 
 /* ── shared select / textarea style ── */
@@ -135,17 +138,59 @@ function ActionCell({
   onView, onQrLabel, onEdit, onDelete, onBorrow, onReserve, onReturn, onRelease, onPermanentIssue,
 }: ActionCellProps) {
   const [openMenu, setOpenMenu] = useState(false)
-  const menuRef = useRef<HTMLDivElement | null>(null)
+  const menuContainerRef = useRef<HTMLDivElement | null>(null)
+  const selectRef = useRef<HTMLButtonElement | null>(null)
+  const popupRef = useRef<HTMLDivElement | null>(null)
+  const [popupPos, setPopupPos] = useState<React.CSSProperties>({})
 
+  // Close on click outside (check trigger and popup since popup is portaled)
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenu(false)
-      }
+      const target = e.target as Node
+      if (selectRef.current?.contains(target)) return
+      if (popupRef.current?.contains(target)) return
+      setOpenMenu(false)
     }
     if (openMenu) document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [openMenu])
+
+  const updatePopupPosition = useCallback(() => {
+    const el = selectRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) {
+      setOpenMenu(false)
+      return
+    }
+    const gap = 4
+    const MIN = 160
+    const spaceBelow = window.innerHeight - r.bottom - gap - 8
+    const spaceAbove = r.top - gap - 8
+    let top: number
+    if (spaceBelow >= 160 || spaceBelow >= spaceAbove) {
+      top = r.bottom + gap
+    } else {
+      top = Math.max(8, r.top - gap - 200)
+    }
+    let left = Math.max(8, Math.min(r.right - MIN, window.innerWidth - MIN - 8))
+    setPopupPos({ position: 'fixed', left, top, minWidth: MIN, zIndex: 9999 })
+  }, [])
+
+  useEffect(() => {
+    if (!openMenu) return
+    updatePopupPosition()
+    const reposition = () => updatePopupPosition()
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenMenu(false) }
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [openMenu, updatePopupPosition])
 
   const iconBtn = (
     icon: React.ReactNode,
@@ -184,21 +229,23 @@ function ActionCell({
   const menuItem = (icon: React.ReactNode, label: string, onClick: () => void, variant: 'normal' | 'danger' = 'normal') => (
     <button
       onClick={() => { onClick(); setOpenMenu(false) }}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-        padding: '8px 12px', border: 'none', background: 'transparent',
-        color: variant === 'danger' ? '#DC2626' : '#1E293B',
-        fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
-        fontFamily: 'inherit', borderRadius: 6,
-        transition: 'background 0.1s',
-      }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-    >
-      {icon}
-      <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
-    </button>
-  )
+        role="menuitem"
+        tabIndex={0}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+          padding: '8px 12px', border: 'none', background: 'transparent',
+          color: variant === 'danger' ? '#DC2626' : '#1E293B',
+          fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+          fontFamily: 'inherit', borderRadius: 6,
+          transition: 'background 0.1s',
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+      >
+        {icon}
+        <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
+      </button>
+    )
 
   // Determine primary action based on status
   const primaryAction = asset.status === 'AVAILABLE' && canCompleteBorrowing
@@ -212,25 +259,31 @@ function ActionCell({
       {/* Primary action */}
       {primaryAction}
 
+      {/* Print labels quick button (row) */}
       {/* More actions dropdown */}
-      <div ref={menuRef} style={{ position: 'relative' }}>
-        {iconBtn(
+      <div ref={menuContainerRef} style={{ position: 'relative' }} >
+        {/* Use dedicated trigger button for portaled popup */}
+        <button
+          ref={selectRef}
+          onClick={() => setOpenMenu((v) => !v)}
+          title="More actions"
+                  aria-haspopup="menu"
+                  aria-expanded={openMenu}
+                  style={{
+                    height: 32, width: 32, padding: 0,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1px solid #D1D5DB', borderRadius: 8, background: '#fff', cursor: 'pointer'
+                  }}
+                >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
             <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
             <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
-          </svg>,
-          'More actions',
-          () => setOpenMenu(!openMenu),
-        )}
+          </svg>
+        </button>
 
-        {openMenu && (
-          <div style={{
-            position: 'absolute', right: 0, top: '100%', marginTop: 4,
-            background: '#fff', border: '1px solid #E2E8F0',
-            borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-            padding: 6, zIndex: 50, minWidth: 160,
-          }}>
+        {openMenu && createPortal(
+                  <div ref={popupRef} role="menu" aria-label="Row actions" style={{ ...popupPos, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6 }}>
             {menuItem(<Eye size={14} />, 'View Details', onView)}
             {menuItem(<QrIcon size={14} />, 'QR Label', onQrLabel)}
             {asset.status === 'AVAILABLE' && menuItem(<Clock size={14} />, 'Request Borrow', onReserve)}
@@ -245,7 +298,8 @@ function ActionCell({
                 {menuItem(<Trash2 size={14} />, 'Archive', onDelete, 'danger')}
               </>
             )}
-          </div>
+          </div>,
+          document.body,
         )}
       </div>
     </div>
@@ -321,6 +375,9 @@ export function AssetPage() {
   const [selectionLoading, setSelectionLoading] = useState(false)
   const [selectedAssetIds, setSelectedAssetIds] = useState<number[]>([])
   const [sheetGenerating, setSheetGenerating] = useState(false)
+  // Print modal state: open + assets to print
+  const [printModalOpen, setPrintModalOpen] = useState(false)
+  const [printAssets, setPrintAssets] = useState<Asset[] | null>(null)
 
   const SHEET_SELECTION_STORAGE_KEY = 'psa.sheet.selectedAssetIds'
 
@@ -1015,6 +1072,35 @@ export function AssetPage() {
     }
   }
 
+  async function openPrintLabels() {
+    try {
+      const selectedIds = selectedAssetIds.length > 0 ? selectedAssetIds : (qrAsset ? [qrAsset.id] : [])
+      let assetsToUse: Asset[] = []
+      if (selectedAssetIds.length > 0) {
+        const cached = assetsForSelection.filter(a => selectedAssetIds.includes(a.id))
+        if (cached.length === selectedAssetIds.length) {
+          assetsToUse = cached
+        } else {
+          assetsToUse = await Promise.all(selectedAssetIds.map(async (id) => { try { return await assetService.show(id) } catch { return null } })).then(res => res.filter(Boolean) as Asset[])
+        }
+      } else if (qrAsset) {
+        assetsToUse = [qrAsset]
+      }
+
+      if (!assetsToUse || assetsToUse.length === 0) {
+        // No assets selected -> open the sheet selector so the user can pick items
+        setSheetSelectionOpen(true)
+        return
+      }
+
+      setPrintAssets(assetsToUse)
+      setPrintModalOpen(true)
+    } catch (err) {
+      console.error('Failed to prepare assets for print modal', err)
+      window.alert('Unable to open print dialog for the selected assets.')
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 32 }}>
 
@@ -1042,23 +1128,39 @@ export function AssetPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setScannerOpen(true)}
-          style={{
-            height: 38, paddingInline: 18, borderRadius: 10,
-            border: 'none', background: '#1E40AF', color: '#fff',
-            fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
-            fontFamily: 'inherit',
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            boxShadow: '0 2px 8px rgba(30,64,175,0.25)',
-            transition: 'background 0.1s',
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1D3FAB' }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1E40AF' }}
-        >
-          <ScanLine size={14} />
-          Scan Asset QR
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={() => setScannerOpen(true)}
+            style={{
+              height: 38, paddingInline: 14, borderRadius: 10,
+              border: 'none', background: '#1E40AF', color: '#fff',
+              fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 7,
+              boxShadow: '0 2px 8px rgba(30,64,175,0.25)',
+              transition: 'background 0.1s',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1D3FAB' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1E40AF' }}
+          >
+            <ScanLine size={14} />
+            Scan Asset QR
+          </button>
+
+          <button
+            onClick={() => { void openPrintLabels() }}
+            style={{
+              height: 38, paddingInline: 14, borderRadius: 10,
+              border: '1px solid #E2E8F0', background: '#fff', color: '#0F172A',
+              fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 8,
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#fff' }}
+          >
+            <Printer size={14} />
+            QR Labels
+          </button>
+        </div>
       </div>
 
       {/* Alert message */}
@@ -1349,7 +1451,7 @@ export function AssetPage() {
                       <th style={th}>Category</th>
                       <th style={th}>Status</th>
                       <th style={th}>Location</th>
-                      <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20 }}>Actions</th>
+                      <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20, position: 'sticky' as const, right: 0, background: '#fff', zIndex: 10 }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1361,7 +1463,7 @@ export function AssetPage() {
                         <td style={td}><span style={{ color: '#64748B', fontSize: 13 }}>{r.category ?? '—'}</span></td>
                         <td style={td}>{(() => { const eff = getEffectiveAssetStatus(r); return <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}><Badge tone={eff.tone}>{eff.label}</Badge>{eff.subtext && eff.subtextTone && <Badge tone={eff.subtextTone}>{eff.subtext}</Badge>}</div> })()}</td>
                         <td style={td}><span style={{ color: '#64748B', fontSize: 13 }}>{r.location ?? '—'}</span></td>
-                        <td style={{ ...td, textAlign: 'right' as const, paddingRight: 20 }}>
+                        <td style={{ ...td, textAlign: 'right' as const, paddingRight: 20, position: 'sticky' as const, right: 0, background: '#fff', zIndex: 5 }}>
                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                             <button type="button" onClick={() => openArchivedView(r)} style={{ border: '1px solid #D1D5DB', borderRadius: 8, background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>View</button>
                             {canManageAssets && (
@@ -1479,7 +1581,7 @@ export function AssetPage() {
               />
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
+            <ScrollableTableWrapper><table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
               <colgroup>
                 <col style={{ width: 140 }} />
                 <col style={{ width: 140 }} />
@@ -1499,7 +1601,7 @@ export function AssetPage() {
                   <th style={th}>Status</th>
                   <th style={th}>Accountability</th>
                   <th style={th}>Location</th>
-                  <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20 }}>Actions</th>
+                  <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20, position: 'sticky' as const, right: 0, background: '#fff', zIndex: 10 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1610,13 +1712,15 @@ export function AssetPage() {
                     <td style={{
                       ...td, textAlign: 'right' as const,
                       paddingRight: 20, paddingTop: 10, paddingBottom: 10,
-                    }}>
-                      <ActionCell
+                                          position: 'sticky' as const, right: 0, background: '#fff', zIndex: 5,
+                                        }}>
+                                          <ActionCell
                         asset={r}
                         canManageAssets={canManageAssets}
                         canManageIssuance={canIssueAssets}
                         canCompleteBorrowing={canCompleteBorrowing}
                         onView={() => void openView(r.id)}
+                        onQrLabel={() => void openQrLabel(r.id)}
                         onQrLabel={() => void openQrLabel(r.id)}
                         onEdit={() => void openEdit(r.id)}
                         onDelete={() => setDeleteId(r.id)}
@@ -1630,7 +1734,7 @@ export function AssetPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></ScrollableTableWrapper>
           )}
         </div>
 
@@ -2362,135 +2466,11 @@ export function AssetPage() {
         footer={
           <>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', maxWidth: '100%', overflowX: 'auto', paddingTop: 6 }}>
-              <Button size="sm" variant="secondary" onClick={() => setQrAsset(null)}>Close</Button>
-              <Button size="sm" variant="secondary" onClick={() => {
-                // Download SVG representation of the QR + asset name
-                const container = document.querySelector('.asset-qr-print-area') as HTMLElement | null
-                if (!container || !qrAsset) {
-                  window.alert('Unable to prepare QR label for download.')
-                  return
-                }
-
-                const svgInQr = container.querySelector('svg[role="img"][aria-label^="QR code"]') as SVGElement | null
-                if (!svgInQr) {
-                  window.alert('QR code SVG not found in the modal.')
-                  return
-                }
-
-                try {
-                  const serializer = new XMLSerializer()
-                  const qrSvgString = serializer.serializeToString(svgInQr)
-                  const assetName = (qrAsset.name || 'asset').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                  const assetId = qrAsset.asset_number ?? (`asset-${qrAsset.id}`)
-
-                  // Build a simple SVG that places the QR code and the asset name below it.
-                  const outerWidth = 420
-                  const outerHeight = 540
-                  const qrSize = 320
-                  const line1Height = 24
-                  const line2Height = 18
-                  // compute top padding so QR + two lines are vertically centered
-                  const padding = Math.round((outerHeight - qrSize - line1Height - line2Height - 24) / 2)
-
-                  const svgContent = `<?xml version="1.0" encoding="utf-8"?>\n` +
-                    `<svg xmlns="http://www.w3.org/2000/svg" width="${outerWidth}" height="${outerHeight}" viewBox="0 0 ${outerWidth} ${outerHeight}">\n` +
-                    `  <rect width="100%" height="100%" fill="#ffffff"/>\n` +
-                    `  <g transform="translate(${(outerWidth - qrSize)/2}, ${padding})">\n` +
-                    `    ${qrSvgString}\n` +
-                    `  </g>\n` +
-                    `  <text x="50%" y="${padding + qrSize + line1Height}" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#0F172A" text-anchor="middle">${assetName}</text>\n` +
-                    `  <text x="50%" y="${padding + qrSize + line1Height + line2Height}" font-family="Inter, sans-serif" font-size="13" fill="#64748B" text-anchor="middle">${assetId}</text>\n` +
-                    `</svg>`
-
-                  const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' })
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `${assetId}-qr-label.svg`
-                  document.body.appendChild(a)
-                  a.click()
-                  a.remove()
-                  URL.revokeObjectURL(url)
-                } catch (err) {
-                  // Fallback: allow printing if download fails
-                  console.error(err)
-                  window.alert('Failed to generate downloadable QR label. You can still print the label.')
-                }
-              }}>Download SVG</Button>
-
-              <Button size="sm" variant="secondary" onClick={async () => {
-                // Download PNG rasterized from the assembled SVG label
-                const container = document.querySelector('.asset-qr-print-area') as HTMLElement | null
-                if (!container || !qrAsset) { window.alert('Unable to prepare QR label for download.'); return }
-                const svgInQr = container.querySelector('svg[role="img"][aria-label^="QR code"]') as SVGElement | null
-                if (!svgInQr) { window.alert('QR code SVG not found in the modal.'); return }
-
-                const serializer = new XMLSerializer()
-                const qrSvgString = serializer.serializeToString(svgInQr)
-                const assetName = (qrAsset.name || 'asset').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                const assetId = qrAsset.asset_number ?? (`asset-${qrAsset.id}`)
-
-                const outerWidth = 420
-                const outerHeight = 540
-                const qrSize = 320
-                const line1Height = 24
-                const line2Height = 18
-                // compute top padding so QR + two lines are vertically centered
-                const padding = Math.round((outerHeight - qrSize - line1Height - line2Height - 24) / 2)
-
-                const svgContent = `<?xml version="1.0" encoding="utf-8"?>\n` +
-                  `<svg xmlns="http://www.w3.org/2000/svg" width="${outerWidth}" height="${outerHeight}" viewBox="0 0 ${outerWidth} ${outerHeight}">\n` +
-                  `  <rect width="100%" height="100%" fill="#ffffff"/>\n` +
-                  `  <g transform="translate(${(outerWidth - qrSize)/2}, ${padding})">\n` +
-                  `    ${qrSvgString}\n` +
-                  `  </g>\n` +
-                  `  <text x="50%" y="${padding + qrSize + line1Height}" font-family="Inter, sans-serif" font-size="18" font-weight="700" fill="#0F172A" text-anchor="middle">${assetName}</text>\n` +
-                  `  <text x="50%" y="${padding + qrSize + line1Height + line2Height}" font-family="Inter, sans-serif" font-size="13" fill="#64748B" text-anchor="middle">${assetId}</text>\n` +
-                  `</svg>`
-
-                const svgBlob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' })
-                const svgUrl = URL.createObjectURL(svgBlob)
-
-                const img = new Image()
-                img.onload = () => {
-                  try {
-                    const canvas = document.createElement('canvas')
-                    canvas.width = outerWidth * 2 // upscale for better print quality
-                    canvas.height = outerHeight * 2
-                    const ctx = canvas.getContext('2d')!
-                    // white background
-                    ctx.fillStyle = '#ffffff'
-                    ctx.fillRect(0, 0, canvas.width, canvas.height)
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-                    canvas.toBlob((blob) => {
-                      if (!blob) { window.alert('Failed to create PNG.'); URL.revokeObjectURL(svgUrl); return }
-                      const url = URL.createObjectURL(blob)
-                      const a = document.createElement('a')
-                      a.href = url
-                      a.download = `${assetId}-qr-label.png`
-                      document.body.appendChild(a)
-                      a.click()
-                      a.remove()
-                      URL.revokeObjectURL(url)
-                      URL.revokeObjectURL(svgUrl)
-                    }, 'image/png')
-                  } catch (err) {
-                    console.error(err)
-                    window.alert('Failed to generate PNG.')
-                  }
-                }
-                img.onerror = (e) => { console.error('Image load error', e); window.alert('Failed to rasterize SVG to PNG.') }
-                img.src = svgUrl
-              }}>Download PNG</Button>
-
-              <Button size="sm" variant="secondary" onClick={() => setSheetSelectionOpen(true)}>Select items for sheet</Button>
-              <Button size="sm" variant="secondary" onClick={() => void generatePngSheet()} disabled={sheetGenerating}>{sheetGenerating ? 'Preparing…' : 'Download PNG Sheet'}</Button>
-
-              <Button size="sm" onClick={() => window.print()}>Print QR Label</Button>
+             <Button size="sm" variant="secondary" onClick={() => setQrAsset(null)}>Close</Button>
+              <Button size="sm" variant="secondary" onClick={() => { setPrintAssets([qrAsset]); setPrintModalOpen(true); setQrAsset(null); }}>Open QR Labels</Button>
             </div>
             </>
-          }
-        >
+          }        >
         {qrAsset && (
           <div className="asset-qr-print-area" style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
@@ -2605,12 +2585,25 @@ export function AssetPage() {
           persistSelectedAssetIds(ids)
           if (ids.length > 0) {
             const fetched = await Promise.all(ids.map(async (id) => { try { return await assetService.show(id) } catch { return null } }))
-            setAssetsForSelection(fetched.filter(Boolean) as Asset[])
+            const filtered = fetched.filter(Boolean) as Asset[]
+            setAssetsForSelection(filtered)
+            // Open the Print QR modal for the selected assets immediately
+            setPrintAssets(filtered)
+            setPrintModalOpen(true)
           } else {
             setAssetsForSelection([])
           }
         }}
       />
+
+      {/* Print QR Modal (uses PrintQrModal component) */}
+      <PrintQrModal
+            open={printModalOpen}
+            assets={printAssets ?? []}
+            selectedAssetIds={selectedAssetIds}
+            onSelectionChange={(ids: number[]) => { persistSelectedAssetIds(ids) }}
+            onClose={() => { setPrintModalOpen(false); setPrintAssets(null) }}
+          />
 
       {/* ── Edit Asset Modal ── */}
       {/* ── Edit Asset Modal ── */}

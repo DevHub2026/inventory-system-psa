@@ -34,7 +34,53 @@ class ReservationService
 
     public function create(User $user, array $data): Reservation
     {
-        return DB::transaction(function () use ($user, $data) {
+        // Basic validation before creating DB records
+        if (empty($data['asset_ids']) || ! is_array($data['asset_ids'])) {
+            throw new \InvalidArgumentException('At least one asset must be selected for reservation.');
+        }
+
+        $start = $data['start_date'] ?? null;
+        $end = $data['end_date'] ?? null;
+        if ($start && $end && $end < $start) {
+            throw new \InvalidArgumentException('End date cannot be before start date.');
+        }
+
+        // Lock assets and validate availability/borrowable state
+        $assetIds = array_values(array_unique($data['asset_ids']));
+        $assets = \App\Modules\Asset\Models\Asset::query()
+            ->whereIn('id', $assetIds)
+            ->lockForUpdate()
+            ->get();
+
+        if ($assets->count() !== count($assetIds)) {
+            throw new \InvalidArgumentException('One or more selected assets do not exist.');
+        }
+
+        foreach ($assets as $asset) {
+            // Ensure asset is available
+            if ($asset->status !== AssetStatus::AVAILABLE->value && $asset->status !== AssetStatus::AVAILABLE) {
+                throw new \InvalidArgumentException('Asset '.$asset->asset_number.' is not available for reservation.');
+            }
+
+            // If linked to an inventory item, ensure it is borrowable
+            $inventory = $asset->inventoryItem;
+            if ($inventory && isset($inventory->is_borrowable) && $inventory->is_borrowable === false) {
+                throw new \InvalidArgumentException('The selected item "'.$asset->name.'" is not borrowable.');
+            }
+
+            // Prevent duplicate pending reservation by the same user for the same asset
+            $duplicate = Reservation::query()
+                ->where('user_id', $user->id)
+                ->where('status', 'PENDING')
+                ->whereHas('assets', fn ($q) => $q->where('assets.id', $asset->id))
+                ->exists();
+
+            if ($duplicate) {
+                throw new \InvalidArgumentException('You already have a pending borrow request for asset '.$asset->asset_number.'.');
+            }
+        }
+
+        return DB::transaction(function () use ($user, $data, $assetIds) {
             $reservation = Reservation::create([
                 'user_id' => $user->id,
                 'status' => 'PENDING',
@@ -43,7 +89,7 @@ class ReservationService
                 'remarks' => $data['remarks'] ?? null,
             ]);
 
-            $reservation->assets()->sync($data['asset_ids']);
+            $reservation->assets()->sync($assetIds);
             $reservation->assets()->update(['status' => AssetStatus::RESERVED->value]);
 
             $reservation = $reservation->load(['user', 'assets']);

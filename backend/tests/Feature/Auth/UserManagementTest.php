@@ -317,9 +317,9 @@ class UserManagementTest extends TestCase
                 'data' => [
                     'imported' => 1,
                     'failed' => 0,
-                    'initial_password' => 'psasargen9500',
                 ],
-            ]);
+            ])
+            ->assertJsonMissing(['initial_password' => 'psasargen9500']);
 
         $importedUser = User::query()->where('email', 'garcia@example.com')->first();
         $this->assertNotNull($importedUser);
@@ -351,9 +351,9 @@ class UserManagementTest extends TestCase
                 'data' => [
                     'imported' => 1,
                     'failed' => 0,
-                    'initial_password' => 'psasargen9500',
                 ],
-            ]);
+            ])
+            ->assertJsonMissing(['initial_password' => 'psasargen9500']);
 
         $importedUser = User::query()->where('email', 'maria.santos@example.com')->firstOrFail();
 
