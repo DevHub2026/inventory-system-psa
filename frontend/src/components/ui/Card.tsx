@@ -13,7 +13,7 @@ interface CardProps {
 export function Card({ title, subtitle, actions, children, className, noPadding }: CardProps) {
   return (
     <section
-      style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden', boxSizing: 'border-box' }}
+      style={{ background: '#ffffff', border: '1px solid #eff3f6', borderRadius: 14, boxShadow: '0 8px 24px rgba(2,6,23,0.04)', overflow: 'hidden', boxSizing: 'border-box' }}
       className={cn('transition-shadow duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,.08)]', className)}
     >
       {(title || actions) && (

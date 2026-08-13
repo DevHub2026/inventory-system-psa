@@ -64,6 +64,13 @@ export function NonExpendableInventoryPage() {
   const [historyRows,    setHistoryRows]    = useState<StockMovement[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [formData,       setFormData]       = useState<CreateInventoryItemPayload>(BLANK_FORM)
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const loadInventory = async (nextPage = page) => {
     setLoading(true)
@@ -304,7 +311,7 @@ export function NonExpendableInventoryPage() {
       >
         {adjustItem && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', padding: '14px 16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(3, 1fr)' : '1fr', gap: 12, borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', padding: '14px 16px' }}>
               <div><div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Current</div><div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{adjustItem.quantity}</div></div>
               <div><div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>New</div><div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{adjustQty}</div></div>
               <div><div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Difference</div><div style={{ fontSize: 16, fontWeight: 700, color: adjustQty - adjustItem.quantity < 0 ? '#C62828' : '#2E7D32' }}>{adjustQty - adjustItem.quantity > 0 ? '+' : ''}{adjustQty - adjustItem.quantity}</div></div>

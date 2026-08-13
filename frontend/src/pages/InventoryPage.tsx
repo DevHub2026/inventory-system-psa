@@ -338,7 +338,7 @@ function ActionCell({ item, onStockIn, onStockOut, onAdjust, onHistory, onEdit, 
     }
     // align to trigger right edge when possible
     let left = Math.max(8, Math.min(r.right - MIN, window.innerWidth - MIN - 8))
-    setPopupPos({ position: 'fixed', left, top, minWidth: MIN, zIndex: 9999 })
+    setPopupPos({ position: 'fixed', left, top, minWidth: MIN, zIndex: 70 })
   }, [])
 
   useEffect(() => {
@@ -479,6 +479,13 @@ export function InventoryPage() {
   const [search,         setSearch]         = useState('')
   const [statusFilter,   setStatusFilter]   = useState('')
   const [activeTab,      setActiveTab]      = useState<TabKey>('all')
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   // Sentinel ref for infinite scroll
   const sentinelRef = useRef<HTMLDivElement | null>(null)
@@ -1196,210 +1203,251 @@ export function InventoryPage() {
               />
             </div>
           ) : (
-            <ScrollableTableWrapper><table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
-              <colgroup>
-                <col style={{ minWidth: 200 }} />
-                <col style={{ width: 130 }} />
-                <col style={{ width: 130 }} />
-                <col style={{ width: 130 }} />
-                <col style={{ width: 120 }} />
-                <col style={{ width: 170 }} />
-                <col style={{ width: 72 }} />
-                <col style={{ width: 80 }} />
-                <col style={{ width: 110 }} />
-                <col style={{ width: 140 }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th style={th}>Item</th>
-                  <th style={th}>SKU</th>
-                  <th style={th}>Property No.</th>
-                  <th style={th}>Serial No.</th>
-                  <th style={th}>Asset No.</th>
-                  <th style={th}>Unit Cost</th>
-                  <th style={th}>Accountability</th>
-                  <th style={{ ...th, textAlign: 'center' as const }}>Qty</th>
-                  <th style={th}>Unit</th>
-                  <th style={th}>Status</th>
-                  <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20, position: 'sticky' as const, right: 0, background: '#fff', zIndex: 10 }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, idx) => (
-                  <tr
-                    key={r.id}
-                    style={{
-                      background: idx % 2 === 0 ? '#fff' : '#FAFBFC',
-                      transition: 'background 0.1s',
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F1F5F9' }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? '#fff' : '#FAFBFC'
-                    }}
-                  >
-                    {/* Item — name + type badge + optional remark */}
-                    <td style={td}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap' as const }}>
-                        <span style={{
-                          fontWeight: 600, color: '#0F172A', fontSize: 13.5,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          minWidth: 0, maxWidth: 220,
-                        }}>
-                          {r.name}
-                        </span>
-                        <Badge tone={r.classification === 'SUPPLY' ? 'yellow' : r.classification === 'SE' ? 'green' : (r.classification === 'PPE' ? 'blue' : 'gray') }>
-                          {r.classification ?? '—'}
-                        </Badge>
-                      </div>
-                      {r.remarks && (
-                        <div style={{
-                          fontSize: 11.5, color: '#9CA3AF', marginTop: 3,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          maxWidth: 300,
-                        }}>
-                          {r.remarks}
-                        </div>
-                      )}
-                    </td>
-
-                    {/* SKU */}
-                    <td style={td}>
-                      {r.sku ? (
-                        <code style={{
-                          fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
-                          fontSize: 11.5, color: '#475569',
-                          background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
-                          display: 'inline-block', maxWidth: 130,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {r.sku}
-                        </code>
-                      ) : (
-                        <span style={{ color: '#CBD5E1' }}>—</span>
-                      )}
-                    </td>
-
-                    {/* Property Number */}
-                    <td style={td}>
-                      {r.property_number ? (
-                        <code style={{
-                          fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
-                          fontSize: 11.5, color: '#475569',
-                          background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
-                          display: 'inline-block', maxWidth: 130,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {r.property_number}
-                        </code>
-                      ) : (
-                        <span style={{ color: '#CBD5E1' }}>—</span>
-                      )}
-                    </td>
-
-                    {/* Serial Number */}
-                    <td style={td}>
-                      {r.serial_number ? (
-                        <code style={{
-                          fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
-                          fontSize: 11.5, color: '#475569',
-                          background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
-                          display: 'inline-block', maxWidth: 130,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {r.serial_number}
-                        </code>
-                      ) : (
-                        <span style={{ color: '#CBD5E1' }}>—</span>
-                      )}
-                    </td>
-
-                    {/* Asset Number */}
-                    <td style={td}>
-                      {r.asset_number ? (
-                        <code style={{
-                          fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
-                          fontSize: 11.5, color: '#475569',
-                          background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
-                          display: 'inline-block', maxWidth: 130,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {r.asset_number}
-                        </code>
-                      ) : (
-                        <span style={{ color: '#CBD5E1' }}>—</span>
-                      )}
-                    </td>
-
-                    {/* Unit Cost */}
-                    <td style={td}>
-                      {r.unit_cost != null ? (
-                        <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', fontVariantNumeric: 'tabular-nums' }}>
-                          ₱{Number(r.unit_cost).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      ) : (
-                        <span style={{ color: '#CBD5E1' }}>—</span>
-                      )}
-                    </td>
-
-                    {/* Accountability */}
-                    <td style={td}>
-                      <span style={{ color: '#64748B', fontSize: 13 }}>
-                        {r.classification === 'SUPPLY' ? '—' : (r.accountability ?? '—')}
-                      </span>
-                      {r.is_unlinked_holder && (
-                        <div style={{ fontSize: 11.5, color: '#B45309', marginTop: 2 }}>
-                          Legacy unlinked holder
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Qty */}
-                    <td style={{ ...td, textAlign: 'center' as const }}>
-                      <span style={{
-                        fontWeight: 700, fontSize: 15, color: '#0F172A',
-                        fontVariantNumeric: 'tabular-nums',
-                      }}>
-                        {r.quantity}
-                      </span>
-                    </td>
-
-                    {/* Unit */}
-                    <td style={td}>
-                      <span style={{ color: '#64748B', fontSize: 13 }}>
-                        {r.unit || '—'}
-                      </span>
-                    </td>
-
-                    {/* Status */}
-                    <td style={td}>
-                      <StatusBadge status={r.status} />
-                    </td>
-
-                    {/* Actions */}
-                    <td style={{
-                      ...td, textAlign: 'right' as const,
-                      paddingRight: 20, paddingTop: 10, paddingBottom: 10,
-                      position: 'sticky' as const, right: 0, background: '#fff', zIndex: 5,
-                    }}>
-                      <ActionCell
-                        item={r}
-                        onStockIn   ={() => { setStockItem(r); setStockType('in');  setStockQty(1); setStockReason(''); setStockModalOpen(true) }}
-                        onStockOut  ={() => { setStockItem(r); setStockType('out'); setStockQty(1); setStockReason(''); setStockModalOpen(true) }}
-                        onAdjust    ={() => { setAdjustItem(r); setAdjustQty(r.quantity); setAdjustReason('') }}
-                        onHistory   ={() => void loadHistory(r)}
-                        onEdit      ={() => handleEdit(r)}
-                        onAsset     ={r.asset_number ? () => navigate(`/assets?search=${encodeURIComponent(r.asset_number ?? '')}`) : undefined}
-                        onDelete    ={() => handleDelete(r)}
-                        onMarkForDisposal={r.asset_id ? () => openMarkForDisposal(r) : undefined}
-                        onFinalizeDisposal={r.asset_id ? () => openFinalizeDisposal(r) : undefined}
-                        onCancelDisposal={r.asset_id ? () => openCancelDisposal(r) : undefined}
-                        onViewDisposal={() => { setActiveTab('disposal'); setSearch(r.name ?? r.asset_number ?? r.sku ?? '') }}
-                      />
-                    </td>
+            isDesktop ? (
+              <ScrollableTableWrapper><table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
+                <colgroup>
+                  <col style={{ minWidth: 200 }} />
+                  <col style={{ width: 130 }} />
+                  <col style={{ width: 130 }} />
+                  <col style={{ width: 130 }} />
+                  <col style={{ width: 120 }} />
+                  <col style={{ width: 170 }} />
+                  <col style={{ width: 72 }} />
+                  <col style={{ width: 80 }} />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 140 }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th style={th}>Item</th>
+                    <th style={th}>SKU</th>
+                    <th style={th}>Property No.</th>
+                    <th style={th}>Serial No.</th>
+                    <th style={th}>Asset No.</th>
+                    <th style={th}>Unit Cost</th>
+                    <th style={th}>Accountability</th>
+                    <th style={{ ...th, textAlign: 'center' as const }}>Qty</th>
+                    <th style={th}>Unit</th>
+                    <th style={th}>Status</th>
+                    <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20, position: 'sticky' as const, right: 0, background: '#fff', zIndex: 10 }}>Actions</th>
                   </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, idx) => (
+                    <tr
+                      key={r.id}
+                      style={{
+                        background: idx % 2 === 0 ? '#fff' : '#FAFBFC',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F1F5F9' }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? '#fff' : '#FAFBFC'
+                      }}
+                    >
+                      {/* Item — name + type badge + optional remark */}
+                      <td style={td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap' as const }}>
+                          <span style={{
+                            fontWeight: 600, color: '#0F172A', fontSize: 13.5,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            minWidth: 0, maxWidth: 220,
+                          }}>
+                            {r.name}
+                          </span>
+                          <Badge tone={r.classification === 'SUPPLY' ? 'yellow' : r.classification === 'SE' ? 'green' : (r.classification === 'PPE' ? 'blue' : 'gray') }>
+                            {r.classification ?? '—'}
+                          </Badge>
+                        </div>
+                        {r.remarks && (
+                          <div style={{
+                            fontSize: 11.5, color: '#9CA3AF', marginTop: 3,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            maxWidth: 300,
+                          }}>
+                            {r.remarks}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* SKU */}
+                      <td style={td}>
+                        {r.sku ? (
+                          <code style={{
+                            fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                            fontSize: 11.5, color: '#475569',
+                            background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                            display: 'inline-block', maxWidth: 130,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {r.sku}
+                          </code>
+                        ) : (
+                          <span style={{ color: '#CBD5E1' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* Property Number */}
+                      <td style={td}>
+                        {r.property_number ? (
+                          <code style={{
+                            fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                            fontSize: 11.5, color: '#475569',
+                            background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                            display: 'inline-block', maxWidth: 130,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {r.property_number}
+                          </code>
+                        ) : (
+                          <span style={{ color: '#CBD5E1' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* Serial Number */}
+                      <td style={td}>
+                        {r.serial_number ? (
+                          <code style={{
+                            fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                            fontSize: 11.5, color: '#475569',
+                            background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                            display: 'inline-block', maxWidth: 130,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {r.serial_number}
+                          </code>
+                        ) : (
+                          <span style={{ color: '#CBD5E1' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* Asset Number */}
+                      <td style={td}>
+                        {r.asset_number ? (
+                          <code style={{
+                            fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                            fontSize: 11.5, color: '#475569',
+                            background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                            display: 'inline-block', maxWidth: 130,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {r.asset_number}
+                          </code>
+                        ) : (
+                          <span style={{ color: '#CBD5E1' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* Unit Cost */}
+                      <td style={td}>
+                        {r.unit_cost != null ? (
+                          <span style={{ fontWeight: 600, fontSize: 13, color: '#0F172A', fontVariantNumeric: 'tabular-nums' }}>
+                            ₱{Number(r.unit_cost).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#CBD5E1' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* Accountability */}
+                      <td style={td}>
+                        <span style={{ color: '#64748B', fontSize: 13 }}>
+                          {r.classification === 'SUPPLY' ? '—' : (r.accountability ?? '—')}
+                        </span>
+                        {r.is_unlinked_holder && (
+                          <div style={{ fontSize: 11.5, color: '#B45309', marginTop: 2 }}>
+                            Legacy unlinked holder
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Qty */}
+                      <td style={{ ...td, textAlign: 'center' as const }}>
+                        <span style={{
+                          fontWeight: 700, fontSize: 15, color: '#0F172A',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}>
+                          {r.quantity}
+                        </span>
+                      </td>
+
+                      {/* Unit */}
+                      <td style={td}>
+                        <span style={{ color: '#64748B', fontSize: 13 }}>
+                          {r.unit || '—'}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td style={td}>
+                        <StatusBadge status={r.status} />
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{
+                        ...td, textAlign: 'right' as const,
+                        paddingRight: 20, paddingTop: 10, paddingBottom: 10,
+                        position: 'sticky' as const, right: 0, background: '#fff', zIndex: 5,
+                      }}>
+                        <ActionCell
+                          item={r}
+                          onStockIn   ={() => { setStockItem(r); setStockType('in');  setStockQty(1); setStockReason(''); setStockModalOpen(true) }}
+                          onStockOut  ={() => { setStockItem(r); setStockType('out'); setStockQty(1); setStockReason(''); setStockModalOpen(true) }}
+                          onAdjust    ={() => { setAdjustItem(r); setAdjustQty(r.quantity); setAdjustReason('') }}
+                          onHistory   ={() => void loadHistory(r)}
+                          onEdit      ={() => handleEdit(r)}
+                          onAsset     ={r.asset_number ? () => navigate(`/assets?search=${encodeURIComponent(r.asset_number ?? '')}`) : undefined}
+                          onDelete    ={() => handleDelete(r)}
+                          onMarkForDisposal={r.asset_id ? () => openMarkForDisposal(r) : undefined}
+                          onFinalizeDisposal={r.asset_id ? () => openFinalizeDisposal(r) : undefined}
+                          onCancelDisposal={r.asset_id ? () => openCancelDisposal(r) : undefined}
+                          onViewDisposal={() => { setActiveTab('disposal'); setSearch(r.name ?? r.asset_number ?? r.sku ?? '') }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table></ScrollableTableWrapper>
+            ) : (
+              <div style={{ display: 'grid', gap: 12 }}>
+                {rows.map((r) => (
+                  <div key={r.id} style={{ border: '1px solid #E2E8F0', borderRadius: 14, padding: 12, background: '#fff', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A' }}>{r.name}</div>
+                        <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}><code style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace", fontSize: 11.5, color: '#475569', background: '#F1F5F9', padding: '3px 8px', borderRadius: 6 }}>{r.sku}</code> {r.property_number ? <span style={{ marginLeft: 8, color: '#94A3B8' }}>Property {r.property_number}</span> : null}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                          <div style={{ fontSize: 13 }}><span style={{ color: '#64748B' }}>{r.classification ?? '—'}</span></div>
+                          <div>{(() => { return <StatusBadge status={r.status} /> })()}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ color: '#64748B', fontSize: 13 }}>{r.unit || '—'}</div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <button onClick={() => void navigate(`/inventory/${r.id}`)} style={{ border: '1px solid #D1D5DB', borderRadius: 8, background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>View</button>
+                        <ActionCell
+                          item={r}
+                          onStockIn   ={() => { setStockItem(r); setStockType('in');  setStockQty(1); setStockReason(''); setStockModalOpen(true) }}
+                          onStockOut  ={() => { setStockItem(r); setStockType('out'); setStockQty(1); setStockReason(''); setStockModalOpen(true) }}
+                          onAdjust    ={() => { setAdjustItem(r); setAdjustQty(r.quantity); setAdjustReason('') }}
+                          onHistory   ={() => void loadHistory(r)}
+                          onEdit      ={() => handleEdit(r)}
+                          onAsset     ={r.asset_number ? () => navigate(`/assets?search=${encodeURIComponent(r.asset_number ?? '')}`) : undefined}
+                          onDelete    ={() => handleDelete(r)}
+                          onMarkForDisposal={r.asset_id ? () => openMarkForDisposal(r) : undefined}
+                          onFinalizeDisposal={r.asset_id ? () => openFinalizeDisposal(r) : undefined}
+                          onCancelDisposal={r.asset_id ? () => openCancelDisposal(r) : undefined}
+                          onViewDisposal={() => { setActiveTab('disposal'); setSearch(r.name ?? r.asset_number ?? r.sku ?? '') }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table></ScrollableTableWrapper>
+              </div>
+            )
           )}
         </div>
 
@@ -1880,7 +1928,7 @@ export function InventoryPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Quick summary of current vs new */}
             <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
+             display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(3, 1fr)' : '1fr', gap: 12,
               borderRadius: 12, border: '1px solid #E2E8F0', background: '#F8FAFC',
               padding: '16px 20px',
             }}>

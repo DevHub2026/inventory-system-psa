@@ -167,7 +167,7 @@ export function Dropdown({
               top: 'calc(100% + 6px)',
               left: 0,
               right: 0,
-              zIndex: 999,
+              zIndex: 70,
               background: '#ffffff',
               border: '1px solid #e2e8f0',
               borderRadius: 12,

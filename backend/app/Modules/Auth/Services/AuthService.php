@@ -48,10 +48,15 @@ class AuthService
         // Remove any keys that are not on the users table to prevent mass-assignment issues
         $allowedKeys = ['first_name', 'middle_name', 'last_name', 'email', 'username', 'employee_number', 'email_notifications_enabled'];
         $filtered = array_intersect_key($data, array_flip($allowedKeys));
-
-        // Remove null values only for fields not explicitly set to null
-        $filtered = array_filter($filtered, fn ($v) => $v !== null);
-
+ 
+        // Remove null values only for fields not explicitly set to null.
+        // This allows clearing the last_name field when a single-word full name is submitted.
+        $filtered = array_filter(
+            $filtered,
+            fn ($value, $key) => $value !== null || array_key_exists($key, $data),
+            ARRAY_FILTER_USE_BOTH,
+        );
+ 
         if (! empty($filtered)) {
             $user->update($filtered);
         }

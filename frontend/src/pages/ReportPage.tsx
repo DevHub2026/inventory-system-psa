@@ -31,6 +31,13 @@ export function ReportPage() {
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const loadReport = async () => {
     setLoading(true)
@@ -345,13 +352,115 @@ export function ReportPage() {
             />
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <Table
-              columns={currentColumns as any}
-              rows={data as any[]}
-              rowKey={(r: any) => r.id}
-            />
-          </div>
+          isDesktop ? (
+            <div style={{ overflowX: 'auto' }}>
+              <Table
+                columns={currentColumns as any}
+                rows={data as any[]}
+                rowKey={(r: any) => r.id}
+              />
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {(data as any[]).map((item: any) => {
+                // Render a compact card according to reportType
+                const commonStyle: React.CSSProperties = { border: '1px solid #EFF2FF', borderRadius: 10, padding: 12, background: '#fff' }
+                switch (reportType) {
+                  case 'assets':
+                    return (
+                      <div key={item.id ?? JSON.stringify(item)} style={commonStyle}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>{item.name}</div>
+                            <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#64748B' }}>{item.asset_number ?? item.property_number}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <div style={{ fontSize: 12, color: '#64748B' }}>{item.location}</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, gap: 12 }}>
+                          <div style={{ color: '#64748B', fontSize: 13 }}>{inventoryStatusLabel(item.status)}</div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn btn-ghost">View</button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  case 'borrowings':
+                  case 'overdue':
+                    return (
+                      <div key={item.id ?? JSON.stringify(item)} style={commonStyle}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>{item.asset_name}</div>
+                            <div style={{ fontSize: 13, color: '#64748B' }}>{item.borrower}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 700, color: '#0F172A' }}>{item.borrow_date ?? item.due_date}</div>
+                            <div style={{ fontSize: 12, color: '#64748B' }}>{item.due_date ? `Due ${item.due_date}` : ''}</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, gap: 12 }}>
+                          <div style={{ color: '#64748B', fontSize: 13 }}>{item.status ? borrowingStatusLabel(item.status) : ''}</div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn btn-ghost">Details</button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  case 'inventory':
+                  case 'low_stock':
+                    return (
+                      <div key={item.id ?? JSON.stringify(item)} style={commonStyle}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>{item.name}</div>
+                            <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#64748B' }}>{item.sku ?? item.code}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 700, color: '#0F172A' }}>{item.quantity}</div>
+                            <div style={{ fontSize: 12, color: '#64748B' }}>Reorder: {item.reorder_level}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  case 'user_activity':
+                    return (
+                      <div key={item.id ?? JSON.stringify(item)} style={commonStyle}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700 }}>{item.user}</div>
+                            <div style={{ fontSize: 13, color: '#64748B' }}>{item.action} • {item.asset_name}</div>
+                          </div>
+                          <div style={{ fontSize: 12, color: '#64748B' }}>{item.date}</div>
+                        </div>
+                      </div>
+                    )
+                  case 'reissuances':
+                    return (
+                      <div key={item.id ?? JSON.stringify(item)} style={commonStyle}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ fontWeight: 700 }}>{item.asset_name}</div>
+                            <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#64748B' }}>{item.asset_number}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 13, color: '#64748B' }}>{item.transfer_date}</div>
+                            <div style={{ fontSize: 12, color: '#64748B' }}>{item.previous_employee} → {item.new_employee}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  default:
+                    return (
+                      <div key={item.id ?? JSON.stringify(item)} style={commonStyle}>
+                        <pre style={{ margin: 0, fontSize: 12, color: '#475569' }}>{JSON.stringify(item, null, 2)}</pre>
+                      </div>
+                    )
+                }
+              })}
+            </div>
+          )
         )}
       </Card>
 

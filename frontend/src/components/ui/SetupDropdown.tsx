@@ -106,7 +106,7 @@ export function SetupDropdown({
       top,
       width: r.width,
       maxHeight,
-      zIndex: 9999,
+      zIndex: 70,
     })
   }, [])
 

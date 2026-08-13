@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import {
   Boxes,
   CalendarClock,
@@ -68,6 +69,21 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
+  // Close sidebar on Escape for mobile users and focus management
+  useEffect(() => {
+    if (!open || isDesktop) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    // focus first interactive element inside the sidebar for keyboard users
+    setTimeout(() => {
+      try {
+        const el = document.querySelector('.psa-sidebar a, .psa-sidebar button') as HTMLElement | null
+        if (el) el.focus()
+      } catch {}
+    }, 50)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, isDesktop, onClose])
+
   const getVisibleLinks = () => {
     let links
     if (isAdmin(user)) {
@@ -121,7 +137,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
         display: 'flex',
         flexDirection: 'column',
         background: 'linear-gradient(180deg, #0B3D91 0%, #0A3580 50%, #082A6A 100%)',
-        zIndex: 40,
+        zIndex: 9999,
         transform: open ? 'translateX(0)' : 'translateX(-260px)',
         transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
       }
@@ -135,12 +151,12 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
           style={{
             position: 'fixed', inset: 0,
             background: 'rgba(0,0,0,0.50)',
-            zIndex: 39,
+            zIndex: 9989,
           }}
         />
       )}
 
-      <aside className="psa-sidebar" style={sidebarStyle}>
+      <aside className="psa-sidebar" data-open={open ? 'true' : 'false'} style={sidebarStyle}>
 
         {/* ── Brand header ── */}
         <div style={{

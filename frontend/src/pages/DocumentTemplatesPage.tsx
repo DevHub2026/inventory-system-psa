@@ -128,6 +128,13 @@ export function DocumentTemplatesPage() {
   const [uploadNotes, setUploadNotes] = useState('')
   const [detailTab, setDetailTab] = useState<DetailTab>('details')
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; message: string; action: () => void }>({ open: false, title: '', message: '', action: () => {} })
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const officialTypes = useMemo(() => types.filter((t) => ['borrow_receipt', 'return_receipt', 'issuance', 'property_transfer', 'clearance', 'reissuance'].includes(t.value)), [types])
 
@@ -331,9 +338,9 @@ export function DocumentTemplatesPage() {
       </div>
 
       {/* Main layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(12, 1fr)' : '1fr', gap: 20 }}>
         {/* Left: Template list */}
-        <div style={{ gridColumn: 'span 4' }}>
+        <div style={{ gridColumn: isDesktop ? 'span 4' : 'auto' }}>
           <div style={{ position: 'relative', marginBottom: 12 }}>
             <Search size={14} style={{
               position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
@@ -430,7 +437,7 @@ export function DocumentTemplatesPage() {
         </div>
 
         {/* Right: Detail panel with tabs */}
-        <div style={{ gridColumn: 'span 8' }}>
+        <div style={{ gridColumn: isDesktop ? 'span 8' : 'auto' }}>
           {!selected ? (
             <div style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -627,7 +634,7 @@ export function DocumentTemplatesPage() {
                     </div>
 
                     {/* ── Technical details grid ───────────────────────────── */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 24px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(2, 1fr)' : '1fr', gap: '10px 24px' }}>
                       {[
                         ['Document Type', selected.document_type_label],
                         ['Version', `v${selected.version}`],

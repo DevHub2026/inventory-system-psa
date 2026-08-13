@@ -188,6 +188,13 @@ export function ReservationPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [receipt, setReceipt] = useState<ReceiptRecord | null>(null)
   const [historyModalId, setHistoryModalId] = useState<number | null>(null)
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const loadReservations = async () => {
     setLoading(true)
@@ -362,6 +369,7 @@ export function ReservationPage() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
+          {isDesktop ? (
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <colgroup>
                 <col style={{ width: 70  }} />
@@ -371,8 +379,8 @@ export function ReservationPage() {
                 <col style={{ width: 100 }} />
                 <col style={{ width: 180 }} />
                 <col style={{ width: 150 }} />
-                              <col style={{ width: 150 }} />
-                            </colgroup>
+                <col style={{ width: 150 }} />
+              </colgroup>
 
               <thead>
                 <tr>
@@ -411,6 +419,7 @@ export function ReservationPage() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <span style={{ fontWeight: 600, color: '#0F172A', fontSize: 13 }}>
                           {r.employee_name ?? '—'}
+
                         </span>
                         <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#64748B' }}>
                           {r.employee_id ?? '—'}
@@ -481,9 +490,52 @@ export function ReservationPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-      </Card>
+          ) : (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {rows.map((r) => (
+                <div key={r.id} style={{ border: '1px solid #EFF2FF', borderRadius: 10, padding: 12, background: '#fff' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0F172A', marginBottom: 6 }}>
+                        {r.asset_names?.[0] ?? 'Reservation'}
+                      </div>
+                      <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#64748B' }}>
+                        #{r.id} • {r.employee_name ?? '—'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <Badge tone={reservationStatusTone(r.status)}>{reservationStatusLabel(r.status)}</Badge>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                    <div style={{ fontSize: 13, color: '#0F172A' }}>
+                      <strong>Schedule:</strong> <ScheduleCell from={r.reserved_from ?? r.start_date} until={r.reserved_until ?? r.end_date} />
+                    </div>
+                    <div style={{ fontSize: 13, color: '#64748B' }}>
+                      <strong>Purpose:</strong> <PurposeCell text={r.purpose} remarks={r.remarks} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 6 }}>
+                      <ActionBtn label="History" onClick={() => setHistoryModalId(r.id)} variant="ghost" icon={ReceiptIcon} />
+                      <ActionBtn label="Receipt" onClick={() => setReceipt(buildReceipt(r))} icon={ReceiptIcon} />
+                      {canApprove && r.status === 'PENDING' && (
+                        <>
+                          <ActionBtn label="Approve" onClick={() => handleApprove(r.id)} variant="success" icon={CheckIcon} />
+                          <ActionBtn label="Reject" onClick={() => handleReject(r.id)} variant="danger" icon={XIcon} />
+                        </>
+                      )}
+                      {!canApprove && r.status === 'PENDING' && (
+                        <ActionBtn label="Cancel" onClick={() => handleCancel(r.id)} variant="ghost" icon={XIcon} />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
 
       {/* ── New Borrow Request modal ── */}
       <Modal

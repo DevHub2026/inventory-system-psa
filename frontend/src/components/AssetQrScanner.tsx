@@ -101,6 +101,14 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
 
   const [borrowing, setBorrowing] = useState<Borrowing | null>(null)
 
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
 
 
   function stopCamera() {
@@ -562,7 +570,7 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
               <p style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>Asset Found</p>
             </div>
             <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 16px',
+              display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(2, 1fr)' : '1fr', gap: '8px 16px',
               padding: 16, fontSize: 13,
             }}>
               {[
@@ -617,7 +625,7 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
               <p style={{ fontSize: 13, fontWeight: 700, color: T.primary }}>Borrowing Transaction</p>
             </div>
             <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 16px',
+              display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(2, 1fr)' : '1fr', gap: '8px 16px',
               padding: 16, fontSize: 13,
             }}>
               {[

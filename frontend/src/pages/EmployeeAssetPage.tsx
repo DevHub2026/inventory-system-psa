@@ -81,10 +81,10 @@ export function EmployeeAssetPage() {
   const { asset, actions, active_borrowing, pending_reservation, history } = context
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 pb-12">
+    <div className="min-h-screen bg-slate-100 text-slate-900 pb-12 flex justify-center">
       {/* Top Header Bar */}
-      <div className="bg-slate-900 text-white px-4 py-3 sticky top-0 z-10 shadow-md">
-        <div className="max-w-xl mx-auto flex items-center justify-between">
+      <div className="bg-slate-900 text-white px-4 py-3 sticky top-0 z-10 shadow-md w-full">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
           <button
             onClick={() => navigate('/qr')}
             className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white"
@@ -104,7 +104,7 @@ export function EmployeeAssetPage() {
         </div>
       </div>
 
-      <div className="max-w-xl mx-auto p-4 space-y-4">
+      <div className="max-w-2xl w-full mx-auto p-6 space-y-5">
         {actionMessage && (
           <Alert tone={actionMessage.tone} onClose={() => setActionMessage(null)}>
             {actionMessage.text}
@@ -112,85 +112,102 @@ export function EmployeeAssetPage() {
         )}
 
         {/* Hero Card */}
-        <Card className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <span className="font-mono text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                {asset.asset_number}
-              </span>
-              <h1 className="text-lg font-extrabold text-slate-900 mt-1.5">{asset.name}</h1>
-              <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">{asset.description || 'No description provided.'}</p>
-            </div>
-            <Badge tone={asset.status === 'AVAILABLE' ? 'green' : asset.status === 'BORROWED' ? 'blue' : 'yellow'}>
-              {asset.status}
-            </Badge>
+        <Card className="bg-white p-6 rounded-[14px] border border-slate-200 shadow-sm">
+          {/* PSA tri-color accent */}
+          <div className="flex items-center gap-2 mb-3">
+            <span className="block" style={{ height: 4, width: 36, borderRadius: 999, background: '#0B3D91' }} />
+            <span className="block" style={{ height: 4, width: 18, borderRadius: 999, background: '#FFD400' }} />
+            <span className="block" style={{ height: 4, width: 12, borderRadius: 999, background: '#E31C23' }} />
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
-            <div className="flex items-center gap-1.5 text-slate-600">
-              <Package className="w-3.5 h-3.5 text-slate-400" />
-              <span>Cat: <strong>{asset.category?.name || 'N/A'}</strong></span>
+          <div className="flex items-center justify-between gap-4">
+            <div style={{ minWidth: 0 }}>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">{asset.asset_number}</span>
+                <Badge tone={asset.status === 'AVAILABLE' ? 'green' : asset.status === 'BORROWED' ? 'blue' : 'yellow'} className="ml-2">{asset.status}</Badge>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mt-3 leading-tight">{asset.name}</h1>
+              <p className="text-sm text-slate-500 mt-2 max-w-2xl">{asset.description || 'No description provided.'}</p>
             </div>
-            <div className="flex items-center gap-1.5 text-slate-600">
-              <MapPin className="w-3.5 h-3.5 text-slate-400" />
-              <span className="truncate">Loc: <strong>{asset.office?.name || 'N/A'}</strong></span>
+            <div className="flex-shrink-0 hidden md:flex items-center">
+              {/* placeholder for any right-side action or image */}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-sm mt-6 pt-4 border-t border-slate-100">
+            <div className="flex items-center gap-2 text-slate-600">
+              <Package className="w-4 h-4 text-slate-400" />
+              <span>Category: <strong>{asset.category?.name || 'N/A'}</strong></span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-600">
+              <MapPin className="w-4 h-4 text-slate-400" />
+              <span className="truncate">Office: <strong>{asset.office?.name || 'N/A'}</strong></span>
             </div>
           </div>
         </Card>
 
         {/* Prominent Action Bar */}
-        <Card className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-          <div className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Available Actions</div>
-          <div className="grid grid-cols-2 gap-2">
+        <Card className="bg-white p-6 rounded-[14px] border border-slate-200 shadow-sm">
+          <div className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Available Actions</div>
+
+          {/* Primary action full width */}
+          <div>
             {actions.can_request_borrow && (
               <Button
                 variant="primary"
-                className="w-full justify-center text-xs py-2.5 font-bold shadow-md col-span-2"
+                className="w-full justify-center text-sm py-3 rounded-[10px] font-bold shadow-md"
                 onClick={() => setActiveModal('borrow')}
               >
-                <Package className="w-4 h-4 mr-1.5" /> Request to Borrow Asset
+                <Package className="w-4 h-4 mr-2" /> Request to Borrow Asset
               </Button>
             )}
+          </div>
 
-            {actions.can_request_extension && (
-              <Button
-                variant="secondary"
-                className="w-full justify-center text-xs py-2 font-semibold"
-                onClick={() => setActiveModal('extension')}
-              >
-                <RotateCcw className="w-3.5 h-3.5 mr-1" /> Request Extension
-              </Button>
-            )}
+          {/* Secondary actions row */}
+          <div className="mt-3 grid gap-3 sm:grid-cols-[1.7fr_1fr]">
+            <div className="grid grid-cols-2 gap-3">
+              {actions.can_request_extension && (
+                <Button
+                  variant="secondary"
+                  className="w-full justify-center text-sm py-3 rounded-[10px] font-semibold"
+                  onClick={() => setActiveModal('extension')}
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" /> Request Extension
+                </Button>
+              )}
 
-            {actions.can_request_reissuance && (
-              <Button
-                variant="outline"
-                className="w-full justify-center text-xs py-2 font-semibold"
-                onClick={() => setActiveModal('reissuance')}
-              >
-                <UserIcon className="w-3.5 h-3.5 mr-1" /> Transfer Accountability
-              </Button>
-            )}
+              {actions.can_request_reissuance && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-center text-sm py-3 rounded-[10px] font-semibold"
+                  onClick={() => setActiveModal('reissuance')}
+                >
+                  <UserIcon className="w-4 h-4 mr-2" /> Transfer Accountability
+                </Button>
+              )}
+            </div>
 
-            {actions.can_report_damage && (
-              <Button
-                variant="outline"
-                className="w-full justify-center text-xs py-2 font-semibold"
-                onClick={() => setActiveModal('damage')}
-              >
-                <Wrench className="w-3.5 h-3.5 mr-1" /> Report Damage
-              </Button>
-            )}
+            <div className="">
+              {actions.can_report_damage && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-center text-sm py-3 rounded-[10px] font-semibold mb-3"
+                  onClick={() => setActiveModal('damage')}
+                >
+                  <Wrench className="w-4 h-4 mr-2" /> Report Damage
+                </Button>
+              )}
 
-            {actions.can_report_lost && (
-              <Button
-                variant="danger"
-                className="w-full justify-center text-xs py-2 font-semibold"
-                onClick={() => setActiveModal('lost')}
-              >
-                <HelpCircle className="w-3.5 h-3.5 mr-1" /> Report Lost Asset
-              </Button>
-            )}
+              {actions.can_report_lost && (
+                <Button
+                  variant="danger"
+                  className="w-full justify-center text-sm py-3 rounded-[10px] font-semibold"
+                  onClick={() => setActiveModal('lost')}
+                >
+                  <HelpCircle className="w-4 h-4 mr-2" /> Report Lost Asset
+                </Button>
+              )}
+            </div>
           </div>
         </Card>
 
@@ -228,24 +245,24 @@ export function EmployeeAssetPage() {
         )}
 
         {/* Detailed Information Tabs */}
-        <Card className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Asset Specifications</h2>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-            <div>
-              <span className="text-slate-400 block">Manufacturer</span>
-              <span className="font-semibold text-slate-700">{asset.manufacturer?.name || 'N/A'}</span>
+        <Card className="bg-white p-6 rounded-[14px] border border-slate-200 shadow-sm">
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">Asset Specifications</h2>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="bg-slate-50 rounded-[10px] p-3">
+              <div className="text-[11px] text-slate-400">Manufacturer</div>
+              <div className="font-semibold text-slate-700">{asset.manufacturer?.name || 'N/A'}</div>
             </div>
-            <div>
-              <span className="text-slate-400 block">Model</span>
-              <span className="font-semibold text-slate-700">{asset.model || 'N/A'}</span>
+            <div className="bg-slate-50 rounded-[10px] p-3">
+              <div className="text-[11px] text-slate-400">Model</div>
+              <div className="font-semibold text-slate-700">{asset.model || 'N/A'}</div>
             </div>
-            <div>
-              <span className="text-slate-400 block">Condition</span>
-              <span className="font-semibold text-slate-700">{asset.condition_status || 'GOOD'}</span>
+            <div className="bg-slate-50 rounded-[10px] p-3">
+              <div className="text-[11px] text-slate-400">Condition</div>
+              <div className="font-semibold text-slate-700">{asset.condition_status || 'GOOD'}</div>
             </div>
-            <div>
-              <span className="text-slate-400 block">Office / Department</span>
-              <span className="font-semibold text-slate-700">{asset.office?.name || 'N/A'}</span>
+            <div className="bg-slate-50 rounded-[10px] p-3">
+              <div className="text-[11px] text-slate-400">Office / Department</div>
+              <div className="font-semibold text-slate-700">{asset.office?.name || 'N/A'}</div>
             </div>
             {asset.issued_to && (
               <div className="col-span-2 pt-2 border-t border-slate-100">

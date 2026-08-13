@@ -90,6 +90,13 @@ export function ExtensionRequestsPage() {
   const [rows, setRows]       = useState<BorrowExtensionRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast]     = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   // Approve flow
   const [approveTarget, setApproveTarget]   = useState<BorrowExtensionRequest | null>(null)
@@ -387,7 +394,7 @@ export function ExtensionRequestsPage() {
           <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
             <Spinner />
           </div>
-        ) : (
+        ) : isDesktop ? (
           <Table
             columns={columns}
             rows={rows}
@@ -401,6 +408,41 @@ export function ExtensionRequestsPage() {
               </div>
             }
           />
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {rows.length === 0 ? (
+              <div style={{ padding: '24px' }}>
+                <EmptyState title="No extension requests" description="Borrowers haven't submitted any due-date extension requests yet." />
+              </div>
+            ) : (
+              rows.map((r) => (
+                <div key={r.id} style={{ border: '1px solid #EFF2FF', borderRadius: 10, padding: 12, background: '#fff' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>Borrowing #{r.borrowing_id}</div>
+                      <div style={{ fontSize: 13, color: '#64748B' }}>{formatDate(r.requested_due_date)} • +{diffDays(r.current_due_date, r.requested_due_date)} days</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 12, color: '#64748B' }}>{r.created_at ? formatDate(r.created_at) : '—'}</div>
+                      <div style={{ marginTop: 6 }}><Badge tone={statusTone(r.status)}>{r.status}</Badge></div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ color: '#64748B', fontSize: 13, flex: 1 }}>{r.reason}</div>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      {canManage && r.status === 'PENDING' && (
+                        <>
+                          <TblBtn label="Approve" variant="success" onClick={() => setApproveTarget(r)} disabled={approving || rejecting} />
+                          <TblBtn label="Reject" variant="danger" onClick={() => openRejectModal(r)} disabled={approving || rejecting} />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         )}
       </Card>
 

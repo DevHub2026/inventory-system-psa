@@ -210,6 +210,13 @@ export function MaintenancePage() {
     },
   ]
 
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 32 }}>
 
@@ -281,12 +288,40 @@ export function MaintenancePage() {
             title="No maintenance records found"
             description="Report a problem or schedule maintenance when an asset needs attention."
           />
-        ) : (
+        ) : isDesktop ? (
           <Table
             columns={columns}
             rows={rows}
             rowKey={(r) => r.id}
           />
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {rows.map((r) => (
+              <div key={r.id} style={{ border: '1px solid #EFF2FF', borderRadius: 10, padding: 12, background: '#fff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>{r.asset_name}</div>
+                    <div style={{ fontSize: 13, color: '#64748B' }}>{r.description}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ marginBottom: 6 }}><Badge tone={maintenanceStatusTone(r.status)}>{maintenanceStatusLabel(r.status)}</Badge></div>
+                    <div style={{ fontSize: 12, color: '#64748B' }}>{r.scheduled_at}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10, flexWrap: 'wrap' }}>
+                  {r.status === 'scheduled' && (
+                    <>
+                      <Button size="sm" variant="success" onClick={() => handleComplete(r.id)}>Complete</Button>
+                      <Button size="sm" variant="danger" onClick={() => handleCancel(r)}>Cancel</Button>
+                    </>
+                  )}
+                  <Button size="sm" variant="secondary" onClick={() => handleEdit(r)}>Edit</Button>
+                  <Button size="sm" variant="danger" onClick={() => handleDelete(r)}>Delete</Button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </Section>
 
@@ -363,7 +398,7 @@ export function MaintenancePage() {
               </>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(2, 1fr)' : '1fr', gap: 12 }}>
             <div>
               <label className={LABEL_CLS}>Type</label>
               <select className={SELECT_CLS} value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value as 'corrective' | 'preventive' })}>

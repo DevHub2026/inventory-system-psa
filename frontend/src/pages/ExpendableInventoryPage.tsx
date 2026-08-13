@@ -51,6 +51,13 @@ export function ExpendableInventoryPage() {
   const [historyRows,    setHistoryRows]    = useState<StockMovement[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [formData,       setFormData]       = useState<CreateInventoryItemPayload>(BLANK_FORM)
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const loadInventory = async (nextPage = page) => {
     setLoading(true)
@@ -195,13 +202,49 @@ export function ExpendableInventoryPage() {
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-16"><Spinner /></div>
-        ) : (
+        ) : isDesktop ? (
           <>
             <Table columns={columns} rows={rows} rowKey={(r) => r.id} empty={<div className="py-16"><EmptyState title="No SE items found" description="Add consumable supplies such as bond paper, toner, and pens." /></div>} />
             <div className="border-t border-[#E5E7EB] px-5 py-3">
               <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void loadInventory(p)} />
             </div>
           </>
+        ) : (
+          <div style={{ display: 'grid', gap: 12, padding: 12 }}>
+            {rows.length === 0 ? (
+              <div style={{ padding: 18 }}><EmptyState title="No SE items found" description="Add consumable supplies such as bond paper, toner, and pens." /></div>
+            ) : (
+              rows.map((r) => (
+                <div key={r.id} style={{ border: '1px solid #E6EEF8', borderRadius: 10, padding: 12, background: '#fff' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{r.name}</div>
+                      <div style={{ fontSize: 13, color: '#6B7280' }}>{r.unit} • {r.sku || '—'}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>{r.quantity}</div>
+                      <div style={{ marginTop: 6 }}><Badge tone={r.status === 'OUT_OF_STOCK' ? 'red' : r.status === 'LOW_STOCK' ? 'yellow' : 'green'}>{inventoryStatusLabel(r.status)}</Badge></div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <Button size="sm" variant="primary" onClick={() => { setStockItem(r); setStockType('in'); setStockQty(1); setStockReason(''); setStockModalOpen(true) }}>+ Stock</Button>
+                    <Button size="sm" variant="secondary" onClick={() => { setStockItem(r); setStockType('out'); setStockQty(1); setStockReason(''); setStockModalOpen(true) }}>- Stock</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setAdjustItem(r); setAdjustQty(r.quantity); setAdjustReason('') }}>Adjust</Button>
+                    <Button size="sm" variant="ghost" onClick={() => void loadHistory(r)}>History</Button>
+                    <Button size="sm" variant="secondary" onClick={() => handleEdit(r)}>Edit</Button>
+                    {r.asset_number && <Button size="sm" variant="ghost" onClick={() => navigate(`/assets?search=${encodeURIComponent(r.asset_number ?? '')}`)}>Asset</Button>}
+                    <Button size="sm" variant="danger" onClick={() => handleDelete(r)}>Delete</Button>
+                  </div>
+                </div>
+              ))
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 6 }}>
+              <Pagination page={page} lastPage={lastPage} total={total} onPageChange={(p) => void loadInventory(p)} />
+            </div>
+
+          </div>
         )}
       </Card>
 
@@ -240,7 +283,7 @@ export function ExpendableInventoryPage() {
       >
         {adjustItem && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', padding: '14px 16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(3, 1fr)' : '1fr', gap: 12, borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', padding: '14px 16px' }}>
               <div><div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Current</div><div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{adjustItem.quantity}</div></div>
               <div><div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>New</div><div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{adjustQty}</div></div>
               <div><div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Difference</div><div style={{ fontSize: 16, fontWeight: 700, color: adjustQty - adjustItem.quantity < 0 ? '#C62828' : '#2E7D32' }}>{adjustQty - adjustItem.quantity > 0 ? '+' : ''}{adjustQty - adjustItem.quantity}</div></div>

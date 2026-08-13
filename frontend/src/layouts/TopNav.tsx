@@ -1,6 +1,6 @@
 import { Menu, Search } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NotificationBell } from '@/components/NotificationBell'
 
 interface TopNavProps {
@@ -27,12 +27,23 @@ export function TopNav({ onMenuClick }: TopNavProps) {
   const navigate         = useNavigate()
   const [search, setSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false)
 
   const submitSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const q = search.trim()
     if (q) navigate(`/assets?search=${encodeURIComponent(q)}`)
   }
+
+  // track viewport width to show mobile search control
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    // run once
+    setIsMobile(mq.matches)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   return (
     <header style={{
@@ -135,6 +146,22 @@ export function TopNav({ onMenuClick }: TopNavProps) {
             aria-label="Search assets"
           />
         </form>
+
+        {/* Mobile search — shown on small screens */}
+        {isMobile && (
+          <form onSubmit={submitSearch} className="md:hidden" style={{ display: 'flex', alignItems: 'center', height: 40, borderRadius: 8, border: searchFocused ? '1.5px solid #0B3D91' : '1.5px solid #e2e8f0', background: searchFocused ? '#fff' : '#f8fafc', padding: '0 8px' }}>
+            <Search size={14} style={{ color: '#94a3b8', marginRight: 6 }} aria-hidden="true" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              placeholder="Search assets…"
+              aria-label="Search assets"
+              style={{ border: 'none', outline: 'none', background: 'transparent', width: 140, fontSize: 14 }}
+            />
+          </form>
+        )}
 
         {/* Notification bell */}
         <div style={{

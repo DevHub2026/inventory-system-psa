@@ -112,6 +112,13 @@ export function BorrowingPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [receipt, setReceipt] = useState<ReceiptRecord | null>(null)
   const [selectedBorrowingId, setSelectedBorrowingId] = useState<number | null>(null)
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const loadBorrowings = async () => {
     setLoading(true)
@@ -223,196 +230,231 @@ export function BorrowingPage() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
-              <colgroup>
-                <col style={{ width: 80 }} /><col /><col style={{ width: 120 }} /><col style={{ width: 100 }} /><col style={{ width: 130 }} /><col style={{ width: 130 }} /><col style={{ width: 130 }} /><col style={{ width: 120 }} /><col style={{ width: 120 }} />
-              </colgroup>
+            {isDesktop ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
+                <colgroup>
+                  <col style={{ width: 80 }} /><col /><col style={{ width: 120 }} /><col style={{ width: 100 }} /><col style={{ width: 130 }} /><col style={{ width: 130 }} /><col style={{ width: 130 }} /><col style={{ width: 120 }} /><col style={{ width: 120 }} />
+                </colgroup>
 
-              <thead>
-                <tr>
-                  <th style={th}>ID</th>
-                  <th style={th}>Asset</th>
-                  <th style={th}>Borrower</th>
-                  <th style={th}>Status</th>
-                  <th style={th}>Borrowed</th>
-                  <th style={th}>Due Date</th>
-                  <th style={th}>Returned</th>
-                  <th style={th}>Authorized By</th>
-                  <th style={{ ...th, textAlign: 'right', paddingRight: 20 }}>Actions</th>
-                </tr>
-              </thead>
+                <thead>
+                  <tr>
+                    <th style={th}>ID</th>
+                    <th style={th}>Asset</th>
+                    <th style={th}>Borrower</th>
+                    <th style={th}>Status</th>
+                    <th style={th}>Borrowed</th>
+                    <th style={th}>Due Date</th>
+                    <th style={th}>Returned</th>
+                    <th style={th}>Authorized By</th>
+                    <th style={{ ...th, textAlign: 'right', paddingRight: 20 }}>Actions</th>
+                  </tr>
+                </thead>
 
-              <tbody>
-                {rows.map((r) => {
-                  const canReturn = r.status === 'BORROWED' || r.status === 'ACTIVE' || r.status === 'OVERDUE'
-                  const canRequestExtension = user?.id === r.user_id && canReturn && !r.has_pending_extension
-                  return (
-                    <tr
-                      key={r.id}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#FAFBFD' }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '' }}
-                    >
-                      {/* ID */}
-                      <td style={td}>
-                        <span
-                          onClick={() => setSelectedBorrowingId(r.id)}
-                          style={{
-                            fontFamily: 'ui-monospace, monospace', fontSize: 12,
-                            fontWeight: 700, color: '#1E40AF',
-                            background: '#EFF6FF', borderRadius: 5,
-                            padding: '2px 7px', display: 'inline-block',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          #{r.id}
-                        </span>
-                      </td>
-
-                      {/* Asset */}
-                      <td style={td}>
-                        <AssetCell name={r.asset_name} identifier={r.asset_number} />
-                      </td>
-
-                      {/* Borrower */}
-                      <td style={td}>
-                        <BorrowerCell name={r.employee_name} id={r.employee_id} />
-                      </td>
-
-                      {/* Status */}
-                      <td style={td}>
-                        <Badge tone={borrowingStatusTone(r.status)}>
-                          {borrowingStatusLabel(r.status)}
-                        </Badge>
-                      </td>
-
-                      {/* Borrowed date+time */}
-                      <td style={td}>
-                        <DateTimeCell iso={r.borrowed_at} />
-                      </td>
-
-                      {/* Due date */}
-                      <td style={td}>
-                        <DueDateCell iso={r.due_date} status={r.status} />
-                      </td>
-
-                      {/* Returned date+time */}
-                      <td style={td}>
-                        <DateTimeCell iso={r.returned_at} />
-                      </td>
-
-                      {/* Authorized by */}
-                      <td style={td}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                          <span style={{ fontWeight: 500, fontSize: 13, color: '#0F172A' }}>
-                            {r.authorized_by_name ?? '—'}
-                          </span>
-                          {r.authorized_at && (
-                            <span style={{ fontSize: 11, color: '#94A3B8' }}>
-                              {formatDate(r.authorized_at)}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Actions */}
-                      <td style={{ ...td, textAlign: 'right', paddingRight: 20 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
-                          {/* Details */}
-                          <button
+                <tbody>
+                  {rows.map((r) => {
+                    const canReturn = r.status === 'BORROWED' || r.status === 'ACTIVE' || r.status === 'OVERDUE'
+                    const canRequestExtension = user?.id === r.user_id && canReturn && !r.has_pending_extension
+                    return (
+                      <tr
+                        key={r.id}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#FAFBFD' }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '' }}
+                      >
+                        {/* ID */}
+                        <td style={td}>
+                          <span
                             onClick={() => setSelectedBorrowingId(r.id)}
                             style={{
-                              height: 28, paddingInline: 10, borderRadius: 6,
-                              border: '1px solid #CBD5E1', background: '#FFFFFF',
-                              color: '#0F172A', fontSize: 11.5, fontWeight: 600,
-                              cursor: 'pointer', fontFamily: 'inherit',
-                              display: 'inline-flex', alignItems: 'center', gap: 5,
-                              whiteSpace: 'nowrap',
-                              transition: 'background 0.1s',
+                              fontFamily: 'ui-monospace, monospace', fontSize: 12,
+                              fontWeight: 700, color: '#1E40AF',
+                              background: '#EFF6FF', borderRadius: 5,
+                              padding: '2px 7px', display: 'inline-block',
+                              cursor: 'pointer',
                             }}
-                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
-                            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#FFFFFF' }}
                           >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="12" r="10" />
-                              <line x1="12" y1="16" x2="12" y2="12" />
-                              <line x1="12" y1="8" x2="12.01" y2="8" />
-                            </svg>
-                            Details
-                          </button>
+                            #{r.id}
+                          </span>
+                        </td>
 
-                          {canRequestExtension && (
+                        {/* Asset */}
+                        <td style={td}>
+                          <AssetCell name={r.asset_name} identifier={r.asset_number} />
+                        </td>
+
+                        {/* Borrower */}
+                        <td style={td}>
+                          <BorrowerCell name={r.employee_name} id={r.employee_id} />
+                        </td>
+
+                        {/* Status */}
+                        <td style={td}>
+                          <Badge tone={borrowingStatusTone(r.status)}>
+                            {borrowingStatusLabel(r.status)}
+                          </Badge>
+                        </td>
+
+                        {/* Borrowed date+time */}
+                        <td style={td}>
+                          <DateTimeCell iso={r.borrowed_at} />
+                        </td>
+
+                        {/* Due date */}
+                        <td style={td}>
+                          <DueDateCell iso={r.due_date} status={r.status} />
+                        </td>
+
+                        {/* Returned date+time */}
+                        <td style={td}>
+                          <DateTimeCell iso={r.returned_at} />
+                        </td>
+
+                        {/* Authorized by */}
+                        <td style={td}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <span style={{ fontWeight: 500, fontSize: 13, color: '#0F172A' }}>
+                              {r.authorized_by_name ?? '—'}
+                            </span>
+                            {r.authorized_at && (
+                              <span style={{ fontSize: 11, color: '#94A3B8' }}>
+                                {formatDate(r.authorized_at)}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Actions */}
+                        <td style={{ ...td, textAlign: 'right', paddingRight: 20 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                            {/* Details */}
                             <button
                               onClick={() => setSelectedBorrowingId(r.id)}
                               style={{
                                 height: 28, paddingInline: 10, borderRadius: 6,
-                                border: '1px solid #FDE68A', background: '#FFFBEB',
-                                color: '#B45309', fontSize: 11.5, fontWeight: 600,
-                                cursor: 'pointer', fontFamily: 'inherit',
-                                display: 'inline-flex', alignItems: 'center', gap: 5,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              Request Extension
-                            </button>
-                          )}
-
-                          {/* Receipt */}
-                          <button
-                            onClick={() => openReceipt(r)}
-                            style={{
-                              height: 28, paddingInline: 10, borderRadius: 6,
-                              border: '1px solid #E2E8F0', background: '#F8FAFC',
-                              color: '#374151', fontSize: 11.5, fontWeight: 600,
-                              cursor: 'pointer', fontFamily: 'inherit',
-                              display: 'inline-flex', alignItems: 'center', gap: 5,
-                              whiteSpace: 'nowrap',
-                              transition: 'background 0.1s',
-                            }}
-                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#EEF2F7' }}
-                            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                              <polyline points="14,2 14,8 20,8"/>
-                              <line x1="16" y1="13" x2="8" y2="13"/>
-                              <line x1="16" y1="17" x2="8" y2="17"/>
-                              <polyline points="10,9 9,9 8,9"/>
-                            </svg>
-                            Receipt
-                          </button>
-
-                          {/* Return */}
-                          {canReturn ? (
-                            <button
-                              onClick={() => handleReturn(r.id)}
-                              style={{
-                                height: 28, paddingInline: 10, borderRadius: 6,
-                                border: 'none', background: '#1E40AF',
-                                color: '#fff', fontSize: 11.5, fontWeight: 600,
+                                border: '1px solid #CBD5E1', background: '#FFFFFF',
+                                color: '#0F172A', fontSize: 11.5, fontWeight: 600,
                                 cursor: 'pointer', fontFamily: 'inherit',
                                 display: 'inline-flex', alignItems: 'center', gap: 5,
                                 whiteSpace: 'nowrap',
                                 transition: 'background 0.1s',
                               }}
-                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1D3FAB' }}
-                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1E40AF' }}
+                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
+                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#FFFFFF' }}
                             >
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="1 4 1 10 7 10"/>
-                                <path d="M3.51 15a9 9 0 1 0 .49-3.17"/>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="16" x2="12" y2="12" />
+                                <line x1="12" y1="8" x2="12.01" y2="8" />
                               </svg>
-                              Return
+                              Details
                             </button>
-                          ) : (
-                            <span style={{ fontSize: 12, color: '#CBD5E1', paddingInline: 4 }}>—</span>
-                          )}
+
+                            {canRequestExtension && (
+                              <button
+                                onClick={() => setSelectedBorrowingId(r.id)}
+                                style={{
+                                  height: 28, paddingInline: 10, borderRadius: 6,
+                                  border: '1px solid #FDE68A', background: '#FFFBEB',
+                                  color: '#B45309', fontSize: 11.5, fontWeight: 600,
+                                  cursor: 'pointer', fontFamily: 'inherit',
+                                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                Request Extension
+                              </button>
+                            )}
+
+                            {/* Receipt */}
+                            <button
+                              onClick={() => openReceipt(r)}
+                              style={{
+                                height: 28, paddingInline: 10, borderRadius: 6,
+                                border: '1px solid #E2E8F0', background: '#F8FAFC',
+                                color: '#374151', fontSize: 11.5, fontWeight: 600,
+                                cursor: 'pointer', fontFamily: 'inherit',
+                                display: 'inline-flex', alignItems: 'center', gap: 5,
+                                whiteSpace: 'nowrap',
+                                transition: 'background 0.1s',
+                              }}
+                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#EEF2F7' }}
+                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10,9 9,9 8,9"/>
+                              </svg>
+                              Receipt
+                            </button>
+
+                            {/* Return */}
+                            {canReturn ? (
+                              <button
+                                onClick={() => handleReturn(r.id)}
+                                style={{
+                                  height: 28, paddingInline: 10, borderRadius: 6,
+                                  border: 'none', background: '#1E40AF',
+                                  color: '#fff', fontSize: 11.5, fontWeight: 600,
+                                  cursor: 'pointer', fontFamily: 'inherit',
+                                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                                  whiteSpace: 'nowrap',
+                                  transition: 'background 0.1s',
+                                }}
+                                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1D3FAB' }}
+                                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#1E40AF' }}
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="1 4 1 10 7 10"/>
+                                  <path d="M3.51 15a9 9 0 1 0 .49-3.17"/>
+                                </svg>
+                                Return
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: 12, color: '#CBD5E1', paddingInline: 4 }}>—</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ display: 'grid', gap: 12 }}>
+                {rows.map((r) => {
+                  const canReturn = r.status === 'BORROWED' || r.status === 'ACTIVE' || r.status === 'OVERDUE'
+                  return (
+                    <div key={r.id} style={{ border: '1px solid #E2E8F0', borderRadius: 14, padding: 12, background: '#fff', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A' }}>{r.asset_name}</div>
+                          <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}><code style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace", fontSize: 11.5, color: '#475569', background: '#F1F5F9', padding: '3px 8px', borderRadius: 6 }}>{r.asset_number}</code></div>
                         </div>
-                      </td>
-                    </tr>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                            <div style={{ fontSize: 13 }}><span style={{ color: '#64748B' }}>{r.employee_name ?? '—'}</span></div>
+                            <div>{(() => { return <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> })()}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ color: '#64748B', fontSize: 13 }}>
+                          <div style={{ fontWeight: 700 }}>{formatDate(r.borrowed_at ?? '')}</div>
+                          <div style={{ fontSize: 12 }}>{r.due_date ? formatDate(r.due_date) : '—'}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <button onClick={() => setSelectedBorrowingId(r.id)} style={{ border: '1px solid #D1D5DB', borderRadius: 8, background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Details</button>
+                          <button onClick={() => openReceipt(r)} style={{ border: '1px solid #E2E8F0', borderRadius: 8, background: '#F8FAFC', color: '#374151', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Receipt</button>
+                          {canReturn && <button onClick={() => handleReturn(r.id)} style={{ border: 'none', borderRadius: 8, background: '#1E40AF', color: '#fff', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Return</button>}
+                        </div>
+                      </div>
+                    </div>
                   )
                 })}
-              </tbody>
-            </table>
+              </div>
+            )}
           </div>
         )}
       </Card>

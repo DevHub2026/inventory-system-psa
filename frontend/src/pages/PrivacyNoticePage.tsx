@@ -1,4 +1,5 @@
 import { Shield, FileText, Lock, Users, Clock, Mail, Phone } from 'lucide-react'
+import { Card } from '@/components/ui'
 
 /* ── Design tokens ── */
 const T = {
@@ -13,258 +14,238 @@ const T = {
   accentBg:   '#EFF6FF',
   amberBg:    '#FFFBEB',
   amberText:  '#B45309',
-  surface:    '#F1F5F9',
-  blue:       '#003DA5',
-  yellow:     '#FFD400',
-  red:        '#E31C23',
 }
 
-/* ── Section card with PSA tri-color accent ── */
 function Section({
-  icon, iconBg, iconColor, title, children,
+  icon,
+  iconBg,
+  title,
+  subtitle,
+  children,
 }: {
   icon: React.ReactNode
   iconBg: string
-  iconColor: string
   title: string
+  subtitle?: string
   children: React.ReactNode
 }) {
   return (
-    <div style={{
-      background: T.white,
-      border: `1px solid ${T.border}`,
-      borderRadius: 16,
-      boxShadow: '0 1px 6px rgba(0,0,0,0.05)',
-      overflow: 'hidden',
-    }}>
-      {/* PSA tri-color top accent */}
-      <div style={{ height: 4, display: 'flex' }}>
-        <div style={{ flex: 1, background: T.blue }} />
-        <div style={{ flex: 1, background: T.yellow }} />
-        <div style={{ flex: 1, background: T.red }} />
-      </div>
-
-      {/* Section header */}
+    <Card noPadding className="overflow-hidden">
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '20px 24px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+        padding: '22px 24px',
+        background: T.bg,
         borderBottom: `1px solid ${T.borderLight}`,
       }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: T.text, lineHeight: 1.3 }}>{title}</div>
-        </div>
         <div style={{
-          display: 'grid', width: 40, height: 40, placeItems: 'center',
-          borderRadius: 12, background: iconBg, flexShrink: 0,
+          width: 48,
+          height: 48,
+          borderRadius: 14,
+          display: 'grid',
+          placeItems: 'center',
+          background: iconBg,
+          flexShrink: 0,
         }}>
-          <span style={{ color: iconColor, display: 'flex' }}>{icon}</span>
+          {icon}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: T.text, lineHeight: 1.2 }}>{title}</div>
+          {subtitle && (
+            <div style={{ marginTop: 4, fontSize: 13, color: T.textMid, lineHeight: 1.5 }}>{subtitle}</div>
+          )}
         </div>
       </div>
-
-      {/* Section body */}
-      <div style={{ padding: '24px' }}>
+      <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {children}
       </div>
-    </div>
+    </Card>
+  )
+}
+
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 8,
+      padding: '8px 12px',
+      borderRadius: 999,
+      background: '#E0F2FE',
+      color: '#0369A1',
+      fontSize: 12,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '0.08em',
+    }}>
+      {children}
+    </span>
   )
 }
 
 export function PrivacyNoticePage() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 900, paddingBottom: 32 }}>
-
-      {/* ── Header ── */}
-      <div>
-        <h1 style={{
-          margin: 0,
-          fontSize: 26,
-          fontWeight: 800,
-          color: T.text,
-          letterSpacing: '-0.03em',
-          lineHeight: 1.2,
-        }}>
-          Privacy Notice
-        </h1>
-        <p style={{ margin: '6px 0 0', fontSize: 14, color: T.textMuted, lineHeight: 1.4 }}>
-          Philippine Data Privacy Act of 2012 (RA 10173) Compliance
-        </p>
-      </div>
-
-      {/* ════════════════════════════════════════════════════════
-          DATA COLLECTION
-      ════════════════════════════════════════════════════════ */}
-      <Section
-        icon={<FileText size={20} />}
-        iconBg={T.accentBg}
-        iconColor={T.accent}
-        title="Data Collection"
-      >
-        <p style={{ fontSize: 14, color: T.textMid, lineHeight: 1.7, margin: 0 }}>
-          The PSA Inventory Management System collects personal information necessary for inventory management purposes, including:
-        </p>
-        <ul style={{ marginTop: 12, paddingLeft: 20, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
-          <li>Full name (first, middle, last)</li>
-          <li>Employee identification number</li>
-          <li>Email address</li>
-          <li>Department and office assignment</li>
-          <li>Username for system access</li>
-          <li>Login and activity logs</li>
-        </ul>
-      </Section>
-
-      {/* ════════════════════════════════════════════════════════
-          PURPOSE OF COLLECTION
-      ════════════════════════════════════════════════════════ */}
-      <Section
-        icon={<Users size={20} />}
-        iconBg={T.accentBg}
-        iconColor={T.accent}
-        title="Purpose of Collection"
-      >
-        <p style={{ fontSize: 14, color: T.textMid, lineHeight: 1.7, margin: 0 }}>
-          Personal information is collected for the following purposes:
-        </p>
-        <ul style={{ marginTop: 12, paddingLeft: 20, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
-          <li>Asset borrowing and return tracking</li>
-          <li>Inventory management and accountability</li>
-          <li>User authentication and access control</li>
-          <li>Audit trail and security monitoring</li>
-          <li>System administration and maintenance</li>
-        </ul>
-      </Section>
-
-      {/* ════════════════════════════════════════════════════════
-          DATA STORAGE AND SECURITY
-      ════════════════════════════════════════════════════════ */}
-      <Section
-        icon={<Lock size={20} />}
-        iconBg={T.amberBg}
-        iconColor={T.amberText}
-        title="Data Storage and Security"
-      >
-        <p style={{ fontSize: 14, color: T.textMid, lineHeight: 1.7, margin: 0 }}>
-          All personal information is stored securely using:
-        </p>
-        <ul style={{ marginTop: 12, paddingLeft: 20, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
-          <li>Encrypted password storage using bcrypt hashing</li>
-          <li>Secure session management with token expiration</li>
-          <li>Role-based access control to limit data access</li>
-          <li>Audit logging for all sensitive operations</li>
-          <li>Secure API endpoints with authentication</li>
-        </ul>
-      </Section>
-
-      {/* ════════════════════════════════════════════════════════
-          DATA ACCESS AND SHARING
-      ════════════════════════════════════════════════════════ */}
-      <Section
-        icon={<Shield size={20} />}
-        iconBg={T.accentBg}
-        iconColor={T.accent}
-        title="Data Access and Sharing"
-      >
-        <p style={{ fontSize: 14, color: T.textMid, lineHeight: 1.7, margin: 0 }}>
-          Access to personal information is restricted to:
-        </p>
-        <ul style={{ marginTop: 12, paddingLeft: 20, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
-          <li>Authorized system administrators</li>
-          <li>Department supervisors for asset management</li>
-          <li>Users accessing their own information</li>
-          <li>Auditors for compliance purposes</li>
-        </ul>
-        <p style={{ fontSize: 14, color: T.textMid, lineHeight: 1.7, marginTop: 12 }}>
-          Personal information is not shared with third parties except as required by law or with explicit consent.
-        </p>
-      </Section>
-
-      {/* ════════════════════════════════════════════════════════
-          DATA RETENTION
-      ════════════════════════════════════════════════════════ */}
-      <Section
-        icon={<Clock size={20} />}
-        iconBg={T.accentBg}
-        iconColor={T.accent}
-        title="Data Retention"
-      >
-        <p style={{ fontSize: 14, color: T.textMid, lineHeight: 1.7, margin: 0 }}>
-          Personal information is retained for the duration of employment and as required by law. Upon separation, user accounts are deactivated but records are maintained for audit and compliance purposes.
-        </p>
-      </Section>
-
-      {/* ════════════════════════════════════════════════════════
-          RIGHTS OF DATA SUBJECTS
-      ════════════════════════════════════════════════════════ */}
-      <Section
-        icon={<Users size={20} />}
-        iconBg={T.accentBg}
-        iconColor={T.accent}
-        title="Rights of Data Subjects"
-      >
-        <p style={{ fontSize: 14, color: T.textMid, lineHeight: 1.7, margin: 0 }}>
-          Under RA 10173, you have the right to:
-        </p>
-        <ul style={{ marginTop: 12, paddingLeft: 20, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
-          <li>Access your personal information</li>
-          <li>Request correction of inaccurate information</li>
-          <li>Object to processing of your data</li>
-          <li>Request deletion of your data (subject to legal requirements)</li>
-          <li>File a complaint with the National Privacy Commission</li>
-        </ul>
-      </Section>
-
-      {/* ════════════════════════════════════════════════════════
-          CONTACT INFORMATION
-      ════════════════════════════════════════════════════════ */}
-      <Section
-        icon={<Mail size={20} />}
-        iconBg={T.accentBg}
-        iconColor={T.accent}
-        title="Contact Information"
-      >
-        <p style={{ fontSize: 14, color: T.textMid, lineHeight: 1.7, margin: 0 }}>
-          For inquiries, requests, or complaints regarding your personal information, please contact:
-        </p>
-        <div style={{
-          marginTop: 16,
-          padding: '16px 20px',
-          background: T.bg,
-          border: `1px solid ${T.border}`,
-          borderRadius: 12,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
-            <Shield size={16} style={{ color: T.accent, flexShrink: 0 }} />
-            <div>
-              <span style={{ fontWeight: 600, color: T.text }}>Data Protection Officer:</span>
-              <span style={{ color: T.textMid, marginLeft: 6 }}>[DPO Name]</span>
+    <div style={{ display: 'grid', gap: 24, maxWidth: 980, width: '100%', paddingBottom: 32 }}>
+      <Card className="space-y-4">
+        <div style={{ display: 'grid', gap: 18 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: T.accent }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: T.accent }}>Privacy Notice</span>
             </div>
+            <h1 style={{ margin: '12px 0 0', fontSize: 32, fontWeight: 800, color: T.text, lineHeight: 1.15 }}>
+              Safeguarding your personal information with clarity and care
+            </h1>
+            <p style={{ margin: '16px 0 0', fontSize: 15, color: T.textMid, lineHeight: 1.8, maxWidth: 760 }}>
+              This notice describes how the PSA Inventory Management System collects, uses, stores, and protects personal information in accordance with the Philippine Data Privacy Act of 2012 (RA 10173).
+            </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
-            <Mail size={16} style={{ color: T.accent, flexShrink: 0 }} />
-            <span style={{ color: T.textMid }}>dpo@psa.gov.ph</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
-            <Phone size={16} style={{ color: T.accent, flexShrink: 0 }} />
-            <span style={{ color: T.textMid }}>[Contact Number]</span>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            <Badge>Data protection</Badge>
+            <Badge>RA 10173 compliant</Badge>
+            <Badge>Secure access</Badge>
+            <Badge>Purpose-limited</Badge>
           </div>
         </div>
-      </Section>
+      </Card>
 
-      {/* ════════════════════════════════════════════════════════
-          CONSENT
-      ════════════════════════════════════════════════════════ */}
-      <Section
-        icon={<FileText size={20} />}
-        iconBg={T.accentBg}
-        iconColor={T.accent}
-        title="Consent"
-      >
-        <p style={{ fontSize: 14, color: T.textMid, lineHeight: 1.7, margin: 0 }}>
-          By using this system, you consent to the collection, processing, and storage of your personal information as described in this Privacy Notice. You may withdraw your consent at any time by contacting the Data Protection Officer, subject to legal and operational requirements.
-        </p>
-      </Section>
+      <div style={{ display: 'grid', gap: 24, gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+        <Section
+          icon={<FileText size={20} style={{ color: T.accent }} />}
+          iconBg={T.accentBg}
+          title="What we collect"
+          subtitle="Only necessary information is gathered for inventory operations."
+        >
+          <p style={{ margin: 0, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
+            We collect information required for accurate tracking, user access, and reporting.
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 10, color: T.textMid, fontSize: 14, lineHeight: 1.8 }}>
+            <li>Full name and employee ID</li>
+            <li>Official email and department</li>
+            <li>System username and login history</li>
+            <li>Asset activity logs for security and audits</li>
+          </ul>
+        </Section>
+
+        <Section
+          icon={<Users size={20} style={{ color: T.accent }} />}
+          iconBg={T.accentBg}
+          title="Why we collect it"
+          subtitle="Information supports defined and lawful system functions."
+        >
+          <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 10, color: T.textMid, fontSize: 14, lineHeight: 1.8 }}>
+            <li>Track borrowing and returns</li>
+            <li>Manage inventory and accountability</li>
+            <li>Authenticate users and control access</li>
+            <li>Support auditing and compliance</li>
+          </ul>
+        </Section>
+
+        <Section
+          icon={<Lock size={20} style={{ color: T.amberText }} />}
+          iconBg={T.amberBg}
+          title="How we protect it"
+          subtitle="Strong safeguards help keep your data safe."
+        >
+          <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 10, color: T.textMid, fontSize: 14, lineHeight: 1.8 }}>
+            <li>Passwords stored with bcrypt hashing</li>
+            <li>Session tokens expire automatically</li>
+            <li>Role-based controls limit access</li>
+            <li>Audit logs track sensitive activity</li>
+          </ul>
+        </Section>
+
+        <Section
+          icon={<Shield size={20} style={{ color: T.accent }} />}
+          iconBg={T.accentBg}
+          title="Who can access it"
+          subtitle="Access is limited to authorized personnel."
+        >
+          <p style={{ margin: 0, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
+            Personal information is only shared with authorized users or when required by law.
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 10, color: T.textMid, fontSize: 14, lineHeight: 1.8 }}>
+            <li>System administrators</li>
+            <li>Department supervisors for asset oversight</li>
+            <li>Users viewing their own information</li>
+            <li>Auditors for compliance review</li>
+          </ul>
+        </Section>
+
+        <Section
+          icon={<Clock size={20} style={{ color: T.accent }} />}
+          iconBg={T.accentBg}
+          title="Retention and deactivation"
+          subtitle="Information is kept only as long as needed."
+        >
+          <p style={{ margin: 0, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
+            We retain personal data while it is needed for employment, inventory management, and legal compliance. Accounts are deactivated when no longer required.
+          </p>
+        </Section>
+      </div>
+
+      <div style={{ display: 'grid', gap: 24, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
+        <Card className="space-y-4">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 14, display: 'grid', placeItems: 'center', background: T.accentBg }}>
+              <Mail size={22} style={{ color: T.accent }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Contact information</div>
+              <div style={{ marginTop: 4, fontSize: 13, color: T.textMid }}>Reach out to the Data Protection Officer for privacy requests.</div>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gap: 12, padding: 10, background: T.bg, borderRadius: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Shield size={16} style={{ color: T.accent }} />
+              <span style={{ color: T.text, fontWeight: 600 }}>Data Protection Officer</span>
+            </div>
+            <div style={{ display: 'grid', gap: 6, color: T.textMid, fontSize: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Mail size={16} style={{ color: T.accent, flexShrink: 0 }} />
+                <span>dpo@psa.gov.ph</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Phone size={16} style={{ color: T.accent, flexShrink: 0 }} />
+                <span>[Contact Number]</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 14, display: 'grid', placeItems: 'center', background: '#FEF3C7' }}>
+              <FileText size={22} style={{ color: T.amberText }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Your rights</div>
+              <div style={{ marginTop: 4, fontSize: 13, color: T.textMid }}>Control how your personal information is handled.</div>
+            </div>
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 10, color: T.textMid, fontSize: 14, lineHeight: 1.8 }}>
+            <li>Access and review your personal data</li>
+            <li>Request correction of inaccurate information</li>
+            <li>Object to processing for non-essential purposes</li>
+            <li>Request deletion subject to legal requirements</li>
+            <li>File a complaint with the National Privacy Commission</li>
+          </ul>
+        </Card>
+      </div>
+
+      <Card className="space-y-4">
+        <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Consent and commitments</div>
+          <p style={{ margin: 0, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
+            By using this system, you consent to the collection, processing, and storage of your personal information as described in this Privacy Notice. You may withdraw your consent by contacting the Data Protection Officer, subject to legal and operational requirements.
+          </p>
+          <p style={{ margin: 0, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
+            We are committed to managing your information responsibly, transparently, and in accordance with applicable privacy laws.
+          </p>
+        </div>
+      </Card>
     </div>
   )
 }

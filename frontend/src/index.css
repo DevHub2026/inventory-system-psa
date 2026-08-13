@@ -403,7 +403,7 @@ input[type="search"]::-webkit-search-results-decoration {
       left: 0 !important;
       bottom: 0 !important;
       height: 100% !important;
-      z-index: 40 !important;
+      z-index: 9999 !important;
       transform: translateX(-260px) !important;
     }
     .psa-sidebar[data-open="true"] {

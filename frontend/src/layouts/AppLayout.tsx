@@ -22,9 +22,16 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
  * We detect desktop by watching window.innerWidth >= 768px.
  * Everything is inline — no CSS class can interfere.
  */
+import { useLocation } from 'react-router-dom'
+
 export function AppLayout() {
+  const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isDesktop,   setIsDesktop]   = useState(() => window.innerWidth >= 768)
+
+  // Hide the sidebar for focused reader pages (QR asset view / scanned asset pages)
+  const hideSidebarFor = location.pathname.startsWith('/qr') || location.pathname.startsWith('/qr/')
+  const showSidebar = isDesktop && !hideSidebarFor
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 768px)')
@@ -35,6 +42,27 @@ export function AppLayout() {
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
   }, [])
+
+  // Lock body scroll and mark main content as hidden to assist mobile drawer UX
+  // when the sidebar is open on narrow viewports.
+  useEffect(() => {
+    if (sidebarOpen && !isDesktop) {
+      // prevent background scrolling
+      const prevOverflow = document.body.style.overflow
+      const prevPaddingRight = document.body.style.paddingRight
+      document.body.style.overflow = 'hidden'
+      // preserve layout when scrollbar disappears
+      try {
+        const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth
+        if (scrollBarWidth > 0) document.body.style.paddingRight = `${scrollBarWidth}px`
+      } catch {}
+      return () => {
+        document.body.style.overflow = prevOverflow || ''
+        document.body.style.paddingRight = prevPaddingRight || ''
+      }
+    }
+    return
+  }, [sidebarOpen, isDesktop])
 
   return (
     <div style={{
@@ -47,28 +75,30 @@ export function AppLayout() {
     }}>
 
       {/* ── Sidebar ── */}
+    {showSidebar && (
       <Sidebar
         open={sidebarOpen}
         isDesktop={isDesktop}
         onClose={() => setSidebarOpen(false)}
       />
+    )}
 
-      {/* ── Main column — always fills the space not taken by sidebar ── */}
-      <div style={{
-        flex: 1,
-        minWidth: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}>
-        <TopNav onMenuClick={() => setSidebarOpen(true)} />
-        <main style={{ flex: 1, overflowY: 'auto' }}>
-          <div style={{ maxWidth: 1440, margin: '0 auto', padding: '24px 32px' }}>
-            {/* If a splitRight query param exists, render the current route (Outlet) as left and the requested page as right */}
-            <SplitArea />
-          </div>
-        </main>
-      </div>
+    {/* ── Main column — always fills the space not taken by sidebar ── */}
+    <div style={{
+      flex: 1,
+      minWidth: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+    }} aria-hidden={sidebarOpen && !isDesktop}>
+      <TopNav onMenuClick={() => setSidebarOpen(true)} />
+      <main style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ maxWidth: showSidebar ? 1440 : 960, margin: '0 auto', padding: '24px 32px', paddingBottom: isDesktop ? '24px' : 92 }}>
+          {/* If a splitRight query param exists, render the current route (Outlet) as left and the requested page as right */}
+          <SplitArea />
+        </div>
+      </main>
+    </div>
 
       {/* Global split selector button (accessibility FAB) */}
       <GlobalSplitToggle />

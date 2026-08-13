@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
-import { QrCode, Scan, Camera } from 'lucide-react'
+import { QrCode, Scan, Camera, ArrowLeft } from 'lucide-react'
 import { SharedQrScanner } from '@/components/qr/SharedQrScanner'
+import { Button, Card } from '@/components/ui'
 
 /* ── Design tokens ── */
 const T = {
@@ -13,62 +14,77 @@ const T = {
   bg:         '#F8FAFC',
   accent:     '#003DA5',
   accentBg:   '#EFF6FF',
-  amberBg:    '#FFFBEB',
-  amberText:  '#B45309',
-  surface:    '#F1F5F9',
-  blue:       '#003DA5',
   yellow:     '#FFD400',
   red:        '#E31C23',
+  amberBg:    '#FFFBEB',
+  amberText:  '#B45309',
 }
 
-/* ── Section card with PSA tri-color accent ── */
 function Section({
-  icon, iconBg, iconColor, title, subtitle, children,
+  icon,
+  iconBg,
+  title,
+  subtitle,
+  children,
 }: {
   icon: React.ReactNode
   iconBg: string
-  iconColor: string
   title: string
   subtitle?: string
   children: React.ReactNode
 }) {
   return (
-    <div style={{
-      background: T.white,
-      border: `1px solid ${T.border}`,
-      borderRadius: 16,
-      boxShadow: '0 1px 6px rgba(0,0,0,0.05)',
-      overflow: 'hidden',
-    }}>
-      {/* PSA tri-color top accent */}
-      <div style={{ height: 4, display: 'flex' }}>
-        <div style={{ flex: 1, background: T.blue }} />
-        <div style={{ flex: 1, background: T.yellow }} />
-        <div style={{ flex: 1, background: T.red }} />
-      </div>
-
-      {/* Section header */}
+    <Card noPadding className="overflow-hidden">
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '20px 24px',
-        borderBottom: subtitle ? `1px solid ${T.borderLight}` : 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16,
+        padding: '22px 24px',
+        background: T.bg,
+        borderBottom: `1px solid ${T.borderLight}`,
       }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: T.text, lineHeight: 1.3 }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 3, lineHeight: 1.4 }}>{subtitle}</div>}
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: T.text, lineHeight: 1.2 }}>{title}</div>
+          {subtitle && (
+            <div style={{ marginTop: 4, fontSize: 13, color: T.textMid, lineHeight: 1.5 }}>{subtitle}</div>
+          )}
         </div>
         <div style={{
-          display: 'grid', width: 40, height: 40, placeItems: 'center',
-          borderRadius: 12, background: iconBg, flexShrink: 0,
+          width: 44,
+          height: 44,
+          borderRadius: 14,
+          display: 'grid',
+          placeItems: 'center',
+          background: iconBg,
+          flexShrink: 0,
         }}>
-          <span style={{ color: iconColor, display: 'flex' }}>{icon}</span>
+          {icon}
         </div>
       </div>
-
-      {/* Section body */}
-      <div style={{ padding: '24px' }}>
+      <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {children}
       </div>
+    </Card>
+  )
+}
+
+function StepChip({ step }: { step: number }) {
+  return (
+    <div style={{
+      display: 'grid',
+      width: 30,
+      height: 30,
+      placeItems: 'center',
+      borderRadius: '50%',
+      background: T.white,
+      color: T.accent,
+      fontSize: 13,
+      fontWeight: 800,
+      border: `1px solid ${T.accentBg}`,
+      boxShadow: '0 2px 6px rgba(15,23,42,0.08)',
+    }}>
+      {step}
     </div>
   )
 }
@@ -77,89 +93,114 @@ export function QRScannerPage() {
   const navigate = useNavigate()
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 32, maxWidth: 800 }}>
+    <div style={{ display: 'grid', gap: 24, maxWidth: 1040, width: '100%', paddingBottom: 32, margin: '0 auto' }}>
+      <Card className="space-y-4">
+        <div style={{ borderTop: `4px solid ${T.accent}`, padding: '26px', display: 'grid', gap: 16 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate(-1)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+            >
+              <ArrowLeft size={16} />
+              Back
+            </Button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: T.accent }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: T.accent }}>QR Code Scanner</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ width: 40, height: 4, borderRadius: 999, background: T.accent }} />
+            <div style={{ width: 40, height: 4, borderRadius: 999, background: T.yellow }} />
+            <div style={{ width: 40, height: 4, borderRadius: 999, background: T.red }} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 34, fontWeight: 800, color: T.text, lineHeight: 1.1 }}>
+              Scan QR codes instantly to open asset details
+            </h1>
+            <p style={{ margin: '14px 0 0', fontSize: 15, color: T.textMid, lineHeight: 1.8, maxWidth: 780 }}>
+              Point your camera at an asset QR code and let the system load the matching record immediately. The clean, PSA-inspired layout helps you focus on scanning and action.
+            </p>
+          </div>
+        </div>
+      </Card>
 
-      {/* ── Header ── */}
-      <div>
-        <h1 style={{
-          margin: 0,
-          fontSize: 26,
-          fontWeight: 800,
-          color: T.text,
-          letterSpacing: '-0.03em',
-          lineHeight: 1.2,
-        }}>
-          QR Code Scanner
-        </h1>
-        <p style={{ margin: '6px 0 0', fontSize: 14, color: T.textMuted, lineHeight: 1.4 }}>
-          Scan asset QR codes to quickly access information and perform actions
-        </p>
-      </div>
+      <div style={{ display: 'grid', gap: 24, gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', alignItems: 'start' }}>
+        <Section
+          icon={<QrCode size={20} style={{ color: T.amberText }} />}
+          iconBg={T.amberBg}
+          title="Why it matters"
+        >
+          <div style={{ display: 'grid', gap: 16 }}>
+            <p style={{ margin: 0, fontSize: 14, color: T.textMid, lineHeight: 1.9 }}>
+              A polished scanner experience that helps staff move faster while keeping asset workflows clear and consistent.
+            </p>
+            <div style={{ display: 'grid', gap: 12, padding: '14px 0 0', borderTop: `1px solid ${T.borderLight}` }}>
+              {[
+                'Open asset details instantly from each scanned QR code',
+                'Move quickly through borrowing, returning, and reporting steps',
+                'Keep your focus with a clean, distraction-free scanner panel',
+                'Enjoy the same reliable scan behavior in a refreshed design',
+              ].map((item) => (
+                <div key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ width: 8, minWidth: 8, height: 8, marginTop: 6, borderRadius: '50%', background: T.accent }} />
+                  <div style={{ fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>{item}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Section>
 
-      {/* ════════════════════════════════════════════════════════
-          SCANNER
-      ════════════════════════════════════════════════════════ */}
-      <Section
-        icon={<Camera size={20} />}
-        iconBg={T.accentBg}
-        iconColor={T.accent}
-        title="QR Scanner"
-        subtitle="Position the QR code within the camera view to scan"
-      >
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <Section
+          icon={<Camera size={20} style={{ color: T.accent }} />}
+          iconBg={T.accentBg}
+          title="Live Scanner"
+          subtitle="Position the QR code inside the frame to start scanning"
+        >
           <SharedQrScanner
             open={true}
             onClose={() => navigate('/dashboard')}
             scanSource="sidebar_scanner"
             mode="page"
           />
-        </div>
-      </Section>
+        </Section>
 
-      {/* ════════════════════════════════════════════════════════
-          HOW TO USE
-      ════════════════════════════════════════════════════════ */}
-      <Section
-        icon={<Scan size={20} />}
-        iconBg={T.accentBg}
-        iconColor={T.accent}
-        title="How to Use"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {[
-            { step: 1, text: 'Click "Start Scanner" to activate your camera' },
-            { step: 2, text: 'Position the QR code within the scanner frame' },
-            { step: 3, text: 'Wait for automatic detection or tap to scan manually' },
-            { step: 4, text: 'View asset details and available actions after scanning' },
-          ].map((item) => (
-            <div key={item.step} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, fontSize: 14, color: T.textMid, lineHeight: 1.7 }}>
-              <div style={{
-                display: 'grid', width: 28, height: 28, flexShrink: 0,
-                placeItems: 'center', borderRadius: '50%',
-                background: T.accentBg, color: T.accent,
-                fontSize: 13, fontWeight: 700,
-              }}>
-                {item.step}
+        <Section
+          icon={<Scan size={20} style={{ color: T.accent }} />}
+          iconBg={T.accentBg}
+          title="Quick guide"
+          subtitle="Follow these simple steps for a smooth scan"
+        >
+          <div style={{ display: 'grid', gap: 12 }}>
+            {[
+              'Activate the camera by tapping Start Scanner',
+              'Center the QR code inside the frame',
+              'Hold steady while the scanner reads the code',
+              'Open the asset record and continue with actions',
+            ].map((text, index) => (
+              <div
+                key={text}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'auto 1fr',
+                  gap: 14,
+                  alignItems: 'start',
+                  padding: '16px 18px',
+                  borderRadius: 18,
+                  background: T.white,
+                  border: `1px solid ${T.borderLight}`,
+                  boxShadow: '0 10px 24px rgba(15,23,42,0.04)',
+                }}
+              >
+                <StepChip step={index + 1} />
+                <div style={{ fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>{text}</div>
               </div>
-              <div style={{ paddingTop: 3 }}>{item.text}</div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* ════════════════════════════════════════════════════════
-          INFORMATION
-      ════════════════════════════════════════════════════════ */}
-      <Section
-        icon={<QrCode size={20} />}
-        iconBg={T.amberBg}
-        iconColor={T.amberText}
-        title="Information"
-      >
-        <p style={{ fontSize: 14, color: T.textMid, lineHeight: 1.7, margin: 0 }}>
-          The QR Scanner allows you to quickly retrieve asset information by scanning QR codes attached to PSA equipment. Each asset has a unique QR code that contains its identification number, making it easy to access details, track location, and perform actions such as borrowing or reporting issues.
-        </p>
-      </Section>
+            ))}
+          </div>
+        </Section>
+      </div>
     </div>
   )
 }

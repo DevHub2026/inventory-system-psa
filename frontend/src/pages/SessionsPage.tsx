@@ -20,6 +20,13 @@ export function SessionsPage() {
   const [sessions, setSessions] = useState<UserSession[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const loadSessions = async () => {
     setLoading(true)
@@ -113,7 +120,7 @@ export function SessionsPage() {
           <div className="flex items-center justify-center py-16">
             <Spinner />
           </div>
-        ) : (
+        ) : isDesktop ? (
           <Table
             columns={columns}
             rows={sessions}
@@ -124,6 +131,36 @@ export function SessionsPage() {
               </div>
             }
           />
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {sessions.length === 0 ? (
+              <div style={{ padding: '24px' }}>
+                <EmptyState title="No active sessions found" description="Your login sessions will appear here." />
+              </div>
+            ) : (
+              sessions.map((s) => (
+                <div key={s.id} style={{ border: '1px solid #EFF2FF', borderRadius: 10, padding: 12, background: '#fff' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>{s.device_name ?? 'Unknown Device'}</div>
+                      <div style={{ fontSize: 13, color: '#64748B' }}>{s.browser ?? 'Unknown'} • {s.platform ?? 'Unknown'}</div>
+                      <div style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#64748B', marginTop: 6 }}>{s.ip_address ?? 'N/A'}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 12, color: '#64748B' }}>{s.login_at ? formatDate(s.login_at) : 'N/A'}</div>
+                      <div style={{ fontWeight: 700, marginTop: 6 }}>{s.is_current ? 'Current Session' : s.is_active ? 'Active' : 'Inactive'}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
+                    {!s.is_current && s.is_active && (
+                      <Button size="sm" variant="danger" onClick={() => handleRevoke(s.id)}>Revoke</Button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         )}
       </Card>
     </div>

@@ -236,6 +236,13 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
 
   // Custom field creation
   const [newCustomField, setNewCustomField] = useState<{ name: string; field_type: string; excel_column: string } | null>(null)
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const selectedTypeLabel = importTypes.find(t => t.key === selectedImportType)?.label ?? 'Inventory Items'
   const entityLabel       = dataValidation?.entity_label ?? uploadResult?.entity_label ?? selectedTypeLabel.toLowerCase()
@@ -809,7 +816,7 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
                     <Badge tone={h.status === 'completed' ? 'green' : 'red'}>{h.status}</Badge>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderTop: '1px solid #F1F5F9', fontSize: 12, textAlign: 'center' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)', borderTop: '1px solid #F1F5F9', fontSize: 12, textAlign: 'center' }}>
                     {[
                       { v: h.total_rows,    l: 'Total',    c: '#1e293b' },
                       { v: h.imported_rows, l: 'Imported', c: '#16A34A' },

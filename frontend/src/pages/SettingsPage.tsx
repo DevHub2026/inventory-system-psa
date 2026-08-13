@@ -1,28 +1,29 @@
 import { useEffect, useState, useMemo } from 'react'
-import { KeyRound, User, Mail, Lock, Eye, EyeOff, Shield, Building2, Hash, Check, X } from 'lucide-react'
+import { KeyRound, User, Mail, Lock, Eye, EyeOff, Shield, Building2, Hash, Check, X, Banknote, Users, BadgeCheck } from 'lucide-react'
 import { Input, Button, Alert } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
 import { authService, type UpdateProfilePayload, type ChangePasswordPayload } from '@/services/authService'
 import { displayName } from '@/types'
 import { RoleBadges } from '@/components/RoleBadges'
+import logo from '@/assets/logo.png'
 
 /* ── Design tokens ── */
 const T = {
   text:       '#0F172A',
   textMid:    '#475569',
-  textMuted:  '#94A3B8',
+  textMuted:  '#64748B',
   border:     '#E2E8F0',
-  borderLight:'#F1F5F9',
+  borderLight:'#E2E8F0',
   white:      '#FFFFFF',
   bg:         '#F8FAFC',
-  accent:     '#003DA5',
+  accent:     '#0B3D91',
+  accentMid:  '#1D4ED8',
   accentBg:   '#EFF6FF',
+  accentSoft: '#E0ECFF',
   amberBg:    '#FFFBEB',
   amberText:  '#B45309',
-  surface:    '#F1F5F9',
-  blue:       '#003DA5',
-  yellow:     '#FFD400',
-  red:        '#E31C23',
+  yellow:     '#FBBF24',
+  red:        '#DC2626',
 }
 
 /* ── Section card with PSA tri-color accent ── */
@@ -46,7 +47,7 @@ function Section({
     }}>
       {/* PSA tri-color top accent */}
       <div style={{ height: 4, display: 'flex' }}>
-        <div style={{ flex: 1, background: T.blue }} />
+        <div style={{ flex: 1, background: T.accent }} />
         <div style={{ flex: 1, background: T.yellow }} />
         <div style={{ flex: 1, background: T.red }} />
       </div>
@@ -204,6 +205,13 @@ export function SettingsPage() {
   const [showCurrent, setShowCurrent] = useState(false)
   const [showNew,     setShowNew]     = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const [profileForm, setProfileForm] = useState<UpdateProfilePayload>({
     name:  displayName(user),
@@ -293,23 +301,17 @@ export function SettingsPage() {
   }, [name])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 820, paddingBottom: 32 }}>
-
-      {/* ── Header ── */}
-      <div>
-        <h1 style={{
-          margin: 0,
-          fontSize: 26,
-          fontWeight: 800,
-          color: T.text,
-          letterSpacing: '-0.03em',
-          lineHeight: 1.2,
-        }}>
-          Profile Settings
-        </h1>
-        <p style={{ margin: '6px 0 0', fontSize: 14, color: T.textMuted, lineHeight: 1.4 }}>
-          Manage your account information and security.
-        </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 940, paddingBottom: 32 }}>
+ 
+      {/* ── Page Header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', background: T.white, border: `1px solid ${T.border}`, borderRadius: 20, boxShadow: '0 12px 32px rgba(15, 23, 42, 0.05)' }}>
+          <img src={logo} alt="PSA" style={{ width: 52, height: 52, objectFit: 'contain' }} />
+          <div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: T.text, lineHeight: 1.1 }}>Profile Settings</div>
+            <div style={{ marginTop: 4, fontSize: 13, color: T.textMid }}>PSA Region XII · Inventory Management System</div>
+          </div>
+        </div>
       </div>
 
       {/* Alert message */}
@@ -327,31 +329,44 @@ export function SettingsPage() {
       >
         {/* ── Avatar + identity bar ── */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 16,
-          padding: '18px 20px',
-          borderRadius: 12,
-          background: 'linear-gradient(135deg, #F8FAFC, #F1F5F9)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          padding: '20px 24px',
+          borderRadius: 18,
+          background: T.accentSoft,
           border: `1px solid ${T.borderLight}`,
-          marginBottom: 20,
+          marginBottom: 24,
         }}>
-          <div style={{
-            display: 'grid', width: 56, height: 56, flexShrink: 0,
-            placeItems: 'center', borderRadius: '50%',
-            background: `linear-gradient(135deg, ${T.accent}, #2563EB)`,
-            fontSize: 22, fontWeight: 800, color: '#FFFFFF',
-            boxShadow: '0 2px 8px rgba(0,61,165,0.2)',
-          }}>
-            {initials}
-          </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: T.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {name}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
+            <div style={{
+              display: 'grid', width: 72, height: 72, flexShrink: 0,
+              placeItems: 'center', borderRadius: '50%',
+              background: `linear-gradient(135deg, ${T.accent}, ${T.accentMid})`,
+              fontSize: 24, fontWeight: 800, color: '#FFFFFF',
+              boxShadow: '0 8px 24px rgba(11,61,145,0.18)',
+            }}>
+              {initials}
             </div>
-            <div style={{ fontSize: 13, color: T.textMuted, marginTop: 2 }}>
-              {user?.email}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: T.text, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {name}
+              </div>
+              <div style={{ fontSize: 13, color: T.textMid, marginTop: 4 }}>{user?.email}</div>
+              <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: T.white, borderRadius: 999, border: `1px solid ${T.border}` }}>
+                <Users size={14} style={{ color: T.accent }} />
+                <span style={{ fontSize: 12, color: T.text, fontWeight: 600 }}>Region XII</span>
+              </div>
             </div>
           </div>
-          <RoleBadges roles={user?.roles ?? []} maxVisible={3} />
+          <div style={{ display: 'grid', gap: 12, minWidth: 180, justifyItems: 'end' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: T.white, borderRadius: 999, border: `1px solid ${T.border}` }}>
+              <BadgeCheck size={14} style={{ color: T.accent }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>PSA Account</span>
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 14px', background: T.white, borderRadius: 999, border: `1px solid ${T.border}` }}>
+              <Banknote size={14} style={{ color: T.yellow }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>Inventory System</span>
+            </div>
+          </div>
         </div>
 
         {/* ── Info chips grid ── */}
@@ -387,7 +402,7 @@ export function SettingsPage() {
 
         {/* ── Editable fields ── */}
         <div style={{ borderTop: `1px solid ${T.borderLight}`, paddingTop: 20 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(2, 1fr)' : '1fr', gap: 16 }}>
             <div>
               <FieldLabel icon={<User size={13} />} label="Full Name" />
               <Input
@@ -466,7 +481,7 @@ export function SettingsPage() {
           </div>
 
           {/* New + Confirm */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(2, 1fr)' : '1fr', gap: 16 }}>
             <div>
               <FieldLabel icon={<Lock size={13} />} label="New Password" />
               <PasswordField

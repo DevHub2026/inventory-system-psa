@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -174,7 +174,7 @@ function ActionCell({
       top = Math.max(8, r.top - gap - 200)
     }
     let left = Math.max(8, Math.min(r.right - MIN, window.innerWidth - MIN - 8))
-    setPopupPos({ position: 'fixed', left, top, minWidth: MIN, zIndex: 9999 })
+    setPopupPos({ position: 'fixed', left, top, minWidth: MIN, zIndex: 70 })
   }, [])
 
   useEffect(() => {
@@ -307,6 +307,14 @@ function ActionCell({
 }
 
 export function AssetPage() {
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
   const { user } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -1581,161 +1589,204 @@ export function AssetPage() {
               />
             </div>
           ) : (
-            <ScrollableTableWrapper><table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
-              <colgroup>
-                <col style={{ width: 140 }} />
-                <col style={{ width: 140 }} />
-                <col style={{ minWidth: 200 }} />
-                <col style={{ width: 160 }} />
-                <col style={{ width: 120 }} />
-                <col style={{ width: 180 }} />
-                <col style={{ width: 140 }} />
-                <col style={{ width: 120 }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th style={th}>Asset Number</th>
-                  <th style={th}>Property Number</th>
-                  <th style={th}>Name</th>
-                  <th style={th}>Category</th>
-                  <th style={th}>Status</th>
-                  <th style={th}>Accountability</th>
-                  <th style={th}>Location</th>
-                  <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20, position: 'sticky' as const, right: 0, background: '#fff', zIndex: 10 }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, idx) => (
-                  <tr
-                    key={r.id}
-                    style={{
-                      background: idx % 2 === 0 ? '#fff' : '#FAFBFC',
-                      transition: 'background 0.1s',
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F1F5F9' }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? '#fff' : '#FAFBFC'
-                    }}
-                  >
-                    {/* Asset Number */}
-                    <td style={td}>
-                      <code style={{
-                        fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
-                        fontSize: 11.5, color: '#475569',
-                        background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
-                        display: 'inline-block',
-                      }}>
-                        {r.asset_number}
-                      </code>
-                    </td>
-
-                    {/* Property Number */}
-                    <td style={td}>
-                      {r.property_number ? (
-                        <code style={{
-                          fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
-                          fontSize: 11.5, color: '#475569',
-                          background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
-                          display: 'inline-block',
-                        }}>
-                          {r.property_number}
-                        </code>
-                      ) : (
-                        <span style={{ color: '#94A3B8' }}>—</span>
-                      )}
-                    </td>
-
-                    {/* Name */}
-                    <td style={td}>
-                      <div>
-                        <span style={{ fontWeight: 600, color: '#0F172A', fontSize: 13.5 }}>
-                          {r.name}
-                        </span>
-                        {r.description && (
-                          <div style={{
-                            fontSize: 11.5, color: '#9CA3AF', marginTop: 2,
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            maxWidth: 300,
+            isDesktop ? (
+              <ScrollableTableWrapper>
+                <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' as const }}>
+                  <colgroup>
+                    <col style={{ width: 140 }} />
+                    <col style={{ width: 140 }} />
+                    <col style={{ minWidth: 200 }} />
+                    <col style={{ width: 160 }} />
+                    <col style={{ width: 120 }} />
+                    <col style={{ width: 180 }} />
+                    <col style={{ width: 140 }} />
+                    <col style={{ width: 120 }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th style={th}>Asset Number</th>
+                      <th style={th}>Property Number</th>
+                      <th style={th}>Name</th>
+                      <th style={th}>Category</th>
+                      <th style={th}>Status</th>
+                      <th style={th}>Accountability</th>
+                      <th style={th}>Location</th>
+                      <th style={{ ...th, textAlign: 'right' as const, paddingRight: 20, position: 'sticky' as const, right: 0, background: '#fff', zIndex: 10 }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r, idx) => (
+                      <tr
+                        key={r.id}
+                        style={{
+                          background: idx % 2 === 0 ? '#fff' : '#FAFBFC',
+                          transition: 'background 0.1s',
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F1F5F9' }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? '#fff' : '#FAFBFC'
+                        }}
+                      >
+                        {/* Asset Number */}
+                        <td style={td}>
+                          <code style={{
+                            fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                            fontSize: 11.5, color: '#475569',
+                            background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                            display: 'inline-block',
                           }}>
-                            {r.description}
-                          </div>
-                        )}
-                      </div>
-                    </td>
+                            {r.asset_number}
+                          </code>
+                        </td>
 
-                    {/* Category */}
-                    <td style={td}>
-                      <span style={{ color: '#64748B', fontSize: 13 }}>
-                        {r.category ?? '—'}
-                      </span>
-                    </td>
+                        {/* Property Number */}
+                        <td style={td}>
+                          {r.property_number ? (
+                            <code style={{
+                              fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace",
+                              fontSize: 11.5, color: '#475569',
+                              background: '#F1F5F9', padding: '3px 8px', borderRadius: 6,
+                              display: 'inline-block',
+                            }}>
+                              {r.property_number}
+                            </code>
+                          ) : (
+                            <span style={{ color: '#94A3B8' }}>—</span>
+                          )}
+                        </td>
 
-                    {/* Status */}
-                    <td style={td}>
-                      {(() => {
-                        const eff = getEffectiveAssetStatus(r)
-                        return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                            <Badge tone={eff.tone}>{eff.label}</Badge>
-                            {eff.subtext && eff.subtextTone && (
-                              <Badge tone={eff.subtextTone}>{String(eff.subtext)}</Badge>
+                        {/* Name */}
+                        <td style={td}>
+                          <div>
+                            <span style={{ fontWeight: 600, color: '#0F172A', fontSize: 13.5 }}>
+                              {r.name}
+                            </span>
+                            {r.description && (
+                              <div style={{
+                                fontSize: 11.5, color: '#9CA3AF', marginTop: 2,
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                maxWidth: 300,
+                              }}>
+                                {r.description}
+                              </div>
                             )}
                           </div>
-                        )
-                      })()}
-                    </td>
+                        </td>
 
-                    {/* Accountability */}
-                    <td style={td}>
-                      <span style={{ color: '#64748B', fontSize: 13 }}>
-                        {r.issued_to_user?.full_name
-                          ? `Issued to ${r.issued_to_user.full_name}`
-                          : r.issued_to
-                            ? `Issued to ${r.issued_to}`
-                            : 'Unassigned'}
-                      </span>
-                      {r.is_unlinked_holder && (
-                        <div style={{ fontSize: 11.5, color: '#B45309', marginTop: 2 }}>
-                          Legacy unlinked holder
+                        {/* Category */}
+                        <td style={td}>
+                          <span style={{ color: '#64748B', fontSize: 13 }}>
+                            {r.category ?? '—'}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td style={td}>
+                          {(() => {
+                            const eff = getEffectiveAssetStatus(r)
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                                <Badge tone={eff.tone}>{eff.label}</Badge>
+                                {eff.subtext && eff.subtextTone && (
+                                  <Badge tone={eff.subtextTone}>{String(eff.subtext)}</Badge>
+                                )}
+                              </div>
+                            )
+                          })()}
+                        </td>
+
+                        {/* Accountability */}
+                        <td style={td}>
+                          <span style={{ color: '#64748B', fontSize: 13 }}>
+                            {r.issued_to_user?.full_name
+                              ? `Issued to ${r.issued_to_user.full_name}`
+                              : r.issued_to
+                                ? `Issued to ${r.issued_to}`
+                                : 'Unassigned'}
+                          </span>
+                          {r.is_unlinked_holder && (
+                            <div style={{ fontSize: 11.5, color: '#B45309', marginTop: 2 }}>
+                              Legacy unlinked holder
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Location */}
+                        <td style={td}>
+                          <span style={{ color: '#64748B', fontSize: 13 }}>
+                            {r.location ?? '—'}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td style={{
+                          ...td, textAlign: 'right' as const,
+                          paddingRight: 20, paddingTop: 10, paddingBottom: 10,
+                                              position: 'sticky' as const, right: 0, background: '#fff', zIndex: 5,
+                                            }}>
+                          <ActionCell
+                            asset={r}
+                            canManageAssets={canManageAssets}
+                            canManageIssuance={canIssueAssets}
+                            canCompleteBorrowing={canCompleteBorrowing}
+                            onView={() => void openView(r.id)}
+                            onQrLabel={() => void openQrLabel(r.id)}
+                            onEdit={() => void openEdit(r.id)}
+                            onDelete={() => setDeleteId(r.id)}
+                            onBorrow={() => setBorrowId(r.id)}
+                            onReserve={() => setReserveId(r.id)}
+                            onReturn={() => setReturnId(r.id)}
+                            onRelease={() => r.reservation_context ? setReleaseAsset(r) : null}
+                            onPermanentIssue={() => setIssueAsset(r)}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollableTableWrapper>
+            ) : (
+              <div style={{ display: 'grid', gap: 12 }}>
+                {rows.map((r) => (
+                  <div key={r.id} style={{ border: '1px solid #E2E8F0', borderRadius: 14, padding: 12, background: '#fff', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A' }}>{r.name}</div>
+                        <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}><code style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace", fontSize: 11.5, color: '#475569', background: '#F1F5F9', padding: '3px 8px', borderRadius: 6 }}>{r.asset_number}</code> {r.property_number ? <span style={{ marginLeft: 8, color: '#94A3B8' }}>Property {r.property_number}</span> : null}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                          <div style={{ fontSize: 13 }}><span style={{ color: '#64748B' }}>{r.category ?? '—'}</span></div>
+                          <div>{(() => { const eff = getEffectiveAssetStatus(r); return <Badge tone={eff.tone}>{eff.label}</Badge> })()}</div>
                         </div>
-                      )}
-                    </td>
-
-                    {/* Location */}
-                    <td style={td}>
-                      <span style={{ color: '#64748B', fontSize: 13 }}>
-                        {r.location ?? '—'}
-                      </span>
-                    </td>
-
-                    {/* Actions */}
-                    <td style={{
-                      ...td, textAlign: 'right' as const,
-                      paddingRight: 20, paddingTop: 10, paddingBottom: 10,
-                                          position: 'sticky' as const, right: 0, background: '#fff', zIndex: 5,
-                                        }}>
-                                          <ActionCell
-                        asset={r}
-                        canManageAssets={canManageAssets}
-                        canManageIssuance={canIssueAssets}
-                        canCompleteBorrowing={canCompleteBorrowing}
-                        onView={() => void openView(r.id)}
-                        onQrLabel={() => void openQrLabel(r.id)}
-                        onQrLabel={() => void openQrLabel(r.id)}
-                        onEdit={() => void openEdit(r.id)}
-                        onDelete={() => setDeleteId(r.id)}
-                        onBorrow={() => setBorrowId(r.id)}
-                        onReserve={() => setReserveId(r.id)}
-                        onReturn={() => setReturnId(r.id)}
-                        onRelease={() => r.reservation_context ? setReleaseAsset(r) : null}
-                        onPermanentIssue={() => setIssueAsset(r)}
-                      />
-                    </td>
-                  </tr>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ color: '#64748B', fontSize: 13 }}>{r.location ?? '—'}</div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <button onClick={() => void openView(r.id)} style={{ border: '1px solid #D1D5DB', borderRadius: 8, background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>View</button>
+                        <ActionCell
+                          asset={r}
+                          canManageAssets={canManageAssets}
+                          canManageIssuance={canIssueAssets}
+                          canCompleteBorrowing={canCompleteBorrowing}
+                          onView={() => void openView(r.id)}
+                          onQrLabel={() => void openQrLabel(r.id)}
+                          onEdit={() => void openEdit(r.id)}
+                          onDelete={() => setDeleteId(r.id)}
+                          onBorrow={() => setBorrowId(r.id)}
+                          onReserve={() => setReserveId(r.id)}
+                          onReturn={() => setReturnId(r.id)}
+                          onRelease={() => r.reservation_context ? setReleaseAsset(r) : null}
+                          onPermanentIssue={() => setIssueAsset(r)}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table></ScrollableTableWrapper>
-          )}
+              </div>
+            )
+                    )}
         </div>
 
         {/* Pagination */}
@@ -3023,3 +3074,7 @@ export function AssetPage() {
     </div>
   )
 }
+
+
+
+

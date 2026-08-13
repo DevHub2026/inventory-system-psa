@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { type DocumentTemplate, type SignatureBlock } from '@/services/templateService'
 import { PlaceholderPicker } from './PlaceholderPicker'
 import { SignatureEditor } from './SignatureEditor'
@@ -50,6 +50,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export function TemplateEditor({ template, onChange, onSave, onRestoreDefault, saving = false }: TemplateEditorProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('body')
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const handleBodyInsert = (token: string) => {
     const cur = template.body_template || ''
@@ -199,7 +206,7 @@ export function TemplateEditor({ template, onChange, onSave, onRestoreDefault, s
         {/* PAGE SETUP */}
         {activeTab === 'page' && (
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+            <div style={{ display:'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap:16 }}>
               <div>
                 <SectionLabel>Paper Size</SectionLabel>
                 <div style={{ display:'flex', gap:8 }}>
@@ -237,13 +244,13 @@ export function TemplateEditor({ template, onChange, onSave, onRestoreDefault, s
           <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
             <div>
               <SectionLabel>Font Family</SectionLabel>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+              <div style={{ display:'grid', gridTemplateColumns: isDesktop ? 'repeat(3,1fr)' : '1fr', gap:8 }}>
                 {(['Arial','Calibri','Times New Roman'] as const).map(f=>(
                   <ToggleBtn key={f} label={f} active={template.font_family===f} onClick={()=>onChange({...template,font_family:f})} style={{ fontFamily:f }}/>
                 ))}
               </div>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+            <div style={{ display:'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap:16 }}>
               <div>
                 <SectionLabel>Font Size (pt)</SectionLabel>
                 <div style={{ display:'flex', gap:8 }}>

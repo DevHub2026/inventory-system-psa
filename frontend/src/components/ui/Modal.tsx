@@ -15,12 +15,16 @@ interface ModalProps {
    */
   footer?: ReactNode
   /**
-   * Override the modal max-width. Defaults to 520px.
+   * Override the modal max-width. Defaults to a compact government-style layout.
    */
   maxWidth?: number | string
+  /**
+   * Override the modal max-height. Defaults to viewport-safe height.
+   */
+  maxHeight?: number | string
 }
 
-export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }: ModalProps) {
+export function Modal({ open, title, children, onClose, footer, maxWidth = 1040, maxHeight }: ModalProps) {
   const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 420 : false)
 
   useEffect(() => {
@@ -33,11 +37,11 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }
 
   if (!open) return null
 
-  const headerPadding = isNarrow ? '12px 16px 10px' : '18px 24px 16px'
-  const bodyPadding = isNarrow ? '16px' : '24px'
-  const footerPadding = isNarrow ? '10px 16px' : '14px 24px'
-  const borderRadius = isNarrow ? 12 : 20
-  const maxH = isNarrow ? 'calc(100dvh - 1rem)' : 'calc(100dvh - 2rem)'
+  const headerPadding = isNarrow ? '10px 14px 8px' : '12px 18px 10px'
+  const bodyPadding = isNarrow ? '12px' : '12px 14px 14px'
+  const footerPadding = isNarrow ? '8px 14px' : '8px 16px'
+  const borderRadius = isNarrow ? 12 : 18
+  const maxH = maxHeight ?? (isNarrow ? 'calc(100dvh - 1rem)' : 'calc(100dvh - 2rem)')
 
   return (
     <div
@@ -76,7 +80,17 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }
               <span style={{ height: 3, width: 12, borderRadius: 999, background: '#FFD400', display: 'block' }} />
               <span style={{ height: 3, width: 8,  borderRadius: 999, background: '#E31C23', display: 'block' }} />
             </div>
-            <h2 style={{ fontSize: isNarrow ? 16 : 17, fontWeight: 700, color: '#1e293b', margin: 0, lineHeight: 1.2 }}>
+            <h2 style={{
+              fontSize: isNarrow ? 16 : 17,
+              fontWeight: 700,
+              color: '#1e293b',
+              margin: 0,
+              lineHeight: 1.2,
+              maxWidth: 'calc(100% - 48px)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>
               {title}
             </h2>
           </div>
@@ -98,7 +112,7 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }
         </div>
 
         {/* ── Body ── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: bodyPadding }}>
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: bodyPadding }}>
           {children}
         </div>
 
@@ -110,6 +124,7 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }
             borderTop: '1px solid #f1f5f9',
             background: '#f8fafc',
             flexShrink: 0,
+            minHeight: 64,
           }}>
             {footer ?? (
               <Button variant="secondary" onClick={onClose}>Close</Button>

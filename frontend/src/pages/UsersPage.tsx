@@ -39,6 +39,13 @@ export function UsersPage() {
   const [departments, setDepartments] = useState<DepartmentOption[]>([])
   const [offices, setOffices] = useState<SetupRecord[]>([])
   const [lookupWarning, setLookupWarning] = useState<string | null>(null)
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   // Password change modal state
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
@@ -324,7 +331,30 @@ export function UsersPage() {
           <div className="py-16"><EmptyState title="No users found" description="Add users or adjust the search filter." /></div>
         ) : (
           <>
-            <Table columns={columns} rows={users} rowKey={(u) => u.id} />
+            {isDesktop ? (
+              <Table columns={columns} rows={users} rowKey={(u) => u.id} />
+            ) : (
+              <div style={{ display: 'grid', gap: 12 }}>
+                {users.map((u) => (
+                  <div key={u.id} style={{ border: '1px solid #EFF2FF', borderRadius: 10, padding: 12, background: '#fff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>{displayName(u)}</div>
+                        <div style={{ fontSize: 13, color: '#64748B' }}>{u.email}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#64748B' }}>{u.employee_number ?? ''}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
+                      <Button size="sm" variant="secondary" onClick={() => handleEdit(u)}>Edit</Button>
+                      <Button size="sm" variant="danger" onClick={() => handleDelete(u)}>Delete</Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleOpenPasswordModal(u)}>Reset Password</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="border-t border-[#E5E7EB] px-5 py-3">
               <Pagination page={pagination.current_page} lastPage={pagination.last_page} total={pagination.total} onPageChange={(p) => setFilters({ ...filters, page: p })} />
             </div>
@@ -718,7 +748,7 @@ export function UsersPage() {
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>
                 Import Result
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)', gap: 10 }}>
                 {[
                   { label: 'Total',    value: importResult.total_rows, color: '#374151', bg: '#F8FAFC', border: '#E2E8F0', dot: '#94A3B8' },
                   { label: 'Imported', value: importResult.imported,   color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0', dot: '#22C55E' },
