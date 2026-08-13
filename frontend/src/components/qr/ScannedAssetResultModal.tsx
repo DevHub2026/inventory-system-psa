@@ -64,37 +64,45 @@ export function ScannedAssetResultModal({
             </Alert>
           )}
 
-          {/* Asset Hero Header */}
-          <div className="bg-slate-900 text-white p-5 rounded-2xl space-y-3 relative overflow-hidden shadow-md">
-            <div className="flex items-start justify-between gap-3 relative z-10">
-              <div>
-                <span className="font-mono text-[11px] font-bold text-blue-300 bg-blue-950/80 border border-blue-800/80 px-2 py-0.5 rounded-md">
-                  {asset.asset_number}
-                </span>
-                <h2 className="text-lg font-extrabold text-white mt-1.5">{asset.name}</h2>
-                {asset.psa_qr_identifier && (
-                  <div className="flex items-center gap-1.5 text-xs text-blue-400 font-mono mt-0.5">
-                    <QrCode className="w-3.5 h-3.5" /> {asset.psa_qr_identifier}
+          {/* Asset Hero Header (Simplified, consistent with other pages) */}
+          <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-[12px] font-semibold text-slate-700 bg-slate-50 border border-slate-100 px-2 py-1 rounded-md">
+                    {asset.asset_number}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm md:text-lg font-semibold text-slate-900 truncate">{asset.name}</h3>
+                    {asset.psa_qr_identifier && (
+                      <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mt-1 truncate">
+                        <QrCode className="w-4 h-4 text-slate-400" />
+                        <span className="truncate">{asset.psa_qr_identifier}</span>
+                      </div>
+                    )}
                   </div>
+                </div>
+
+                {asset.description && (
+                  <p className="text-xs text-slate-600 mt-2 line-clamp-2">{asset.description}</p>
                 )}
-              </div>
-              <Badge tone={asset.status === 'AVAILABLE' ? 'green' : asset.status === 'BORROWED' ? 'blue' : 'yellow'}>
-                {asset.status}
-              </Badge>
-            </div>
 
-            {asset.description && (
-              <p className="text-xs text-slate-300 line-clamp-2 relative z-10">{asset.description}</p>
-            )}
-
-            <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-slate-800/80 text-slate-300 relative z-10">
-              <div className="flex items-center gap-1.5">
-                <Package className="w-3.5 h-3.5 text-slate-400" />
-                <span>Category: <strong className="text-white">{asset.category?.name || 'N/A'}</strong></span>
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4 text-slate-400" />
+                    <div>Category: <strong className="text-slate-800">{asset.category?.name || 'N/A'}</strong></div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-slate-400" />
+                    <div>Office: <strong className="text-slate-800">{asset.office?.name || 'N/A'}</strong></div>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 truncate">
-                <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                <span className="truncate">Office: <strong className="text-white">{asset.office?.name || 'N/A'}</strong></span>
+
+              <div className="flex-shrink-0 text-right">
+                <Badge tone={asset.status === 'AVAILABLE' ? 'green' : asset.status === 'BORROWED' ? 'blue' : 'yellow'}>
+                  {asset.status}
+                </Badge>
               </div>
             </div>
           </div>
@@ -149,9 +157,9 @@ export function ScannedAssetResultModal({
           )}
 
           {/* Asset Specs Overview */}
-          <Card className="p-4 rounded-xl border border-slate-200 space-y-2 bg-slate-50/50">
+          <Card className="p-4 rounded-xl border border-slate-200 bg-white">
             <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Specifications</div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs mt-2">
               <div><span className="text-slate-400">Manufacturer:</span> <span className="font-semibold text-slate-700">{asset.manufacturer?.name || 'N/A'}</span></div>
               <div><span className="text-slate-400">Model:</span> <span className="font-semibold text-slate-700">{asset.model || 'N/A'}</span></div>
               <div><span className="text-slate-400">Condition:</span> <span className="font-semibold text-slate-700">{asset.condition_status || 'GOOD'}</span></div>
@@ -171,7 +179,7 @@ export function ScannedAssetResultModal({
               </Button>
             )}
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {actions.can_request_extension && (
                 <Button
                   variant="secondary"
