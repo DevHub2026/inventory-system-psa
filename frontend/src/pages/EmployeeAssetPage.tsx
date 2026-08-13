@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Button, Badge, Spinner, Alert, Card } from '@/components/ui'
+import { Button, Badge, Spinner, Alert } from '@/components/ui'
 import { ApprovalHistoryTimeline } from '@/components/workflows/ApprovalHistoryTimeline'
 import { qrService } from '@/services/qrService'
 import type { AssetContext } from '@/types'
@@ -81,218 +81,262 @@ export function EmployeeAssetPage() {
   const { asset, actions, active_borrowing, pending_reservation, history } = context
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 pb-12 flex justify-center">
-      {/* Top Header Bar */}
-      <div className="bg-slate-900 text-white px-4 py-3 sticky top-0 z-10 shadow-md w-full">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800 pb-12">
+      {/* Top Navigation Bar */}
+      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => navigate('/qr')}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white"
+            className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" /> Scan
+            <ArrowLeft className="w-4 h-4" /> Back to Scanner
           </button>
-          <div className="font-bold text-xs tracking-wide flex items-center gap-1.5">
-            <QrCode className="w-4 h-4 text-blue-400" />
-            <span>{asset.psa_qr_identifier || asset.asset_number}</span>
+          <div className="flex items-center gap-2 font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg">
+            <QrCode className="w-3.5 h-3.5 text-blue-600" />
+            {asset.psa_qr_identifier || asset.asset_number}
           </div>
           <button
             onClick={() => navigate('/dashboard')}
-            className="text-xs text-slate-400 hover:text-white"
+            className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
           >
-            Home
+            Dashboard
           </button>
         </div>
       </div>
 
-      <div className="max-w-2xl w-full mx-auto p-6 space-y-5">
+      <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col gap-6">
         {actionMessage && (
           <Alert tone={actionMessage.tone} onClose={() => setActionMessage(null)}>
             {actionMessage.text}
           </Alert>
         )}
 
-        {/* Hero Card */}
-        <Card className="bg-white p-6 rounded-[14px] border border-slate-200 shadow-sm">
-          {/* PSA tri-color accent */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className="block" style={{ height: 4, width: 36, borderRadius: 999, background: '#0B3D91' }} />
-            <span className="block" style={{ height: 4, width: 18, borderRadius: 999, background: '#FFD400' }} />
-            <span className="block" style={{ height: 4, width: 12, borderRadius: 999, background: '#E31C23' }} />
+        {/* Header Section - Centered */}
+        <div className="text-center mb-2">
+          <div className="flex justify-center mb-3">
+            <Badge tone={asset.status === 'AVAILABLE' ? 'green' : asset.status === 'BORROWED' ? 'blue' : 'yellow'}>
+              {asset.status}
+            </Badge>
           </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3">{asset.name}</h1>
+          <p className="text-base text-slate-600 max-w-2xl mx-auto">{asset.description || 'No description provided.'}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm">
+            <span className="font-mono text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+              Asset #: {asset.asset_number}
+            </span>
+            <span className="font-mono text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+              ID: {asset.psa_qr_identifier || 'N/A'}
+            </span>
+          </div>
+        </div>
 
-          <div className="flex items-center justify-between gap-4">
-            <div style={{ minWidth: 0 }}>
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">{asset.asset_number}</span>
-                <Badge tone={asset.status === 'AVAILABLE' ? 'green' : asset.status === 'BORROWED' ? 'blue' : 'yellow'} className="ml-2">{asset.status}</Badge>
+        {/* Asset Details Grid */}
+        <div className="grid gap-3 sm:grid-cols-2 mb-2">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                <Package className="h-4 w-4" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mt-3 leading-tight">{asset.name}</h1>
-              <p className="text-sm text-slate-500 mt-2 max-w-2xl">{asset.description || 'No description provided.'}</p>
-            </div>
-            <div className="flex-shrink-0 hidden md:flex items-center">
-              {/* placeholder for any right-side action or image */}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 text-sm mt-6 pt-4 border-t border-slate-100">
-            <div className="flex items-center gap-2 text-slate-600">
-              <Package className="w-4 h-4 text-slate-400" />
-              <span>Category: <strong>{asset.category?.name || 'N/A'}</strong></span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-600">
-              <MapPin className="w-4 h-4 text-slate-400" />
-              <span className="truncate">Office: <strong>{asset.office?.name || 'N/A'}</strong></span>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Category</div>
+                <div className="truncate text-sm font-semibold text-slate-900">{asset.category?.name || 'N/A'}</div>
+              </div>
             </div>
           </div>
-        </Card>
 
-        {/* Prominent Action Bar */}
-        <Card className="bg-white p-6 rounded-[14px] border border-slate-200 shadow-sm">
-          <div className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Available Actions</div>
-
-          {/* Primary action full width */}
-          <div>
-            {actions.can_request_borrow && (
-              <Button
-                variant="primary"
-                className="w-full justify-center text-sm py-3 rounded-[10px] font-bold shadow-md"
-                onClick={() => setActiveModal('borrow')}
-              >
-                <Package className="w-4 h-4 mr-2" /> Request to Borrow Asset
-              </Button>
-            )}
-          </div>
-
-          {/* Secondary actions row */}
-          <div className="mt-3 grid gap-3 sm:grid-cols-[1.7fr_1fr]">
-            <div className="grid grid-cols-2 gap-3">
-              {actions.can_request_extension && (
-                <Button
-                  variant="secondary"
-                  className="w-full justify-center text-sm py-3 rounded-[10px] font-semibold"
-                  onClick={() => setActiveModal('extension')}
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" /> Request Extension
-                </Button>
-              )}
-
-              {actions.can_request_reissuance && (
-                <Button
-                  variant="outline"
-                  className="w-full justify-center text-sm py-3 rounded-[10px] font-semibold"
-                  onClick={() => setActiveModal('reissuance')}
-                >
-                  <UserIcon className="w-4 h-4 mr-2" /> Transfer Accountability
-                </Button>
-              )}
-            </div>
-
-            <div className="">
-              {actions.can_report_damage && (
-                <Button
-                  variant="outline"
-                  className="w-full justify-center text-sm py-3 rounded-[10px] font-semibold mb-3"
-                  onClick={() => setActiveModal('damage')}
-                >
-                  <Wrench className="w-4 h-4 mr-2" /> Report Damage
-                </Button>
-              )}
-
-              {actions.can_report_lost && (
-                <Button
-                  variant="danger"
-                  className="w-full justify-center text-sm py-3 rounded-[10px] font-semibold"
-                  onClick={() => setActiveModal('lost')}
-                >
-                  <HelpCircle className="w-4 h-4 mr-2" /> Report Lost Asset
-                </Button>
-              )}
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                <MapPin className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Office / Department</div>
+                <div className="truncate text-sm font-semibold text-slate-900">{asset.office?.name || 'N/A'}</div>
+              </div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        {/* Current State Info Cards */}
+        {/* Current State Status Cards */}
         {active_borrowing && (
-          <Card className="bg-blue-50/70 border border-blue-200 p-4 rounded-2xl space-y-1.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-blue-900 flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-blue-600" /> Currently Borrowed
-              </span>
-              <Badge tone="blue">Due: {active_borrowing.due_date || 'N/A'}</Badge>
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <div className="flex items-center gap-2 font-semibold text-blue-900 mb-2">
+              <Clock className="h-4 w-4 text-blue-600" /> Currently Borrowed
             </div>
-            <div className="text-xs text-blue-800">
+            <p className="text-sm text-blue-800">
               Borrower: <strong>{active_borrowing.user_name}</strong>
-            </div>
-          </Card>
+            </p>
+            <p className="text-sm text-blue-800">
+              Due Date: <strong>{active_borrowing.due_date || 'N/A'}</strong>
+            </p>
+          </div>
         )}
 
         {pending_reservation && (
-          <Card className="bg-amber-50/70 border border-amber-200 p-4 rounded-2xl space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-amber-900 flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-amber-600" /> Pending Borrow Request
-              </span>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 font-semibold text-amber-900">
+                <Clock className="h-4 w-4 text-amber-600" /> Pending Borrow Request
+              </div>
               <Badge tone="yellow">Level {pending_reservation.current_level_order || 1}</Badge>
             </div>
-            <div className="text-xs text-amber-800">
+            <p className="text-sm text-amber-800 mb-3">
               Requested by: <strong>{pending_reservation.user_name}</strong>
-            </div>
+            </p>
             <ApprovalHistoryTimeline
               requestType="borrow_request"
               requestId={pending_reservation.id}
             />
-          </Card>
+          </div>
         )}
 
-        {/* Detailed Information Tabs */}
-        <Card className="bg-white p-6 rounded-[14px] border border-slate-200 shadow-sm">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">Asset Specifications</h2>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="bg-slate-50 rounded-[10px] p-3">
-              <div className="text-[11px] text-slate-400">Manufacturer</div>
-              <div className="font-semibold text-slate-700">{asset.manufacturer?.name || 'N/A'}</div>
+        {/* Asset Specifications */}
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-600">Asset Specifications</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Manufacturer</div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">{asset.manufacturer?.name || 'N/A'}</div>
             </div>
-            <div className="bg-slate-50 rounded-[10px] p-3">
-              <div className="text-[11px] text-slate-400">Model</div>
-              <div className="font-semibold text-slate-700">{asset.model || 'N/A'}</div>
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Model</div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">{asset.model || 'N/A'}</div>
             </div>
-            <div className="bg-slate-50 rounded-[10px] p-3">
-              <div className="text-[11px] text-slate-400">Condition</div>
-              <div className="font-semibold text-slate-700">{asset.condition_status || 'GOOD'}</div>
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Condition</div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">{asset.condition_status || 'GOOD'}</div>
             </div>
-            <div className="bg-slate-50 rounded-[10px] p-3">
-              <div className="text-[11px] text-slate-400">Office / Department</div>
-              <div className="font-semibold text-slate-700">{asset.office?.name || 'N/A'}</div>
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Location</div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">{asset.location?.name || 'N/A'}</div>
             </div>
             {asset.issued_to && (
-              <div className="col-span-2 pt-2 border-t border-slate-100">
-                <span className="text-slate-400 block">Permanently Issued To</span>
-                <span className="font-bold text-slate-800">{asset.issued_to_name || asset.issued_to}</span>
+              <div className="sm:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Permanently Issued To</div>
+                <div className="text-sm font-semibold text-slate-900 mb-1">{asset.issued_to_name || asset.issued_to}</div>
                 {asset.date_issued && (
-                  <span className="text-[11px] text-slate-500 block">Date Issued: {asset.date_issued}</span>
+                  <div className="text-xs text-slate-600">Date Issued: {asset.date_issued}</div>
                 )}
               </div>
             )}
           </div>
-        </Card>
+        </div>
 
-        {/* Activity & Scan History for Asset */}
+        {/* Primary Action */}
+        {actions.can_request_borrow && (
+          <Button
+            variant="primary"
+            className="w-full justify-center rounded-lg h-12 text-base font-semibold shadow-md transition-transform hover:-translate-y-0.5"
+            onClick={() => setActiveModal('borrow')}
+          >
+            <Package className="mr-2 h-5 w-5" /> Request to Borrow Asset
+          </Button>
+        )}
+
+        {/* Secondary Actions Grid */}
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Button
+            variant="outline"
+            className="justify-center rounded-lg border-slate-300 bg-white h-10 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={() => setActiveModal('damage')}
+          >
+            <Wrench className="mr-2 h-4 w-4" /> Report Damage
+          </Button>
+
+          {actions.can_request_extension && (
+            <Button
+              variant="outline"
+              className="justify-center rounded-lg border-slate-300 bg-white h-10 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              onClick={() => setActiveModal('extension')}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" /> Request Extension
+            </Button>
+          )}
+
+          {actions.can_request_reissuance && (
+            <Button
+              variant="outline"
+              className="justify-center rounded-lg border-slate-300 bg-white h-10 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              onClick={() => setActiveModal('reissuance')}
+            >
+              <UserIcon className="mr-2 h-4 w-4" /> Transfer Accountability
+            </Button>
+          )}
+
+          {actions.can_report_lost && (
+            <Button
+              variant="danger"
+              className="justify-center rounded-lg h-10 text-sm font-medium shadow-sm hover:shadow-md"
+              onClick={() => setActiveModal('lost')}
+            >
+              <HelpCircle className="mr-2 h-4 w-4" /> Report Lost
+            </Button>
+          )}
+        </div>
+
+        {/* Borrow History */}
         {history.borrow_history.length > 0 && (
-          <Card className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Recent Borrow History</h2>
-            <div className="divide-y divide-slate-100 text-xs">
+          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-600">Recent Borrow History</h2>
+            <div className="space-y-3">
               {history.borrow_history.map((b) => (
-                <div key={b.id} className="py-2 flex items-center justify-between">
+                <div key={b.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3">
                   <div>
-                    <div className="font-semibold text-slate-800">{b.user_name}</div>
-                    <div className="text-[11px] text-slate-400">{b.borrow_date} to {b.due_date}</div>
+                    <div className="text-sm font-semibold text-slate-900">{b.user_name}</div>
+                    <div className="text-xs text-slate-600">{b.borrow_date} to {b.due_date}</div>
                   </div>
                   <Badge tone={b.status === 'RETURNED' ? 'gray' : 'blue'}>{b.status}</Badge>
                 </div>
               ))}
             </div>
-          </Card>
+          </div>
         )}
+
+        {/* Header Section - Centered */}
+        <div className="text-center mb-2">
+          <div className="flex justify-center mb-3">
+            <Badge tone={asset.status === 'AVAILABLE' ? 'green' : asset.status === 'BORROWED' ? 'blue' : 'yellow'}>
+              {asset.status}
+            </Badge>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3">{asset.name}</h1>
+          <p className="text-base text-slate-600 max-w-2xl mx-auto">{asset.description || 'No description provided.'}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm">
+            <span className="font-mono text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+              Asset #: {asset.asset_number}
+            </span>
+            <span className="font-mono text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+              ID: {asset.psa_qr_identifier || 'N/A'}
+            </span>
+          </div>
+        </div>
+
+        {/* Asset Details Grid */}
+        <div className="grid gap-3 sm:grid-cols-2 mb-2">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                <Package className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Category</div>
+                <div className="truncate text-sm font-semibold text-slate-900">{asset.category?.name || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                <MapPin className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Office / Department</div>
+                <div className="truncate text-sm font-semibold text-slate-900">{asset.office?.name || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Action Modals */}
