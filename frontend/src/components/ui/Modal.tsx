@@ -38,6 +38,16 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }
   const footerPadding = isNarrow ? '10px 16px' : '14px 24px'
   const borderRadius = isNarrow ? 12 : 20
   const maxH = isNarrow ? 'calc(100dvh - 1rem)' : 'calc(100dvh - 2rem)'
+  const resolvedMaxWidth = typeof maxWidth === 'string' && maxWidth.startsWith('max-w-')
+    ? ({
+        'max-w-md': 448,
+        'max-w-lg': 512,
+        'max-w-xl': 576,
+        'max-w-2xl': 672,
+        'max-w-3xl': 768,
+        'max-w-4xl': 896,
+      }[maxWidth] ?? 520)
+    : maxWidth
 
   return (
     <div
@@ -53,7 +63,7 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }
     >
       <div style={{
         display: 'flex', flexDirection: 'column',
-        width: '100%', maxWidth: maxWidth,
+        width: '100%', maxWidth: resolvedMaxWidth,
         maxHeight: maxH,
         borderRadius: borderRadius,
         border: '1px solid #e2e8f0',

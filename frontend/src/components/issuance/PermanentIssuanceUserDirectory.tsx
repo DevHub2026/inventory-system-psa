@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Badge, Card, EmptyState, Input, Spinner, Table, type Column } from '@/components/ui'
 import { permanentIssuanceService } from '@/services/permanentIssuanceService'
 import type { IssuanceUserSummary } from '@/types/permanentIssuance'
@@ -13,7 +13,7 @@ export function PermanentIssuanceUserDirectory({ onSelectUser }: PermanentIssuan
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
 
-  const load = async (term = search) => {
+  const load = useCallback(async (term = search) => {
     setLoading(true)
     try {
       const result = await permanentIssuanceService.listUsers({
@@ -28,18 +28,18 @@ export function PermanentIssuanceUserDirectory({ onSelectUser }: PermanentIssuan
     } finally {
       setLoading(false)
     }
-  }
+  }, [search])
 
   useEffect(() => {
     void load()
-  }, [])
+  }, [load])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void load(search)
     }, 300)
     return () => window.clearTimeout(timer)
-  }, [search])
+  }, [load, search])
 
   const columns: Column<IssuanceUserSummary>[] = [
     {

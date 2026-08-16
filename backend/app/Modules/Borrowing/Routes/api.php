@@ -16,7 +16,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // Borrow Extension Requests
     Route::get('borrowings/{borrowing}/extension-requests', [BorrowExtensionController::class, 'index']);
     Route::post('borrowings/{borrowing}/extension-requests', [BorrowExtensionController::class, 'store']);
-    Route::patch('extension-requests/{extensionRequest}/approve', [BorrowExtensionController::class, 'approve']);
-    Route::patch('extension-requests/{extensionRequest}/reject', [BorrowExtensionController::class, 'reject']);
+    Route::middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head')->group(function (): void {
+        Route::patch('extension-requests/{extensionRequest}/approve', [BorrowExtensionController::class, 'approve']);
+        Route::patch('extension-requests/{extensionRequest}/reject', [BorrowExtensionController::class, 'reject']);
+    });
     Route::get('extension-requests/pending-count', [BorrowExtensionController::class, 'pendingCount']);
 });

@@ -1,4 +1,4 @@
-import { api, unwrapData, withMockFallback } from '@/services/api'
+import { api, unwrapData } from '@/services/api'
 import type { ApiResponse } from '@/types'
 
 export interface AssetReportItem {
@@ -84,85 +84,84 @@ export interface ReissuanceReportItem {
   remarks: string
 }
 
+export interface AssetHistoryReportItem {
+  event_id?: string
+  source?: string
+  source_id?: number
+  asset_id?: number
+  asset_number?: string | null
+  property_number?: string | null
+  asset_name?: string | null
+  event_type?: string | null
+  previous_status?: string | null
+  new_status?: string | null
+  current_status?: string | null
+  previous_custodian?: string | null
+  new_custodian?: string | null
+  previous_location?: string | null
+  new_location?: string | null
+  event_at?: string | null
+  performed_by?: string | null
+  reason?: string | null
+  remarks?: string | null
+  reference?: string | null
+}
+
+export interface AssetHistoryReportResponse {
+  items: AssetHistoryReportItem[]
+  summary: Record<string, unknown>
+  meta: {
+    current_page: number
+    per_page: number
+    total: number
+    last_page: number
+  }
+}
+
 export const reportService = {
   async getAssets(params?: Record<string, unknown>): Promise<AssetReportItem[]> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<AssetReportItem[]>>('/reports/assets', { params })
-        return unwrapData(data)
-      },
-      async () => [],
-    )
+    const { data } = await api.get<ApiResponse<AssetReportItem[]>>('/reports/assets', { params })
+    return unwrapData(data)
   },
 
   async getBorrowings(params?: Record<string, unknown>): Promise<BorrowingReportItem[]> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<BorrowingReportItem[]>>('/reports/borrowings', { params })
-        return unwrapData(data)
-      },
-      async () => [],
-    )
+    const { data } = await api.get<ApiResponse<BorrowingReportItem[]>>('/reports/borrowings', { params })
+    return unwrapData(data)
   },
 
   async getReservations(params?: Record<string, unknown>): Promise<ReservationReportItem[]> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<ReservationReportItem[]>>('/reports/reservations', { params })
-        return unwrapData(data)
-      },
-      async () => [],
-    )
+    const { data } = await api.get<ApiResponse<ReservationReportItem[]>>('/reports/reservations', { params })
+    return unwrapData(data)
   },
 
   async getInventory(params?: Record<string, unknown>): Promise<InventoryReportItem[]> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<InventoryReportItem[]>>('/reports/inventory', { params })
-        return unwrapData(data)
-      },
-      async () => [],
-    )
+    const { data } = await api.get<ApiResponse<InventoryReportItem[]>>('/reports/inventory', { params })
+    return unwrapData(data)
   },
 
   async getOverdue(): Promise<OverdueReportItem[]> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<OverdueReportItem[]>>('/reports/overdue')
-        return unwrapData(data)
-      },
-      async () => [],
-    )
+    const { data } = await api.get<ApiResponse<OverdueReportItem[]>>('/reports/overdue')
+    return unwrapData(data)
   },
 
   async getLowStock(): Promise<LowStockReportItem[]> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<LowStockReportItem[]>>('/reports/low-stock')
-        return unwrapData(data)
-      },
-      async () => [],
-    )
+    const { data } = await api.get<ApiResponse<LowStockReportItem[]>>('/reports/low-stock')
+    return unwrapData(data)
   },
 
   async getUserActivity(params?: Record<string, unknown>): Promise<UserActivityReportItem[]> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<UserActivityReportItem[]>>('/reports/user-activity', { params })
-        return unwrapData(data)
-      },
-      async () => [],
-    )
+    const { data } = await api.get<ApiResponse<UserActivityReportItem[]>>('/reports/user-activity', { params })
+    return unwrapData(data)
   },
 
   async getReissuances(params?: Record<string, unknown>): Promise<ReissuanceReportItem[]> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<ReissuanceReportItem[]>>('/reports/reissuances', { params })
-        return unwrapData(data)
-      },
-      async () => [],
-    )
+    const { data } = await api.get<ApiResponse<ReissuanceReportItem[]>>('/reports/reissuances', { params })
+    return unwrapData(data)
+  },
+
+  async getAssetHistory(params?: Record<string, unknown>): Promise<AssetHistoryReportResponse> {
+    const { data } = await api.get<ApiResponse<AssetHistoryReportResponse>>('/reports/asset-history', { params })
+    return unwrapData(data)
   },
 
   /**

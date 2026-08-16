@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Input, Badge, EmptyState, Spinner, Alert } from '@/components/ui'
 import { workflowService, type ModuleOption } from '@/services/workflowService'
 import type { Workflow } from '@/types'
@@ -75,7 +75,7 @@ export function WorkflowsPage() {
   const [historyOpen,    setHistoryOpen]    = useState(false)
   const [historyWorkflow,setHistoryWorkflow]= useState<{ id: number; name: string } | null>(null)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     setMessage(null) // Clear any previous errors
     try {
@@ -97,9 +97,9 @@ export function WorkflowsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [search, selectedModule, showArchived])
 
-  useEffect(() => { void loadData() }, [search, selectedModule, showArchived])
+  useEffect(() => { void loadData() }, [loadData])
 
   const handleDuplicate = async (w: Workflow) => {
     try {
@@ -113,7 +113,11 @@ export function WorkflowsPage() {
 
   const handleArchiveToggle = async (w: Workflow) => {
     try {
-      w.is_archived ? await workflowService.restore(w.id) : await workflowService.archive(w.id)
+      if (w.is_archived) {
+        await workflowService.restore(w.id)
+      } else {
+        await workflowService.archive(w.id)
+      }
       setMessage({ type: 'success', text: `"${w.name}" ${w.is_archived ? 'restored' : 'archived'}.` })
       await loadData()
     } catch (err: unknown) {

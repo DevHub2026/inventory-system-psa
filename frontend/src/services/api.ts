@@ -1,8 +1,9 @@
 ﻿import axios, { AxiosError } from 'axios'
+import type { AxiosHeaders } from 'axios'
 import type { ApiResponse, Paginated } from '@/types'
 
-/** Set VITE_USE_MOCK=true to force mocks. Default: use the real API and surface errors. */
-const FORCE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+/** Set VITE_USE_MOCK=true during local development only. Production always surfaces API errors. */
+const FORCE_MOCK = import.meta.env.DEV === true && import.meta.env.VITE_USE_MOCK === 'true'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api/v1',
@@ -18,7 +19,7 @@ api.interceptors.request.use((config) => {
     // ensure headers exist
     config.headers = config.headers || {}
     // attach bearer token
-    ;(config.headers as any).Authorization = `Bearer ${token}`
+    ;(config.headers as AxiosHeaders).set('Authorization', `Bearer ${token}`)
   }
   return config
 })

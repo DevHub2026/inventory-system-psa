@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Alert, Badge, Button, Card, Dropdown, EmptyState, Input,
@@ -51,14 +51,19 @@ export function ExpendableInventoryPage() {
   const [historyRows,    setHistoryRows]    = useState<StockMovement[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [formData,       setFormData]       = useState<CreateInventoryItemPayload>(BLANK_FORM)
+  const searchRef = useRef(search)
+  const statusFilterRef = useRef(statusFilter)
 
-  const loadInventory = async (nextPage = page) => {
+  useEffect(() => { searchRef.current = search }, [search])
+  useEffect(() => { statusFilterRef.current = statusFilter }, [statusFilter])
+
+  const loadInventory = useCallback(async (nextPage = 1) => {
     setLoading(true)
     try {
       const result = await inventoryService.list({
         page: nextPage, per_page: 10,
-        search: search || undefined,
-        status: statusFilter || undefined,
+        search: searchRef.current || undefined,
+        status: statusFilterRef.current || undefined,
         type: ITEM_TYPE,
       })
       setRows(result.items)
@@ -68,10 +73,10 @@ export function ExpendableInventoryPage() {
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load inventory items.' })
     } finally { setLoading(false) }
-  }
+  }, [])
 
-  useEffect(() => { void loadInventory(1) }, [])
-  useEffect(() => { if (statusFilter !== undefined) void loadInventory(1) }, [statusFilter])
+  useEffect(() => { void loadInventory(1) }, [loadInventory])
+  useEffect(() => { if (statusFilter !== undefined) void loadInventory(1) }, [loadInventory, statusFilter])
 
   const handleCreate = () => { setEditingItem(null); setFormData(BLANK_FORM); setModalOpen(true) }
 

@@ -30,7 +30,7 @@ export default defineConfig({
       '/api': {
         // forward API requests to the LAN backend host so devices on the LAN
         // can access the dev server which will proxy to the backend.
-        target: 'http://192.168.110.230:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },

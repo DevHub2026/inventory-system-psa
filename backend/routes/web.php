@@ -1,5 +1,7 @@
 <?php
 
+use App\Mail\ResendTestMail;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -13,3 +15,5 @@ Route::get('/reset-password/{token}', function (string $token) {
         'data' => ['token' => $token],
     ]);
 })->name('password.reset');
+
+

@@ -99,12 +99,12 @@ export function TopNav({ onMenuClick }: TopNavProps) {
       {/* ── Right: search + bell ── */}
       <div style={{ display: 'flex', flexShrink: 0, alignItems: 'center', gap: 10 }}>
 
-        {/* Search bar — md+ */}
+        {/* Search bar */}
         <form
           onSubmit={submitSearch}
-          className="hidden md:flex"
           style={{
             height: 36,
+            display: 'flex',
             alignItems: 'center',
             gap: 6,
             borderRadius: 8,
@@ -123,7 +123,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             style={{
-              width: 180,
+              width: 'clamp(88px, 24vw, 180px)',
               background: 'transparent',
               border: 'none',
               outline: 'none',

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Modal } from '@/components/ui'
 import type { Asset } from '@/types'
 import { BrowserQRCodeSvgWriter } from '@zxing/browser'
@@ -24,7 +24,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
     try {
       const s = localStorage.getItem(SHEET_SETTINGS_KEY)
       return s ? (JSON.parse(s).qrSizeMm ?? 30) : 30
-    } catch (err) {
+    } catch (_err) {
       return 30
     }
   })
@@ -33,7 +33,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
     try {
       const s = localStorage.getItem(SHEET_SETTINGS_KEY)
       return s ? (JSON.parse(s).qrMode ?? 'auto') : 'auto'
-    } catch (err) {
+    } catch (_err) {
       return 'auto'
     }
   })
@@ -42,7 +42,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
     try {
       const s = localStorage.getItem(SHEET_SETTINGS_KEY)
       return s ? (JSON.parse(s).minQrMm ?? 15) : 15
-    } catch (err) {
+    } catch (_err) {
       return 15
     }
   })
@@ -51,7 +51,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
     try {
       const s = localStorage.getItem(SHEET_SETTINGS_KEY)
       return s ? (JSON.parse(s).maxQrAllowedMm ?? 40) : 40
-    } catch (err) {
+    } catch (_err) {
       return 40
     }
   })
@@ -84,25 +84,25 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
     try {
       const s = localStorage.getItem(SHEET_SETTINGS_KEY)
       return s ? (JSON.parse(s).showName ?? true) : true
-    } catch (err) { return true }
+    } catch (_err) { return true }
   })
   const [showAssetNumber, setShowAssetNumber] = useState<boolean>(() => {
     try {
       const s = localStorage.getItem(SHEET_SETTINGS_KEY)
       return s ? (JSON.parse(s).showAssetNumber ?? true) : true
-    } catch (err) { return true }
+    } catch (_err) { return true }
   })
   const [showPropertyNumber, setShowPropertyNumber] = useState<boolean>(() => {
     try {
       const s = localStorage.getItem(SHEET_SETTINGS_KEY)
       return s ? (JSON.parse(s).showPropertyNumber ?? true) : true
-    } catch (err) { return true }
+    } catch (_err) { return true }
   })
   const [showSerialNumber, setShowSerialNumber] = useState<boolean>(() => {
     try {
       const s = localStorage.getItem(SHEET_SETTINGS_KEY)
       return s ? (JSON.parse(s).showSerialNumber ?? true) : true
-    } catch (err) { return true }
+    } catch (_err) { return true }
   })
   const [paddingMm, setPaddingMm] = useState<number>(2)
   const [validationMessage, setValidationMessage] = useState<string | null>(null)
@@ -114,26 +114,10 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
     const handler = (ev: MediaQueryListEvent) => setIsNarrow(ev.matches)
     setIsNarrow(mq.matches)
     if (mq.addEventListener) mq.addEventListener('change', handler)
-    else mq.addListener(handler as any)
-    return () => { if (mq.removeEventListener) mq.removeEventListener('change', handler); else mq.removeListener(handler as any) }
+    else mq.addListener(handler)
+    return () => { if (mq.removeEventListener) mq.removeEventListener('change', handler); else mq.removeListener(handler) }
   }, [])
 
-  // Load selected assets when modal opens or selection changes
-  useEffect(() => {
-    let active = true
-    async function load() {
-      if (!open) return
-      if (!selectedIds || selectedIds.length === 0) return
-      setIsLoadingSelectedAssets(true)
-      try {
-        await ensureSelectedAssets()
-      } finally {
-        if (active) setIsLoadingSelectedAssets(false)
-      }
-    }
-    load()
-    return () => { active = false }
-  }, [open, selectedIds])
   // Reference setters and state vars to avoid unused-variable build errors while UI controls may be added later
   void setPreviewPageIndex
   void setShowName
@@ -172,7 +156,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
     }
   }
 
-  async function ensureSelectedAssets(): Promise<Asset[]> {
+  const ensureSelectedAssets = useCallback(async (): Promise<Asset[]> => {
     if (!selectedIds || selectedIds.length === 0) return []
     const cached = (assetsForSelectionLocal || []).filter(a => selectedIds.includes(a.id))
     const missing = selectedIds.filter(id => !cached.some(c => c.id === id))
@@ -197,7 +181,24 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
       console.error(err)
       return cached
     }
-  }
+  }, [assetsForSelectionLocal, selectedIds])
+
+  // Load selected assets when modal opens or selection changes.
+  useEffect(() => {
+    let active = true
+    async function load() {
+      if (!open) return
+      if (!selectedIds || selectedIds.length === 0) return
+      setIsLoadingSelectedAssets(true)
+      try {
+        await ensureSelectedAssets()
+      } finally {
+        if (active) setIsLoadingSelectedAssets(false)
+      }
+    }
+    void load()
+    return () => { active = false }
+  }, [ensureSelectedAssets, open, selectedIds])
 
   // Use external layout engine (calculateLayout) from utils
   // This keeps preview and PDF generation using the same mm-based layout
@@ -213,12 +214,14 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
     try {
       localStorage.setItem(SHEET_SETTINGS_KEY, JSON.stringify({ qrSizeMm, labelWmm, labelHmm, cols, rows, paperSize, orientation, marginMm, gapMm, textSize, showName, showAssetNumber, showPropertyNumber, showSerialNumber }))
       localStorage.setItem(SHEET_TEMPLATE_KEY, templateName)
-    } catch (e) { /* ignore */ }
+    } catch (_e) { /* ignore */ }
   }
 
   function applyTemplate(name: string) {
     setTemplateName(name)
-    try { localStorage.setItem(SHEET_TEMPLATE_KEY, name) } catch {}
+    try { localStorage.setItem(SHEET_TEMPLATE_KEY, name) } catch {
+      /* ignore storage errors */
+    }
     switch (name) {
       case 'A4-2':
         setPaperSize('A4'); setOrientation('portrait'); setCols(2); setRows('auto'); setMarginMm(2); setGapMm(0); setLabelWmm(70); setLabelHmm(24); setQrSizeMm(30); setTextSize(12); break
@@ -313,8 +316,8 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
     // meta lines
     const rawMetaLines: string[] = []
     if (showAssetNumber && a.asset_number) rawMetaLines.push(String(a.asset_number))
-    if (showPropertyNumber && (a as any).property_number) rawMetaLines.push(`Property: ${(a as any).property_number}`)
-    if (showSerialNumber && (a as any).serial_number) rawMetaLines.push(`Serial: ${(a as any).serial_number}`)
+    if (showPropertyNumber && a.property_number) rawMetaLines.push(`Property: ${a.property_number}`)
+    if (showSerialNumber && a.serial_number) rawMetaLines.push(`Serial: ${a.serial_number}`)
     const metaPt = Math.max(6, Math.round((typeof txtSize === 'number' ? txtSize : 12) - 2))
     const metaPx = Math.round(metaPt * dpi / 72)
     const metaLineHeightPx = Math.round(metaPx * 1.1)
@@ -403,7 +406,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
           const imgY = textStartY
           textImageSvg = `<image href="${dataUrl}" x="${imgX}" y="${imgY}" width="${textCanvasW}" height="${textCanvasH}" preserveAspectRatio="xMidYMin slice" />`
         }
-      } catch (e) {
+      } catch (_e) {
         // fallback to text nodes if canvas rendering fails
         let nameTextSvg = ''
         if (nameLines.length > 0) {
@@ -453,11 +456,11 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
         const labelW_px = mmToPx(lw, exportDpi)
         const labelH_px = mmToPx(lh, exportDpi)
         const clipId = `clip-${r}-${c}`
-        defs += `<clipPath id=\"${clipId}\"><rect x=\"0\" y=\"0\" width=\"${labelW_px}\" height=\"${labelH_px}\"/></clipPath>\n`
+        defs += `<clipPath id="${clipId}"><rect x="0" y="0" width="${labelW_px}" height="${labelH_px}"/></clipPath>\n`
         const qrForLabel = typeof effectiveQrMm === 'number' ? effectiveQrMm : qrSizeMm
         const labelSvg = generateLabelSvgForAsset_mm(a, qrForLabel, lw, lh, textSize, exportDpi)
         const inner = labelSvg.replace(/^<\?xml[^>]*>\s*/i, '').replace(/<\/?svg[^>]*>/gi, '')
-        body += `<g transform=\"translate(${x_px}, ${y_px})\">\n  <g clip-path=\"url(#${clipId})\">${inner}</g>\n</g>\n`
+        body += `<g transform="translate(${x_px}, ${y_px})">\n  <g clip-path="url(#${clipId})">${inner}</g>\n</g>\n`
       }
     }
     defs += '</defs>\n'
@@ -601,14 +604,14 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
           ? btoa(unescape(encodeURIComponent(svgContent)))
           : Buffer.from(svgContent, 'utf8').toString('base64')
         return 'data:image/svg+xml;base64,' + base64
-      } catch (e) {
+      } catch (_e) {
         // fallback to URI encoding if base64 fails
         return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgContent)
       }
     }
 
     const tryDpis = [dpi, 300, 150]
-    let lastError: any = null
+    let lastError: unknown = null
     for (const d of tryDpis) {
       try {
         const pxW = mmToPx(mmWidth, d)
@@ -627,7 +630,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
           const dataUrl = await new Promise<string>((resolve, reject) => {
             const img = new Image()
             // try crossOrigin to improve loading in some browsers
-            try { img.crossOrigin = 'anonymous' } catch (e) { /* ignore */ }
+            try { img.crossOrigin = 'anonymous' } catch (_e) { /* ignore */ }
             img.onload = () => {
               try {
                 const canvas = document.createElement('canvas')
@@ -643,7 +646,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
                 resolve(out)
               } catch (e) { URL.revokeObjectURL(blobUrl); reject(e) }
             }
-            img.onerror = (ev) => { URL.revokeObjectURL(blobUrl); const info = (ev && (ev as any).message) ? (ev as any).message : 'unknown'; reject(new Error('Failed to load SVG into image (blob) - ' + info)) }
+            img.onerror = (ev) => { URL.revokeObjectURL(blobUrl); const info = ev instanceof ErrorEvent && ev.message ? ev.message : 'unknown'; reject(new Error('Failed to load SVG into image (blob) - ' + info)) }
             img.src = blobUrl
           })
           return dataUrl
@@ -655,7 +658,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
             const dataUrl = await new Promise<string>((resolve, reject) => {
               const img2 = new Image()
               // set crossOrigin to anonymous to improve blob/data-uri loading in some browsers
-              try { img2.crossOrigin = 'anonymous' } catch (e) { /* ignore if not supported */ }
+              try { img2.crossOrigin = 'anonymous' } catch (_e) { /* ignore if not supported */ }
               img2.onload = () => {
                 try {
                   const canvas = document.createElement('canvas')
@@ -671,7 +674,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
               }
               img2.onerror = (ev) => {
                 // include event info to help debugging
-                const info = (ev && (ev as any).message) ? (ev as any).message : 'unknown'
+                const info = ev instanceof ErrorEvent && ev.message ? ev.message : 'unknown'
                 reject(new Error('Failed to load SVG into image (data-uri) - ' + info))
               }
               img2.src = dataUri
@@ -688,7 +691,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
         continue
       }
     }
-    throw lastError || new Error('Failed to render SVG to PNG')
+    throw lastError instanceof Error ? lastError : new Error('Failed to render SVG to PNG')
   }
 
   async function downloadPdf() {
@@ -868,7 +871,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
                   <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
                     <div>
                       <div style={{ fontSize: 13 }}>Paper</div>
-                      <select value={paperSize} onChange={(e) => { setPaperSize(e.target.value as any); setValidationMessage(null) }} style={{ padding: 6, borderRadius: 6, border: '1px solid #E6EEF8' }}>
+                      <select value={paperSize} onChange={(e) => { setPaperSize(e.target.value as 'A4'|'Letter'|'A5'|'Custom'); setValidationMessage(null) }} style={{ padding: 6, borderRadius: 6, border: '1px solid #E6EEF8' }}>
                         <option value="A4">A4</option>
                         <option value="Letter">Letter</option>
                         <option value="A5">A5</option>
@@ -877,7 +880,7 @@ export default function PrintQrModal({ open, assets, onClose, selectedAssetIds =
                     </div>
                     <div>
                       <div style={{ fontSize: 13 }}>Orientation</div>
-                      <select value={orientation} onChange={(e) => { setOrientation(e.target.value as any); setValidationMessage(null) }} style={{ padding: 6, borderRadius: 6, border: '1px solid #E6EEF8' }}>
+                      <select value={orientation} onChange={(e) => { setOrientation(e.target.value as 'portrait'|'landscape'); setValidationMessage(null) }} style={{ padding: 6, borderRadius: 6, border: '1px solid #E6EEF8' }}>
                         <option value="portrait">Portrait</option>
                         <option value="landscape">Landscape</option>
                       </select>

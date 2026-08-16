@@ -105,6 +105,48 @@ export interface StockMovementPayload {
   reason?: string
 }
 
+export interface InventoryTransferPayload {
+  quantity: number
+  source_location_id: number
+  destination_location_id: number
+  reason?: string
+}
+
+export interface InventoryTransferResult {
+  transfer_uuid: string
+  source_item: InventoryItem
+  destination_item: InventoryItem
+}
+
+export interface InventoryCountItem {
+  id: number
+  inventory_item_id: number
+  item_name?: string | null
+  sku?: string | null
+  expected_quantity: number
+  actual_quantity?: number | null
+  variance: number
+  remarks?: string | null
+  counted_at?: string | null
+  counted_by?: string | null
+  reconciliation_transaction_id?: number | null
+}
+
+export interface InventoryCountSession {
+  id: number
+  location_id?: number | null
+  location_name?: string | null
+  status: 'draft' | 'completed' | 'reconciled' | string
+  counted_at?: string | null
+  completed_at?: string | null
+  reconciled_at?: string | null
+  started_by?: string | null
+  completed_by?: string | null
+  reconciled_by?: string | null
+  notes?: string | null
+  items: InventoryCountItem[]
+}
+
 function mapInventoryItem(item: InventoryItem): InventoryItem {
   const status =
     item.quantity <= 0
@@ -157,6 +199,52 @@ export const inventoryService = {
   async adjust(itemId: number, payload: StockMovementPayload): Promise<InventoryItem> {
     const { data } = await api.post<ApiResponse<InventoryItem>>(`/inventory/${itemId}/adjust`, payload)
     return mapInventoryItem(unwrapData(data))
+  },
+
+  async transfer(itemId: number, payload: InventoryTransferPayload): Promise<InventoryTransferResult> {
+    const { data } = await api.post<ApiResponse<InventoryTransferResult>>(`/inventory/${itemId}/transfer`, payload)
+    const result = unwrapData(data)
+    return {
+      transfer_uuid: result.transfer_uuid,
+      source_item: mapInventoryItem(result.source_item),
+      destination_item: mapInventoryItem(result.destination_item),
+    }
+  },
+
+  async countSessions(page = 1): Promise<Paginated<InventoryCountSession>> {
+    const { data } = await api.get<ApiResponse<InventoryCountSession[] | Paginated<InventoryCountSession>>>(
+      '/inventory/count-sessions',
+      { params: { page, per_page: 20 } },
+    )
+    return unwrapPaginated(data)
+  },
+
+  async createCountSession(payload: { location_id?: number | null; counted_at?: string; notes?: string }): Promise<InventoryCountSession> {
+    const { data } = await api.post<ApiResponse<InventoryCountSession>>('/inventory/count-sessions', payload)
+    return unwrapData(data)
+  },
+
+  async getCountSession(sessionId: number): Promise<InventoryCountSession> {
+    const { data } = await api.get<ApiResponse<InventoryCountSession>>(`/inventory/count-sessions/${sessionId}`)
+    return unwrapData(data)
+  },
+
+  async recordCount(sessionId: number, itemId: number, payload: { actual_quantity: number; remarks?: string }): Promise<InventoryCountSession> {
+    const { data } = await api.post<ApiResponse<InventoryCountSession>>(
+      `/inventory/count-sessions/${sessionId}/items/${itemId}`,
+      payload,
+    )
+    return unwrapData(data)
+  },
+
+  async completeCountSession(sessionId: number): Promise<InventoryCountSession> {
+    const { data } = await api.post<ApiResponse<InventoryCountSession>>(`/inventory/count-sessions/${sessionId}/complete`)
+    return unwrapData(data)
+  },
+
+  async reconcileCountSession(sessionId: number): Promise<InventoryCountSession> {
+    const { data } = await api.post<ApiResponse<InventoryCountSession>>(`/inventory/count-sessions/${sessionId}/reconcile`)
+    return unwrapData(data)
   },
 
   async history(itemId: number, page = 1): Promise<Paginated<StockMovement>> {

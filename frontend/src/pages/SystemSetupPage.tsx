@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Alert, Badge, Button, Card, Dropdown, EmptyState, Input, Modal, Pagination, SearchBar, Spinner, Table, type Column } from '@/components/ui'
 import { setupService, type SetupPayload, type SetupRecord, type SetupResource } from '@/services/setupService'
@@ -48,7 +48,7 @@ export function SystemSetupPage() {
   const activeRecords = records[activeResource]
   const officeOptions = records.offices.map((o) => ({ label: o.name, value: String(o.id) }))
 
-  async function loadSetupData() {
+  const loadSetupData = useCallback(async () => {
     setLoading(true)
     try {
       const [assetCategories, offices, departments, locations, manufacturers, inventoryItemTypes] = await Promise.all([
@@ -65,9 +65,9 @@ export function SystemSetupPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { void loadSetupData() }, [])
+  useEffect(() => { void loadSetupData() }, [loadSetupData])
 
   // Filtered & Paginated records
   const filteredRecords = useMemo(() => {
@@ -90,6 +90,23 @@ export function SystemSetupPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [activeResource, search])
+
+  const openEdit = useCallback((record: SetupRecord) => {
+    setEditingRecord(record)
+    setForm({ name: record.name, code: record.code ?? '', description: record.description ?? '', office_id: record.office_id ?? null, is_active: record.is_active !== false })
+    setModalOpen(true)
+  }, [])
+
+  const handleDelete = useCallback(async (record: SetupRecord) => {
+    if (!confirm(`Delete "${record.name}"?`)) return
+    try {
+      await setupService.remove(activeResource, record.id)
+      setMessage({ type: 'success', text: `${activeSection.title} record deleted.` })
+      await loadSetupData()
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to delete record.' })
+    }
+  }, [activeResource, activeSection.title, loadSetupData])
 
   const columns: Column<SetupRecord>[] = useMemo(() => [
     { key: 'name',        header: 'Name',        render: (row) => <span className="font-medium text-slate-800">{row.name}</span> },
@@ -123,19 +140,13 @@ export function SystemSetupPage() {
         </div>
       ),
     },
-  ], [records.offices, activeResource])
+  ], [handleDelete, openEdit, records.offices])
 
   if (!isAdmin(user)) return <Navigate to="/dashboard" replace />
 
   function openCreate() {
     setEditingRecord(null)
     setForm(emptyForm)
-    setModalOpen(true)
-  }
-
-  function openEdit(record: SetupRecord) {
-    setEditingRecord(record)
-    setForm({ name: record.name, code: record.code ?? '', description: record.description ?? '', office_id: record.office_id ?? null, is_active: record.is_active !== false })
     setModalOpen(true)
   }
 
@@ -163,17 +174,6 @@ export function SystemSetupPage() {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to save record.' })
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function handleDelete(record: SetupRecord) {
-    if (!confirm(`Delete "${record.name}"?`)) return
-    try {
-      await setupService.remove(activeResource, record.id)
-      setMessage({ type: 'success', text: `${activeSection.title} record deleted.` })
-      await loadSetupData()
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to delete record.' })
     }
   }
 

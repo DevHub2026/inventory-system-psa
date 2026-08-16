@@ -219,7 +219,7 @@ export function SettingsPage() {
         email_notifications_enabled: user?.email_notifications_enabled ?? true,
       })
     }
-  }, [user?.id, user?.name, user?.full_name, user?.first_name, user?.last_name, user?.email, user?.email_notifications_enabled, isEditing])
+  }, [user, isEditing])
 
   const [passwordForm, setPasswordForm] = useState<ChangePasswordPayload>({
     current_password: '', password: '', password_confirmation: '',
@@ -281,7 +281,7 @@ export function SettingsPage() {
     } finally { setIsSaving(false) }
   }
 
-  const name = useMemo(() => displayName(user), [user?.id, user?.name, user?.full_name, user?.first_name, user?.last_name])
+  const name = useMemo(() => displayName(user), [user])
   const initials = useMemo(() => {
     const n = name
     return n

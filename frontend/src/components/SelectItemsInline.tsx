@@ -23,7 +23,17 @@ export function SelectItemsInline({ initialSelected = [], onChange, placeholder 
     }
     if (query.trim() === '') {
       // show first page
-      void (async () => { setLoading(true); try { const r = await assetService.list({ per_page: 50 }); if (!cancelled) setResults(r.items) } catch {} finally { if (!cancelled) setLoading(false) } })()
+      void (async () => {
+        setLoading(true)
+        try {
+          const r = await assetService.list({ per_page: 50 })
+          if (!cancelled) setResults(r.items)
+        } catch {
+          if (!cancelled) setResults([])
+        } finally {
+          if (!cancelled) setLoading(false)
+        }
+      })()
     } else {
       const t = setTimeout(() => { void doSearch() }, 250)
       return () => clearTimeout(t)

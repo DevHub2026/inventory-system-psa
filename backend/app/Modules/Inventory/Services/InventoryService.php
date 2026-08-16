@@ -15,6 +15,7 @@ use App\Modules\Asset\Models\Office;
 use App\Modules\AssetCategory\Models\AssetCategory;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
 use App\Modules\Inventory\Models\InventoryItem;
+use App\Modules\Inventory\Models\InventoryCountSession;
 use App\Modules\Inventory\Models\StockTransaction;
 use App\Modules\Inventory\Services\InventoryClassificationService;
 use App\Modules\Notification\Services\NotificationService;
@@ -24,6 +25,7 @@ use App\Modules\SystemSetup\Services\TemplateRenderingService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -708,6 +710,237 @@ class InventoryService
         });
     }
 
+    public function transfer(
+        InventoryItem $item,
+        int $quantity,
+        int $sourceLocationId,
+        int $destinationLocationId,
+        ?string $reason = null,
+        ?User $user = null,
+    ): array {
+        if ($quantity <= 0) {
+            throw new \InvalidArgumentException('Transfer quantity must be greater than zero.');
+        }
+
+        if ($sourceLocationId === $destinationLocationId) {
+            throw new \InvalidArgumentException('Source and destination locations must be different.');
+        }
+
+        $sourceExists = Location::query()->whereKey($sourceLocationId)->exists();
+        $destinationExists = Location::query()->whereKey($destinationLocationId)->exists();
+
+        if (! $sourceExists || ! $destinationExists) {
+            throw new \InvalidArgumentException('Source or destination location is invalid.');
+        }
+
+        return DB::transaction(function () use ($item, $quantity, $sourceLocationId, $destinationLocationId, $reason, $user): array {
+            $source = InventoryItem::query()->lockForUpdate()->findOrFail($item->id);
+
+            if ((int) $source->location_id !== $sourceLocationId) {
+                throw new \InvalidArgumentException('The selected source location does not match the inventory item location.');
+            }
+
+            if ($source->quantity < $quantity) {
+                throw new \InvalidArgumentException('Cannot transfer more stock than available.');
+            }
+
+            $transferUuid = (string) Str::uuid();
+            $sourceBefore = (int) $source->quantity;
+
+            if ($quantity === $sourceBefore) {
+                $source->update(['location_id' => $destinationLocationId]);
+
+                $this->recordMovement($source, 'transfer', 0, $sourceBefore, $sourceBefore, $reason, $user, [
+                    'source_location_id' => $sourceLocationId,
+                    'destination_location_id' => $destinationLocationId,
+                    'related_inventory_item_id' => $source->id,
+                    'transfer_uuid' => $transferUuid,
+                    'remarks' => 'Full-location transfer',
+                ]);
+
+                return [
+                    'transfer_uuid' => $transferUuid,
+                    'source_item' => $source->fresh(['asset', 'location']),
+                    'destination_item' => $source->fresh(['asset', 'location']),
+                ];
+            }
+
+            $destination = InventoryItem::query()
+                ->where('location_id', $destinationLocationId)
+                ->where('name', $source->name)
+                ->where('unit_id', $source->unit_id)
+                ->where('classification', $source->classification)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $destination) {
+                $destination = $source->replicate([
+                    'asset_id',
+                    'sku',
+                    'quantity',
+                    'track_as_asset',
+                    'created_at',
+                    'updated_at',
+                    'deleted_at',
+                ]);
+                $destination->fill([
+                    'asset_id' => null,
+                    'sku' => null,
+                    'quantity' => 0,
+                    'location_id' => $destinationLocationId,
+                    'track_as_asset' => false,
+                ]);
+                $destination->save();
+            }
+
+            $destinationBefore = (int) $destination->quantity;
+            $sourceAfter = $sourceBefore - $quantity;
+            $destinationAfter = $destinationBefore + $quantity;
+
+            $source->update(['quantity' => $sourceAfter]);
+            $destination->update(['quantity' => $destinationAfter]);
+
+            $this->recordMovement($source, 'transfer_out', -$quantity, $sourceBefore, $sourceAfter, $reason, $user, [
+                'source_location_id' => $sourceLocationId,
+                'destination_location_id' => $destinationLocationId,
+                'related_inventory_item_id' => $destination->id,
+                'transfer_uuid' => $transferUuid,
+            ]);
+            $this->recordMovement($destination, 'transfer_in', $quantity, $destinationBefore, $destinationAfter, $reason, $user, [
+                'source_location_id' => $sourceLocationId,
+                'destination_location_id' => $destinationLocationId,
+                'related_inventory_item_id' => $source->id,
+                'transfer_uuid' => $transferUuid,
+            ]);
+
+            $this->syncLinkedAsset($source->fresh('asset'));
+            $this->notifyStockThresholds($source->fresh());
+
+            return [
+                'transfer_uuid' => $transferUuid,
+                'source_item' => $source->fresh(['asset', 'location']),
+                'destination_item' => $destination->fresh(['asset', 'location']),
+            ];
+        });
+    }
+
+    public function createCountSession(array $data, User $user): InventoryCountSession
+    {
+        return DB::transaction(function () use ($data, $user): InventoryCountSession {
+            $locationId = $data['location_id'] ?? null;
+            $session = InventoryCountSession::query()->create([
+                'location_id' => $locationId,
+                'started_by' => $user->id,
+                'status' => 'draft',
+                'counted_at' => $data['counted_at'] ?? now(),
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            $items = InventoryItem::query()
+                ->when($locationId, fn ($query) => $query->where('location_id', $locationId))
+                ->orderBy('name')
+                ->get();
+
+            foreach ($items as $item) {
+                $session->items()->create([
+                    'inventory_item_id' => $item->id,
+                    'expected_quantity' => (int) $item->quantity,
+                    'variance' => 0,
+                ]);
+            }
+
+            return $session->fresh(['location', 'startedBy', 'items.inventoryItem']);
+        });
+    }
+
+    public function recordCount(InventoryCountSession $session, InventoryItem $item, int $actualQuantity, ?string $remarks, User $user): InventoryCountSession
+    {
+        if ($session->status !== 'draft') {
+            throw new \InvalidArgumentException('Only draft count sessions can be updated.');
+        }
+
+        if ($actualQuantity < 0) {
+            throw new \InvalidArgumentException('Actual quantity cannot be negative.');
+        }
+
+        $countItem = $session->items()->where('inventory_item_id', $item->id)->firstOrFail();
+        $variance = $actualQuantity - (int) $countItem->expected_quantity;
+
+        $countItem->update([
+            'actual_quantity' => $actualQuantity,
+            'variance' => $variance,
+            'remarks' => $remarks,
+            'counted_at' => now(),
+            'counted_by' => $user->id,
+        ]);
+
+        return $session->fresh(['location', 'startedBy', 'items.inventoryItem', 'items.countedBy']);
+    }
+
+    public function completeCountSession(InventoryCountSession $session, User $user): InventoryCountSession
+    {
+        if ($session->status !== 'draft') {
+            throw new \InvalidArgumentException('Only draft count sessions can be completed.');
+        }
+
+        if ($session->items()->whereNull('actual_quantity')->exists()) {
+            throw new \InvalidArgumentException('All count items must have an actual quantity before completion.');
+        }
+
+        $session->update([
+            'status' => 'completed',
+            'completed_by' => $user->id,
+            'completed_at' => now(),
+        ]);
+
+        return $session->fresh(['location', 'startedBy', 'completedBy', 'items.inventoryItem', 'items.countedBy']);
+    }
+
+    public function reconcileCountSession(InventoryCountSession $session, User $user): InventoryCountSession
+    {
+        if ($session->status !== 'completed') {
+            throw new \InvalidArgumentException('Only completed count sessions can be reconciled.');
+        }
+
+        return DB::transaction(function () use ($session, $user): InventoryCountSession {
+            $session->load('items.inventoryItem');
+
+            foreach ($session->items as $countItem) {
+                if ((int) $countItem->variance === 0 || $countItem->reconciliation_transaction_id) {
+                    continue;
+                }
+
+                $item = InventoryItem::query()->lockForUpdate()->findOrFail($countItem->inventory_item_id);
+                $before = (int) $item->quantity;
+                $after = (int) $countItem->actual_quantity;
+
+                $item->update(['quantity' => $after]);
+                $transaction = StockTransaction::query()->create([
+                    'inventory_item_id' => $item->id,
+                    'type' => 'cycle_count_adjustment',
+                    'quantity' => $after - $before,
+                    'quantity_before' => $before,
+                    'quantity_after' => $after,
+                    'user_id' => $user->id,
+                    'reason' => "Inventory count session #{$session->id} reconciliation",
+                    'remarks' => $countItem->remarks,
+                ]);
+
+                $countItem->update(['reconciliation_transaction_id' => $transaction->id]);
+                $this->syncLinkedAsset($item->fresh('asset'));
+                $this->notifyStockThresholds($item->fresh());
+            }
+
+            $session->update([
+                'status' => 'reconciled',
+                'reconciled_by' => $user->id,
+                'reconciled_at' => now(),
+            ]);
+
+            return $session->fresh(['location', 'startedBy', 'completedBy', 'reconciledBy', 'items.inventoryItem', 'items.countedBy']);
+        });
+    }
+
     public function history(InventoryItem $item, int $perPage = 20): LengthAwarePaginator
     {
         return $item->stockTransactions()
@@ -724,6 +957,7 @@ class InventoryService
         int $quantityAfter,
         ?string $reason = null,
         ?User $user = null,
+        array $metadata = [],
     ): void {
         StockTransaction::query()->create([
             'inventory_item_id' => $item->id,
@@ -733,6 +967,11 @@ class InventoryService
             'quantity_after' => $quantityAfter,
             'user_id' => $user?->id ?? auth()->id(),
             'reason' => $reason,
+            'source_location_id' => $metadata['source_location_id'] ?? null,
+            'destination_location_id' => $metadata['destination_location_id'] ?? null,
+            'related_inventory_item_id' => $metadata['related_inventory_item_id'] ?? null,
+            'transfer_uuid' => $metadata['transfer_uuid'] ?? null,
+            'remarks' => $metadata['remarks'] ?? null,
         ]);
     }
 

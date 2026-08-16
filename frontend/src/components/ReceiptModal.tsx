@@ -84,7 +84,7 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
           {title}
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px 18px' }}>
         {children}
       </div>
     </div>
@@ -112,7 +112,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
 
           {/* ── Header: Logo + Agency name ── */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 14,
+            display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
             paddingBottom: 16, marginBottom: 16,
             borderBottom: '2px solid #1E40AF',
           }}>
@@ -134,7 +134,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
             </div>
 
             {/* Receipt type badge — pushed right */}
-            <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+            <div style={{ marginLeft: 'auto', textAlign: 'right', minWidth: 150 }}>
               <div style={{
                 display: 'inline-block',
                 fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
@@ -169,7 +169,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
           </div>
 
           {/* ── Main body: details left, QR right ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 148px', gap: 20, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, alignItems: 'start' }}>
 
             {/* Left: field sections */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

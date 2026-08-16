@@ -3,6 +3,7 @@
 namespace App\Modules\Inventory\Models;
 
 use App\Models\User;
+use App\Modules\Asset\Models\Location;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -15,6 +16,10 @@ class StockTransaction extends Model
         'quantity_before',
         'quantity_after',
         'user_id',
+        'source_location_id',
+        'destination_location_id',
+        'related_inventory_item_id',
+        'transfer_uuid',
         'reason',
         'remarks',
     ];
@@ -36,5 +41,15 @@ class StockTransaction extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function sourceLocation(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'source_location_id');
+    }
+
+    public function destinationLocation(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'destination_location_id');
     }
 }

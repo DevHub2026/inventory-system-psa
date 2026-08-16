@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Notification;
 use App\Models\User;
 use App\Modules\Borrowing\Models\Borrowing;
 use App\Notifications\OverdueBorrowingReminder;
@@ -38,13 +39,13 @@ class SendOverdueBorrowingReminders extends Command
             // store a small flag in the notification data to indicate whether the
             // mail job was dispatched successfully; this avoids suppressing retries
             // when queuing fails.
-            $recent = \App\Models\Notification::query()
+            $recent = Notification::query()
                 ->where('user_id', $user->id)
                 ->where('type', 'overdue_reminder')
                 ->where('related_id', $borrowing->id)
                 ->where('created_at', '>=', now()->subDay())
-                ->where('data->mail_queued', true)
-                ->exists();
+                ->get()
+                ->contains(fn ($notification) => (bool) (($notification->data['mail_queued'] ?? false) === true));
 
             if ($recent) {
                 continue;

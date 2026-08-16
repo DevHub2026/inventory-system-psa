@@ -86,6 +86,13 @@ const SELECT_CLS =
   'focus:border-[#0D47A1] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/15'
 
 type MaintenanceFormStatus = CreateMaintenancePayload['status']
+type AssetSearchResult = {
+  id: number
+  asset_number: string
+  property_number?: string | null
+  name: string
+  identifiers?: Array<{ identifier_value: string }>
+}
 
 export function MaintenancePage() {
   const [rows,           setRows]           = useState<MaintenanceRequest[]>([])
@@ -101,7 +108,7 @@ export function MaintenancePage() {
 
   // Asset search/select state for the modal
   const [assetSearchTerm, setAssetSearchTerm] = useState('')
-  const [assetSearchResults, setAssetSearchResults] = useState<Array<{ id: number; asset_number: string; property_number?: string | null; name: string; identifiers?: any[] }>>([])
+  const [assetSearchResults, setAssetSearchResults] = useState<AssetSearchResult[]>([])
   const [assetSearchLoading, setAssetSearchLoading] = useState(false)
   const [selectedAsset, setSelectedAsset] = useState<{ id: number; label: string } | null>(null)
   const searchTimer = useRef<number | null>(null)
@@ -334,7 +341,7 @@ export function MaintenancePage() {
                       try {
                         const res = await assetService.list({ per_page: 8, search: v })
                         setAssetSearchResults(res.items.map(i => ({ id: i.id, asset_number: i.asset_number, property_number: i.property_number, name: i.name, identifiers: i.identifiers })))
-                      } catch (e) {
+                      } catch (_e) {
                         setAssetSearchResults([])
                       } finally { setAssetSearchLoading(false) }
                     }, 250)
@@ -353,7 +360,7 @@ export function MaintenancePage() {
                       }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 700, color: '#1F2937' }}>{a.name}</div>
-                          <div style={{ fontSize: 12, color: '#6B7280' }}>{a.asset_number}{a.property_number ? ` · ${a.property_number}` : ''}{a.identifiers && a.identifiers.length ? ` · ${a.identifiers.map((id: any) => id.identifier_value).join(', ')}` : ''}</div>
+                          <div style={{ fontSize: 12, color: '#6B7280' }}>{a.asset_number}{a.property_number ? ` · ${a.property_number}` : ''}{a.identifiers && a.identifiers.length ? ` · ${a.identifiers.map((id) => id.identifier_value).join(', ')}` : ''}</div>
                         </div>
                         <div style={{ color: '#94A3B8', fontSize: 12 }}>Select</div>
                       </button>

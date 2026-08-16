@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser'
 import { Camera, QrCode, Search, RefreshCw, AlertTriangle } from 'lucide-react'
 import { Button, Input, Modal, Spinner, Card } from '@/components/ui'
@@ -43,7 +43,7 @@ export function SharedQrScanner({
   const [resolvedContext, setResolvedContext] = useState<QrContext | null>(null)
   const [showResultModal, setShowResultModal] = useState(false)
 
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (controlsRef.current) {
       controlsRef.current.stop()
       controlsRef.current = null
@@ -53,9 +53,9 @@ export function SharedQrScanner({
     }
     resolvingRef.current = false
     setStatus('idle')
-  }
+  }, [])
 
-  const handleResolve = async (rawValue: string) => {
+  const handleResolve = useCallback(async (rawValue: string) => {
     const value = rawValue.trim()
     if (!value) {
       setStatus('invalid_qr')
@@ -87,9 +87,9 @@ export function SharedQrScanner({
     } finally {
       resolvingRef.current = false
     }
-  }
+  }, [onCompleted, scanSource, stopCamera])
 
-  const startScanner = async () => {
+  const startScanner = useCallback(async () => {
     setErrorMessage(null)
     setStatus('starting')
 
@@ -132,7 +132,7 @@ export function SharedQrScanner({
         setErrorMessage('Camera is unavailable on this device. Use manual entry instead.')
       }
     }
-  }
+  }, [handleResolve])
 
   useEffect(() => {
     if (open) {
@@ -145,7 +145,7 @@ export function SharedQrScanner({
     return () => {
       stopCamera()
     }
-  }, [open])
+  }, [open, startScanner, stopCamera])
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault()

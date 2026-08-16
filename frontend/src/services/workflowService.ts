@@ -1,4 +1,4 @@
-import { api, unwrapData, unwrapPaginated, withMockFallback } from '@/services/api'
+import { api, unwrapData, unwrapPaginated } from '@/services/api'
 import type {
   ApiResponse,
   Paginated,
@@ -21,46 +21,13 @@ export interface WorkflowMetadata {
 
 export const workflowService = {
   async list(params?: Record<string, unknown>): Promise<Paginated<Workflow>> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<Paginated<Workflow>>>('/workflows', { params })
-        return unwrapPaginated(data)
-      },
-      async () => ({ items: [], meta: { current_page: 1, per_page: 15, total: 0, last_page: 1 } })
-    )
+    const { data } = await api.get<ApiResponse<Paginated<Workflow>>>('/workflows', { params })
+    return unwrapPaginated(data)
   },
 
   async getModules(): Promise<WorkflowMetadata> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<WorkflowMetadata>>('/workflows/modules')
-        return unwrapData(data)
-      },
-      async () => ({
-        modules: [
-          { value: 'borrow_request', label: 'Borrow Request' },
-          { value: 'borrow_extension_request', label: 'Borrow Extension Request' },
-          { value: 'asset_issuance', label: 'Asset Issuance' },
-          { value: 'asset_reissuance', label: 'Asset Re-Issuance' },
-          { value: 'clearance_processing', label: 'Clearance Processing' },
-          { value: 'maintenance_request', label: 'Maintenance Request' },
-        ],
-        approval_types: [
-          { value: 'single', label: 'Single Approver' },
-          { value: 'any', label: 'Any Approver' },
-          { value: 'all', label: 'All Approvers' },
-        ],
-        default_options: {
-          auto_approve_no_approver: true,
-          skip_disabled_levels: true,
-          allow_rejection_any_level: true,
-          allow_request_cancellation: true,
-          allow_requester_withdrawal: true,
-          require_remarks_on_rejection: true,
-          require_remarks_on_approval: false,
-        },
-      })
-    )
+    const { data } = await api.get<ApiResponse<WorkflowMetadata>>('/workflows/modules')
+    return unwrapData(data)
   },
 
   async getById(id: number): Promise<Workflow> {
@@ -109,14 +76,9 @@ export const workflowService = {
   },
 
   async getRequestHistory(requestType: string, requestId: number): Promise<WorkflowApprovalHistory[]> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<WorkflowApprovalHistory[]>>('/workflows/request-history', {
-          params: { request_type: requestType, request_id: requestId },
-        })
-        return unwrapData(data)
-      },
-      async () => []
-    )
+    const { data } = await api.get<ApiResponse<WorkflowApprovalHistory[]>>('/workflows/request-history', {
+      params: { request_type: requestType, request_id: requestId },
+    })
+    return unwrapData(data)
   },
 }

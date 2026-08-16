@@ -1,32 +1,5 @@
-import { api, unwrapData, unwrapPaginated, withMockFallback } from '@/services/api'
+import { api, unwrapData, unwrapPaginated } from '@/services/api'
 import type { ApiResponse, Paginated, Reservation } from '@/types'
-
-const mockReservations: Reservation[] = [
-  {
-    id: 1,
-    purpose: 'Regional meeting',
-    employee_name: 'Ana Reyes',
-    status: 'PENDING',
-    reserved_from: '2026-07-15',
-    reserved_until: '2026-07-15',
-  },
-  {
-    id: 2,
-    purpose: 'Training session',
-    employee_name: 'Carlo Mendoza',
-    status: 'APPROVED',
-    reserved_from: '2026-07-16',
-    reserved_until: '2026-07-17',
-  },
-  {
-    id: 3,
-    purpose: 'Field briefing',
-    employee_name: 'Liza Cruz',
-    status: 'REJECTED',
-    reserved_from: '2026-07-12',
-    reserved_until: '2026-07-12',
-  },
-]
 
 interface BackendReservation {
   id: number
@@ -86,91 +59,34 @@ export interface CreateReservationPayload {
 
 export const reservationService = {
   async list(): Promise<Paginated<Reservation>> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<BackendReservation[] | Paginated<BackendReservation>>>('/reservations')
-        const result = unwrapPaginated(data)
-        return {
-          ...result,
-          items: result.items.map(mapReservation),
-        }
-      },
-      async () => ({
-        items: mockReservations,
-        meta: { current_page: 1, per_page: 10, total: mockReservations.length, last_page: 1 },
-      }),
-    )
+    const { data } = await api.get<ApiResponse<BackendReservation[] | Paginated<BackendReservation>>>('/reservations')
+    const result = unwrapPaginated(data)
+    return {
+      ...result,
+      items: result.items.map(mapReservation),
+    }
   },
 
   async create(payload: CreateReservationPayload): Promise<Reservation> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.post<ApiResponse<BackendReservation>>('/reservations', payload)
-        return mapReservation(unwrapData(data))
-      },
-      async () => {
-        const newReservation: Reservation = {
-          id: mockReservations.length + 1,
-          purpose: payload.remarks || 'New reservation',
-          employee_name: 'Current User',
-          status: 'PENDING',
-          reserved_from: payload.start_date,
-          reserved_until: payload.end_date,
-        }
-        mockReservations.push(newReservation)
-        return newReservation
-      },
-    )
+    const { data } = await api.post<ApiResponse<BackendReservation>>('/reservations', payload)
+    return mapReservation(unwrapData(data))
   },
 
   async approve(reservationId: number): Promise<Reservation> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.post<ApiResponse<BackendReservation>>(`/reservations/${reservationId}/approve`)
-        return mapReservation(unwrapData(data))
-      },
-      async () => {
-        const reservation = mockReservations.find((r) => r.id === reservationId)
-        if (reservation) {
-          reservation.status = 'APPROVED'
-        }
-        return reservation || mockReservations[0]
-      },
-    )
+    const { data } = await api.post<ApiResponse<BackendReservation>>(`/reservations/${reservationId}/approve`)
+    return mapReservation(unwrapData(data))
   },
 
   async reject(reservationId: number, remarks?: string): Promise<Reservation> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.post<ApiResponse<BackendReservation>>(`/reservations/${reservationId}/reject`, {
-          remarks,
-        })
-        return mapReservation(unwrapData(data))
-      },
-      async () => {
-        const reservation = mockReservations.find((r) => r.id === reservationId)
-        if (reservation) {
-          reservation.status = 'REJECTED'
-        }
-        return reservation || mockReservations[0]
-      },
-    )
+    const { data } = await api.post<ApiResponse<BackendReservation>>(`/reservations/${reservationId}/reject`, {
+      remarks,
+    })
+    return mapReservation(unwrapData(data))
   },
 
   async cancel(reservationId: number): Promise<Reservation> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.post<ApiResponse<BackendReservation>>(`/reservations/${reservationId}/cancel`)
-        return mapReservation(unwrapData(data))
-      },
-      async () => {
-        const reservation = mockReservations.find((r) => r.id === reservationId)
-        if (reservation) {
-          reservation.status = 'CANCELLED'
-        }
-        return reservation || mockReservations[0]
-      },
-    )
+    const { data } = await api.post<ApiResponse<BackendReservation>>(`/reservations/${reservationId}/cancel`)
+    return mapReservation(unwrapData(data))
   },
  
   async release(reservationId: number, assetId: number): Promise<void> {

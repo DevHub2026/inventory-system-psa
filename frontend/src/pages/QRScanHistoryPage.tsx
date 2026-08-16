@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { PageHeader } from '@/components/PageHeader'
 import { Badge, Table, Spinner, type Column } from '@/components/ui'
 import { qrService } from '@/services/qrService'
@@ -10,7 +10,7 @@ export function QRScanHistoryPage() {
   const [loading, setLoading] = useState(true)
   const [actionFilter, setActionFilter] = useState('')
 
-  const loadScans = async () => {
+  const loadScans = useCallback(async () => {
     setLoading(true)
     try {
       const res = await qrService.getHistory({
@@ -22,11 +22,11 @@ export function QRScanHistoryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [actionFilter])
 
   useEffect(() => {
     void loadScans()
-  }, [actionFilter])
+  }, [loadScans])
 
   const columns: Column<QrScanHistory>[] = [
     {

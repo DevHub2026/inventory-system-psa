@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Modal, Button, Badge, Alert, Card, Spinner } from '@/components/ui'
-import type { QrContext } from '@/types'
+import type { AssetContext, QrContext } from '@/types'
 import { BorrowRequestModal } from '@/components/qr/BorrowRequestModal'
 import { ReportDamageModal } from '@/components/qr/ReportDamageModal'
 import { ReportLostModal } from '@/components/qr/ReportLostModal'
@@ -56,6 +56,11 @@ interface QrAsset {
   date_issued?: string | null
   created_at?: string | null
   updated_at?: string | null
+}
+
+const namedValue = (value: string | { id: number; name: string } | null | undefined) => {
+  if (!value) return null
+  return typeof value === 'string' ? { id: 0, name: value } : value
 }
 
 export function ScannedQrResultModal({
@@ -124,6 +129,34 @@ export function ScannedQrResultModal({
 
   // Cast asset to QrAsset since backend returns expanded objects
   const asset = rawAsset as unknown as QrAsset | null
+  const assetContext: AssetContext | null = effectiveContext.asset
+    ? {
+      asset: {
+        ...effectiveContext.asset,
+        category: namedValue(effectiveContext.asset.category),
+        manufacturer: namedValue(effectiveContext.asset.manufacturer),
+        office: namedValue(effectiveContext.asset.office),
+        location: namedValue(effectiveContext.asset.location),
+      },
+      my_active_borrowing: effectiveContext.my_active_borrowing,
+      my_pending_reservation: effectiveContext.my_pending_reservation,
+      my_pending_lost_report: effectiveContext.my_pending_lost_report,
+      active_maintenance: effectiveContext.active_maintenance,
+      actions: {
+        can_request_borrow: effectiveContext.available_actions.includes('REQUEST_BORROW'),
+        can_request_extension: false,
+        can_request_reissuance: false,
+        can_report_damage: effectiveContext.available_actions.includes('REPORT_DAMAGE'),
+        can_report_lost: effectiveContext.available_actions.includes('REPORT_LOST'),
+      },
+      history: {
+        borrow_history: [],
+        my_reservation_history: [],
+        maintenance_history: [],
+        lost_report_history: [],
+      },
+    }
+    : null
 
   // Get the QR identifier for refresh — always read from effectiveContext so
   // a prior refresh cycle doesn't lose the identifier.
@@ -349,11 +382,11 @@ export function ScannedQrResultModal({
         </Modal>
 
         {/* Triggered Modals */}
-        {activeModal === 'borrow' && (
+        {activeModal === 'borrow' && assetContext && (
           <BorrowRequestModal
             open={true}
             onClose={() => setActiveModal(null)}
-            assetContext={effectiveContext as any}
+            assetContext={assetContext}
             onSuccess={() => {
               setSuccessMessage('Borrow request submitted successfully.')
               setActiveModal(null)
@@ -361,22 +394,22 @@ export function ScannedQrResultModal({
             }}
           />
         )}
-        {activeModal === 'damage' && (
+        {activeModal === 'damage' && assetContext && (
           <ReportDamageModal
             open={true}
             onClose={() => setActiveModal(null)}
-            assetContext={effectiveContext as any}
+            assetContext={assetContext}
             onSuccess={() => {
               setSuccessMessage('Damage report submitted.')
               setActiveModal(null)
             }}
           />
         )}
-        {activeModal === 'lost' && (
+        {activeModal === 'lost' && assetContext && (
           <ReportLostModal
             open={true}
             onClose={() => setActiveModal(null)}
-            assetContext={effectiveContext as any}
+            assetContext={assetContext}
             onSuccess={() => {
               setSuccessMessage('Lost asset report submitted.')
               setActiveModal(null)

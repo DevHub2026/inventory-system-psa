@@ -209,8 +209,6 @@ class AssetReissuanceController extends Controller
      */
     public function export(Request $request): BinaryFileResponse|JsonResponse
     {
-        $this->authorizeReissuance();
-
         // Normalise 'excel' → 'xlsx' so the Spreadsheet writer key is consistent.
         $rawFormat = strtolower((string) $request->query('format', 'excel'));
         $format = $rawFormat === 'csv' ? 'csv' : 'xlsx';

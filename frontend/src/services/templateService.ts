@@ -1,4 +1,4 @@
-import { api, unwrapData, withMockFallback } from '@/services/api'
+import { api, unwrapData } from '@/services/api'
 import type { ApiResponse, Paginated } from '@/types'
 
 export type DocumentType =
@@ -233,16 +233,8 @@ function triggerBlobDownload(blob: Blob, filename: string) {
 
 export const templateService = {
   async list(params?: TemplateFilters & { per_page?: number }): Promise<Paginated<DocumentTemplate>> {
-    return withMockFallback(
-      async () => {
-        const { data } = await api.get<ApiResponse<Paginated<DocumentTemplate>>>('/document-templates', { params })
-        return unwrapData(data) as unknown as Paginated<DocumentTemplate>
-      },
-      async () => ({
-        items: [],
-        meta: { current_page: 1, per_page: 20, total: 0, last_page: 1 },
-      }),
-    )
+    const { data } = await api.get<ApiResponse<Paginated<DocumentTemplate>>>('/document-templates', { params })
+    return unwrapData(data) as unknown as Paginated<DocumentTemplate>
   },
 
   async getDocumentTypes(): Promise<DocumentTypeOption[]> {

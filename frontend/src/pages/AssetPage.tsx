@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -6,14 +5,13 @@ import {
   ScanLine, CheckCircle2, Printer, Search, Filter, ExternalLink,
   Eye, QrCode as QrIcon, Edit3, Trash2, ArrowUpRight, RotateCcw,
   Package, Wrench, Clock, Send, ToggleLeft, ToggleRight,
+  Paperclip, UploadCloud, Download,
 } from 'lucide-react'
-import { BrowserQRCodeSvgWriter } from '@zxing/browser'
 import {
   Alert, Badge, Button, ConfirmDialog, EmptyState,
   Modal, Pagination, Spinner, Card,
 } from '@/components/ui'
-import JSZip from 'jszip'
-import { assetService, type UpdateAssetPayload, type IssuanceHistoryEntry } from '@/services/assetService'
+import { assetService, type UpdateAssetPayload, type IssuanceHistoryEntry, type AssetAttachment } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
 import { useAuth } from '@/hooks/useAuth'
@@ -55,6 +53,20 @@ function hasPermanentHolder(asset: Asset): boolean {
 
 function canPermanentIssueAsset(asset: Asset): boolean {
   return !['BORROWED', 'RESERVED', 'MAINTENANCE', 'FOR_DISPOSAL', 'RETIRED', 'DISPOSED'].includes(asset.status)
+}
+
+type CompactAssetUser = NonNullable<Asset['issued_to_user'] | Asset['custodian']>
+
+function toIssuanceUserSummary(user: CompactAssetUser): IssuanceUserSummary {
+  return {
+    id: user.id,
+    full_name: user.full_name,
+    employee_number: user.employee_number ?? null,
+    email: user.email ?? undefined,
+    department: 'department' in user && user.department ? { id: 0, name: user.department } : null,
+    office: 'office' in user && user.office ? { id: 0, name: user.office } : null,
+    roles: 'roles' in user ? user.roles?.map((name, index) => ({ id: index, name })) ?? [] : [],
+  }
 }
 
 // ─── Color palette for summary cards ──────────────────────────────────────────
@@ -173,7 +185,7 @@ function ActionCell({
     } else {
       top = Math.max(8, r.top - gap - 200)
     }
-    let left = Math.max(8, Math.min(r.right - MIN, window.innerWidth - MIN - 8))
+    const left = Math.max(8, Math.min(r.right - MIN, window.innerWidth - MIN - 8))
     setPopupPos({ position: 'fixed', left, top, minWidth: MIN, zIndex: 9999 })
   }, [])
 
@@ -372,9 +384,7 @@ export function AssetPage() {
   // QR sheet selection
   const [sheetSelectionOpen, setSheetSelectionOpen] = useState(false)
   const [assetsForSelection, setAssetsForSelection] = useState<Asset[]>([])
-  const [selectionLoading, setSelectionLoading] = useState(false)
   const [selectedAssetIds, setSelectedAssetIds] = useState<number[]>([])
-  const [sheetGenerating, setSheetGenerating] = useState(false)
   // Print modal state: open + assets to print
   const [printModalOpen, setPrintModalOpen] = useState(false)
   const [printAssets, setPrintAssets] = useState<Asset[] | null>(null)
@@ -410,9 +420,16 @@ export function AssetPage() {
 
   // Re-issuance State
   const [reissueAsset, setReissueAsset] = useState<Asset | null>(null)
-  const [detailTab, setDetailTab] = useState<'info' | 'history'>('info')
+  const [detailTab, setDetailTab] = useState<'info' | 'history' | 'attachments'>('info')
   const [issuanceHistory, setIssuanceHistory] = useState<IssuanceHistoryEntry[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [attachments, setAttachments] = useState<AssetAttachment[]>([])
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false)
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
+  const [attachmentDescription, setAttachmentDescription] = useState('')
+  const [attachmentUploading, setAttachmentUploading] = useState(false)
+  const [attachmentDeletingId, setAttachmentDeletingId] = useState<number | null>(null)
+  const [attachmentInputKey, setAttachmentInputKey] = useState(0)
 
   type AuditLogItem = {
     id: number
@@ -530,14 +547,99 @@ export function AssetPage() {
     }
   }, [viewAsset])
 
+  const formatAttachmentSize = (bytes: number) => {
+    if (!bytes) return '0 KB'
+    if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  const loadAttachments = useCallback(async (assetId: number) => {
+    setAttachmentsLoading(true)
+    try {
+      const items = await assetService.listAttachments(assetId)
+      setAttachments(items)
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Unable to load asset attachments.')
+    } finally {
+      setAttachmentsLoading(false)
+    }
+  }, [])
+
+  const validateAttachmentFile = (file: File) => {
+    const allowed = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv']
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
+    if (!allowed.includes(extension)) {
+      setMessage('Unsupported attachment type. Use image, PDF, Word, Excel, or CSV files.')
+      return false
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setMessage('Attachment is too large. Maximum file size is 10 MB.')
+      return false
+    }
+    return true
+  }
+
+  const uploadAttachment = async () => {
+    if (!viewAsset || !attachmentFile) return
+    if (!validateAttachmentFile(attachmentFile)) return
+    setAttachmentUploading(true)
+    try {
+      await assetService.uploadAttachment(viewAsset.id, attachmentFile, attachmentDescription.trim() || undefined)
+      setAttachmentFile(null)
+      setAttachmentDescription('')
+      setAttachmentInputKey((key) => key + 1)
+      await loadAttachments(viewAsset.id)
+      setMessage('Attachment uploaded.')
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Unable to upload attachment.')
+    } finally {
+      setAttachmentUploading(false)
+    }
+  }
+
+  const downloadAttachment = async (attachment: AssetAttachment) => {
+    if (!viewAsset) return
+    try {
+      const blob = await assetService.downloadAttachment(viewAsset.id, attachment.id)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = attachment.original_name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Unable to download attachment.')
+    }
+  }
+
+  const deleteAttachment = async (attachment: AssetAttachment) => {
+    if (!viewAsset) return
+    setAttachmentDeletingId(attachment.id)
+    try {
+      await assetService.deleteAttachment(viewAsset.id, attachment.id)
+      await loadAttachments(viewAsset.id)
+      setMessage('Attachment deleted.')
+    } catch (e: unknown) {
+      setMessage(e instanceof Error ? e.message : 'Unable to delete attachment.')
+    } finally {
+      setAttachmentDeletingId(null)
+    }
+  }
+
   const openView = useCallback(async (id: number) => {
     setMessage(null)
     setDetailTab('info')
     setIssuanceHistory([])
+    setAttachments([])
+    setAttachmentFile(null)
+    setAttachmentDescription('')
     setDisposalAudit([])
     try {
       const assetData = await assetService.show(id)
       setViewAsset(assetData)
+      void loadAttachments(id)
 
       setLoadingHistory(true)
       const historyData = await assetService.getIssuanceHistory(id)
@@ -557,15 +659,19 @@ export function AssetPage() {
     } finally {
       setLoadingHistory(false)
     }
-  }, [user, loadDisposalAudit])
+  }, [user, loadDisposalAudit, loadAttachments])
 
   const openArchivedView = useCallback((asset: Asset) => {
     setMessage(null)
     setDetailTab('info')
     setIssuanceHistory([])
+    setAttachments([])
+    setAttachmentFile(null)
+    setAttachmentDescription('')
     setDisposalAudit([])
     setViewAsset(asset)
-  }, [])
+    void loadAttachments(asset.id)
+  }, [loadAttachments])
 
   async function openEdit(id: number) {
     if (!canManageAssets) { setMessage('Only administrators can edit asset records.'); return }
@@ -585,30 +691,8 @@ export function AssetPage() {
         custodian_id: a.custodian_id ?? null,
       })
       setIssueUserId(a.issued_to_user_id ?? null)
-      setCustodianUser(a.custodian ? ((): any => {
-        const cust: any = a.custodian
-        return {
-          id: cust.id,
-          full_name: cust.full_name,
-          employee_number: cust.employee_number,
-          email: cust.email ?? undefined,
-          department: cust.department ? { id: 0, name: cust.department } : null,
-          office: cust.office ? { id: 0, name: cust.office } : null,
-          roles: cust.roles?.map((name: any, index: number) => ({ id: index, name })) ?? [],
-        }
-      })() : null)
-      setIssueUser(a.issued_to_user ? ((): any => {
-        const u: any = a.issued_to_user
-        return {
-          id: u.id,
-          full_name: u.full_name,
-          employee_number: u.employee_number,
-          email: u.email ?? undefined,
-          department: u.department ? { id: 0, name: u.department } : null,
-          office: u.office ? { id: 0, name: u.office } : null,
-          roles: u.roles?.map((name: any, index: number) => ({ id: index, name })) ?? [],
-        }
-      })() : null)
+      setCustodianUser(a.custodian ? toIssuanceUserSummary(a.custodian) : null)
+      setIssueUser(a.issued_to_user ? toIssuanceUserSummary(a.issued_to_user) : null)
       setIssueDate(a.date_issued ?? new Date().toISOString().slice(0, 10))
     } catch (e: unknown) { setMessage(e instanceof Error ? e.message : 'Unable to load asset for editing.') }
   }
@@ -843,238 +927,8 @@ export function AssetPage() {
     }
   }
 
-  async function generatePngSheet() {
-    if (sheetGenerating) return
-    setSheetGenerating(true)
-    try {
-      const writer = new BrowserQRCodeSvgWriter()
-      const selectedIds = selectedAssetIds.length > 0 ? selectedAssetIds : (qrAsset ? [qrAsset.id] : [])
-      let assetsToUse: Asset[] = []
-      if (selectedAssetIds.length > 0) {
-        const cached = assetsForSelection.filter(a => selectedAssetIds.includes(a.id))
-        if (cached.length === selectedAssetIds.length) {
-          assetsToUse = cached
-        } else {
-          // Fall back to fetching each asset using the public show() API
-          assetsToUse = await Promise.all(selectedAssetIds.map(async (id) => { try { return await assetService.show(id) } catch { return null } })).then(res => res.filter(Boolean) as Asset[])
-        }
-      } else if (qrAsset) {
-        assetsToUse = [qrAsset]
-      }
-
-      if (!assetsToUse || assetsToUse.length === 0) {
-        window.alert('No assets selected for sheet.')
-        return
-      }
-
-      const labelW = 420
-      const labelH = 540
-      const qrLabelSize = 320
-      const line1H = 24
-      const line2H = 18
-      const labelPadding = Math.round((labelH - qrLabelSize - line1H - line2H - 24) / 2)
-
-      const makeLabelImage = (asset: Asset) => new Promise<HTMLImageElement>(async (resolve, reject) => {
-        try {
-          // Prefer explicit psa_qr_payload; if missing, try known identifier entries; then psa_qr_identifier, asset_number, and last-resort inventory.sku
-          const identifier = (asset.identifiers || []).find(i => {
-            const t = (i.identifier_type || '').toString().toUpperCase()
-            return ['PSA_QR_PAYLOAD','QR_PAYLOAD','PSA_QR_IDENTIFIER','QR_IDENTIFIER','QR','PAYLOAD'].includes(t)
-          })
-          const value = asset.psa_qr_payload ?? identifier?.identifier_value ?? asset.psa_qr_identifier ?? asset.asset_number ?? asset.inventory?.sku ?? `asset-${asset.id}`
-          const innerSvg = writer.write(String(value).replace(/[<>]/g, ''), qrLabelSize, qrLabelSize)
-          // Serialize the SVG and use a base64 data URL for better browser compatibility
-          const svgString = (new XMLSerializer()).serializeToString(innerSvg)
-          const base64 = typeof window.btoa === 'function'
-            ? window.btoa(unescape(encodeURIComponent(svgString)))
-            : Buffer.from(svgString, 'utf-8').toString('base64')
-          const innerData = 'data:image/svg+xml;base64,' + base64
-          const assetName = (asset.name || 'asset')
-          const assetId = asset.asset_number ?? (`asset-${asset.id}`)
-
-          // Render label using a temporary canvas to avoid nested SVG image loading issues
-          const canvas = document.createElement('canvas')
-          canvas.width = labelW
-          canvas.height = labelH
-          const ctx = canvas.getContext('2d')!
-          // white background
-          ctx.fillStyle = '#ffffff'
-          ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-          const loadQrImage = (): Promise<HTMLImageElement> => new Promise((res, rej) => {
-            const qrImg = new Image()
-            // Do NOT set crossOrigin for data URLs — that can cause failures in some browsers
-            let attempts = 0
-            const tryLoad = () => {
-              attempts += 1
-              qrImg.onload = () => res(qrImg)
-              qrImg.onerror = () => {
-                if (attempts < 2) {
-                  // retry once after small delay
-                  setTimeout(() => tryLoad(), 120)
-                  return
-                }
-                rej(new Error('Failed to load QR image'))
-              }
-              // Assign the same base64 data URL
-              qrImg.src = innerData
-            }
-            tryLoad()
-          })
-
-          try {
-            const qrImg = await loadQrImage()
-            const x = (labelW - qrLabelSize) / 2
-            const y = labelPadding
-            ctx.drawImage(qrImg, x, y, qrLabelSize, qrLabelSize)
-
-            // Draw text
-            ctx.fillStyle = '#0F172A'
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'middle'
-            // bold line
-            ctx.font = '700 18px Inter, sans-serif'
-            ctx.fillText(assetName, labelW / 2, labelPadding + qrLabelSize + line1H)
-            // secondary line
-            ctx.fillStyle = '#64748B'
-            ctx.font = '13px Inter, sans-serif'
-            ctx.fillText(assetId, labelW / 2, labelPadding + qrLabelSize + line1H + line2H)
-
-            const out = new Image()
-            const dataUrl = canvas.toDataURL('image/png')
-            out.onload = () => resolve(out)
-            out.onerror = (e) => reject(e)
-            out.src = dataUrl
-          } catch (err) {
-            // If QR image failed, render a fallback label with asset id text instead of QR
-            console.warn('QR image load failed for asset', asset.id, err)
-            ctx.fillStyle = '#F3F4F6'
-            ctx.fillRect((labelW - qrLabelSize) / 2, labelPadding, qrLabelSize, qrLabelSize)
-            ctx.fillStyle = '#0F172A'
-            ctx.font = '14px Inter, sans-serif'
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'middle'
-            ctx.fillText(assetId, labelW / 2, labelPadding + qrLabelSize / 2)
-
-            // Draw text lines as before
-            ctx.fillStyle = '#0F172A'
-            ctx.font = '700 18px Inter, sans-serif'
-            ctx.fillText(assetName, labelW / 2, labelPadding + qrLabelSize + line1H)
-            ctx.fillStyle = '#64748B'
-            ctx.font = '13px Inter, sans-serif'
-            ctx.fillText(assetId, labelW / 2, labelPadding + qrLabelSize + line1H + line2H)
-
-            const out = new Image()
-            const dataUrl = canvas.toDataURL('image/png')
-            out.onload = () => resolve(out)
-            out.onerror = (e) => reject(e)
-            out.src = dataUrl
-          }
-        } catch (err) { reject(err) }
-      })
-
-      try {
-        const sheetW = 2480
-        const sheetH = 3508
-        const cols = 2
-        const rows = 4
-        const margin = 80
-        const cellW = (sheetW - margin * 2) / cols
-        const cellH = (sheetH - margin * 2) / rows
-        const pad = 20
-        const drawW = Math.min(cellW - pad * 2, cellH - pad * 2)
-        const drawH = drawW * (labelH / labelW)
-
-        const slots = cols * rows
-        const total = assetsToUse.length
-        const sheets = Math.max(1, Math.ceil(total / slots))
-
-        const sheetBlobs: { name: string; blob: Blob }[] = []
-        const failedSheets: string[] = []
-        for (let s = 0; s < sheets; s++) {
-         const start = s * slots
-         const slice = assetsToUse.slice(start, start + slots)
-         let imgs: HTMLImageElement[] = []
-         try {
-           imgs = await Promise.all(slice.map(a => makeLabelImage(a)))
-         } catch (err) {
-           console.error('Failed to create one or more label images for sheet', s, err)
-           // continue with whatever images were produced successfully in this sheet (if any)
-           try {
-             imgs = await Promise.all(slice.map(async (a) => { try { return await makeLabelImage(a) } catch { return null } })).then(res => res.filter(Boolean) as HTMLImageElement[])
-           } catch (e) { imgs = [] }
-           failedSheets.push(`sheet-${s + 1}`)
-         }
-
-         const sheetCanvas = document.createElement('canvas')
-         sheetCanvas.width = sheetW
-         sheetCanvas.height = sheetH
-         const sctx = sheetCanvas.getContext('2d')!
-         sctx.fillStyle = '#ffffff'
-         sctx.fillRect(0, 0, sheetW, sheetH)
-
-         for (let i = 0; i < imgs.length; i++) {
-           const img = imgs[i]
-           const r = Math.floor(i / cols)
-           const c = i % cols
-           const x = margin + c * cellW + (cellW - drawW) / 2
-           const y = margin + r * cellH + (cellH - drawH) / 2
-           sctx.drawImage(img, x, y, drawW, drawH)
-         }
-
-         // Collect this sheet as a blob for zipping later
-         const filenameBase = slice.length > 0 ? (slice[0].asset_number ?? `psa-sheet-${start + 1}`) : `psa-sheet-${s + 1}`
-         const suffix = sheets > 1 ? `-part${s + 1}` : ''
-         const name = `${filenameBase}${suffix}-qr-sheet.png`
-
-         const blob = await new Promise<Blob | null>((resolve) => sheetCanvas.toBlob((b) => resolve(b), 'image/png'))
-         if (!blob) {
-           console.error('sheet canvas produced null blob for', name)
-           failedSheets.push(name)
-           continue
-         }
-         sheetBlobs.push({ name, blob })
-        }
-
-        if (sheetBlobs.length === 0) {
-         // nothing succeeded
-         throw new Error('No sheets could be generated')
-        }
-
-        // Create a ZIP containing all sheets
-        try {
-         const zip = new JSZip()
-         sheetBlobs.forEach((s) => zip.file(s.name, s.blob))
-         const zipBlob = await zip.generateAsync({ type: 'blob' })
-         const zipName = `psa-qr-sheets-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.zip`
-         const zipUrl = URL.createObjectURL(zipBlob)
-         const a = document.createElement('a')
-         a.href = zipUrl
-         a.download = zipName
-         document.body.appendChild(a)
-         a.click()
-         a.remove()
-         URL.revokeObjectURL(zipUrl)
-
-         if (failedSheets.length > 0) {
-           window.alert(`Some sheets failed to generate and were omitted from the ZIP: ${failedSheets.join(', ')}`)
-         }
-        } catch (err) {
-         console.error('Failed to create ZIP', err)
-         window.alert('Failed to package sheets into ZIP.')
-        }
-      } catch (err) {
-        console.error(err)
-        window.alert('Failed to generate sheet PNG.')
-      }
-    } finally {
-      setSheetGenerating(false)
-    }
-  }
-
   async function openPrintLabels() {
     try {
-      const selectedIds = selectedAssetIds.length > 0 ? selectedAssetIds : (qrAsset ? [qrAsset.id] : [])
       let assetsToUse: Asset[] = []
       if (selectedAssetIds.length > 0) {
         const cached = assetsForSelection.filter(a => selectedAssetIds.includes(a.id))
@@ -1721,7 +1575,6 @@ export function AssetPage() {
                         canCompleteBorrowing={canCompleteBorrowing}
                         onView={() => void openView(r.id)}
                         onQrLabel={() => void openQrLabel(r.id)}
-                        onQrLabel={() => void openQrLabel(r.id)}
                         onEdit={() => void openEdit(r.id)}
                         onDelete={() => setDeleteId(r.id)}
                         onBorrow={() => setBorrowId(r.id)}
@@ -2087,6 +1940,17 @@ export function AssetPage() {
               >
                 Issuance History
               </button>
+              <button
+                type="button"
+                className={`flex-1 pb-2.5 text-center text-sm font-semibold border-b-2 transition-all ${
+                  detailTab === 'attachments'
+                    ? 'border-[#0D47A1] text-[#0D47A1]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => { setDetailTab('attachments'); if (viewAsset) void loadAttachments(viewAsset.id) }}
+              >
+                Attachments
+              </button>
             </div>
 
             {detailTab === 'info' ? (
@@ -2166,7 +2030,7 @@ export function AssetPage() {
                       </button>
                     </div>
                     <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      {[
+                      {([
                         { label: 'Item Name', value: viewAsset.inventory.name },
                         { label: 'SKU / Item Code', value: viewAsset.inventory.sku ?? '—', mono: true },
                                                 { label: 'Type', value: viewAsset.inventory.item_type_name ?? '—' },
@@ -2174,7 +2038,7 @@ export function AssetPage() {
                                                 { label: 'Manufacturer', value: viewAsset.inventory.manufacturer ?? '—' },
                                                 { label: 'Model', value: viewAsset.inventory.model ?? '—' },
                                                 { label: 'Description', value: viewAsset.inventory.description ?? '—', full: true },
-                      ].map(({ label, value, mono, full }) => (
+                      ] as { label: string; value: string; mono?: boolean; full?: boolean }[]).map(({ label, value, mono, full }) => (
                         <div key={label} style={full ? { gridColumn: '1 / -1' } : {}}>
                           <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
                           <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B', fontFamily: mono ? 'ui-monospace,monospace' : undefined }}>{value}</div>
@@ -2190,32 +2054,31 @@ export function AssetPage() {
                     <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>Asset Identity</span>
                   </div>
                   <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    {[
+                    {([
                       { label: 'Asset Number', value: viewAsset.asset_number, mono: true },
                       { label: 'Property Number', value: viewAsset.property_number ?? '—', mono: true },
-                    ].map(({ label, value, mono }) => (
+                    ] as { label: string; value: string; mono?: boolean }[]).map(({ label, value, mono }) => (
                       <div key={label}>
                         <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B', fontFamily: mono ? 'ui-monospace,monospace' : undefined }}>{value}</div>
                       </div>
                     ))}
-                    {/* Identifiers */}
-                    {(viewAsset.identifiers?.length ?? 0) > 0 && (
+                    {(viewAsset.identifiers ?? []).length > 0 ? (
                       <div style={{ gridColumn: '1 / -1' }}>
                         <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 6 }}>Identifiers</div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {viewAsset.identifiers!.map((id) => (
+                          {(viewAsset.identifiers ?? []).map((id) => (
                             <span key={id.id} style={{
                               fontSize: 11.5, padding: '3px 10px', borderRadius: 20,
                               background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#475569',
                               fontFamily: 'ui-monospace,monospace',
                             }}>
-                              {id.identifier_type}: {id.identifier_value}
+                              {String(id.identifier_type)}: {String(id.identifier_value)}
                             </span>
                           ))}
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
@@ -2342,7 +2205,7 @@ export function AssetPage() {
                 )}
 
                 {/* ── Insurance ── */}
-                {(viewAsset as unknown as Record<string, unknown>)['insurance_provider'] && (
+                {Boolean((viewAsset as unknown as Record<string, unknown>)['insurance_provider']) && (
                   <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
                     <div style={{ padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                       <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>Insurance</span>
@@ -2374,7 +2237,7 @@ export function AssetPage() {
                 </div>
 
               </div>
-            ) : (
+            ) : detailTab === 'history' ? (
               <div className="mt-2 space-y-4">
                 {loadingHistory ? (
                   <div className="flex justify-center py-8">
@@ -2455,6 +2318,95 @@ export function AssetPage() {
                   </div>
                 )}
               </div>
+            ) : (
+              <div className="mt-2 space-y-4">
+                {canManageAssets && (
+                  <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2 text-sm font-bold text-[#0F172A]">
+                        <UploadCloud size={16} />
+                        Upload Attachment
+                      </div>
+                      <input
+                        key={attachmentInputKey}
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null
+                          if (file && !validateAttachmentFile(file)) {
+                            setAttachmentFile(null)
+                            setAttachmentInputKey((key) => key + 1)
+                            return
+                          }
+                          setAttachmentFile(file)
+                        }}
+                        className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                      />
+                      <textarea
+                        className={TEXTAREA_CLS}
+                        value={attachmentDescription}
+                        onChange={(e) => setAttachmentDescription(e.target.value)}
+                        placeholder="Optional description"
+                        rows={2}
+                      />
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs text-slate-500">Images, PDF, Word, Excel, or CSV. Max 10 MB.</span>
+                        <Button size="sm" onClick={() => void uploadAttachment()} disabled={!attachmentFile || attachmentUploading}>
+                          {attachmentUploading ? 'Uploading...' : 'Upload'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {attachmentsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Spinner label="Loading attachments..." />
+                  </div>
+                ) : attachments.length === 0 ? (
+                  <EmptyState title="No attachments" description="Documents and photos uploaded for this asset will appear here." />
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {attachments.map((attachment) => (
+                      <div key={attachment.id} className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] text-[#1D4ED8]">
+                            <Paperclip size={18} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-bold text-[#0F172A]" title={attachment.original_name}>
+                              {attachment.original_name}
+                            </div>
+                            <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
+                              <span>{attachment.kind}</span>
+                              <span>{formatAttachmentSize(attachment.size)}</span>
+                              {attachment.created_at && <span>{new Date(attachment.created_at).toLocaleString()}</span>}
+                            </div>
+                            {attachment.description && (
+                              <p className="mt-2 text-xs text-slate-600">{attachment.description}</p>
+                            )}
+                            {attachment.uploaded_by && (
+                              <div className="mt-2 text-[11px] text-slate-400">Uploaded by {attachment.uploaded_by}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-4 flex flex-wrap justify-end gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => void downloadAttachment(attachment)}>
+                            <Download size={14} />
+                            Download
+                          </Button>
+                          {canManageAssets && (
+                            <Button size="sm" variant="danger" onClick={() => void deleteAttachment(attachment)} disabled={attachmentDeletingId === attachment.id}>
+                              <Trash2 size={14} />
+                              {attachmentDeletingId === attachment.id ? 'Deleting...' : 'Delete'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -2467,7 +2419,7 @@ export function AssetPage() {
           <>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', maxWidth: '100%', overflowX: 'auto', paddingTop: 6 }}>
              <Button size="sm" variant="secondary" onClick={() => setQrAsset(null)}>Close</Button>
-              <Button size="sm" variant="secondary" onClick={() => { setPrintAssets([qrAsset]); setPrintModalOpen(true); setQrAsset(null); }}>Open QR Labels</Button>
+              <Button size="sm" variant="secondary" onClick={() => { if (!qrAsset) return; setPrintAssets([qrAsset]); setPrintModalOpen(true); setQrAsset(null); }}>Open QR Labels</Button>
             </div>
             </>
           }        >

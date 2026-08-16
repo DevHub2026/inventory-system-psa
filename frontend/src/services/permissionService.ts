@@ -29,6 +29,11 @@ export interface UpdatePermissionPayload {
   description?: string | null
 }
 
+type PermissionListResponse = {
+  data?: Permission[]
+  meta?: Paginated<Permission>['meta']
+}
+
 export const permissionService = {
   /**
    * Get paginated list of permissions with optional filters
@@ -45,7 +50,7 @@ export const permissionService = {
     const queryString = params.toString()
     const url = queryString ? `/permissions?${queryString}` : '/permissions'
 
-    const { data } = await api.get<any>(url)
+    const { data } = await api.get<PermissionListResponse>(url)
     
     return {
       items: data.data || [],

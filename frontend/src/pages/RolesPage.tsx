@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Shield, Plus, Users, KeyRound, Clock } from 'lucide-react'
 import { Card, Button, Input, Table, Modal, Alert, Spinner, SearchBar, Pagination, Badge, EmptyState } from '@/components/ui'
 import type { Column } from '@/components/ui'
@@ -18,7 +18,7 @@ export function RolesPage() {
 
   const [formData, setFormData] = useState<CreateRolePayload>({ name: '', description: '', permissions: [] })
 
-  const loadRoles = async () => {
+  const loadRoles = useCallback(async () => {
     setLoading(true)
     try {
       const result = await roleService.getRoles(filters)
@@ -29,9 +29,9 @@ export function RolesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
 
-  useEffect(() => { void loadRoles() }, [filters])
+  useEffect(() => { void loadRoles() }, [loadRoles])
 
   const handleSearch = (s: string) => {
     setSearch(s)
@@ -46,13 +46,13 @@ export function RolesPage() {
     setModalOpen(true)
   }
 
-  const handleEdit = (role: Role) => {
+  const handleEdit = useCallback((role: Role) => {
     setEditingRole(role)
     setFormData({ name: role.name, description: role.description || '', permissions: [] })
     setModalOpen(true)
-  }
+  }, [])
 
-  const handleDelete = async (role: Role) => {
+  const handleDelete = useCallback(async (role: Role) => {
     if (!confirm(`Delete role "${role.name}"?`)) return
     try {
       await roleService.deleteRole(role.id)
@@ -61,7 +61,7 @@ export function RolesPage() {
     } catch (error: unknown) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to delete role.' })
     }
-  }
+  }, [loadRoles])
 
   const handleSubmit = async () => {
     setSaving(true)
@@ -137,7 +137,7 @@ export function RolesPage() {
         </div>
       ),
     },
-  ], [])
+  ], [handleDelete, handleEdit])
 
   const stats = useMemo(() => [
     { label: 'Total Roles', value: pagination.total, icon: Shield, color: '#0B3D91', bg: '#EEF4FF' },

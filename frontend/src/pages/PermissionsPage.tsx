@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react'
+﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { KeyRound, Plus, Layers, Filter } from 'lucide-react'
 import { Card, Button, Input, Table, Modal, Alert, Spinner, SearchBar, Pagination, EmptyState, Dropdown } from '@/components/ui'
 import type { Column } from '@/components/ui'
@@ -41,7 +41,7 @@ export function PermissionsPage() {
     description: '',
   })
 
-  const loadPermissions = async () => {
+  const loadPermissions = useCallback(async () => {
     setLoading(true)
     try {
       const result = await permissionService.getPermissions(filters)
@@ -52,11 +52,11 @@ export function PermissionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
 
   useEffect(() => {
     void loadPermissions()
-  }, [filters])
+  }, [loadPermissions])
 
   const handleSearch = (s: string) => {
     setSearch(s)
@@ -77,7 +77,7 @@ export function PermissionsPage() {
     setModalOpen(true)
   }
 
-  const handleEdit = (permission: Permission) => {
+  const handleEdit = useCallback((permission: Permission) => {
     setEditingPermission(permission)
     setFormData({
       name: permission.name,
@@ -85,9 +85,9 @@ export function PermissionsPage() {
       description: permission.description || '',
     })
     setModalOpen(true)
-  }
+  }, [])
 
-  const handleDelete = async (permission: Permission) => {
+  const handleDelete = useCallback(async (permission: Permission) => {
     if (!confirm(`Delete permission "${permission.name}"?`)) return
     try {
       await permissionService.deletePermission(permission.id)
@@ -96,7 +96,7 @@ export function PermissionsPage() {
     } catch (error: unknown) {
       setMessage({ type: 'error', text: (error instanceof Error ? error.message : '') || 'Failed to delete permission.' })
     }
-  }
+  }, [loadPermissions])
 
   const handleSubmit = async () => {
     setSaving(true)
@@ -170,7 +170,7 @@ export function PermissionsPage() {
         </div>
       ),
     },
-  ], [])
+  ], [handleDelete, handleEdit])
 
   const moduleCounts = useMemo(() => {
     const counts: Record<string, number> = {}

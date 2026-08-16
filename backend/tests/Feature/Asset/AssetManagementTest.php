@@ -13,6 +13,8 @@ use App\Modules\Asset\Enums\ConditionStatus;
 use App\Modules\Asset\Enums\IdentifierType;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AssetManagementTest extends TestCase
@@ -302,5 +304,40 @@ class AssetManagementTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['asset_number']);
+    }
+
+    public function test_admin_can_upload_and_download_asset_attachment(): void
+    {
+        Storage::fake('local');
+        $asset = Asset::factory()->create();
+        $file = UploadedFile::fake()->image('asset-photo.jpg', 640, 480);
+
+        $attachmentId = $this->actingAs($this->admin)
+            ->postJson("/api/v1/assets/{$asset->id}/attachments", [
+                'file' => $file,
+                'description' => 'Front view',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.kind', 'image')
+            ->json('data.id');
+
+        $attachment = \App\Modules\Asset\Models\AssetAttachment::query()->findOrFail($attachmentId);
+        Storage::disk('local')->assertExists($attachment->path);
+
+        $this->actingAs($this->admin)
+            ->get("/api/v1/assets/{$asset->id}/attachments/{$attachmentId}/download")
+            ->assertOk();
+    }
+
+    public function test_regular_user_cannot_upload_asset_attachment(): void
+    {
+        Storage::fake('local');
+        $asset = Asset::factory()->create();
+
+        $this->actingAs($this->regularUser)
+            ->postJson("/api/v1/assets/{$asset->id}/attachments", [
+                'file' => UploadedFile::fake()->image('asset-photo.jpg'),
+            ])
+            ->assertStatus(403);
     }
 }

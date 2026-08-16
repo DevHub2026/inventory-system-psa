@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Report;
 
+use App\Enums\UserRole;
+use App\Models\Role;
 use App\Models\User;
 use App\Modules\Asset\Models\Asset;
+use App\Modules\Asset\Models\AssetIssuanceHistory;
 use App\Modules\Asset\Models\Location;
 use App\Modules\Asset\Models\Manufacturer;
 use App\Modules\Asset\Models\Office;
@@ -12,6 +15,7 @@ use App\Modules\Borrowing\Models\Borrowing;
 use App\Modules\Inventory\Models\InventoryItem;
 use App\Modules\Reservation\Models\Reservation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
 class ReportApiTest extends TestCase
@@ -116,6 +120,37 @@ class ReportApiTest extends TestCase
 
         $data = $response->json('data');
         $this->assertCount(1, $data);
+    }
+
+    public function test_reservation_report_export_contains_reservation_data(): void
+    {
+        $user = User::factory()->create([
+            'first_name' => 'Rina',
+            'middle_name' => null,
+            'last_name' => 'Requester',
+            'employee_number' => 'EMP-RSV-1',
+        ]);
+        $asset = $this->createAsset('AVAILABLE', 12);
+
+        $reservation = Reservation::create([
+            'user_id' => $user->id,
+            'status' => 'PENDING',
+            'start_date' => '2026-08-20',
+            'end_date' => '2026-08-21',
+            'remarks' => 'Training room setup',
+        ]);
+        $reservation->assets()->sync([$asset->id]);
+
+        $response = $this->actingAs($this->userWithRole(UserRole::AUDITOR))
+            ->get('/api/v1/reports/export?type=reservations&format=csv');
+
+        $response->assertOk();
+        $sheet = IOFactory::load($response->baseResponse->getFile()->getPathname())->getActiveSheet();
+
+        $this->assertSame('RESERVATIONS REPORT', $sheet->getCell('A2')->getValue());
+        $this->assertSame('Rina Requester', $this->normalizeCell($sheet->getCell('B6')->getValue()));
+        $this->assertSame($asset->asset_number, (string) $sheet->getCell('H6')->getValue());
+        $this->assertSame('Training room setup', (string) $sheet->getCell('I6')->getValue());
     }
 
     public function test_authenticated_user_can_get_inventory_report(): void
@@ -236,6 +271,105 @@ class ReportApiTest extends TestCase
         $this->assertCount(1, $data);
     }
 
+    public function test_user_activity_report_export_contains_activity_data(): void
+    {
+        $user = User::factory()->create([
+            'first_name' => 'Berto',
+            'middle_name' => null,
+            'last_name' => 'Borrower',
+        ]);
+        $asset = $this->createAsset('AVAILABLE', 13);
+
+        Borrowing::create([
+            'user_id' => $user->id,
+            'asset_id' => $asset->id,
+            'borrow_date' => '2026-08-10',
+            'due_date' => '2026-08-17',
+            'status' => 'RETURNED',
+        ]);
+
+        $response = $this->actingAs($this->userWithRole(UserRole::AUDITOR))
+            ->get('/api/v1/reports/export?type=user_activity&format=csv');
+
+        $response->assertOk();
+        $sheet = IOFactory::load($response->baseResponse->getFile()->getPathname())->getActiveSheet();
+
+        $this->assertSame('USER ACTIVITY REPORT', $sheet->getCell('A2')->getValue());
+        $this->assertSame('Berto Borrower', $this->normalizeCell($sheet->getCell('B6')->getValue()));
+        $this->assertSame($asset->name, (string) $sheet->getCell('C6')->getValue());
+        $this->assertSame('Returned', (string) $sheet->getCell('D6')->getValue());
+    }
+
+    public function test_report_role_can_get_reissuance_report(): void
+    {
+        $auditor = $this->userWithRole(UserRole::AUDITOR);
+        $asset = $this->createAsset('AVAILABLE', 10);
+        $from = User::factory()->create();
+        $to = User::factory()->create();
+        $officer = $this->userWithRole(UserRole::PROPERTY_CUSTODIAN);
+
+        AssetIssuanceHistory::query()->create([
+            'asset_id' => $asset->id,
+            'previous_employee_id' => $from->id,
+            'new_employee_id' => $to->id,
+            'transferred_by' => $officer->id,
+            'transfer_date' => now()->toDateString(),
+            'reason' => 'Office reassignment',
+            'remarks' => 'For audit test',
+        ]);
+
+        $this->actingAs($auditor)
+            ->getJson('/api/v1/reports/reissuances')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.0.asset_number', $asset->asset_number);
+    }
+
+    public function test_employee_cannot_get_reissuance_report(): void
+    {
+        $employee = $this->userWithRole(UserRole::EMPLOYEE);
+
+        $this->actingAs($employee)
+            ->getJson('/api/v1/reports/reissuances')
+            ->assertStatus(403);
+    }
+
+    public function test_guest_cannot_get_reissuance_report(): void
+    {
+        $this->getJson('/api/v1/reports/reissuances')
+            ->assertStatus(401);
+    }
+
+    public function test_reissuance_export_uses_same_report_authorization(): void
+    {
+        $auditor = $this->userWithRole(UserRole::AUDITOR);
+        $employee = $this->userWithRole(UserRole::EMPLOYEE);
+        $asset = $this->createAsset('AVAILABLE', 11);
+        $from = User::factory()->create();
+        $to = User::factory()->create();
+        $officer = $this->userWithRole(UserRole::PROPERTY_CUSTODIAN);
+
+        AssetIssuanceHistory::query()->create([
+            'asset_id' => $asset->id,
+            'previous_employee_id' => $from->id,
+            'new_employee_id' => $to->id,
+            'transferred_by' => $officer->id,
+            'transfer_date' => now()->toDateString(),
+            'reason' => 'Office reassignment',
+        ]);
+
+        $this->get('/api/v1/reports/reissuances/export?format=csv')
+            ->assertStatus(401);
+
+        $this->actingAs($auditor)
+            ->get('/api/v1/reports/reissuances/export?format=csv')
+            ->assertOk();
+
+        $this->actingAs($employee)
+            ->get('/api/v1/reports/reissuances/export?format=csv')
+            ->assertStatus(403);
+    }
+
     private function createAsset(string $status, int $uniqueId = 0): Asset
     {
         $office = Office::firstOrCreate(
@@ -287,5 +421,23 @@ class ReportApiTest extends TestCase
             'warranty_until' => '2027-01-01',
             'remarks' => 'Test asset',
         ]);
+    }
+
+    private function userWithRole(UserRole $role): User
+    {
+        $user = User::factory()->create();
+        $roleModel = Role::query()->firstOrCreate(
+            ['name' => $role->value],
+            ['description' => $role->name],
+        );
+
+        $user->roles()->sync([$roleModel->id]);
+
+        return $user;
+    }
+
+    private function normalizeCell(mixed $value): string
+    {
+        return trim(preg_replace('/\s+/u', ' ', (string) $value) ?? '');
     }
 }

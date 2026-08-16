@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode, CheckCircle2, XCircle } from 'lucide-react'
+import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode, CheckCircle2, XCircle, ArrowRightLeft, ClipboardCheck, Save } from 'lucide-react'
 import {
   Alert, Button, EmptyState, Input,
   Modal, Spinner, Badge, Card, SetupDropdown,
@@ -9,6 +9,7 @@ import {
 import {
   inventoryService,
   type CreateInventoryItemPayload,
+  type InventoryCountSession,
   type UpdateInventoryItemPayload,
 } from '@/services/inventoryService'
 import { assetService } from '@/services/assetService'
@@ -23,10 +24,17 @@ import ScrollableTableWrapper from '@/components/ui/ScrollableTableWrapper'
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function movementTypeLabel(t: string) {
-  return ({ stock_in: 'Stock Added', stock_out: 'Stock Removed', adjustment: 'Quantity Corrected' }[t] ?? t)
+  return ({
+    stock_in: 'Stock Added',
+    stock_out: 'Stock Removed',
+    adjustment: 'Quantity Corrected',
+    transfer_in: 'Transfer Received',
+    transfer_out: 'Transfer Sent',
+    count_reconciliation: 'Count Reconciliation',
+  }[t] ?? t)
 }
 
-type TabKey = 'all' | 'ppe' | 'se' | 'supply' | 'disposal'
+type TabKey = 'all' | 'ppe' | 'se' | 'supply' | 'disposal' | 'counts'
 
 interface SummaryData {
   ppe: { total: number; in_use: number; available: number; maintenance: number; disposed: number }
@@ -218,6 +226,7 @@ function Tabs({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => v
     { key: 'se',            label: 'Semi-Expendable' },
     { key: 'supply',        label: 'Supply' },
     { key: 'disposal',      label: 'Disposal' },
+    { key: 'counts',        label: 'Cycle Counts' },
   ]
   return (
     <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E2E8F0', background: '#FAFBFC' }}>
@@ -287,6 +296,7 @@ interface ActionCellProps {
   item: InventoryItem
   onStockIn: () => void
   onStockOut: () => void
+  onTransfer: () => void
   onAdjust: () => void
   onHistory: () => void
   onEdit: () => void
@@ -298,7 +308,7 @@ interface ActionCellProps {
   onViewDisposal?: () => void
 }
 
-function ActionCell({ item, onStockIn, onStockOut, onAdjust, onHistory, onEdit, onAsset, onDelete, onMarkForDisposal, onFinalizeDisposal, onCancelDisposal, onViewDisposal }: ActionCellProps) {
+function ActionCell({ item, onStockIn, onStockOut, onTransfer, onAdjust, onHistory, onEdit, onAsset, onDelete, onMarkForDisposal, onFinalizeDisposal, onCancelDisposal, onViewDisposal }: ActionCellProps) {
   const [openMenu, setOpenMenu] = useState(false)
   const menuContainerRef = useRef<HTMLDivElement | null>(null)
   const selectRef = useRef<HTMLButtonElement | null>(null)
@@ -337,7 +347,7 @@ function ActionCell({ item, onStockIn, onStockOut, onAdjust, onHistory, onEdit, 
       top = Math.max(8, r.top - gap - 200)
     }
     // align to trigger right edge when possible
-    let left = Math.max(8, Math.min(r.right - MIN, window.innerWidth - MIN - 8))
+    const left = Math.max(8, Math.min(r.right - MIN, window.innerWidth - MIN - 8))
     setPopupPos({ position: 'fixed', left, top, minWidth: MIN, zIndex: 9999 })
   }, [])
 
@@ -441,6 +451,7 @@ function ActionCell({ item, onStockIn, onStockOut, onAdjust, onHistory, onEdit, 
 
         {openMenu && createPortal(
                   <div ref={popupRef} role="menu" aria-label="Row actions" style={{ ...popupPos, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6 }}>
+            {menuItem(<ArrowRightLeft size={14} />, 'Transfer Location', onTransfer)}
             {menuItem(<RotateCcw size={14} />, 'Adjust Quantity', onAdjust)}
             {menuItem(<History size={14} />, 'View History', onHistory)}
             {menuItem(<Edit3 size={14} />, 'Edit Item', onEdit)}
@@ -503,10 +514,26 @@ export function InventoryPage() {
   const [adjustItem,     setAdjustItem]     = useState<InventoryItem | null>(null)
   const [adjustQty,      setAdjustQty]      = useState(0)
   const [adjustReason,   setAdjustReason]   = useState('')
+  const [transferItem,   setTransferItem]   = useState<InventoryItem | null>(null)
+  const [transferQty,    setTransferQty]    = useState(1)
+  const [transferSourceLocationId, setTransferSourceLocationId] = useState<number | null>(null)
+  const [transferDestinationLocationId, setTransferDestinationLocationId] = useState<number | null>(null)
+  const [transferReason, setTransferReason] = useState('')
   const [historyItem,    setHistoryItem]    = useState<InventoryItem | null>(null)
   const [historyRows,    setHistoryRows]    = useState<StockMovement[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [wizardOpen,     setWizardOpen]     = useState(false)
+  const [countSessions, setCountSessions] = useState<InventoryCountSession[]>([])
+  const [countSessionsLoading, setCountSessionsLoading] = useState(false)
+  const [countSessionModalOpen, setCountSessionModalOpen] = useState(false)
+  const [countLocationId, setCountLocationId] = useState<number | null>(null)
+  const [countDate, setCountDate] = useState<string>(new Date().toISOString().slice(0, 10))
+  const [countNotes, setCountNotes] = useState('')
+  const [selectedCountSession, setSelectedCountSession] = useState<InventoryCountSession | null>(null)
+  const [selectedCountLoading, setSelectedCountLoading] = useState(false)
+  const [countActuals, setCountActuals] = useState<Record<number, string>>({})
+  const [countRemarks, setCountRemarks] = useState<Record<number, string>>({})
+  const [reconcileSession, setReconcileSession] = useState<InventoryCountSession | null>(null)
 
   // Disposal (inventory-initiated, operates on linked Asset when present)
   const [disposeModalOpen, setDisposeModalOpen] = useState(false)
@@ -595,6 +622,8 @@ export function InventoryPage() {
     serial_number: null,
   })
 
+  const editingItemId = editingItem?.id
+
   useEffect(() => {
     const validateCode = async () => {
       try {
@@ -602,7 +631,7 @@ export function InventoryPage() {
           params: {
             sku: formData.sku,
             // Pass the inventory item's id so the backend ignores the item's own SKU
-            ...(editingItem ? { ignore_id: editingItem.id } : {}),
+            ...(editingItemId ? { ignore_id: editingItemId } : {}),
           },
         })
         setCodeValidation(unwrapData(data))
@@ -615,20 +644,21 @@ export function InventoryPage() {
     } else {
       setCodeValidation(null)
     }
-  }, [formData.sku, editingItem?.id])
+  }, [formData.sku, editingItemId])
 
   // Load table rows — pg=1 resets list, pg>1 appends (infinite scroll)
   const loadInventory = useCallback(async (pg = 1) => {
+    if (activeTab === 'counts') return
     if (pg === 1) setLoading(true); else setLoadingMore(true)
     try {
       const classification =
-        activeTab === 'all'
-          ? undefined
-          : activeTab === 'ppe'
-            ? 'PPE'
-            : activeTab === 'se'
-              ? 'SE'
-              : 'SUPPLY'
+        activeTab === 'ppe'
+          ? 'PPE'
+          : activeTab === 'se'
+            ? 'SE'
+            : activeTab === 'supply'
+              ? 'SUPPLY'
+              : undefined
 
       const result = await inventoryService.list({
         page: pg,
@@ -687,13 +717,14 @@ export function InventoryPage() {
 
   // Trigger on tab / filter changes
   useEffect(() => {
+    if (activeTab === 'counts') return
     void loadInventory(1)
-  }, [activeTab, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, loadInventory, statusFilter])
 
   // Summary loads once on mount
   useEffect(() => {
     void loadSummary()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadSummary])
 
   // Infinite scroll — observe sentinel at bottom of table
   useEffect(() => {
@@ -701,7 +732,7 @@ export function InventoryPage() {
     if (!sentinel) return
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && page < lastPage && !loadingMore && !loading) {
+        if (activeTab !== 'counts' && entries[0].isIntersecting && page < lastPage && !loadingMore && !loading) {
           void loadInventory(page + 1)
         }
       },
@@ -709,7 +740,7 @@ export function InventoryPage() {
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [page, lastPage, loading, loadingMore, loadInventory])
+  }, [activeTab, page, lastPage, loading, loadingMore, loadInventory])
 
   const handleTabChange = (t: TabKey) => { 
     setActiveTab(t); 
@@ -717,6 +748,9 @@ export function InventoryPage() {
     // When switching to Disposal tab, show disposed items by setting status filter
     if (t === 'disposal') {
       setStatusFilter('DISPOSED')
+    } else if (t === 'counts') {
+      setStatusFilter('')
+      setSearch('')
     } else {
       setStatusFilter('')
     }
@@ -934,6 +968,150 @@ export function InventoryPage() {
     finally { setHistoryLoading(false) }
   }
 
+  const openTransfer = (item: InventoryItem) => {
+    void loadSetupOptions()
+    setTransferItem(item)
+    setTransferQty(1)
+    setTransferSourceLocationId(item.location_id ?? null)
+    setTransferDestinationLocationId(null)
+    setTransferReason('')
+  }
+
+  const handleTransferSubmit = async () => {
+    if (!transferItem) return
+    if (!transferSourceLocationId || !transferDestinationLocationId) {
+      setMessage({ type: 'error', text: 'Select both source and destination locations.' })
+      return
+    }
+    if (transferSourceLocationId === transferDestinationLocationId) {
+      setMessage({ type: 'error', text: 'Destination must be different from the source location.' })
+      return
+    }
+    if (transferQty < 1 || transferQty > transferItem.quantity) {
+      setMessage({ type: 'error', text: 'Transfer quantity must be within the available stock.' })
+      return
+    }
+    setSaving(true)
+    try {
+      await inventoryService.transfer(transferItem.id, {
+        quantity: transferQty,
+        source_location_id: transferSourceLocationId,
+        destination_location_id: transferDestinationLocationId,
+        reason: transferReason.trim() || undefined,
+      })
+      setTransferItem(null)
+      setMessage({ type: 'success', text: 'Inventory transferred.' })
+      notifyDataChanged('inventory')
+      void loadInventory(page); void loadSummary()
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to transfer inventory.' })
+    } finally { setSaving(false) }
+  }
+
+  const hydrateCountInputs = (session: InventoryCountSession) => {
+    setCountActuals(Object.fromEntries(session.items.map((item) => [item.inventory_item_id, item.actual_quantity === null || item.actual_quantity === undefined ? '' : String(item.actual_quantity)])))
+    setCountRemarks(Object.fromEntries(session.items.map((item) => [item.inventory_item_id, item.remarks ?? ''])))
+  }
+
+  const loadCountSessions = useCallback(async () => {
+    setCountSessionsLoading(true)
+    try {
+      const result = await inventoryService.countSessions()
+      setCountSessions(result.items)
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load count sessions.' })
+    } finally { setCountSessionsLoading(false) }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'counts') void loadCountSessions()
+  }, [activeTab, loadCountSessions])
+
+  const openCountSession = async (sessionId: number) => {
+    setSelectedCountLoading(true)
+    try {
+      const session = await inventoryService.getCountSession(sessionId)
+      setSelectedCountSession(session)
+      hydrateCountInputs(session)
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load count session.' })
+    } finally { setSelectedCountLoading(false) }
+  }
+
+  const handleCreateCountSession = async () => {
+    setSaving(true)
+    try {
+      const session = await inventoryService.createCountSession({
+        location_id: countLocationId,
+        counted_at: countDate || undefined,
+        notes: countNotes.trim() || undefined,
+      })
+      setCountSessionModalOpen(false)
+      setCountLocationId(null)
+      setCountNotes('')
+      setMessage({ type: 'success', text: 'Count session started.' })
+      await loadCountSessions()
+      setSelectedCountSession(session)
+      hydrateCountInputs(session)
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to start count session.' })
+    } finally { setSaving(false) }
+  }
+
+  const handleRecordCount = async (itemId: number) => {
+    if (!selectedCountSession) return
+    const rawActual = countActuals[itemId]
+    const actualQuantity = Number(rawActual)
+    if (!Number.isFinite(actualQuantity) || actualQuantity < 0) {
+      setMessage({ type: 'error', text: 'Enter a valid actual quantity before saving the count.' })
+      return
+    }
+    setSaving(true)
+    try {
+      const session = await inventoryService.recordCount(selectedCountSession.id, itemId, {
+        actual_quantity: actualQuantity,
+        remarks: countRemarks[itemId]?.trim() || undefined,
+      })
+      setSelectedCountSession(session)
+      hydrateCountInputs(session)
+      await loadCountSessions()
+      setMessage({ type: 'success', text: 'Count saved.' })
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to save count.' })
+    } finally { setSaving(false) }
+  }
+
+  const handleCompleteCountSession = async () => {
+    if (!selectedCountSession) return
+    setSaving(true)
+    try {
+      const session = await inventoryService.completeCountSession(selectedCountSession.id)
+      setSelectedCountSession(session)
+      hydrateCountInputs(session)
+      await loadCountSessions()
+      setMessage({ type: 'success', text: 'Count session completed.' })
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to complete count session.' })
+    } finally { setSaving(false) }
+  }
+
+  const handleReconcileCountSession = async () => {
+    if (!reconcileSession) return
+    setSaving(true)
+    try {
+      const session = await inventoryService.reconcileCountSession(reconcileSession.id)
+      setReconcileSession(null)
+      setSelectedCountSession(session)
+      hydrateCountInputs(session)
+      await loadCountSessions()
+      notifyDataChanged('inventory')
+      void loadSummary()
+      setMessage({ type: 'success', text: 'Count session reconciled to inventory.' })
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to reconcile count session.' })
+    } finally { setSaving(false) }
+  }
+
   // ── Export modal state ─────────────────────────────────────────────────────
   const [exportModalOpen,  setExportModalOpen]  = useState(false)
   const [exportFormat,     setExportFormat]     = useState<'xlsx' | 'csv' | 'json'>('xlsx')
@@ -957,7 +1135,7 @@ export function InventoryPage() {
         const filtered = result.items.map((it) => {
           const obj: Record<string, unknown> = {}
           for (const k of exportColumns) {
-            obj[k] = (it as any)[k]
+            obj[k] = (it as unknown as Record<string, unknown>)[k]
           }
           return obj
         })
@@ -1030,6 +1208,165 @@ export function InventoryPage() {
     whiteSpace: 'nowrap' as const,
   }
 
+  const countSessionProgress = (session: InventoryCountSession) => {
+    const counted = session.items.filter((item) => item.actual_quantity !== null && item.actual_quantity !== undefined).length
+    return { counted, total: session.items.length }
+  }
+
+  const countSessionVariance = (session: InventoryCountSession) => {
+    return session.items.filter((item) => Number(item.variance ?? 0) !== 0).length
+  }
+
+  const countStatusTone = (status: string) => {
+    if (status === 'reconciled') return 'green' as const
+    if (status === 'completed') return 'blue' as const
+    return 'yellow' as const
+  }
+
+  const countCardStyle: React.CSSProperties = {
+    border: '1px solid #E2E8F0',
+    borderRadius: 12,
+    background: '#fff',
+    padding: 16,
+  }
+
+  const renderCountSessions = () => (
+    <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0F172A', fontWeight: 800, fontSize: 16 }}>
+            <ClipboardCheck size={18} />
+            Physical Count Sessions
+          </div>
+          <p style={{ margin: '4px 0 0', color: '#64748B', fontSize: 13 }}>
+            Record actual stock by location, complete the count, then reconcile approved variances.
+          </p>
+        </div>
+        <Button size="sm" onClick={() => { void loadSetupOptions(); setCountDate(new Date().toISOString().slice(0, 10)); setCountSessionModalOpen(true) }}>
+          <Plus size={14} />
+          Start Count
+        </Button>
+      </div>
+
+      {countSessionsLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '42px 0' }}><Spinner /></div>
+      ) : countSessions.length === 0 ? (
+        <EmptyState title="No count sessions yet" description="Start a count session to verify inventory quantities." />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+          {countSessions.map((session) => {
+            const progress = countSessionProgress(session)
+            return (
+              <button
+                key={session.id}
+                type="button"
+                onClick={() => void openCountSession(session.id)}
+                style={{
+                  ...countCardStyle,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  boxShadow: selectedCountSession?.id === session.id ? '0 0 0 2px #BFDBFE' : 'none',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                  <strong style={{ color: '#0F172A', fontSize: 14 }}>{session.location_name ?? 'All Locations'}</strong>
+                  <Badge tone={countStatusTone(session.status)}>{session.status}</Badge>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12.5, color: '#475569' }}>
+                  <div>Counted: <strong>{progress.counted}/{progress.total}</strong></div>
+                  <div>Variance: <strong>{countSessionVariance(session)}</strong></div>
+                  <div>Started by: <strong>{session.started_by ?? 'System'}</strong></div>
+                  <div>Date: <strong>{session.counted_at ?? session.completed_at ?? 'Draft'}</strong></div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {selectedCountLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}><Spinner /></div>
+      ) : selectedCountSession && (
+        <div style={{ ...countCardStyle, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontWeight: 800, color: '#0F172A' }}>
+                {selectedCountSession.location_name ?? 'All Locations'} Count
+              </div>
+              <div style={{ fontSize: 12.5, color: '#64748B', marginTop: 3 }}>
+                {selectedCountSession.notes || 'No notes provided.'}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Badge tone={countStatusTone(selectedCountSession.status)}>{selectedCountSession.status}</Badge>
+              {selectedCountSession.status === 'draft' && (
+                <Button size="sm" onClick={() => void handleCompleteCountSession()} disabled={saving}>
+                  Complete Count
+                </Button>
+              )}
+              {selectedCountSession.status === 'completed' && (
+                <Button size="sm" onClick={() => setReconcileSession(selectedCountSession)} disabled={saving}>
+                  Reconcile
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {selectedCountSession.items.map((item) => {
+              const actualRaw = countActuals[item.inventory_item_id] ?? ''
+              const actual = actualRaw === '' ? null : Number(actualRaw)
+              const variance = actual === null || Number.isNaN(actual) ? item.variance : actual - item.expected_quantity
+              const isDraft = selectedCountSession.status === 'draft'
+              return (
+                <div key={item.id} style={{ border: '1px solid #E5E7EB', borderRadius: 10, padding: 12, background: '#F8FAFC' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, alignItems: 'end' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#1E293B', fontSize: 13.5 }}>{item.item_name ?? `Item #${item.inventory_item_id}`}</div>
+                      <div style={{ color: '#64748B', fontSize: 12 }}>{item.sku ?? 'No SKU'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700 }}>Expected</div>
+                      <div style={{ fontWeight: 800, color: '#0F172A' }}>{item.expected_quantity}</div>
+                    </div>
+                    <Input
+                      label="Actual"
+                      type="number"
+                      min={0}
+                      value={actualRaw}
+                      disabled={!isDraft}
+                      onChange={(e) => setCountActuals((prev) => ({ ...prev, [item.inventory_item_id]: e.target.value }))}
+                    />
+                    <div>
+                      <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700 }}>Variance</div>
+                      <div style={{ fontWeight: 800, color: variance === 0 ? '#166534' : variance < 0 ? '#DC2626' : '#D97706' }}>
+                        {variance > 0 ? '+' : ''}{variance}
+                      </div>
+                    </div>
+                    {isDraft && (
+                      <Button size="sm" variant="secondary" onClick={() => void handleRecordCount(item.inventory_item_id)} disabled={saving}>
+                        <Save size={14} />
+                        Save
+                      </Button>
+                    )}
+                  </div>
+                  <Input
+                    label="Remarks"
+                    value={countRemarks[item.inventory_item_id] ?? ''}
+                    disabled={!isDraft}
+                    onChange={(e) => setCountRemarks((prev) => ({ ...prev, [item.inventory_item_id]: e.target.value }))}
+                    placeholder="Optional count note"
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 32 }}>
 
@@ -1064,7 +1401,7 @@ export function InventoryPage() {
             Import
           </Button>
           <Button variant="secondary" size="sm" onClick={() => {
-            setExportScope(activeTab === 'all' ? 'all' : activeTab)
+            setExportScope(['ppe', 'se', 'supply', 'disposal'].includes(activeTab) ? activeTab as 'ppe' | 'se' | 'supply' | 'disposal' : 'all')
             setExportModalOpen(true)
           }}>
             <Download size={14} />
@@ -1095,6 +1432,7 @@ export function InventoryPage() {
           <Tabs active={activeTab} onChange={handleTabChange} />
 
           {/* Search + filter row — sits flush below tabs */}
+          {activeTab !== 'counts' && (
           <div style={{
             display: 'flex',
             gap: 10,
@@ -1176,9 +1514,11 @@ export function InventoryPage() {
               Filter
             </button>
           </div>
+          )}
         </div>
 
         {/* Table */}
+        {activeTab === 'counts' ? renderCountSessions() : (
         <div style={{ overflowX: 'auto' }}>
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
@@ -1385,6 +1725,7 @@ export function InventoryPage() {
                         item={r}
                         onStockIn   ={() => { setStockItem(r); setStockType('in');  setStockQty(1); setStockReason(''); setStockModalOpen(true) }}
                         onStockOut  ={() => { setStockItem(r); setStockType('out'); setStockQty(1); setStockReason(''); setStockModalOpen(true) }}
+                        onTransfer  ={() => openTransfer(r)}
                         onAdjust    ={() => { setAdjustItem(r); setAdjustQty(r.quantity); setAdjustReason('') }}
                         onHistory   ={() => void loadHistory(r)}
                         onEdit      ={() => handleEdit(r)}
@@ -1402,10 +1743,11 @@ export function InventoryPage() {
             </table></ScrollableTableWrapper>
           )}
         </div>
+        )}
 
         {/* Infinite scroll sentinel */}
-        <div ref={sentinelRef} style={{ height: 1 }} />
-        {loadingMore && (
+        {activeTab !== 'counts' && <div ref={sentinelRef} style={{ height: 1 }} />}
+        {activeTab !== 'counts' && loadingMore && (
           <div style={{
             display: 'flex', justifyContent: 'center', padding: '20px 0',
             borderTop: '1px solid #F1F5F9',
@@ -1862,6 +2204,133 @@ export function InventoryPage() {
         </div>
       </Modal>
 
+      {/* ── Transfer modal ── */}
+      <Modal
+        open={transferItem !== null}
+        onClose={() => setTransferItem(null)}
+        title={`Transfer Location - ${transferItem?.name ?? ''}`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setTransferItem(null)}>Cancel</Button>
+            <Button onClick={() => void handleTransferSubmit()} disabled={saving}>
+              {saving ? 'Transferring...' : 'Transfer'}
+            </Button>
+          </>
+        }
+      >
+        {transferItem && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12,
+              borderRadius: 12, border: '1px solid #E2E8F0', background: '#F8FAFC', padding: 14,
+            }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8' }}>Available</div>
+                <div style={{ fontWeight: 800, color: '#0F172A' }}>{transferItem.quantity} {transferItem.unit}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8' }}>Current Location</div>
+                <div style={{ fontWeight: 800, color: '#0F172A' }}>{transferItem.location_name ?? 'Unassigned'}</div>
+              </div>
+            </div>
+
+            <Input
+              label="Quantity to Transfer"
+              type="number"
+              min={1}
+              max={transferItem.quantity}
+              value={transferQty.toString()}
+              onChange={(e) => setTransferQty(parseInt(e.target.value) || 1)}
+            />
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Source Location</span>
+                <select
+                  value={transferSourceLocationId ?? ''}
+                  onChange={(e) => setTransferSourceLocationId(e.target.value ? Number(e.target.value) : null)}
+                  style={{ height: 40, borderRadius: 10, border: '1.5px solid #E2E8F0', padding: '0 12px', fontFamily: 'inherit', color: '#1E293B' }}
+                >
+                  <option value="">Select source</option>
+                  {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+                </select>
+              </label>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Destination Location</span>
+                <select
+                  value={transferDestinationLocationId ?? ''}
+                  onChange={(e) => setTransferDestinationLocationId(e.target.value ? Number(e.target.value) : null)}
+                  style={{ height: 40, borderRadius: 10, border: '1.5px solid #E2E8F0', padding: '0 12px', fontFamily: 'inherit', color: '#1E293B' }}
+                >
+                  <option value="">Select destination</option>
+                  {locations
+                    .filter((location) => location.id !== transferSourceLocationId)
+                    .map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+                </select>
+              </label>
+            </div>
+
+            <Input
+              label="Reason"
+              value={transferReason}
+              onChange={(e) => setTransferReason(e.target.value)}
+              placeholder="Office transfer, reassignment, stock balancing..."
+            />
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Count session modal ── */}
+      <Modal
+        open={countSessionModalOpen}
+        onClose={() => setCountSessionModalOpen(false)}
+        title="Start Inventory Count"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setCountSessionModalOpen(false)}>Cancel</Button>
+            <Button onClick={() => void handleCreateCountSession()} disabled={saving}>
+              {saving ? 'Starting...' : 'Start Count'}
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Location</span>
+            <select
+              value={countLocationId ?? ''}
+              onChange={(e) => setCountLocationId(e.target.value ? Number(e.target.value) : null)}
+              style={{ height: 40, borderRadius: 10, border: '1.5px solid #E2E8F0', padding: '0 12px', fontFamily: 'inherit', color: '#1E293B' }}
+            >
+              <option value="">All locations</option>
+              {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+            </select>
+          </label>
+          <Input label="Count Date" type="date" value={countDate} onChange={(e) => setCountDate(e.target.value)} />
+          <Input label="Notes" value={countNotes} onChange={(e) => setCountNotes(e.target.value)} placeholder="Optional count instructions or scope" />
+        </div>
+      </Modal>
+
+      {/* ── Reconcile confirmation ── */}
+      <Modal
+        open={reconcileSession !== null}
+        onClose={() => setReconcileSession(null)}
+        title="Reconcile Count Session"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setReconcileSession(null)}>Cancel</Button>
+            <Button onClick={() => void handleReconcileCountSession()} disabled={saving}>
+              {saving ? 'Reconciling...' : 'Reconcile Inventory'}
+            </Button>
+          </>
+        }
+      >
+        <p style={{ margin: 0, color: '#475569', fontSize: 14, lineHeight: 1.6 }}>
+          This will apply the counted variances to inventory quantities and create stock movement records for the reconciliation.
+        </p>
+      </Modal>
+
       {/* ── Adjust Quantity modal ── */}
       <Modal
         open={adjustItem !== null}
@@ -1949,7 +2418,9 @@ export function InventoryPage() {
                 ? <TrendingUp size={14} style={{ color: '#16A34A' }} />
                 : m.type === 'stock_out'
                   ? <TrendingDown size={14} style={{ color: '#DC2626' }} />
-                  : <RotateCcw size={14} style={{ color: '#D97706' }} />
+                  : m.type.startsWith('transfer')
+                    ? <ArrowRightLeft size={14} style={{ color: '#2563EB' }} />
+                    : <RotateCcw size={14} style={{ color: '#D97706' }} />
 
               return (
                 <div key={m.id} style={{
@@ -1969,7 +2440,9 @@ export function InventoryPage() {
                           ? '#F0FDF4'
                           : m.type === 'stock_out'
                             ? '#FEF2F2'
-                            : '#FFFBEB',
+                            : m.type.startsWith('transfer')
+                              ? '#EFF6FF'
+                              : '#FFFBEB',
                       }}>
                         {typeIcon}
                       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser'
 import { AlertCircle, CheckCircle2, Info, CameraOff, Camera, QrCode } from 'lucide-react'
@@ -103,7 +103,7 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
 
 
 
-  function stopCamera() {
+  const stopCamera = useCallback(() => {
 
     controlsRef.current?.stop()
 
@@ -113,11 +113,11 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
 
     resolvingRef.current = false
 
-  }
+  }, [])
 
 
 
-  async function resolveIdentifier(value: string) {
+  const resolveIdentifier = useCallback(async (value: string) => {
 
     const identifier = value.trim()
 
@@ -244,11 +244,11 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
 
     }
 
-  }
+  }, [mode, onCompleted, stopCamera])
 
 
 
-  async function startCamera() {
+  const startCamera = useCallback(async () => {
 
     stopCamera()
 
@@ -358,7 +358,7 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
 
     }
 
-  }
+  }, [mode, resolveIdentifier, stopCamera])
 
 
 
@@ -370,11 +370,11 @@ export function AssetQrScanner({ open, onClose, mode = 'transaction', onComplete
 
     setState('idle')
 
-  }, [open])
+  }, [open, startCamera, stopCamera])
 
 
 
-  useEffect(() => () => stopCamera(), [])
+  useEffect(() => () => stopCamera(), [stopCamera])
 
 
 

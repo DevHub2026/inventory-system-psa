@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Modal, Button, Spinner } from '@/components/ui'
 import { assetService } from '@/services/assetService'
+import type { Asset } from '@/types'
 
 export function AssetSheetSelector({ open, onClose, onConfirm, initialSelected = [] }: { open: boolean; onClose: () => void; onConfirm: (ids: number[]) => void; initialSelected?: number[] }) {
   const [loading, setLoading] = useState(false)
-  const [assets, setAssets] = useState<any[]>([])
+  const [assets, setAssets] = useState<Asset[]>([])
   const [selected, setSelected] = useState<number[]>(initialSelected)
 
   useEffect(() => {

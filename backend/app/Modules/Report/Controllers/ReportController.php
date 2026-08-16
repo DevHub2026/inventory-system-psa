@@ -197,8 +197,19 @@ class ReportController extends Controller
             'id' => $borrowing->id,
             'user' => ($borrowing->user?->full_name ?: $borrowing->user?->email) ?? 'N/A',
             'asset_name' => $borrowing->asset->name ?? 'N/A',
-            'action' => $borrowing->status === 'BORROWED' ? 'Borrowed' : 'Returned',
+            'action' => match ($borrowing->status) {
+                'BORROWED' => 'Borrowed',
+                'RETURNED' => 'Returned',
+                default => ucfirst(strtolower((string) $borrowing->status)),
+            },
             'date' => $borrowing->borrow_date?->format('Y-m-d'),
         ])->values(), 'User activity report generated successfully.');
+    }
+
+    public function assetHistory(Request $request): JsonResponse
+    {
+        $report = $this->reportService->getAssetHistoryReport($request->all());
+
+        return $this->success($report, 'Asset history report generated successfully.');
     }
 }

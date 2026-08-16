@@ -8,6 +8,13 @@ interface Issue {
   element: Element | null
 }
 
+function getSelector(el: Element) {
+  let selector = el.tagName.toLowerCase()
+  if (el.id) selector += `#${el.id}`
+  if (el.className && typeof el.className === 'string') selector += '.' + el.className.split(' ').filter(Boolean).join('.')
+  return selector
+}
+
 export function AccessibilityQaPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [scanning, setScanning] = useState(false)
   const [issues, setIssues] = useState<Issue[]>([])
@@ -98,18 +105,14 @@ export function AccessibilityQaPanel({ open, onClose }: { open: boolean; onClose
         el.style.boxShadow = '0 0 0 4px rgba(255, 217, 90, 0.14)'
         el.style.transition = 'box-shadow 0.15s ease'
         // scroll into view
-        try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }) } catch { }
+        try {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        } catch {
+          // Element may disappear while the scan panel is open.
+        }
       }
     }
   }, [highlighted])
-
-  function getSelector(el: Element) {
-    if (!el) return ''
-    let selector = el.tagName.toLowerCase()
-    if (el.id) selector += `#${el.id}`
-    if (el.className && typeof el.className === 'string') selector += '.' + el.className.split(' ').filter(Boolean).join('.')
-    return selector
-  }
 
   return (
     <Modal open={open} title="Accessibility QA" onClose={onClose} maxWidth={900}>
@@ -133,7 +136,14 @@ export function AccessibilityQaPanel({ open, onClose }: { open: boolean; onClose
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <Button size="sm" variant="secondary" onClick={() => {
-                          if (it.element && (it.element as HTMLElement).focus) try { (it.element as HTMLElement).focus(); setHighlighted(it.selector) } catch {}
+                          if (it.element && (it.element as HTMLElement).focus) {
+                            try {
+                              (it.element as HTMLElement).focus()
+                              setHighlighted(it.selector)
+                            } catch {
+                              // The element may no longer be focusable.
+                            }
+                          }
                         }}>Focus</Button>
                         <Button size="sm" onClick={() => { if (it.element) {
                           const html = (it.element as Element).outerHTML

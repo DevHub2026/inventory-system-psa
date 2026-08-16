@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Asset\Controllers\PermanentIssuanceController;
+use App\Modules\Asset\Controllers\AssetAttachmentController;
 use App\Modules\Asset\Controllers\AssetController;
 use App\Modules\Asset\Controllers\DisposalController;
 use App\Modules\Asset\Controllers\LocationController;
@@ -26,6 +27,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('assets/{asset}/restore', [AssetController::class, 'restore']);
     Route::post('assets/{asset}/transfer', [AssetController::class, 'transfer']);
     Route::patch('assets/{asset}/borrowable', [AssetController::class, 'setBorrowable']);
+    Route::get('assets/{asset}/attachments', [AssetAttachmentController::class, 'index']);
+    Route::post('assets/{asset}/attachments', [AssetAttachmentController::class, 'store']);
+    Route::get('assets/{asset}/attachments/{attachment}/download', [AssetAttachmentController::class, 'download']);
+    Route::delete('assets/{asset}/attachments/{attachment}', [AssetAttachmentController::class, 'destroy']);
 
     // Disposal lifecycle routes — restricted to staff/admin roles
     Route::middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head')->group(function (): void {
@@ -37,12 +42,16 @@ Route::middleware('auth:sanctum')->group(function (): void {
     // Reissuance routes
     Route::post('assets/{asset}/reissue', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'reissue']);
     Route::get('assets/{asset}/issuance-history', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'history']);
-    Route::get('reports/reissuances', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'report']);
-    Route::get('reports/reissuances/export', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'export']);
+    Route::middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head,Auditor')->group(function (): void {
+        Route::get('reports/reissuances', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'report']);
+        Route::get('reports/reissuances/export', [\App\Modules\Asset\Controllers\AssetReissuanceController::class, 'export']);
+    });
 
     // Permanent issuance routes
-    Route::get('permanent-issuances/users/search', [PermanentIssuanceController::class, 'searchUsers']);
-    Route::get('permanent-issuances/users', [PermanentIssuanceController::class, 'directoryUsers']);
+    Route::middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer')->group(function (): void {
+        Route::get('permanent-issuances/users/search', [PermanentIssuanceController::class, 'searchUsers']);
+        Route::get('permanent-issuances/users', [PermanentIssuanceController::class, 'directoryUsers']);
+    });
     Route::get('permanent-issuances/users/{user}/assets', [PermanentIssuanceController::class, 'userAssets']);
     Route::post('assets/{asset}/permanent-issue', [PermanentIssuanceController::class, 'assign']);
     

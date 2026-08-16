@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Button, Badge, Spinner, Alert, Card } from '@/components/ui'
 import { ApprovalHistoryTimeline } from '@/components/workflows/ApprovalHistoryTimeline'
@@ -33,7 +33,7 @@ export function EmployeeAssetPage() {
   // Active modal state
   const [activeModal, setActiveModal] = useState<'borrow' | 'extension' | 'reissuance' | 'damage' | 'lost' | null>(null)
 
-  const loadAsset = async () => {
+  const loadAsset = useCallback(async () => {
     if (!identifier) return
     setLoading(true)
     setError(null)
@@ -46,11 +46,11 @@ export function EmployeeAssetPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [identifier])
 
   useEffect(() => {
     void loadAsset()
-  }, [identifier])
+  }, [loadAsset])
 
   if (loading) {
     return (

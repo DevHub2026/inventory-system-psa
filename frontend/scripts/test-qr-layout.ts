@@ -1,16 +1,48 @@
 import { calculateLayout } from '../src/utils/qrLayout.ts'
+import type { Asset } from '../src/types'
+
+type QrLayoutSettings = {
+  paperSize: string
+  orientation: string
+  labelWmm: number
+  labelHmm: number
+  labelMode: 'auto' | 'custom'
+  cols: number
+  rows: number | 'auto'
+  marginMm: number
+  gapMm: number
+}
+
+type RecordedResult = {
+  name: string
+  settings?: QrLayoutSettings
+  assetsCount?: number
+  perPage?: number
+  expectedPages?: number
+  actualPages?: number
+  fits?: boolean
+  lw?: number
+  lh?: number
+  maxQrMm?: number
+  requestedQr?: number
+  maxQrAvailable?: number
+  layout?: ReturnType<typeof calculateLayout> | null
+  positional?: { ok: boolean; errors?: string[] }
+  summaryCount?: number
+  matrixResults?: unknown[]
+}
 
 function makeAsset(id: number, name = `Asset ${id}`) {
-  return { id, name, asset_number: `AST-${String(id).padStart(3,'0')}` } as any
+  return { id, name, asset_number: `AST-${String(id).padStart(3,'0')}` } as Asset
 }
 
 async function run() {
   console.log('Running QR layout tests')
 
-  const results: any[] = []
+  const results: RecordedResult[] = []
 
   // helper to record
-  function record(name: string, layout: any, assetsCount: number, settings: any) {
+  function record(name: string, layout: ReturnType<typeof calculateLayout>, assetsCount: number, settings: QrLayoutSettings) {
     const perPage = layout.cols * layout.rows
     const expectedPages = Math.ceil(assetsCount / perPage)
     const actualPages = layout.pages.length
@@ -66,16 +98,15 @@ async function run() {
   record('Many - 100 assets', layout100, 100, settingsMany)
 
   // Detailed positional checks for each recorded result
-  function positionalChecks(entry: any) {
+  function positionalChecks(entry: RecordedResult) {
     const l = entry.layout
     if (!l) return { ok: true }
     const padding = 2
     const textReserve = 8
     const errors: string[] = []
-    const perPage = entry.perPage
+    const perPageForEntry = entry.perPage ?? 0
     for (let p = 0; p < l.pages.length; p++) {
-      const pageAssets = l.pages[p]
-      for (let idx = 0; idx < (entry.perPage); idx++) {
+      for (let idx = 0; idx < perPageForEntry; idx++) {
         const r = Math.floor(idx / l.cols)
         const c = idx % l.cols
         const x = l.margin + c * (l.lw + l.gap)
@@ -95,7 +126,7 @@ async function run() {
   }
 
   // Exhaustive matrix: columns 1..5, margins [2,5,10], gaps [0,2,5], rows auto/custom(3)
-  const matrixResults: any[] = []
+  const matrixResults: unknown[] = []
   const columnsList = [1,2,3,4,5]
   const margins = [2,5,10]
   const gaps = [0,2,5]

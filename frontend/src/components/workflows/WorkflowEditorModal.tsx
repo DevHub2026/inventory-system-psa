@@ -4,7 +4,7 @@ import { workflowService, type WorkflowMetadata } from '@/services/workflowServi
 import { userService } from '@/services/userService'
 import { roleService, type Role } from '@/services/roleService'
 import { setupService, type SetupRecord } from '@/services/setupService'
-import type { Workflow, WorkflowApprovalLevel, WorkflowModuleType, WorkflowOptions, User } from '@/types'
+import type { ApprovalType, Workflow, WorkflowApprovalLevel, WorkflowModuleType, WorkflowOptions, User } from '@/types'
 import {
   Plus, Trash2, Copy, ArrowDown, ArrowUp, ArrowRight,
   ChevronDown, Sliders, Eye, Layers, Shield, User as UserIcon,
@@ -165,7 +165,7 @@ export function WorkflowEditorModal({ open, onClose, onSaved, workflowToEdit }: 
   return (
     <Modal open={open} onClose={onClose}
       title={workflowToEdit ? `Edit: ${workflowToEdit.name}` : 'New Approval Workflow'}
-      maxWidth="max-w-3xl"
+      maxWidth="min(768px, calc(100vw - 24px))"
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         {errorMsg && <div style={{ marginBottom: 16 }}><Alert tone="error">{errorMsg}</Alert></div>}
@@ -176,7 +176,7 @@ export function WorkflowEditorModal({ open, onClose, onSaved, workflowToEdit }: 
           <>
             {/* ── Basic Info ── */}
             <div style={{
-              display: 'grid', gridTemplateColumns: '1.2fr 1fr 1.4fr', gap: 14, marginBottom: 20,
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 20,
             }}>
               <div>
                 <label style={fieldLabel}>Workflow Name <span style={{ color: '#EF4444' }}>*</span></label>
@@ -195,7 +195,7 @@ export function WorkflowEditorModal({ open, onClose, onSaved, workflowToEdit }: 
             </div>
 
             {/* ── Tabs ── */}
-            <div style={{ display: 'flex', borderBottom: '1px solid #E2E8F0', marginBottom: 20, gap: 0 }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid #E2E8F0', marginBottom: 20, gap: 0, overflowX: 'auto' }}>
               {tabs.map((tab) => {
                 const active = activeTab === tab.id
                 return (
@@ -317,7 +317,7 @@ export function WorkflowEditorModal({ open, onClose, onSaved, workflowToEdit }: 
 
                           {/* Expanded level body */}
                           {isExp && (
-                            <div style={{ padding: '16px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                            <div style={{ padding: '16px 14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
                               {/* Roles */}
                               <div>
                                 <label style={fieldLabel}>
@@ -379,7 +379,7 @@ export function WorkflowEditorModal({ open, onClose, onSaved, workflowToEdit }: 
                               <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
                                 <div>
                                   <label style={fieldLabel}>Approval Type</label>
-                                  <select value={lvl.approval_type} onChange={(e)=>updateLevel(index,{approval_type:e.target.value as any})} style={{...selectStyle,height:36}}>
+                                  <select value={lvl.approval_type} onChange={(e)=>updateLevel(index,{approval_type:e.target.value as ApprovalType})} style={{...selectStyle,height:36}}>
                                     {(meta?.approval_types||[]).map((at)=><option key={at.value} value={at.value}>{at.label}</option>)}
                                   </select>
                                 </div>

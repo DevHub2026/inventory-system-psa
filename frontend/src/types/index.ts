@@ -64,12 +64,14 @@ export interface Asset {
   id: number
   asset_number: string
   property_number?: string | null
+  serial_number?: string | null
   psa_qr_identifier?: string | null
   psa_qr_payload?: string | null
   name: string
   description?: string | null
   asset_category_id?: number
   manufacturer_id?: number | null
+  manufacturer?: string | null
   office_id?: number
   location_id?: number | null
   model?: string | null
@@ -168,6 +170,8 @@ export interface Asset {
     name: string
     sku?: string | null
     description?: string | null
+    serial_number?: string | null
+    item_type_name?: string | null
     classification?: string | null
     type?: string | null
     model?: string | null

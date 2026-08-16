@@ -290,6 +290,41 @@ class BorrowExtensionTest extends TestCase
         $response->assertStatus(403);
     }
 
+    public function test_employee_cannot_reject_extension(): void
+    {
+        $extensionRequest = BorrowExtensionRequest::query()->create([
+            'borrowing_id' => $this->borrowing->id,
+            'current_due_date' => $this->borrowing->due_date,
+            'requested_due_date' => now()->addDays(10),
+            'reason' => 'Need more time.',
+            'status' => ExtensionRequestStatus::PENDING,
+        ]);
+
+        $response = $this->withToken($this->borrowerToken)
+            ->patchJson("/api/v1/extension-requests/{$extensionRequest->id}/reject", [
+                'remarks' => 'Not allowed.',
+            ]);
+
+        $response->assertStatus(403);
+    }
+
+    public function test_guest_cannot_approve_or_reject_extension(): void
+    {
+        $extensionRequest = BorrowExtensionRequest::query()->create([
+            'borrowing_id' => $this->borrowing->id,
+            'current_due_date' => $this->borrowing->due_date,
+            'requested_due_date' => now()->addDays(10),
+            'reason' => 'Need more time.',
+            'status' => ExtensionRequestStatus::PENDING,
+        ]);
+
+        $this->patchJson("/api/v1/extension-requests/{$extensionRequest->id}/approve")
+            ->assertStatus(401);
+
+        $this->patchJson("/api/v1/extension-requests/{$extensionRequest->id}/reject")
+            ->assertStatus(401);
+    }
+
     public function test_guest_cannot_access_extension_endpoints(): void
     {
         $response = $this->getJson("/api/v1/borrowings/{$this->borrowing->id}/extension-requests");

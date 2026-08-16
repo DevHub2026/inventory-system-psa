@@ -2,6 +2,14 @@ import { api, unwrapData } from '@/services/api'
 import type { ApiResponse, User } from '@/types'
 import { displayName } from '@/types'
 
+type ApiErrorLike = Error & {
+  response?: {
+    data?: {
+      message?: string
+    } | string
+  }
+}
+
 export interface LoginPayload {
   email: string
   password: string
@@ -68,14 +76,35 @@ export const authService = {
    * Response provides an authenticated user and Sanctum bearer token.
    */
   async login(payload: LoginPayload): Promise<User> {
-    const { data } = await api.post<LoginResponse>('/login', payload)
-
-    if (!data.success || !data.user || !data.token) {
-      throw new Error(data.message || 'Login failed.')
+    // Basic client-side validation to avoid sending malformed requests
+    if (!payload || typeof payload.email !== 'string' || payload.email.trim() === '' || typeof payload.password !== 'string' || payload.password.trim() === '') {
+      throw new Error('Please provide both email and password')
     }
+    // Debug: log payload (non-sensitive fields only) to help diagnose server 400 responses
+    console.debug('authService.login payload', { email: payload.email })
 
-    return persistUser(data.user, data.token)
+    try {
+      // ensure JSON payload and explicit content-type header for backend
+      const { data } = await api.post<LoginResponse>('/login', payload, { headers: { 'Content-Type': 'application/json; charset=utf-8' } })
+
+      if (!data.success || !data.user || !data.token) {
+        throw new Error(data.message || 'Login failed.')
+      }
+
+      return persistUser(data.user, data.token)
+    } catch (err: unknown) {
+      // Surface backend error details to help debugging (do not log sensitive data in production)
+      const apiError = err as ApiErrorLike
+      console.error('authService.login error', apiError.response ?? err)
+      const responseData = apiError.response?.data
+      const backendMessage = typeof responseData === 'string'
+        ? responseData
+        : responseData?.message || apiError.message || 'Login failed (no additional details)'
+      throw new Error(backendMessage, { cause: err })
+    }
   },
+
+
 
   async logout(): Promise<void> {
     try {

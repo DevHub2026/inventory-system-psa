@@ -10,12 +10,17 @@ interface BorrowRequestModalProps {
   onSuccess: () => void
 }
 
+const todayIsoDate = () => new Date().toISOString().split('T')[0]
+const dateAfterDaysIso = (days: number) => {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return date.toISOString().split('T')[0]
+}
+
 export function BorrowRequestModal({ open, onClose, assetContext, onSuccess }: BorrowRequestModalProps) {
   const [purpose, setPurpose] = useState('')
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
-  const [endDate, setEndDate] = useState(
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  )
+  const [startDate, setStartDate] = useState(todayIsoDate)
+  const [endDate, setEndDate] = useState(() => dateAfterDaysIso(7))
   const [remarks, setRemarks] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)

@@ -99,6 +99,18 @@ export interface UpdateAssetPayload {
   custodian_id?: number | null
 }
 
+export interface AssetAttachment {
+  id: number
+  asset_id: number
+  original_name: string
+  mime_type: string
+  size: number
+  kind: 'image' | 'document' | string
+  description?: string | null
+  uploaded_by?: string | null
+  created_at?: string | null
+}
+
 function mapAsset(asset: BackendAsset): Asset {
   const category =
     typeof asset.category === 'object' ? asset.category?.name : asset.category
@@ -251,6 +263,33 @@ export const assetService = {
       { is_borrowable: isBorrowable },
     )
     return unwrapData(data)
+  },
+
+  async listAttachments(assetId: number): Promise<AssetAttachment[]> {
+    const { data } = await api.get<ApiResponse<AssetAttachment[]>>(`/assets/${assetId}/attachments`)
+    return unwrapData(data)
+  },
+
+  async uploadAttachment(assetId: number, file: File, description?: string): Promise<AssetAttachment> {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (description) formData.append('description', description)
+
+    const { data } = await api.post<ApiResponse<AssetAttachment>>(`/assets/${assetId}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return unwrapData(data)
+  },
+
+  async downloadAttachment(assetId: number, attachmentId: number): Promise<Blob> {
+    const response = await api.get(`/assets/${assetId}/attachments/${attachmentId}/download`, {
+      responseType: 'blob',
+    })
+    return response.data as Blob
+  },
+
+  async deleteAttachment(assetId: number, attachmentId: number): Promise<void> {
+    await api.delete(`/assets/${assetId}/attachments/${attachmentId}`)
   },
 
   async markForDisposal(assetId: number, payload: { disposal_reason: string; disposal_date: string; disposal_method?: string; disposal_approval_ref?: string }): Promise<Asset> {

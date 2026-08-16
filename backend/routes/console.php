@@ -11,3 +11,5 @@ Artisan::command('inspire', function () {
 
 Schedule::command('insurance:check-expiration')->daily();
 Schedule::command('borrowings:send-overdue-reminders')->daily();
+Schedule::command('inventory:send-low-stock-alerts')->dailyAt('07:00');
+Schedule::command('maintenance:send-reminders')->dailyAt('07:15');

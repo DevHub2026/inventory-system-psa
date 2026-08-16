@@ -450,6 +450,7 @@ class DocumentExportService
             'assets' => 'ASSET INVENTORY REPORT',
             'borrowings' => 'BORROWED ITEMS REPORT',
             'reservations' => 'RESERVATIONS REPORT',
+            'asset_history' => 'ASSET HISTORY REPORT',
             'inventory' => 'STOCK INVENTORY REPORT',
             'overdue' => 'OVERDUE BORROWINGS REPORT',
             'low_stock' => 'LOW STOCK ALERT REPORT',
@@ -505,6 +506,62 @@ class DocumentExportService
                         $i->id, $i->name, $i->sku, $i->quantity, $i->unit?->name ?? $i->unit,
                         $i->reorder_level, $i->manufacturer?->name, $i->office?->name, $i->location?->name,
                     ]);
+                break;
+
+            case 'reservations':
+                $headers = ['ID', 'Requester', 'Employee ID', 'Status', 'Start Date', 'End Date', 'Asset Count', 'Asset Numbers', 'Remarks'];
+                $rows = $this->reportService->getReservationReport($filters)
+                    ->map(fn ($r) => [
+                        $r->id,
+                        ($r->user?->full_name ?: $r->user?->email) ?? 'N/A',
+                        $r->user?->employee_number ?? '',
+                        $r->status,
+                        $r->start_date?->format('Y-m-d'),
+                        $r->end_date?->format('Y-m-d'),
+                        $r->assets->count(),
+                        $r->assets->pluck('asset_number')->filter()->values()->implode(', '),
+                        $r->remarks,
+                    ]);
+                break;
+
+            case 'user_activity':
+                $headers = ['ID', 'User', 'Asset Name', 'Action', 'Activity Date'];
+                $rows = $this->reportService->getUserActivityReport($filters)
+                    ->map(fn ($b) => [
+                        $b->id,
+                        ($b->user?->full_name ?: $b->user?->email) ?? 'N/A',
+                        $b->asset?->name ?? 'N/A',
+                        match ($b->status) {
+                            'BORROWED' => 'Borrowed',
+                            'RETURNED' => 'Returned',
+                            default => ucfirst(strtolower((string) $b->status)),
+                        },
+                        $b->borrow_date?->format('Y-m-d'),
+                    ]);
+                break;
+
+            case 'asset_history':
+                $headers = ['Asset ID', 'Property Number', 'Asset Number', 'Asset Name', 'Event Type', 'Previous Status', 'New Status', 'Current Status', 'Previous Custodian', 'New Custodian', 'Previous Location', 'New Location', 'Date/Time', 'Performed By', 'Reason', 'Remarks', 'Reference'];
+                $payload = $this->reportService->getAssetHistoryReport($filters, false);
+                $rows = collect($payload['items'] ?? [])->map(fn ($r) => [
+                    (string) ($r['asset_id'] ?? ''),
+                    (string) ($r['property_number'] ?? ''),
+                    (string) ($r['asset_number'] ?? ''),
+                    (string) ($r['asset_name'] ?? ''),
+                    (string) ($r['event_type'] ?? ''),
+                    (string) ($r['previous_status'] ?? ''),
+                    (string) ($r['new_status'] ?? ''),
+                    (string) ($r['current_status'] ?? ''),
+                    (string) ($r['previous_custodian'] ?? ''),
+                    (string) ($r['new_custodian'] ?? ''),
+                    (string) ($r['previous_location'] ?? ''),
+                    (string) ($r['new_location'] ?? ''),
+                    (string) ($r['event_at'] ?? ''),
+                    (string) ($r['performed_by'] ?? ''),
+                    (string) ($r['reason'] ?? ''),
+                    (string) ($r['remarks'] ?? ''),
+                    (string) ($r['reference'] ?? ''),
+                ]);
                 break;
 
             default:

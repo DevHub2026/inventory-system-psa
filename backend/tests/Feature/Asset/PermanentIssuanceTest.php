@@ -117,6 +117,26 @@ class PermanentIssuanceTest extends TestCase
         $response->assertStatus(403);
     }
 
+    public function test_employee_cannot_search_issuance_users(): void
+    {
+        $this->actingAs($this->employee)
+            ->getJson('/api/v1/permanent-issuances/users/search?q=test')
+            ->assertStatus(403);
+    }
+
+    public function test_property_custodian_can_access_issuance_directory_and_search(): void
+    {
+        $this->actingAs($this->custodian)
+            ->getJson('/api/v1/permanent-issuances/users')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->actingAs($this->custodian)
+            ->getJson('/api/v1/permanent-issuances/users/search?q='.$this->employee->email)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+    }
+
     public function test_employee_can_view_only_own_permanent_issuances(): void
     {
         $asset = Asset::factory()->create([

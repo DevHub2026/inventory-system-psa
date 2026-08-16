@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert, Badge, Button, Card, ConfirmDialog, EmptyState, Input, Modal, Spinner,
 } from '@/components/ui'
@@ -137,7 +137,7 @@ export function DocumentTemplatesPage() {
     return templates.filter((t) => t.name.toLowerCase().includes(q) || t.document_type.toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q))
   }, [templates, search])
 
-  async function loadTemplates() {
+  const loadTemplates = useCallback(async () => {
     setLoading(true)
     try {
       const [list, typeList, placeholderList, contextList] = await Promise.all([
@@ -150,15 +150,18 @@ export function DocumentTemplatesPage() {
       setTypes(typeList)
       setPlaceholders(placeholderList)
       setUsageContexts(contextList)
-      if (selected) { const found = list.items.find((t) => t.id === selected.id); if (found) setSelected(found) }
+      setSelected((current) => {
+        if (!current) return current
+        return list.items.find((t) => t.id === current.id) ?? current
+      })
     } catch (error: unknown) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load templates.' })
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { void loadTemplates() }, [])
+  useEffect(() => { void loadTemplates() }, [loadTemplates])
   useEffect(() => {
     if (selected?.id) {
       void loadVersions(selected.id)

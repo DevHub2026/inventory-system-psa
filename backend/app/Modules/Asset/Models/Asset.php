@@ -117,6 +117,11 @@ class Asset extends Model
         return $this->hasMany(AssetIdentifier::class);
     }
 
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(AssetAttachment::class);
+    }
+
     public function borrows(): HasMany
     {
         return $this->hasMany(\App\Modules\Borrowing\Models\Borrowing::class);

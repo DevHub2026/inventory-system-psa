@@ -105,7 +105,14 @@ export function SplitView({ children, rightSide = null, rightOpen = false, right
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#FAFBFC' }}>
                 <div style={{ fontWeight: 700, color: '#0F172A' }}>{rightKey ? String(rightKey).replace(/^[a-z]/, (s) => s.toUpperCase()) : 'Detail'}</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button title="Pop out" onClick={() => { try { const url = `${window.location.origin}/${rightKey ?? ''}`; window.open(url, '_blank') } catch { } }} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>⤢</button>
+                  <button title="Pop out" onClick={() => {
+                    try {
+                      const url = `${window.location.origin}/${rightKey ?? ''}`
+                      window.open(url, '_blank')
+                    } catch {
+                      // Ignore blocked pop-up or unavailable window APIs.
+                    }
+                  }} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>⤢</button>
                   <button title="Close split" onClick={() => onCloseRight && onCloseRight()} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18 }}>✕</button>
                 </div>
               </div>

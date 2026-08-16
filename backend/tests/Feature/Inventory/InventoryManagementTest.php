@@ -463,6 +463,164 @@ class InventoryManagementTest extends TestCase
         $this->assertGreaterThanOrEqual(1, count($response->json('data.items')));
     }
 
+    public function test_authorized_user_can_transfer_partial_inventory_between_locations(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('auth')->plainTextToken;
+        $sourceLocation = \App\Models\Location::factory()->create();
+        $destinationLocation = \App\Models\Location::factory()->create();
+
+        $item = InventoryItem::query()->create([
+            'name' => 'Bond Paper',
+            'sku' => 'BP-TRANSFER',
+            'quantity' => 20,
+            'unit' => 'ream',
+            'location_id' => $sourceLocation->id,
+            'classification' => 'SUPPLY',
+            'item_nature' => 'CONSUMABLE_SUPPLY',
+            'track_as_asset' => false,
+        ]);
+
+        $response = $this->withToken($token)
+            ->postJson("/api/v1/inventory/{$item->id}/transfer", [
+                'quantity' => 5,
+                'source_location_id' => $sourceLocation->id,
+                'destination_location_id' => $destinationLocation->id,
+                'reason' => 'Move to satellite office',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.source_item.quantity', 15)
+            ->assertJsonPath('data.destination_item.quantity', 5);
+
+        $this->assertDatabaseHas('stock_transactions', [
+            'inventory_item_id' => $item->id,
+            'type' => 'transfer_out',
+            'quantity' => -5,
+            'quantity_before' => 20,
+            'quantity_after' => 15,
+            'source_location_id' => $sourceLocation->id,
+            'destination_location_id' => $destinationLocation->id,
+        ]);
+        $this->assertDatabaseHas('inventory_items', [
+            'name' => 'Bond Paper',
+            'quantity' => 5,
+            'location_id' => $destinationLocation->id,
+        ]);
+    }
+
+    public function test_transfer_rejects_more_than_available_quantity(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('auth')->plainTextToken;
+        $sourceLocation = \App\Models\Location::factory()->create();
+        $destinationLocation = \App\Models\Location::factory()->create();
+
+        $item = InventoryItem::query()->create([
+            'name' => 'Ink Cartridge',
+            'sku' => 'INK-TRANSFER',
+            'quantity' => 3,
+            'unit' => 'piece',
+            'location_id' => $sourceLocation->id,
+        ]);
+
+        $this->withToken($token)
+            ->postJson("/api/v1/inventory/{$item->id}/transfer", [
+                'quantity' => 4,
+                'source_location_id' => $sourceLocation->id,
+                'destination_location_id' => $destinationLocation->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Cannot transfer more stock than available.');
+
+        $this->assertDatabaseHas('inventory_items', [
+            'id' => $item->id,
+            'quantity' => 3,
+            'location_id' => $sourceLocation->id,
+        ]);
+    }
+
+    public function test_employee_cannot_transfer_inventory(): void
+    {
+        $user = User::factory()->create();
+        $employeeRole = Role::query()->firstOrCreate(
+            ['name' => UserRole::EMPLOYEE->value],
+            ['description' => UserRole::EMPLOYEE->name],
+        );
+        $user->roles()->sync([$employeeRole->id]);
+        $token = $user->createToken('auth')->plainTextToken;
+        $sourceLocation = \App\Models\Location::factory()->create();
+        $destinationLocation = \App\Models\Location::factory()->create();
+        $item = InventoryItem::query()->create([
+            'name' => 'Envelope',
+            'sku' => 'ENV-TRANSFER',
+            'quantity' => 10,
+            'unit' => 'pack',
+            'location_id' => $sourceLocation->id,
+        ]);
+
+        $this->withToken($token)
+            ->postJson("/api/v1/inventory/{$item->id}/transfer", [
+                'quantity' => 1,
+                'source_location_id' => $sourceLocation->id,
+                'destination_location_id' => $destinationLocation->id,
+            ])
+            ->assertStatus(403);
+    }
+
+    public function test_authorized_user_can_complete_and_reconcile_inventory_count(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('auth')->plainTextToken;
+        $location = \App\Models\Location::factory()->create();
+        $item = InventoryItem::query()->create([
+            'name' => 'Folder',
+            'sku' => 'FOLDER-COUNT',
+            'quantity' => 12,
+            'unit' => 'piece',
+            'location_id' => $location->id,
+        ]);
+
+        $sessionId = $this->withToken($token)
+            ->postJson('/api/v1/inventory/count-sessions', [
+                'location_id' => $location->id,
+                'notes' => 'Quarterly count',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.items.0.expected_quantity', 12)
+            ->json('data.id');
+
+        $this->withToken($token)
+            ->postJson("/api/v1/inventory/count-sessions/{$sessionId}/items/{$item->id}", [
+                'actual_quantity' => 10,
+                'remarks' => 'Two missing',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.items.0.variance', -2);
+
+        $this->withToken($token)
+            ->postJson("/api/v1/inventory/count-sessions/{$sessionId}/complete")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'completed');
+
+        $this->withToken($token)
+            ->postJson("/api/v1/inventory/count-sessions/{$sessionId}/reconcile")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'reconciled');
+
+        $this->assertDatabaseHas('inventory_items', [
+            'id' => $item->id,
+            'quantity' => 10,
+        ]);
+        $this->assertDatabaseHas('stock_transactions', [
+            'inventory_item_id' => $item->id,
+            'type' => 'cycle_count_adjustment',
+            'quantity' => -2,
+            'quantity_before' => 12,
+            'quantity_after' => 10,
+        ]);
+    }
+
     public function test_authorized_user_can_download_inventory_export(): void
     {
         $user = User::factory()->create();

@@ -11,6 +11,12 @@ Route::middleware([
 ])->group(function (): void {
     Route::get('inventory/validate-sku', [InventoryController::class, 'validateSku']);
     Route::get('inventory/generate-sku', [InventoryController::class, 'generateSku']);
+    Route::get('inventory/count-sessions', [InventoryController::class, 'countSessions']);
+    Route::post('inventory/count-sessions', [InventoryController::class, 'createCountSession']);
+    Route::get('inventory/count-sessions/{session}', [InventoryController::class, 'showCountSession']);
+    Route::post('inventory/count-sessions/{session}/items/{item}', [InventoryController::class, 'recordCount']);
+    Route::post('inventory/count-sessions/{session}/complete', [InventoryController::class, 'completeCountSession']);
+    Route::post('inventory/count-sessions/{session}/reconcile', [InventoryController::class, 'reconcileCountSession']);
     Route::get('inventory', [InventoryController::class, 'index']);
     Route::get('inventory/simple', [InventoryController::class, 'simpleList']);
     Route::get('inventory/{item}', [InventoryController::class, 'show']);
@@ -20,6 +26,7 @@ Route::middleware([
     Route::post('inventory/{item}/stock-in', [InventoryController::class, 'stockIn']);
     Route::post('inventory/{item}/stock-out', [InventoryController::class, 'stockOut']);
     Route::post('inventory/{item}/adjust', [InventoryController::class, 'adjust']);
+    Route::post('inventory/{item}/transfer', [InventoryController::class, 'transfer']);
     Route::get('inventory/{item}/history', [InventoryController::class, 'history']);
 
     // Import / Export
