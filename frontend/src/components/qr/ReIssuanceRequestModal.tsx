@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Modal, Button, Input } from '@/components/ui'
+import { Modal, Button, Input, Alert } from '@/components/ui'
 import { assetService } from '@/services/assetService'
 import type { AssetContext } from '@/types'
+import { ArrowRightLeft } from 'lucide-react'
 
 interface ReIssuanceRequestModalProps {
   open: boolean
@@ -20,6 +21,11 @@ export function ReIssuanceRequestModal({ open, onClose, assetContext, onSuccess 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!newEmployeeId || !reason.trim()) {
+      setError('Please provide a target employee ID and reason.')
+      return
+    }
+
     setError(null)
     setSubmitting(true)
 
@@ -27,8 +33,8 @@ export function ReIssuanceRequestModal({ open, onClose, assetContext, onSuccess 
       await assetService.reissue(assetContext.asset.id, {
         new_employee_id: Number(newEmployeeId),
         transfer_date: transferDate,
-        reason,
-        remarks,
+        reason: reason.trim(),
+        remarks: remarks.trim() || undefined,
       })
       onSuccess()
       onClose()
@@ -40,67 +46,113 @@ export function ReIssuanceRequestModal({ open, onClose, assetContext, onSuccess 
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Request Re-Issuance for: ${assetContext.asset.name}`}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Request Transfer: ${assetContext.asset.name}`}
+      maxWidth={620}
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            disabled={submitting}
+            onClick={(e) => void handleSubmit(e as unknown as React.FormEvent)}
+          >
+            <ArrowRightLeft size={14} style={{ marginRight: 6 }} />
+            {submitting ? 'Submitting...' : 'Submit Transfer Request'}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-lg">
+          <Alert tone="error" onClose={() => setError(null)}>
             {error}
-          </div>
+          </Alert>
         )}
 
-        <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-xs space-y-1">
-          <div className="font-semibold text-blue-900">Current Accountability</div>
-          <div className="text-blue-700 font-bold">{assetContext.asset.issued_to_name || 'N/A'}</div>
-          <div className="text-blue-600">Date Issued: {assetContext.asset.date_issued || 'N/A'}</div>
+        {/* Current Accountability Box */}
+        <div style={{
+          borderRadius: 10,
+          border: '1px solid #BFDBFE',
+          background: '#EFF6FF',
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <div>
+            <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', color: '#1E40AF' }}>
+              Current Accountability
+            </div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: '#1E3A8A', marginTop: 2 }}>
+              {assetContext.asset.issued_to_name || 'N/A'}
+            </div>
+          </div>
+          <span style={{ fontSize: 12, color: '#2563EB' }}>
+            Issued: {assetContext.asset.date_issued || 'N/A'}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+              New Employee ID *
+            </label>
+            <Input
+              type="number"
+              value={newEmployeeId}
+              onChange={(e) => setNewEmployeeId(e.target.value)}
+              placeholder="e.g. 104"
+              required
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+              Transfer Date *
+            </label>
+            <Input
+              type="date"
+              value={transferDate}
+              onChange={(e) => setTransferDate(e.target.value)}
+              required
+            />
+          </div>
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">New Employee ID *</label>
-          <Input
-            type="number"
-            value={newEmployeeId}
-            onChange={(e) => setNewEmployeeId(e.target.value)}
-            placeholder="Target Employee User ID"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">Transfer Date *</label>
-          <Input
-            type="date"
-            value={transferDate}
-            onChange={(e) => setTransferDate(e.target.value)}
-            required
-          />
-        </div>
-
-        <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">Reason for Re-Issuance *</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+            Reason for Re-Issuance *
+          </label>
           <Input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g., Personnel reassignment to Region VII"
+            placeholder="e.g., Personnel reassignment to regional section"
             required
           />
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">Remarks</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+            Remarks
+          </label>
           <Input
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
             placeholder="Optional notes"
           />
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-          <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Submit Re-Issuance Request'}
-          </Button>
         </div>
       </form>
     </Modal>

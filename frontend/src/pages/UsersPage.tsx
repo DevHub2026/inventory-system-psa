@@ -1,12 +1,36 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Button, Input, Table, Badge, Modal, Alert, Spinner, SearchBar, Pagination } from '@/components/ui'
+import {
+  Users as UsersIcon,
+  UserCheck,
+  UserX,
+  Shield,
+  Plus,
+  Upload,
+  Search,
+  Key,
+  RotateCcw,
+  Edit,
+  Trash2,
+  FileSpreadsheet,
+  Download,
+  Info,
+  CheckCircle2,
+  FileText,
+} from 'lucide-react'
+import { Alert, Badge, Button, EmptyState, Input, Modal, Spinner, Pagination } from '@/components/ui'
 import { api } from '@/services/api'
-import { userService, type UserFilters, type CreateUserPayload, type UpdateUserPayload, type ImportUsersResult, type ChangePasswordPayload } from '@/services/userService'
+import {
+  userService,
+  type UserFilters,
+  type CreateUserPayload,
+  type UpdateUserPayload,
+  type ImportUsersResult,
+  type ChangePasswordPayload,
+} from '@/services/userService'
 import { roleService, type Role } from '@/services/roleService'
 import { setupService, type SetupRecord } from '@/services/setupService'
 import { displayName } from '@/types'
-import type { Column } from '@/components/ui'
 import type { User, ApiResponse } from '@/types'
 import { PageHeader } from '@/components/PageHeader'
 import { RoleBadges } from '@/components/RoleBadges'
@@ -16,13 +40,13 @@ interface DepartmentOption {
   name: string
 }
 
-/** Sanitise last_name + employee_number into a username exactly as the backend does. */
 function generateUsername(lastName: string, employeeNumber: string): string {
   const sanitized = lastName.toLowerCase().replace(/[^a-z0-9]/g, '')
   return sanitized + employeeNumber.trim()
 }
 
 export function UsersPage() {
+  const navigate = useNavigate()
   const [users,           setUsers]           = useState<User[]>([])
   const [loading,         setLoading]         = useState(true)
   const [modalOpen,       setModalOpen]       = useState(false)
@@ -34,18 +58,16 @@ export function UsersPage() {
   const [importResult,    setImportResult]    = useState<ImportUsersResult | null>(null)
   const [message,         setMessage]         = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [filters,         setFilters]         = useState<UserFilters>({ per_page: 15, page: 1 })
-  const [pagination, setPagination] = useState({ current_page: 1, per_page: 15, total: 0, last_page: 1 })
-  const [roles, setRoles] = useState<Role[]>([])
-  const [departments, setDepartments] = useState<DepartmentOption[]>([])
-  const [offices, setOffices] = useState<SetupRecord[]>([])
-  const [lookupWarning, setLookupWarning] = useState<string | null>(null)
-  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
+  const [pagination,      setPagination]      = useState({ current_page: 1, per_page: 15, total: 0, last_page: 1 })
+  const [roles,           setRoles]           = useState<Role[]>([])
+  const [departments,     setDepartments]     = useState<DepartmentOption[]>([])
+  const [offices,         setOffices]         = useState<SetupRecord[]>([])
 
-  useEffect(() => {
-    const onResize = () => setIsDesktop(window.innerWidth >= 768)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
+  // Local filter bar state
+  const [statusTab, setStatusTab] = useState<'all' | 'active' | 'inactive'>('all')
+  const [selectedDept, setSelectedDept] = useState<string>('')
+  const [selectedRole, setSelectedRole] = useState<string>('')
+  const [searchTerm, setSearchTerm] = useState('')
 
   // Password change modal state
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
@@ -55,12 +77,20 @@ export function UsersPage() {
   const [resetSaving, setResetSaving] = useState(false)
 
   const [formData, setFormData] = useState<CreateUserPayload>({
-    employee_number: '', username: '', first_name: '', middle_name: '', last_name: '',
-    email: '', password: '', department_id: null, office_id: null, status: 'active', roles: [],
+    employee_number: '',
+    username: '',
+    first_name: '',
+    middle_name: '',
+    last_name: '',
+    email: '',
+    password: '',
+    department_id: null,
+    office_id: null,
+    status: 'active',
+    roles: [],
     email_notifications_enabled: true,
   })
 
-  /** Update username whenever last_name or employee_number change (create mode only). */
   const updateUsername = (patch: Partial<CreateUserPayload>, current: CreateUserPayload) => {
     const next = { ...current, ...patch }
     if (!editingUser) {
@@ -73,18 +103,19 @@ export function UsersPage() {
     setLoading(true)
     try {
       const result = await userService.getUsers(filters)
-      setUsers(result.items); setPagination(result.meta)
+      setUsers(result.items || [])
+      setPagination(result.meta || { current_page: 1, per_page: 15, total: (result.items || []).length, last_page: 1 })
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to load users.' })
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }, [filters])
-
-  const navigate = useNavigate()
 
   const loadRoles = useCallback(async () => {
     try {
       const result = await roleService.getRoles({ per_page: 100 })
-      setRoles(result.items)
+      setRoles(result.items || [])
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to load roles.' })
     }
@@ -94,9 +125,8 @@ export function UsersPage() {
     try {
       const { data } = await api.get<ApiResponse<DepartmentOption[]>>('/departments')
       setDepartments(data.data || [])
-    } catch (e: unknown) {
+    } catch {
       setDepartments([])
-      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to load departments.' })
     }
   }, [])
 
@@ -104,36 +134,71 @@ export function UsersPage() {
     try {
       const loadedOffices = await setupService.list('offices')
       setOffices(Array.isArray(loadedOffices) ? loadedOffices : [])
-      setLookupWarning(null)
-    } catch (e: unknown) {
+    } catch {
       setOffices([])
-      setLookupWarning(e instanceof Error ? e.message : 'Office options could not be loaded.')
     }
   }, [])
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => { void loadUsers() }, 0)
-    return () => window.clearTimeout(timeoutId)
+    void loadUsers()
   }, [loadUsers])
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => { void loadRoles() }, 0)
-    return () => window.clearTimeout(timeoutId)
-  }, [loadRoles])
+    void loadRoles()
+    void loadDepartments()
+    void loadOffices()
+  }, [loadRoles, loadDepartments, loadOffices])
 
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => { void loadDepartments() }, 0)
-    return () => window.clearTimeout(timeoutId)
-  }, [loadDepartments])
+  // Filtered users
+  const filteredUsers = useMemo(() => {
+    let list = users
+    if (statusTab !== 'all') {
+      list = list.filter((u) => u.status === statusTab)
+    }
+    if (selectedDept) {
+      list = list.filter((u) => u.department_id === Number(selectedDept))
+    }
+    if (selectedRole) {
+      list = list.filter((u) => (u.roles || []).some((r) => r.name === selectedRole || String(r.id) === selectedRole))
+    }
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim()
+      list = list.filter((u) => {
+        const full = displayName(u).toLowerCase()
+        const emp = (u.employee_number || '').toLowerCase()
+        const usr = (u.username || '').toLowerCase()
+        const em = (u.email || '').toLowerCase()
+        return full.includes(term) || emp.includes(term) || usr.includes(term) || em.includes(term)
+      })
+    }
+    return list
+  }, [users, statusTab, selectedDept, selectedRole, searchTerm])
 
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => { void loadOffices() }, 0)
-    return () => window.clearTimeout(timeoutId)
-  }, [loadOffices])
+  // Summary counts
+  const stats = useMemo(() => {
+    const total = users.length
+    const active = users.filter((u) => u.status === 'active').length
+    const inactive = users.filter((u) => u.status === 'inactive').length
+    const withRoles = users.filter((u) => (u.roles || []).length > 0).length
+    return { total, active, inactive, withRoles }
+  }, [users])
 
   const handleCreate = () => {
     setEditingUser(null)
-    setFormData({ employee_number: '', username: '', first_name: '', middle_name: '', last_name: '', email: '', password: '', department_id: null, office_id: null, status: 'active', roles: [], email_notifications_enabled: true })
+    setFormData({
+      employee_number: '',
+      username: '',
+      first_name: '',
+      middle_name: '',
+      last_name: '',
+      email: '',
+      password: '',
+      department_id: null,
+      office_id: null,
+      status: 'active',
+      roles: [],
+      email_notifications_enabled: true,
+    })
     setModalOpen(true)
   }
 
@@ -157,10 +222,10 @@ export function UsersPage() {
   }
 
   const handleDelete = async (u: User) => {
-    if (!confirm(`Delete ${displayName(u)}?`)) return
+    if (!confirm(`Delete ${displayName(u)}? This action cannot be undone.`)) return
     try {
       await userService.deleteUser(u.id)
-      setMessage({ type: 'success', text: 'User deleted successfully.' })
+      setMessage({ type: 'success', text: `User account for "${displayName(u)}" has been deleted.` })
       await loadUsers()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to delete user.' })
@@ -168,7 +233,8 @@ export function UsersPage() {
   }
 
   const handleSubmit = async () => {
-    setSaving(true); setMessage(null)
+    setSaving(true)
+    setMessage(null)
     try {
       if (editingUser) {
         const updatePayload: UpdateUserPayload = {
@@ -185,28 +251,41 @@ export function UsersPage() {
           email_notifications_enabled: formData.email_notifications_enabled,
         }
         await userService.updateUser(editingUser.id, updatePayload)
-        setMessage({ type: 'success', text: 'User updated successfully.' })
+        setMessage({ type: 'success', text: `User "${formData.first_name} ${formData.last_name}" updated successfully.` })
       } else {
         await userService.createUser(formData)
-        setMessage({ type: 'success', text: 'User created successfully.' })
+        setMessage({ type: 'success', text: `User "${formData.first_name} ${formData.last_name}" created successfully.` })
       }
-      setModalOpen(false); await loadUsers()
+      setModalOpen(false)
+      await loadUsers()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to save user.' })
-    } finally { setSaving(false) }
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleImport = async () => {
-    if (!importFile) { setMessage({ type: 'error', text: 'Please choose a file to import.' }); return }
-    setImporting(true); setImportResult(null); setMessage(null)
+    if (!importFile) {
+      setMessage({ type: 'error', text: 'Please select a file to import.' })
+      return
+    }
+    setImporting(true)
+    setImportResult(null)
+    setMessage(null)
     try {
       const result = await userService.importEmployees(importFile)
       setImportResult(result)
-      setMessage({ type: 'success', text: `Import complete: ${result.imported} imported, ${result.skipped} skipped, ${result.failed} failed.` })
+      setMessage({
+        type: 'success',
+        text: `Import complete: ${result.imported} imported, ${result.skipped} skipped, ${result.failed} failed.`,
+      })
       await loadUsers()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to import employees.' })
-    } finally { setImporting(false) }
+    } finally {
+      setImporting(false)
+    }
   }
 
   const handleOpenPasswordModal = (u: User) => {
@@ -225,274 +304,930 @@ export function UsersPage() {
       setMessage({ type: 'error', text: 'Password must be at least 8 characters.' })
       return
     }
-    setPasswordSaving(true); setMessage(null)
+    setPasswordSaving(true)
+    setMessage(null)
     try {
       await userService.updateUserPassword(passwordUser.id, passwordData as ChangePasswordPayload)
-      setMessage({ type: 'success', text: 'Password changed successfully.' })
+      setMessage({ type: 'success', text: `Password changed successfully for ${displayName(passwordUser)}.` })
       setPasswordModalOpen(false)
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to change password.' })
-    } finally { setPasswordSaving(false) }
+    } finally {
+      setPasswordSaving(false)
+    }
   }
 
   const handleResetPassword = async (u: User) => {
-    if (!confirm(`Reset password for ${displayName(u)} to default?`)) return
-    setResetSaving(true); setMessage(null)
+    if (!confirm(`Reset password for ${displayName(u)} to the default temporary password?`)) return
+    setResetSaving(true)
+    setMessage(null)
     try {
       await userService.resetUserPassword(u.id)
-      setMessage({ type: 'success', text: 'Password reset successfully to default.' })
+      setMessage({ type: 'success', text: `Password for ${displayName(u)} has been reset to default.` })
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to reset password.' })
-    } finally { setResetSaving(false) }
+    } finally {
+      setResetSaving(false)
+    }
   }
 
   const downloadTemplate = (type: 'csv' | 'json') => {
     const headers = ['first_name', 'middle_name', 'last_name', 'id_number', 'email', 'role']
-    const sample  = { first_name: 'Juan', middle_name: 'Cruz', last_name: 'Marquez', id_number: '20250012', email: 'juan.marquez@example.com', role: 'Employee' }
-    const content = type === 'csv'
-      ? `${headers.join(',')}\n${headers.map((h) => sample[h as keyof typeof sample]).join(',')}\n`
-      : `${JSON.stringify([sample], null, 2)}\n`
+    const sample = {
+      first_name: 'Juan',
+      middle_name: 'Cruz',
+      last_name: 'Marquez',
+      id_number: '20250012',
+      email: 'juan.marquez@example.com',
+      role: 'Employee',
+    }
+    const content =
+      type === 'csv'
+        ? `${headers.join(',')}\n${headers.map((h) => sample[h as keyof typeof sample]).join(',')}\n`
+        : `${JSON.stringify([sample], null, 2)}\n`
     const blob = new Blob([content], { type: type === 'csv' ? 'text/csv' : 'application/json' })
-    const url  = URL.createObjectURL(blob)
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.href = url; link.download = `employee-import-template.${type}`; link.click()
+    link.href = url
+    link.download = `employee-import-template.${type}`
+    link.click()
     URL.revokeObjectURL(url)
   }
 
-  const columns: Column<User>[] = [
-    {
-      key: 'name',
-      header: 'Name',
-      render: (u) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/users/${u.id}`)}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer',
-            textAlign: 'left',
-            fontWeight: 600,
-            fontSize: 14,
-            color: '#0D47A1',
-            textDecoration: 'underline',
-            textDecorationColor: 'transparent',
-            transition: 'text-decoration-color 0.15s',
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.textDecorationColor = '#0D47A1' }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.textDecorationColor = 'transparent' }}
-          aria-label={`View profile for ${displayName(u)}`}
-        >
-          {displayName(u)}
-        </button>
-      ),
-    },
-    { key: 'employee_number', header: 'Employee ID', render: (u) => <span className="font-mono text-xs text-[#6B7280]">{u.employee_number || '\u2014'}</span> },
-    { key: 'username', header: 'Username', render: (u) => <span className="font-mono text-xs text-[#6B7280]">{u.username || '\u2014'}</span> },
-    { key: 'department', header: 'Department', render: (u) => <span className="text-[#6B7280]">{u.department?.name || '\u2014'}</span> },
-    { key: 'roles', header: 'Roles', render: (u) => <RoleBadges roles={u.roles ?? []} /> },
-    { key: 'status', header: 'Status', render: (u) => <Badge tone={u.status === 'active' ? 'green' : 'yellow'}>{u.status || 'unknown'}</Badge> },
-    {
-      key: 'actions', header: 'Actions',
-      render: (u) => (
-        <div className="flex items-center gap-1.5">
-          <Button size="sm" variant="secondary" onClick={() => handleEdit(u)}>Edit</Button>
-          <Button size="sm" variant="secondary" onClick={() => handleOpenPasswordModal(u)}>Password</Button>
-          <Button size="sm" variant="secondary" onClick={() => handleResetPassword(u)} disabled={resetSaving}>Reset Pwd</Button>
-          <Button size="sm" variant="danger"    onClick={() => handleDelete(u)}>Delete</Button>
-        </div>
-      ),
-    },
-  ]
-
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 32 }}>
+      {/* ── Page Header ── */}
       <PageHeader
         title="Users"
-        subtitle="Manage system users and their accounts."
+        subtitle="Manage employee accounts, security credentials, system permissions, and role assignments."
         actions={
-          <>
-            <Button variant="secondary" onClick={() => setImportModalOpen(true)}>Import Employees</Button>
-            <Button onClick={handleCreate}>Add User</Button>
-          </>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setImportResult(null)
+                setImportFile(null)
+                setImportModalOpen(true)
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                height: 40,
+                paddingInline: 14,
+                fontWeight: 600,
+                fontSize: 13,
+              }}
+            >
+              <Upload size={15} />
+              <span>Import Employees</span>
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCreate}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                height: 40,
+                paddingInline: 18,
+                fontWeight: 700,
+                fontSize: 13.5,
+                background: '#0B3D91',
+              }}
+            >
+              <Plus size={16} />
+              <span>Add User</span>
+            </Button>
+          </div>
         }
       />
 
-      {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
+      {/* Alert message */}
+      {message && (
+        <Alert tone={message.type} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
+      )}
 
-      <Card noPadding>
-        <div className="border-b border-[#E5E7EB] px-5 py-4">
-          <SearchBar onSearch={(s) => setFilters({ ...filters, search: s, page: 1 })} placeholder="Search users..." />
-        </div>
-        {loading ? (
-          <div className="flex items-center justify-center py-16"><Spinner /></div>
-        ) : users.length === 0 ? (
-          <div className="py-16"><EmptyState title="No users found" description="Add users or adjust the search filter." /></div>
-        ) : (
-          <>
-            {isDesktop ? (
-              <Table columns={columns} rows={users} rowKey={(u) => u.id} />
-            ) : (
-              <div style={{ display: 'grid', gap: 12 }}>
-                {users.map((u) => (
-                  <div key={u.id} style={{ border: '1px solid #EFF2FF', borderRadius: 10, padding: 12, background: '#fff' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>{displayName(u)}</div>
-                        <div style={{ fontSize: 13, color: '#64748B' }}>{u.email}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#64748B' }}>{u.employee_number ?? ''}</span>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
-                      <Button size="sm" variant="secondary" onClick={() => handleEdit(u)}>Edit</Button>
-                      <Button size="sm" variant="danger" onClick={() => handleDelete(u)}>Delete</Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleOpenPasswordModal(u)}>Reset Password</Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="border-t border-[#E5E7EB] px-5 py-3">
-              <Pagination page={pagination.current_page} lastPage={pagination.last_page} total={pagination.total} onPageChange={(p) => setFilters({ ...filters, page: p })} />
+      {/* ── Summary Stat Cards ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 14,
+      }}>
+        {/* Total Users */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #E2E8F0',
+          padding: '16px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: '#EFF6FF',
+            color: '#0B3D91',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <UsersIcon size={22} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748B' }}>
+              Total Users
             </div>
-          </>
-        )}
-      </Card>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', lineHeight: 1.1 }}>
+              {stats.total}
+            </div>
+          </div>
+        </div>
 
-      {/* Add / Edit User */}
+        {/* Active Accounts */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #E2E8F0',
+          padding: '16px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: '#F0FDF4',
+            color: '#16A34A',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <UserCheck size={22} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748B' }}>
+              Active Accounts
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#16A34A', lineHeight: 1.1 }}>
+              {stats.active}
+            </div>
+          </div>
+        </div>
+
+        {/* Role Assignments */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #E2E8F0',
+          padding: '16px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: '#EEF2FF',
+            color: '#4338CA',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Shield size={22} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748B' }}>
+              Role Assignments
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#4338CA', lineHeight: 1.1 }}>
+              {stats.withRoles}
+            </div>
+          </div>
+        </div>
+
+        {/* Inactive */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #E2E8F0',
+          padding: '16px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: '#FFFBEB',
+            color: '#D97706',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <UserX size={22} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748B' }}>
+              Inactive / Suspended
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#D97706', lineHeight: 1.1 }}>
+              {stats.inactive}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main Users Card & Table ── */}
+      <div style={{
+        background: '#FFFFFF',
+        borderRadius: 16,
+        border: '1px solid #E2E8F0',
+        overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(15,23,42,0.04)',
+      }}>
+        {/* Status Tab Navigation */}
+        <div style={{
+          display: 'flex',
+          overflowX: 'auto',
+          background: '#F8FAFC',
+          borderBottom: '1px solid #E2E8F0',
+          padding: '4px 8px',
+          gap: 4,
+        }}>
+          {[
+            { id: 'all',      label: 'All Users',   count: users.length },
+            { id: 'active',   label: 'Active Only', count: stats.active },
+            { id: 'inactive', label: 'Inactive',    count: stats.inactive },
+          ].map((tab) => {
+            const active = statusTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setStatusTab(tab.id as any)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 16px',
+                  fontSize: 13,
+                  fontWeight: active ? 700 : 500,
+                  color: active ? '#0B3D91' : '#64748B',
+                  background: active ? '#FFFFFF' : 'transparent',
+                  borderRadius: 10,
+                  border: active ? '1px solid #CBD5E1' : '1px solid transparent',
+                  boxShadow: active ? '0 1px 3px rgba(0,0,0,0.04)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <span>{tab.label}</span>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  fontFamily: 'monospace',
+                  padding: '1px 7px',
+                  borderRadius: 999,
+                  background: active ? '#EFF6FF' : '#E2E8F0',
+                  color: active ? '#0B3D91' : '#475569',
+                }}>
+                  {tab.count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Filters Toolbar */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 14,
+          padding: '16px 20px',
+          borderBottom: '1px solid #F1F5F9',
+        }}>
+          {/* Search Input */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 260, maxWidth: 400 }}>
+            <Search
+              size={15}
+              style={{
+                position: 'absolute',
+                left: 12,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#94A3B8',
+                pointerEvents: 'none',
+              }}
+            />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name, employee ID, or username..."
+              style={{
+                width: '100%',
+                height: 38,
+                paddingLeft: 34,
+                paddingRight: 14,
+                borderRadius: 8,
+                border: '1px solid #CBD5E1',
+                background: '#FFFFFF',
+                fontSize: 13,
+                color: '#0F172A',
+                outline: 'none',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          {/* Department & Role Dropdowns */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <select
+              value={selectedDept}
+              onChange={(e) => setSelectedDept(e.target.value)}
+              style={{
+                height: 38,
+                padding: '0 12px',
+                borderRadius: 8,
+                border: '1px solid #CBD5E1',
+                background: '#FFFFFF',
+                fontSize: 13,
+                color: '#334155',
+                outline: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              <option value="">All Departments</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              style={{
+                height: 38,
+                padding: '0 12px',
+                borderRadius: 8,
+                border: '1px solid #CBD5E1',
+                background: '#FFFFFF',
+                fontSize: 13,
+                color: '#334155',
+                outline: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              <option value="">All Roles</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.name}>{r.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Table Content */}
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
+            <Spinner label="Loading users directory..." />
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div style={{ padding: '64px 20px' }}>
+            <EmptyState
+              title="No users found"
+              description="No user records matched your filter criteria."
+              action={
+                <Button variant="primary" size="sm" onClick={handleCreate} style={{ marginTop: 12 }}>
+                  <Plus size={14} style={{ marginRight: 6 }} />
+                  Add New User
+                </Button>
+              }
+            />
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', textAlign: 'left', color: '#64748B' }}>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>User Details</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', width: 140 }}>Employee ID</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', width: 140 }}>Username</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Department</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Roles</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', width: 100 }}>Status</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', width: 160 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((u) => {
+                  const nameStr = displayName(u)
+                  const initials = nameStr.slice(0, 1).toUpperCase()
+                  return (
+                    <tr
+                      key={u.id}
+                      style={{
+                        borderBottom: '1px solid #F1F5F9',
+                        transition: 'background 0.1s ease',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#F8FAFC' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      {/* Name & Email with Avatar */}
+                      <td style={{ padding: '12px 18px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: '50%',
+                            background: '#EFF6FF',
+                            color: '#0B3D91',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 13,
+                            fontWeight: 800,
+                            border: '1px solid #BFDBFE',
+                            flexShrink: 0,
+                          }}>
+                            {initials}
+                          </div>
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/users/${u.id}`)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                fontWeight: 700,
+                                fontSize: 13.5,
+                                color: '#0B3D91',
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              {nameStr}
+                            </button>
+                            <div style={{ fontSize: 12, color: '#64748B', marginTop: 1 }}>
+                              {u.email}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Employee ID */}
+                      <td style={{ padding: '12px 18px' }}>
+                        {u.employee_number ? (
+                          <span style={{
+                            fontFamily: 'monospace',
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            background: '#F1F5F9',
+                            color: '#334155',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            border: '1px solid #E2E8F0',
+                          }}>
+                            {u.employee_number}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94A3B8' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* Username */}
+                      <td style={{ padding: '12px 18px' }}>
+                        {u.username ? (
+                          <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>
+                            {u.username}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94A3B8' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* Department */}
+                      <td style={{ padding: '12px 18px', color: '#334155' }}>
+                        {u.department?.name || <span style={{ color: '#CBD5E1' }}>No Department</span>}
+                      </td>
+
+                      {/* Roles */}
+                      <td style={{ padding: '12px 18px' }}>
+                        <RoleBadges roles={u.roles ?? []} />
+                      </td>
+
+                      {/* Status */}
+                      <td style={{ padding: '12px 18px' }}>
+                        <Badge tone={u.status === 'active' ? 'green' : 'yellow'}>
+                          {u.status || 'unknown'}
+                        </Badge>
+                      </td>
+
+                      {/* Action Toolbar */}
+                      <td style={{ padding: '12px 18px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            title="Edit User"
+                            onClick={() => handleEdit(u)}
+                            style={{
+                              padding: '5px 9px',
+                              borderRadius: 6,
+                              border: '1px solid #E2E8F0',
+                              background: '#FFFFFF',
+                              color: '#0B3D91',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <Edit size={12} />
+                            <span>Edit</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            title="Change Password"
+                            onClick={() => handleOpenPasswordModal(u)}
+                            style={{
+                              padding: '5px 7px',
+                              borderRadius: 6,
+                              border: '1px solid #E2E8F0',
+                              background: '#FFFFFF',
+                              color: '#475569',
+                              fontSize: 12,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <Key size={12} />
+                          </button>
+
+                          <button
+                            type="button"
+                            title="Reset to Default Password"
+                            onClick={() => void handleResetPassword(u)}
+                            disabled={resetSaving}
+                            style={{
+                              padding: '5px 7px',
+                              borderRadius: 6,
+                              border: '1px solid #E2E8F0',
+                              background: '#FFFFFF',
+                              color: '#475569',
+                              fontSize: 12,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <RotateCcw size={12} />
+                          </button>
+
+                          <button
+                            type="button"
+                            title="Delete User"
+                            onClick={() => void handleDelete(u)}
+                            style={{
+                              padding: '5px 7px',
+                              borderRadius: 6,
+                              border: '1px solid #FEE2E2',
+                              background: '#FFF5F5',
+                              color: '#DC2626',
+                              fontSize: 12,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            <div style={{ borderTop: '1px solid #F1F5F9', padding: '12px 20px' }}>
+              <Pagination
+                page={pagination.current_page}
+                lastPage={pagination.last_page}
+                total={pagination.total}
+                onPageChange={(p) => setFilters({ ...filters, page: p })}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Add / Edit User Modal ── */}
       <Modal
-        open={modalOpen} onClose={() => setModalOpen(false)} title={editingUser ? 'Edit User' : 'Add User'}
-        maxWidth={600}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingUser ? `Edit User: ${displayName(editingUser)}` : 'Create New User Account'}
+        maxWidth={640}
         footer={
-          <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={saving}>{saving ? 'Saving...' : editingUser ? 'Save Changes' : 'Create User'}</Button>
-          </>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, width: '100%' }}>
+            <Button variant="secondary" size="sm" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleSubmit}
+              disabled={saving || !formData.email.trim()}
+            >
+              {saving ? 'Saving...' : editingUser ? 'Save Changes' : 'Create User Account'}
+            </Button>
+          </div>
         }
       >
-        <div className="space-y-5">
-          {/* ── Section: Identity ── */}
-          <div>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Identity</p>
-            <div className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Identity Section */}
+          <div style={{
+            borderRadius: 10,
+            border: '1px solid #E2E8F0',
+            background: '#F8FAFC',
+            padding: '14px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#0B3D91' }}>
+              Employee Identity
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Employee Number
+                </label>
                 <Input
-                  label="Employee Number"
                   value={formData.employee_number}
                   onChange={(e) => setFormData((prev) => updateUsername({ employee_number: e.target.value }, prev))}
+                  placeholder="e.g., 2026-0042"
+                  style={{ height: 42, paddingLeft: 14, paddingRight: 14, borderRadius: 10, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 13.5 }}
                 />
-                <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-[#1F2937]">
-                    Username
-                  </label>
-                  <input
-                    readOnly
-                    value={formData.username || ''}
-                    className="w-full h-11 rounded-[10px] border border-[#E5E7EB] bg-[#F8FAFC] px-3.5 text-[14px] text-[#6B7280] shadow-[0_1px_2px_rgba(0,0,0,.05)] cursor-not-allowed select-all"
-                    title="Auto-generated from Last Name + Employee Number"
-                  />
-                  <p className="mt-1 text-[11px] text-[#94A3B8]">
-                    Auto-generated from Last Name + Employee Number
-                  </p>
-                </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Input label="First Name"  value={formData.first_name}       onChange={(e) => setFormData({ ...formData, first_name:   e.target.value })} />
-                <Input label="Middle Name" value={formData.middle_name || ''} onChange={(e) => setFormData({ ...formData, middle_name: e.target.value })} />
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  System Username
+                </label>
+                <input
+                  readOnly
+                  value={formData.username || ''}
+                  placeholder="Auto-generated"
+                  style={{
+                    width: '100%',
+                    height: 42,
+                    paddingLeft: 14,
+                    paddingRight: 14,
+                    borderRadius: 10,
+                    border: '1px solid #E2E8F0',
+                    background: '#F1F5F9',
+                    fontSize: 13.5,
+                    color: '#64748B',
+                    fontFamily: 'monospace',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  First Name <span style={{ color: '#EF4444' }}>*</span>
+                </label>
                 <Input
-                  label="Last Name"
+                  value={formData.first_name}
+                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  placeholder="Juan"
+                  style={{ height: 42, paddingLeft: 14, paddingRight: 14, borderRadius: 10, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 13.5 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Middle Name
+                </label>
+                <Input
+                  value={formData.middle_name || ''}
+                  onChange={(e) => setFormData({ ...formData, middle_name: e.target.value })}
+                  placeholder="Cruz"
+                  style={{ height: 42, paddingLeft: 14, paddingRight: 14, borderRadius: 10, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 13.5 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Last Name <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <Input
                   value={formData.last_name}
                   onChange={(e) => setFormData((prev) => updateUsername({ last_name: e.target.value }, prev))}
+                  placeholder="Dela Cruz"
+                  style={{ height: 42, paddingLeft: 14, paddingRight: 14, borderRadius: 10, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 13.5 }}
                 />
               </div>
             </div>
           </div>
 
-          {/* ── Section: Account ── */}
-          <div>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Account</p>
-            <div className="space-y-3">
-              <Input label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+          {/* Account & Assignment Section */}
+          <div style={{
+            borderRadius: 10,
+            border: '1px solid #E2E8F0',
+            background: '#F8FAFC',
+            padding: '14px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#0B3D91' }}>
+              Account & Credentials
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: editingUser ? '1fr' : '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Official Email Address <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="name@example.com"
+                  style={{ height: 42, paddingLeft: 14, paddingRight: 14, borderRadius: 10, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 13.5 }}
+                />
+              </div>
+
               {!editingUser && (
-                <Input label="Password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    Initial Password
+                  </label>
+                  <Input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Leave empty for default"
+                    style={{ height: 42, paddingLeft: 14, paddingRight: 14, borderRadius: 10, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 13.5 }}
+                  />
+                </div>
               )}
-              <label className="flex items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white px-3 py-3 text-sm text-[#1F2937]">
-                <input
-                  type="checkbox"
-                  checked={formData.email_notifications_enabled ?? true}
-                  className="h-4 w-4 rounded accent-[#0D47A1]"
-                  onChange={(e) => setFormData({ ...formData, email_notifications_enabled: e.target.checked })}
-                />
-                <span>Email notifications enabled</span>
-              </label>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {/* Department selector */}
-                <div>
-                  <label className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Department</label>
-                  <select
-                    className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/30"
-                    value={formData.department_id ?? ''}
-                    onChange={(e) => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : null })}
-                  >
-                    <option value="">No Department</option>
-                    {(Array.isArray(departments) ? departments : []).map((dept) => (
-                      <option key={dept.id} value={dept.id}>{dept.name}</option>
-                    ))}
-                  </select>
-                </div>
+            </div>
 
-                {/* Office selector */}
-                <div>
-                  <label className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Office</label>
-                  <select
-                    className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/30"
-                    value={formData.office_id ?? ''}
-                    onChange={(e) => setFormData({ ...formData, office_id: e.target.value ? Number(e.target.value) : null })}
-                  >
-                    <option value="">No Office</option>
-                    {(Array.isArray(offices) ? offices : []).map((off) => (
-                      <option key={off.id} value={off.id}>{off.name}</option>
-                    ))}
-                  </select>
-                  {lookupWarning && <p className="mt-1 text-xs text-[#B45309]">{lookupWarning}</p>}
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Department
+                </label>
+                <select
+                  value={formData.department_id ?? ''}
+                  onChange={(e) => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : null })}
+                  style={{
+                    width: '100%',
+                    height: 42,
+                    borderRadius: 10,
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    padding: '0 12px',
+                    fontSize: 13,
+                    color: '#0F172A',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <option value="">No Department</option>
+                  {(Array.isArray(departments) ? departments : []).map((dept) => (
+                    <option key={dept.id} value={dept.id}>{dept.name}</option>
+                  ))}
+                </select>
+              </div>
 
-                {/* Status selector */}
-                <div>
-                  <label className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Status</label>
-                  <select
-                    className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/30"
-                    value={formData.status ?? 'active'}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Office Assignment
+                </label>
+                <select
+                  value={formData.office_id ?? ''}
+                  onChange={(e) => setFormData({ ...formData, office_id: e.target.value ? Number(e.target.value) : null })}
+                  style={{
+                    width: '100%',
+                    height: 42,
+                    borderRadius: 10,
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    padding: '0 12px',
+                    fontSize: 13,
+                    color: '#0F172A',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <option value="">No Office</option>
+                  {(Array.isArray(offices) ? offices : []).map((off) => (
+                    <option key={off.id} value={off.id}>{off.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Account Status
+                </label>
+                <select
+                  value={formData.status ?? 'active'}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  style={{
+                    width: '100%',
+                    height: 42,
+                    borderRadius: 10,
+                    border: '1px solid #CBD5E1',
+                    background: '#FFFFFF',
+                    padding: '0 12px',
+                    fontSize: 13,
+                    color: '#0F172A',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
               </div>
             </div>
           </div>
 
-          {/* ── Section: Roles ── */}
+          {/* Role Assignment Section */}
           <div>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Roles</p>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+              Assigned Security Roles
+            </label>
             {roles.length === 0 ? (
-              <div className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3 text-[13px] text-[#64748B]">
-                No roles available. Add roles first in Roles &amp; Permissions.
+              <div style={{ padding: '12px', borderRadius: 8, background: '#F8FAFC', color: '#64748B', fontSize: 12 }}>
+                No security roles configured.
               </div>
             ) : (
-              <div className="grid gap-2 rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3 sm:grid-cols-2">
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: 8,
+                padding: '12px',
+                borderRadius: 10,
+                border: '1px solid #E2E8F0',
+                background: '#FFFFFF',
+                maxHeight: 140,
+                overflowY: 'auto',
+              }}>
                 {roles.map((role) => {
                   const checked = formData.roles?.includes(role.id) ?? false
                   return (
-                    <label key={role.id} className="flex cursor-pointer items-center gap-2.5 rounded-lg bg-white px-3 py-2.5 text-[13px] font-medium text-[#1F2937] ring-1 ring-[#E5E7EB] transition-colors hover:bg-[#F0F7FF] hover:ring-[#BFDBFE]">
+                    <label
+                      key={role.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '6px 10px',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        background: checked ? '#EFF6FF' : '#F8FAFC',
+                        border: `1px solid ${checked ? '#BFDBFE' : '#E2E8F0'}`,
+                        transition: 'all 0.12s ease',
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={checked}
-                        className="h-4 w-4 rounded accent-[#0D47A1]"
                         onChange={(event) => {
                           const currentRoles = formData.roles ?? []
                           const nextRoles = event.target.checked
@@ -500,8 +1235,11 @@ export function UsersPage() {
                             : currentRoles.filter((roleId) => roleId !== role.id)
                           setFormData({ ...formData, roles: nextRoles })
                         }}
+                        style={{ width: 15, height: 15, accentColor: '#0B3D91', cursor: 'pointer' }}
                       />
-                      <RoleBadges roles={[role]} maxVisible={1} />
+                      <span style={{ fontSize: 12.5, fontWeight: checked ? 700 : 500, color: checked ? '#0B3D91' : '#334155' }}>
+                        {role.name}
+                      </span>
                     </label>
                   )
                 })}
@@ -511,277 +1249,460 @@ export function UsersPage() {
         </div>
       </Modal>
 
-      {/* Change Password */}
+      {/* ── Change Password Modal ── */}
       <Modal
-        open={passwordModalOpen} onClose={() => setPasswordModalOpen(false)} title={`Change Password: ${passwordUser ? displayName(passwordUser) : ''}`}
+        open={passwordModalOpen}
+        onClose={() => setPasswordModalOpen(false)}
+        title={`Change Password: ${passwordUser ? displayName(passwordUser) : ''}`}
+        maxWidth={460}
         footer={
-          <>
-            <Button variant="secondary" onClick={() => setPasswordModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleChangePassword} disabled={passwordSaving}>{passwordSaving ? 'Saving...' : 'Change Password'}</Button>
-          </>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, width: '100%' }}>
+            <Button variant="secondary" size="sm" onClick={() => setPasswordModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleChangePassword}
+              disabled={passwordSaving}
+            >
+              {passwordSaving ? 'Saving...' : 'Change Password'}
+            </Button>
+          </div>
         }
       >
-        <div className="space-y-4">
-          <Input
-            label="New Password"
-            type="password"
-            value={passwordData.password}
-            onChange={(e) => setPasswordData({ ...passwordData, password: e.target.value })}
-          />
-          <Input
-            label="Confirm Password"
-            type="password"
-            value={passwordData.password_confirmation}
-            onChange={(e) => setPasswordData({ ...passwordData, password_confirmation: e.target.value })}
-          />
-          <p className="text-xs text-[#6B7280]">Password must be at least 8 characters with letters and numbers.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+              New Password <span style={{ color: '#EF4444' }}>*</span>
+            </label>
+            <Input
+              type="password"
+              value={passwordData.password}
+              onChange={(e) => setPasswordData({ ...passwordData, password: e.target.value })}
+              placeholder="At least 8 characters"
+              style={{ height: 42, paddingLeft: 14, paddingRight: 14, borderRadius: 10, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 13.5 }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+              Confirm New Password <span style={{ color: '#EF4444' }}>*</span>
+            </label>
+            <Input
+              type="password"
+              value={passwordData.password_confirmation}
+              onChange={(e) => setPasswordData({ ...passwordData, password_confirmation: e.target.value })}
+              placeholder="Re-enter password"
+              style={{ height: 42, paddingLeft: 14, paddingRight: 14, borderRadius: 10, border: '1px solid #CBD5E1', background: '#FFFFFF', fontSize: 13.5 }}
+            />
+          </div>
+
+          <div style={{ fontSize: 12, color: '#64748B' }}>
+            Password must contain at least 8 characters including letters and numbers.
+          </div>
         </div>
       </Modal>
 
-      {/* Import Employees */}
+      {/* ── Import Employees Modal (REDESIGNED) ── */}
       <Modal
-        open={importModalOpen} onClose={() => { setImportModalOpen(false); setImportResult(null); setImportFile(null) }} title="Import Employees"
+        open={importModalOpen}
+        onClose={() => {
+          setImportModalOpen(false)
+          setImportResult(null)
+          setImportFile(null)
+        }}
+        title="Import Employees"
+        maxWidth={620}
         footer={
-          <>
-            <Button variant="secondary" onClick={() => { setImportModalOpen(false); setImportResult(null); setImportFile(null) }}>Cancel</Button>
-            <Button onClick={handleImport} disabled={importing || !importFile}>
-              {importing ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <svg style={{ animation: 'spin 1s linear infinite' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                  Importing…
-                </span>
-              ) : 'Import'}
-            </Button>
-          </>
-        }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-          {/* ── Field requirements ── */}
-          <div style={{ borderRadius: 12, border: '1px solid #BFDBFE', background: '#EFF6FF', padding: '14px 16px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#1E40AF', marginBottom: 10 }}>
-              File Requirements
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* Required */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <span style={{
-                  flexShrink: 0, marginTop: 1,
-                  width: 18, height: 18, borderRadius: '50%',
-                  background: '#1E40AF', color: '#fff',
-                  fontSize: 9, fontWeight: 800,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>R</span>
-                <div style={{ fontSize: 12.5, color: '#1E3A8A', lineHeight: 1.5 }}>
-                  <span style={{ fontWeight: 500 }}>Required: </span>
-                  {['email'].map((f, i, a) => (
-                    <span key={f}>
-                      <code style={{ fontFamily: 'ui-monospace,monospace', fontWeight: 700, background: '#DBEAFE', borderRadius: 3, padding: '0 4px' }}>{f}</code>
-                      {i < a.length - 1 && <span style={{ color: '#93C5FD' }}>, </span>}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#BFDBFE] text-[10px] font-bold text-[#1E40AF]">O</span>
-                <span>Optional: <strong>first_name</strong>, <strong>middle_name</strong>, <strong>last_name</strong>, <strong>id_number</strong>, <strong>role</strong> (defaults to Employee)</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#BFDBFE] text-[10px] font-bold text-[#1E40AF]">⚡</span>
-                <span><strong>Username is auto-generated</strong> as <code className="rounded bg-white/60 px-1">lastname + id_number</code> when available, otherwise the email local part. Duplicates get <em>_1</em>, <em>_2</em> suffixes.</span>
-              </div>
-              {/* Divider */}
-              <div style={{ borderTop: '1px solid #BFDBFE', paddingTop: 8, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, color: '#1E3A8A' }}>
-                  <span style={{ fontWeight: 500 }}>Default password: </span>
-                  <code style={{ fontFamily: 'ui-monospace,monospace', fontWeight: 700, background: '#DBEAFE', borderRadius: 3, padding: '0 5px' }}>psasargen9500</code>
-                </span>
-                <span style={{ fontSize: 12, color: '#3B82F6' }}>Formats: CSV · JSON · XLSX</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Download templates ── */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>
-              Download Template
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {([
-                { type: 'csv'  as const, label: 'CSV Template',  badge: 'CSV',  badgeBg: '#F0FDF4', badgeColor: '#15803D' },
-                { type: 'json' as const, label: 'JSON Template', badge: 'JSON', badgeBg: '#EFF6FF', badgeColor: '#1D4ED8' },
-              ]).map(({ type, label, badge, badgeBg, badgeColor }) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => downloadTemplate(type)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '8px 14px', borderRadius: 8,
-                    border: '1px solid #E2E8F0', background: '#fff',
-                    fontSize: 13, fontWeight: 500, color: '#374151',
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    transition: 'all 0.1s',
-                  }}
-                  onMouseEnter={(e) => {
-                    const el = e.currentTarget as HTMLButtonElement
-                    el.style.borderColor = '#1E40AF'; el.style.background = '#EFF6FF'; el.style.color = '#1E40AF'
-                  }}
-                  onMouseLeave={(e) => {
-                    const el = e.currentTarget as HTMLButtonElement
-                    el.style.borderColor = '#E2E8F0'; el.style.background = '#fff'; el.style.color = '#374151'
-                  }}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                  <span style={{ fontSize: 10, fontWeight: 700, background: badgeBg, color: badgeColor, borderRadius: 4, padding: '1px 5px' }}>{badge}</span>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── File picker ── */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>
-              Select File
-            </div>
-            <label
-              htmlFor="import-file-input"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                padding: '16px 18px', borderRadius: 12, cursor: 'pointer',
-                border: `2px dashed ${importFile ? '#22C55E' : '#CBD5E1'}`,
-                background: importFile ? '#F0FDF4' : '#F8FAFC',
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={(e) => {
-                if (!importFile) {
-                  const el = e.currentTarget as HTMLLabelElement
-                  el.style.borderColor = '#1E40AF'; el.style.background = '#EFF6FF'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!importFile) {
-                  const el = e.currentTarget as HTMLLabelElement
-                  el.style.borderColor = '#CBD5E1'; el.style.background = '#F8FAFC'
-                }
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, width: '100%' }}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setImportModalOpen(false)
+                setImportResult(null)
+                setImportFile(null)
               }}
             >
-              {/* Icon */}
-              <div style={{
-                width: 44, height: 44, borderRadius: 10, flexShrink: 0,
-                background: importFile ? '#DCFCE7' : '#E2E8F0',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {importFile ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"/>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleImport}
+              disabled={importing || !importFile}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: '#0B3D91',
+                paddingInline: 18,
+                height: 38,
+                fontWeight: 700,
+              }}
+            >
+              {importing ? (
+                <>
+                  <svg style={{ animation: 'spin 1s linear infinite' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
                   </svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/>
-                    <line x1="12" y1="3" x2="12" y2="15"/>
-                  </svg>
-                )}
-              </div>
-
-              {/* Text */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {importFile ? (
-                  <>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#15803D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {importFile.name}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-                      {(importFile.size / 1024).toFixed(1)} KB · click to change
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#374151' }}>
-                      Click to choose a file
-                    </div>
-                    <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
-                      .csv, .json, .xlsx · max 10 MB
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {importFile && (
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); setImportFile(null) }}
-                  style={{
-                    flexShrink: 0, width: 26, height: 26, borderRadius: 6,
-                    border: '1px solid #BBF7D0', background: '#fff',
-                    color: '#15803D', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'background 0.1s',
-                  }}
-                  title="Remove file"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
-                </button>
+                  <span>Importing Data...</span>
+                </>
+              ) : (
+                <>
+                  <Upload size={14} />
+                  <span>Start Import</span>
+                </>
               )}
+            </Button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Format Specification & Guidance Card */}
+          <div style={{
+            borderRadius: 12,
+            border: '1px solid #BFDBFE',
+            background: '#F0F7FF',
+            padding: '14px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 800, color: '#0B3D91' }}>
+                <Info size={16} style={{ color: '#0B3D91' }} />
+                <span>File Format & Column Requirements</span>
+              </div>
+              <span style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: '#1E40AF',
+                background: '#DBEAFE',
+                padding: '2px 8px',
+                borderRadius: 999,
+              }}>
+                Batch Import
+              </span>
+            </div>
 
-              <input
-                id="import-file-input"
-                type="file"
-                accept=".csv,.json,.xlsx"
-                style={{ display: 'none' }}
-                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-              />
-            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12.5, color: '#1E3A8A' }}>
+              {/* Required columns */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  background: '#0B3D91',
+                  color: '#FFFFFF',
+                }}>
+                  Required
+                </span>
+                <code style={{ fontFamily: 'monospace', fontWeight: 700, background: '#DBEAFE', padding: '2px 6px', borderRadius: 4, color: '#0B3D91' }}>
+                  email
+                </code>
+              </div>
+
+              {/* Optional columns */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  background: '#CBD5E1',
+                  color: '#334155',
+                }}>
+                  Optional
+                </span>
+                {['first_name', 'middle_name', 'last_name', 'id_number', 'role'].map((col) => (
+                  <code key={col} style={{ fontFamily: 'monospace', fontWeight: 600, background: '#FFFFFF', border: '1px solid #BFDBFE', padding: '1px 6px', borderRadius: 4, color: '#334155' }}>
+                    {col}
+                  </code>
+                ))}
+              </div>
+
+              <div style={{
+                borderTop: '1px solid #BFDBFE',
+                paddingTop: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 8,
+                fontSize: 11.5,
+                color: '#475569',
+              }}>
+                <div>
+                  ⚡ Username generated as <code style={{ background: '#FFFFFF', padding: '1px 4px', borderRadius: 3, border: '1px solid #CBD5E1' }}>lastname + id_number</code>
+                </div>
+                <div>
+                  Default password: <code style={{ fontWeight: 700, color: '#0B3D91', background: '#FFFFFF', padding: '1px 4px', borderRadius: 3, border: '1px solid #CBD5E1' }}>psasargen9500</code>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* ── Import result ── */}
-          {importResult && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>
-                Import Result
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)', gap: 10 }}>
-                {[
-                  { label: 'Total',    value: importResult.total_rows, color: '#374151', bg: '#F8FAFC', border: '#E2E8F0', dot: '#94A3B8' },
-                  { label: 'Imported', value: importResult.imported,   color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0', dot: '#22C55E' },
-                  { label: 'Skipped',  value: importResult.skipped,    color: '#B45309', bg: '#FFFBEB', border: '#FDE68A', dot: '#F59E0B' },
-                  { label: 'Failed',   value: importResult.failed,     color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', dot: '#EF4444' },
-                ].map((s) => (
-                  <div key={s.label} style={{
-                    borderRadius: 10, border: `1px solid ${s.border}`,
-                    background: s.bg, padding: '12px 10px', textAlign: 'center',
+          {/* Download Sample Templates */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', marginBottom: 8 }}>
+              Download Sample Templates
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => downloadTemplate('csv')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 14px',
+                  borderRadius: 10,
+                  border: '1px solid #E2E8F0',
+                  background: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#0F172A',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#16A34A'
+                  e.currentTarget.style.background = '#F0FDF4'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#E2E8F0'
+                  e.currentTarget.style.background = '#FFFFFF'
+                }}
+              >
+                <Download size={14} style={{ color: '#16A34A' }} />
+                <span>CSV Template</span>
+                <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#DCFCE7', color: '#15803D' }}>
+                  .CSV
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => downloadTemplate('json')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 14px',
+                  borderRadius: 10,
+                  border: '1px solid #E2E8F0',
+                  background: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#0F172A',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#0B3D91'
+                  e.currentTarget.style.background = '#EFF6FF'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#E2E8F0'
+                  e.currentTarget.style.background = '#FFFFFF'
+                }}
+              >
+                <Download size={14} style={{ color: '#0B3D91' }} />
+                <span>JSON Template</span>
+                <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4, background: '#DBEAFE', color: '#1E40AF' }}>
+                  .JSON
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Interactive File Dropzone */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748B', marginBottom: 8 }}>
+              Upload Employee Dataset
+            </div>
+
+            {importFile ? (
+              /* Selected File Card */
+              <div style={{
+                borderRadius: 12,
+                border: '1.5px solid #86EFAC',
+                background: '#F0FDF4',
+                padding: '14px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 10,
+                    background: '#DCFCE7',
+                    color: '#15803D',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
                   }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 5 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, display: 'inline-block' }} />
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280' }}>{s.label}</span>
+                    <FileText size={22} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>
+                      {importFile.name}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#15803D', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <CheckCircle2 size={13} />
+                      <span>Ready for import ({(importFile.size / 1024).toFixed(1)} KB)</span>
                     </div>
                   </div>
-                ))}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <label
+                    htmlFor="user-import-file-change"
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 8,
+                      border: '1px solid #BBF7D0',
+                      background: '#FFFFFF',
+                      color: '#15803D',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Change File
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setImportFile(null)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #FECACA',
+                      background: '#FFF5F5',
+                      color: '#DC2626',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Remove
+                  </button>
+                  <input
+                    id="user-import-file-change"
+                    type="file"
+                    accept=".csv,.json,.xlsx"
+                    style={{ display: 'none' }}
+                    onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                  />
+                </div>
+              </div>
+            ) : (
+              /* Dropzone */
+              <label
+                htmlFor="user-import-file"
+                style={{
+                  borderRadius: 14,
+                  border: '2px dashed #CBD5E1',
+                  background: '#F8FAFC',
+                  padding: '28px 20px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 10,
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#0B3D91'
+                  e.currentTarget.style.background = '#EFF6FF'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#CBD5E1'
+                  e.currentTarget.style.background = '#F8FAFC'
+                }}
+              >
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: '#EFF6FF',
+                  color: '#0B3D91',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <FileSpreadsheet size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>
+                    Click to select file or drag & drop here
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>
+                    Supports .CSV, .JSON, and .XLSX datasets up to 10 MB
+                  </div>
+                </div>
+                <input
+                  id="user-import-file"
+                  type="file"
+                  accept=".csv,.json,.xlsx"
+                  style={{ display: 'none' }}
+                  onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            )}
+          </div>
+
+          {/* Import Result Stats */}
+          {importResult && (
+            <div style={{
+              borderRadius: 12,
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              padding: '14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+            }}>
+              <div style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0F172A' }}>
+                Batch Import Summary
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                gap: 10,
+                textAlign: 'center',
+              }}>
+                <div style={{ padding: '10px 8px', borderRadius: 8, background: '#FFFFFF', border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A' }}>{importResult.total_rows}</div>
+                  <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600, marginTop: 2 }}>Total Rows</div>
+                </div>
+                <div style={{ padding: '10px 8px', borderRadius: 8, background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#16A34A' }}>{importResult.imported}</div>
+                  <div style={{ fontSize: 11, color: '#15803D', fontWeight: 600, marginTop: 2 }}>Imported</div>
+                </div>
+                <div style={{ padding: '10px 8px', borderRadius: 8, background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#D97706' }}>{importResult.skipped}</div>
+                  <div style={{ fontSize: 11, color: '#B45309', fontWeight: 600, marginTop: 2 }}>Skipped</div>
+                </div>
+                <div style={{ padding: '10px 8px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#DC2626' }}>{importResult.failed}</div>
+                  <div style={{ fontSize: 11, color: '#B91C1C', fontWeight: 600, marginTop: 2 }}>Failed</div>
+                </div>
               </div>
             </div>
           )}
-
         </div>
       </Modal>
-    </div>
-  )
-}
-
-/* EmptyState local usage */
-function EmptyState({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-      <p className="text-[14px] font-semibold text-[#1F2937]">{title}</p>
-      <p className="max-w-xs text-[13px] text-[#6B7280]">{description}</p>
     </div>
   )
 }

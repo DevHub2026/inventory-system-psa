@@ -1,251 +1,731 @@
-import { Shield, FileText, Lock, Users, Clock, Mail, Phone } from 'lucide-react'
-import { Card } from '@/components/ui'
-
-/* ── Design tokens ── */
-const T = {
-  text:       '#0F172A',
-  textMid:    '#475569',
-  textMuted:  '#94A3B8',
-  border:     '#E2E8F0',
-  borderLight:'#F1F5F9',
-  white:      '#FFFFFF',
-  bg:         '#F8FAFC',
-  accent:     '#003DA5',
-  accentBg:   '#EFF6FF',
-  amberBg:    '#FFFBEB',
-  amberText:  '#B45309',
-}
-
-function Section({
-  icon,
-  iconBg,
-  title,
-  subtitle,
-  children,
-}: {
-  icon: React.ReactNode
-  iconBg: string
-  title: string
-  subtitle?: string
-  children: React.ReactNode
-}) {
-  return (
-    <Card noPadding className="overflow-hidden">
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        padding: '22px 24px',
-        background: T.bg,
-        borderBottom: `1px solid ${T.borderLight}`,
-      }}>
-        <div style={{
-          width: 48,
-          height: 48,
-          borderRadius: 14,
-          display: 'grid',
-          placeItems: 'center',
-          background: iconBg,
-          flexShrink: 0,
-        }}>
-          {icon}
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: T.text, lineHeight: 1.2 }}>{title}</div>
-          {subtitle && (
-            <div style={{ marginTop: 4, fontSize: 13, color: T.textMid, lineHeight: 1.5 }}>{subtitle}</div>
-          )}
-        </div>
-      </div>
-      <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {children}
-      </div>
-    </Card>
-  )
-}
-
-function Badge({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 8,
-      padding: '8px 12px',
-      borderRadius: 999,
-      background: '#E0F2FE',
-      color: '#0369A1',
-      fontSize: 12,
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      letterSpacing: '0.08em',
-    }}>
-      {children}
-    </span>
-  )
-}
+import {
+  Shield,
+  FileText,
+  Lock,
+  Users,
+  Clock,
+  Mail,
+  Phone,
+  CheckCircle2,
+  HelpCircle,
+  Building,
+  KeyRound,
+  FileCheck,
+  Scale,
+} from 'lucide-react'
 
 export function PrivacyNoticePage() {
   return (
-    <div style={{ display: 'grid', gap: 24, maxWidth: 980, width: '100%', paddingBottom: 32 }}>
-      <Card className="space-y-4">
-        <div style={{ display: 'grid', gap: 18 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1040, width: '100%', margin: '0 auto', paddingBottom: 36 }}>
+      {/* ── Official Document Banner ── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0B3D91 0%, #1E3A8A 60%, #0F172A 100%)',
+        borderRadius: 18,
+        padding: '32px 36px',
+        color: '#FFFFFF',
+        boxShadow: '0 8px 24px rgba(11, 61, 145, 0.14)',
+        position: 'relative',
+        overflow: 'hidden',
+        border: '1px solid #1E40AF',
+      }}>
+        {/* Subtle glass reflection effect */}
+        <div style={{
+          position: 'absolute',
+          right: -40,
+          top: -40,
+          width: 240,
+          height: 240,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Header Badges */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'rgba(255, 255, 255, 0.12)',
+            border: '1px solid rgba(255, 255, 255, 0.22)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: 999,
+            padding: '5px 14px',
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+          }}>
+            <Shield size={13} style={{ color: '#93C5FD' }} />
+            <span style={{ color: '#FFFFFF' }}>Republic of the Philippines</span>
+            <span style={{ color: '#93C5FD' }}>·</span>
+            <span style={{ color: '#BFDBFE' }}>PSA Official Portal</span>
+          </div>
+
+          <span style={{
+            fontSize: 12,
+            fontWeight: 700,
+            background: 'rgba(34, 197, 94, 0.2)',
+            color: '#86EFAC',
+            border: '1px solid rgba(34, 197, 94, 0.35)',
+            padding: '4px 12px',
+            borderRadius: 999,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+          }}>
+            <CheckCircle2 size={13} style={{ color: '#86EFAC' }} />
+            <span>RA 10173 Compliant</span>
+          </span>
+
+          <span style={{
+            fontSize: 12,
+            fontWeight: 700,
+            background: 'rgba(255, 255, 255, 0.12)',
+            color: '#E2E8F0',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            padding: '4px 12px',
+            borderRadius: 999,
+          }}>
+            NPC Registered
+          </span>
+        </div>
+
+        {/* Main Title */}
+        <h1 style={{
+          fontSize: 28,
+          fontWeight: 800,
+          letterSpacing: '-0.02em',
+          margin: '0 0 10px 0',
+          lineHeight: 1.25,
+          color: '#FFFFFF',
+        }}>
+          Philippine Statistics Authority Data Privacy Notice
+        </h1>
+
+        <p style={{
+          fontSize: 14.5,
+          lineHeight: 1.7,
+          color: '#E0E7FF',
+          maxWidth: 840,
+          margin: '0 0 22px 0',
+        }}>
+          This official Privacy Notice explains how the PSA Inventory & Asset Management System collects, protects, uses, and safeguards personal data in strict compliance with <strong style={{ color: '#FFFFFF' }}>Republic Act No. 10173</strong> (Data Privacy Act of 2012) and National Privacy Commission regulations.
+        </p>
+
+        {/* Metadata Strip */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          flexWrap: 'wrap',
+          fontSize: 12.5,
+          color: '#BFDBFE',
+          borderTop: '1px solid rgba(255, 255, 255, 0.16)',
+          paddingTop: 16,
+        }}>
+          <div><strong>Effective Date:</strong> January 1, 2026</div>
+          <div>•</div>
+          <div><strong>Policy Version:</strong> 2.4 (Annual Review)</div>
+          <div>•</div>
+          <div><strong>Classification:</strong> Public / Official Notice</div>
+          <div>•</div>
+          <div><strong>Authority:</strong> Data Protection Office (DPO)</div>
+        </div>
+      </div>
+
+      {/* ── Key Principles (4-Summary Cards) ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+        gap: 14,
+      }}>
+        {/* Card 1: Necessary Collection */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #BFDBFE',
+          borderTop: '4px solid #0B3D91',
+          padding: '18px 20px',
+          boxShadow: '0 2px 6px rgba(11, 61, 145, 0.04)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            background: '#EFF6FF',
+            color: '#0B3D91',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <FileText size={20} />
+          </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: T.accent }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: T.accent }}>Privacy Notice</span>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0B3D91' }}>
+              1. Proportional Collection
             </div>
-            <h1 style={{ margin: '12px 0 0', fontSize: 32, fontWeight: 800, color: T.text, lineHeight: 1.15 }}>
-              Safeguarding your personal information with clarity and care
-            </h1>
-            <p style={{ margin: '16px 0 0', fontSize: 15, color: T.textMid, lineHeight: 1.8, maxWidth: 760 }}>
-              This notice describes how the PSA Inventory Management System collects, uses, stores, and protects personal information in accordance with the Philippine Data Privacy Act of 2012 (RA 10173).
+            <div style={{ fontSize: 12.5, color: '#475569', marginTop: 4, lineHeight: 1.5 }}>
+              Only necessary employee identity, office assignment, and asset stewardship logs are gathered.
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Lawful Mandate */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #FDE68A',
+          borderTop: '4px solid #D97706',
+          padding: '18px 20px',
+          boxShadow: '0 2px 6px rgba(217, 119, 6, 0.04)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            background: '#FFFBEB',
+            color: '#D97706',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Scale size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#B45309' }}>
+              2. Lawful Mandate
+            </div>
+            <div style={{ fontSize: 12.5, color: '#475569', marginTop: 4, lineHeight: 1.5 }}>
+              Processing strictly supports government asset accountability and Commission on Audit standards.
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Security & Encryption */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #FECACA',
+          borderTop: '4px solid #DC2626',
+          padding: '18px 20px',
+          boxShadow: '0 2px 6px rgba(220, 38, 38, 0.04)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            background: '#FEF2F2',
+            color: '#DC2626',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Lock size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#B91C1C' }}>
+              3. Strict Safeguards
+            </div>
+            <div style={{ fontSize: 12.5, color: '#475569', marginTop: 4, lineHeight: 1.5 }}>
+              Credentials use salted Bcrypt hashing, TLS 1.3 transit encryption, and role-based permissions.
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Employee Rights */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #BBF7D0',
+          borderTop: '4px solid #16A34A',
+          padding: '18px 20px',
+          boxShadow: '0 2px 6px rgba(22, 163, 74, 0.04)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            background: '#F0FDF4',
+            color: '#16A34A',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Users size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#15803D' }}>
+              4. Employee Rights
+            </div>
+            <div style={{ fontSize: 12.5, color: '#475569', marginTop: 4, lineHeight: 1.5 }}>
+              Full rights under RA 10173 to access, verify, rectify, and inspect personal information.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Detailed Policy Provisions (2x2 Grid) ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+        gap: 18,
+      }}>
+        {/* Section 1: Categories of Personal Data Collected */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 16,
+          border: '1px solid #E2E8F0',
+          overflow: 'hidden',
+          boxShadow: '0 2px 6px rgba(15,23,42,0.03)',
+        }}>
+          <div style={{
+            background: '#F8FAFC',
+            padding: '16px 20px',
+            borderBottom: '1px solid #E2E8F0',
+            borderLeft: '4px solid #0B3D91',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: '#EFF6FF',
+              color: '#0B3D91',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <FileCheck size={17} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A' }}>
+                Categories of Information Collected
+              </div>
+              <div style={{ fontSize: 12, color: '#64748B' }}>
+                Proportional data gathered solely for operational integrity
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#0B3D91', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Personal Identification:</strong> Employee Full Name, Government Employee Number (ID), Organizational Title, and Designated Office/Division.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#0B3D91', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Account & Security Credentials:</strong> Official PSA Email Address, Generated System Username, Encrypted Passwords, and Role Privileges.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#0B3D91', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Asset Accountability Logs:</strong> Property Acknowledgement Receipts (PAR), Inventory Custodian Slips (ICS), Borrow & Extension logs, and QR scan audit records.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#0B3D91', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Technical Access Metadata:</strong> Client IP address, browser user-agent, operating system, and login session activity for forensic auditing.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Lawful Purpose & Processing */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 16,
+          border: '1px solid #E2E8F0',
+          overflow: 'hidden',
+          boxShadow: '0 2px 6px rgba(15,23,42,0.03)',
+        }}>
+          <div style={{
+            background: '#F8FAFC',
+            padding: '16px 20px',
+            borderBottom: '1px solid #E2E8F0',
+            borderLeft: '4px solid #D97706',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: '#FFFBEB',
+              color: '#D97706',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Building size={17} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A' }}>
+                Lawful Purpose & Processing
+              </div>
+              <div style={{ fontSize: 12, color: '#64748B' }}>
+                Defined statutory basis under Philippine law
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D97706', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Statutory Custody Tracking:</strong> Fulfilling government stewardship requirements to monitor public funds, IT assets, office equipment, and vehicles.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D97706', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Workflow Approval & Issuances:</strong> Facilitating automated approval chains for borrowing, equipment reservations, maintenance, and asset transfers.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D97706', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>COA Audit Verification:</strong> Generating certified property reports, inspection inventories, and unserviceable property disposal records.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D97706', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Security & Fraud Prevention:</strong> Detecting unauthorized system access, preventing duplicate logins, and maintaining tamper-evident audit logs.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Technical Security Controls */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 16,
+          border: '1px solid #E2E8F0',
+          overflow: 'hidden',
+          boxShadow: '0 2px 6px rgba(15,23,42,0.03)',
+        }}>
+          <div style={{
+            background: '#F8FAFC',
+            padding: '16px 20px',
+            borderBottom: '1px solid #E2E8F0',
+            borderLeft: '4px solid #DC2626',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: '#FEF2F2',
+              color: '#DC2626',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Lock size={17} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A' }}>
+                Technical & Organizational Safeguards
+              </div>
+              <div style={{ fontSize: 12, color: '#64748B' }}>
+                Enterprise security controls preserving confidentiality
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#DC2626', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Strong Password Hashing:</strong> All system credentials are cryptographically protected using salted Bcrypt algorithms with zero plain-text storage.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#DC2626', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Role-Based Access Control (RBAC):</strong> Strict privilege boundaries ensure users can only view assets and workflows relevant to their authorized role.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#DC2626', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Transport Encryption:</strong> All web requests, mobile QR scans, and API transactions are encrypted in transit via TLS 1.3 / HTTPS.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#DC2626', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Automated Session Invalidation:</strong> Idle sessions time out automatically, and active tokens are securely revoked upon logout or password changes.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 4: Data Retention & Disposal */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 16,
+          border: '1px solid #E2E8F0',
+          overflow: 'hidden',
+          boxShadow: '0 2px 6px rgba(15,23,42,0.03)',
+        }}>
+          <div style={{
+            background: '#F8FAFC',
+            padding: '16px 20px',
+            borderBottom: '1px solid #E2E8F0',
+            borderLeft: '4px solid #0B3D91',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: '#EFF6FF',
+              color: '#0B3D91',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Clock size={17} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A' }}>
+                Retention, Archiving & Disposal
+              </div>
+              <div style={{ fontSize: 12, color: '#64748B' }}>
+                Data lifecycle management and retention timelines
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#0B3D91', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Active Employment Duration:</strong> User records remain active during the employee's active service or designated contract period.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#0B3D91', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Account Deactivation:</strong> Upon separation or transfer, user login credentials are deactivated immediately while maintaining historical property records.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#0B3D91', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>COA Record Retention:</strong> Signed property acknowledgements and transaction logs are preserved in accordance with National Archives of the Philippines guidelines.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#0B3D91', marginTop: 7, flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                <strong>Secure Destruction:</strong> Decommissioned data records are permanently wiped using industry-standard digital sanitization methods.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Data Subject Rights & DPO Contact (2 Columns) ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+        gap: 18,
+      }}>
+        {/* Your Rights Under RA 10173 */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 16,
+          border: '1px solid #E2E8F0',
+          padding: '24px',
+          boxShadow: '0 2px 6px rgba(15,23,42,0.03)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 42,
+              height: 42,
+              borderRadius: 12,
+              background: '#EFF6FF',
+              color: '#0B3D91',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <KeyRound size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
+                Your Rights as a Data Subject
+              </div>
+              <div style={{ fontSize: 12.5, color: '#64748B' }}>
+                Guaranteed under Republic Act No. 10173
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: '#334155' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle2 size={16} style={{ color: '#0B3D91', flexShrink: 0 }} />
+              <span><strong>Right to be Informed:</strong> Know how personal data is collected and processed.</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle2 size={16} style={{ color: '#0B3D91', flexShrink: 0 }} />
+              <span><strong>Right of Access:</strong> Request a copy of personal information on file.</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle2 size={16} style={{ color: '#0B3D91', flexShrink: 0 }} />
+              <span><strong>Right to Rectification:</strong> Dispute and correct inaccurate or outdated records.</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle2 size={16} style={{ color: '#0B3D91', flexShrink: 0 }} />
+              <span><strong>Right to Object:</strong> Object to processing where no statutory basis exists.</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle2 size={16} style={{ color: '#0B3D91', flexShrink: 0 }} />
+              <span><strong>Right to Lodge Complaints:</strong> File concerns directly with the NPC.</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Data Protection Officer (DPO) Channel */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 16,
+          border: '1px solid #E2E8F0',
+          padding: '24px',
+          boxShadow: '0 2px 6px rgba(15,23,42,0.03)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          gap: 16,
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                background: '#FFFBEB',
+                color: '#D97706',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Shield size={20} />
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
+                  Data Protection Officer (DPO)
+                </div>
+                <div style={{ fontSize: 12.5, color: '#64748B' }}>
+                  Official inquiries & privacy assistance
+                </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, margin: '0 0 14px 0' }}>
+              For inquiries regarding this notice, to exercise your data subject rights, or to submit a privacy concern, contact the designated PSA Data Protection Office:
             </p>
-          </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            <Badge>Data protection</Badge>
-            <Badge>RA 10173 compliant</Badge>
-            <Badge>Secure access</Badge>
-            <Badge>Purpose-limited</Badge>
-          </div>
-        </div>
-      </Card>
-
-      <div style={{ display: 'grid', gap: 24, gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-        <Section
-          icon={<FileText size={20} style={{ color: T.accent }} />}
-          iconBg={T.accentBg}
-          title="What we collect"
-          subtitle="Only necessary information is gathered for inventory operations."
-        >
-          <p style={{ margin: 0, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
-            We collect information required for accurate tracking, user access, and reporting.
-          </p>
-          <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 10, color: T.textMid, fontSize: 14, lineHeight: 1.8 }}>
-            <li>Full name and employee ID</li>
-            <li>Official email and department</li>
-            <li>System username and login history</li>
-            <li>Asset activity logs for security and audits</li>
-          </ul>
-        </Section>
-
-        <Section
-          icon={<Users size={20} style={{ color: T.accent }} />}
-          iconBg={T.accentBg}
-          title="Why we collect it"
-          subtitle="Information supports defined and lawful system functions."
-        >
-          <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 10, color: T.textMid, fontSize: 14, lineHeight: 1.8 }}>
-            <li>Track borrowing and returns</li>
-            <li>Manage inventory and accountability</li>
-            <li>Authenticate users and control access</li>
-            <li>Support auditing and compliance</li>
-          </ul>
-        </Section>
-
-        <Section
-          icon={<Lock size={20} style={{ color: T.amberText }} />}
-          iconBg={T.amberBg}
-          title="How we protect it"
-          subtitle="Strong safeguards help keep your data safe."
-        >
-          <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 10, color: T.textMid, fontSize: 14, lineHeight: 1.8 }}>
-            <li>Passwords stored with bcrypt hashing</li>
-            <li>Session tokens expire automatically</li>
-            <li>Role-based controls limit access</li>
-            <li>Audit logs track sensitive activity</li>
-          </ul>
-        </Section>
-
-        <Section
-          icon={<Shield size={20} style={{ color: T.accent }} />}
-          iconBg={T.accentBg}
-          title="Who can access it"
-          subtitle="Access is limited to authorized personnel."
-        >
-          <p style={{ margin: 0, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
-            Personal information is only shared with authorized users or when required by law.
-          </p>
-          <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 10, color: T.textMid, fontSize: 14, lineHeight: 1.8 }}>
-            <li>System administrators</li>
-            <li>Department supervisors for asset oversight</li>
-            <li>Users viewing their own information</li>
-            <li>Auditors for compliance review</li>
-          </ul>
-        </Section>
-
-        <Section
-          icon={<Clock size={20} style={{ color: T.accent }} />}
-          iconBg={T.accentBg}
-          title="Retention and deactivation"
-          subtitle="Information is kept only as long as needed."
-        >
-          <p style={{ margin: 0, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
-            We retain personal data while it is needed for employment, inventory management, and legal compliance. Accounts are deactivated when no longer required.
-          </p>
-        </Section>
-      </div>
-
-      <div style={{ display: 'grid', gap: 24, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
-        <Card className="space-y-4">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 14, display: 'grid', placeItems: 'center', background: T.accentBg }}>
-              <Mail size={22} style={{ color: T.accent }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Contact information</div>
-              <div style={{ marginTop: 4, fontSize: 13, color: T.textMid }}>Reach out to the Data Protection Officer for privacy requests.</div>
-            </div>
-          </div>
-          <div style={{ display: 'grid', gap: 12, padding: 10, background: T.bg, borderRadius: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Shield size={16} style={{ color: T.accent }} />
-              <span style={{ color: T.text, fontWeight: 600 }}>Data Protection Officer</span>
-            </div>
-            <div style={{ display: 'grid', gap: 6, color: T.textMid, fontSize: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Mail size={16} style={{ color: T.accent, flexShrink: 0 }} />
-                <span>dpo@psa.gov.ph</span>
+            <div style={{
+              background: '#F8FAFC',
+              borderRadius: 12,
+              border: '1px solid #E2E8F0',
+              padding: '14px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              fontSize: 13,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#0F172A' }}>
+                <Mail size={15} style={{ color: '#0B3D91', flexShrink: 0 }} />
+                <a href="mailto:dpo@psa.gov.ph" style={{ color: '#0B3D91', fontWeight: 700, textDecoration: 'none' }}>
+                  dpo@psa.gov.ph
+                </a>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Phone size={16} style={{ color: T.accent, flexShrink: 0 }} />
-                <span>[Contact Number]</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155' }}>
+                <Phone size={15} style={{ color: '#0B3D91', flexShrink: 0 }} />
+                <span>Trunkline: +63 (2) 8938-5267 / Local DPO Desk</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#334155' }}>
+                <Building size={15} style={{ color: '#0B3D91', flexShrink: 0 }} />
+                <span>Philippine Statistics Authority · RSSO XII & Central Office</span>
               </div>
             </div>
           </div>
-        </Card>
-
-        <Card className="space-y-4">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 14, display: 'grid', placeItems: 'center', background: '#FEF3C7' }}>
-              <FileText size={22} style={{ color: T.amberText }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Your rights</div>
-              <div style={{ marginTop: 4, fontSize: 13, color: T.textMid }}>Control how your personal information is handled.</div>
-            </div>
-          </div>
-          <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 10, color: T.textMid, fontSize: 14, lineHeight: 1.8 }}>
-            <li>Access and review your personal data</li>
-            <li>Request correction of inaccurate information</li>
-            <li>Object to processing for non-essential purposes</li>
-            <li>Request deletion subject to legal requirements</li>
-            <li>File a complaint with the National Privacy Commission</li>
-          </ul>
-        </Card>
+        </div>
       </div>
 
-      <Card className="space-y-4">
-        <div style={{ display: 'grid', gap: 12 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>Consent and commitments</div>
-          <p style={{ margin: 0, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
-            By using this system, you consent to the collection, processing, and storage of your personal information as described in this Privacy Notice. You may withdraw your consent by contacting the Data Protection Officer, subject to legal and operational requirements.
-          </p>
-          <p style={{ margin: 0, fontSize: 14, color: T.textMid, lineHeight: 1.8 }}>
-            We are committed to managing your information responsibly, transparently, and in accordance with applicable privacy laws.
-          </p>
+      {/* ── Official Acknowledgment & Consent Strip ── */}
+      <div style={{
+        background: '#FFFFFF',
+        borderRadius: 14,
+        border: '1px solid #CBD5E1',
+        borderLeft: '5px solid #0B3D91',
+        padding: '18px 24px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+      }}>
+        <div style={{
+          width: 40,
+          height: 40,
+          borderRadius: 10,
+          background: '#EFF6FF',
+          color: '#0B3D91',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <HelpCircle size={22} />
         </div>
-      </Card>
+        <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.6 }}>
+          <strong style={{ color: '#0F172A' }}>Official User Acknowledgment:</strong> By accessing and utilizing the Philippine Statistics Authority Inventory Management System, you confirm that you have reviewed and understood this Privacy Notice and consent to the lawful processing of your official accountability records.
+        </div>
+      </div>
     </div>
   )
 }

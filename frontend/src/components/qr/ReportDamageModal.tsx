@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Modal, Button, Input } from '@/components/ui'
+import { Modal, Button, Input, Alert } from '@/components/ui'
 import { api } from '@/services/api'
 import type { AssetContext } from '@/types'
+import { Wrench } from 'lucide-react'
 
 interface ReportDamageModalProps {
   open: boolean
@@ -20,6 +21,11 @@ export function ReportDamageModal({ open, onClose, assetContext, onSuccess }: Re
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!description.trim() || description.trim().length < 10) {
+      setError('Please provide a detailed damage description (at least 10 characters).')
+      return
+    }
+
     setError(null)
     setSubmitting(true)
 
@@ -27,8 +33,8 @@ export function ReportDamageModal({ open, onClose, assetContext, onSuccess }: Re
       await api.post(`/assets/${assetContext.asset.id}/report-damage`, {
         type,
         severity,
-        description,
-        remarks: remarks || undefined,
+        description: description.trim(),
+        remarks: remarks.trim() || undefined,
       })
       onSuccess()
       onClose()
@@ -40,21 +46,97 @@ export function ReportDamageModal({ open, onClose, assetContext, onSuccess }: Re
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Report Damage: ${assetContext.asset.name}`}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Report Damage: ${assetContext.asset.name}`}
+      maxWidth={620}
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            disabled={submitting}
+            onClick={(e) => void handleSubmit(e as unknown as React.FormEvent)}
+          >
+            <Wrench size={14} style={{ marginRight: 6 }} />
+            {submitting ? 'Submitting...' : 'Submit Damage Report'}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-lg">
+          <Alert tone="error" onClose={() => setError(null)}>
             {error}
-          </div>
+          </Alert>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Asset Context Summary Box */}
+        <div style={{
+          borderRadius: 10,
+          border: '1px solid #E2E8F0',
+          background: '#F8FAFC',
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}>
           <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">Damage Category *</label>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+              {assetContext.asset.name}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748B', fontFamily: 'monospace', marginTop: 2 }}>
+              {assetContext.asset.psa_qr_identifier || assetContext.asset.asset_number}
+            </div>
+          </div>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '3px 10px',
+            borderRadius: 999,
+            fontSize: 11,
+            fontWeight: 700,
+            background: '#EFF6FF',
+            color: '#1E40AF',
+            border: '1px solid #BFDBFE',
+          }}>
+            {assetContext.asset.office?.name || 'Main Office'}
+          </span>
+        </div>
+
+        {/* Category & Severity Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+              Damage Category *
+            </label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
+              style={{
+                width: '100%',
+                height: 38,
+                borderRadius: 8,
+                border: '1px solid #CBD5E1',
+                background: '#FFFFFF',
+                padding: '0 10px',
+                fontSize: 13,
+                color: '#0F172A',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
             >
               <option value="minor_damage">Minor Damage</option>
               <option value="major_damage">Major Damage</option>
@@ -63,11 +145,24 @@ export function ReportDamageModal({ open, onClose, assetContext, onSuccess }: Re
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">Severity *</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+              Severity Level *
+            </label>
             <select
               value={severity}
               onChange={(e) => setSeverity(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
+              style={{
+                width: '100%',
+                height: 38,
+                borderRadius: 8,
+                border: '1px solid #CBD5E1',
+                background: '#FFFFFF',
+                padding: '0 10px',
+                fontSize: 13,
+                color: '#0F172A',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
             >
               <option value="low">Low (Cosmetic)</option>
               <option value="medium">Medium (Partial Functionality)</option>
@@ -77,35 +172,45 @@ export function ReportDamageModal({ open, onClose, assetContext, onSuccess }: Re
           </div>
         </div>
 
+        {/* Damage Description */}
         <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">Damage Description *</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+            Damage Description *
+          </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
+            style={{
+              width: '100%',
+              borderRadius: 8,
+              border: '1px solid #CBD5E1',
+              background: '#FFFFFF',
+              padding: '10px 12px',
+              fontSize: 13,
+              color: '#0F172A',
+              outline: 'none',
+              resize: 'vertical',
+              minHeight: 72,
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+            }}
             placeholder="Describe the issue, symptoms, or visible physical damage..."
             required
             minLength={10}
           />
         </div>
 
+        {/* Additional Remarks */}
         <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">Additional Remarks</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+            Additional Remarks
+          </label>
           <Input
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
             placeholder="Optional details or circumstances"
           />
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-          <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="danger" disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Submit Damage Report'}
-          </Button>
         </div>
       </form>
     </Modal>

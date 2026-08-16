@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Modal, Button, Input } from '@/components/ui'
+import { Modal, Button, Input, Alert } from '@/components/ui'
 import { api } from '@/services/api'
 import type { AssetContext } from '@/types'
+import { Package } from 'lucide-react'
 
 interface BorrowRequestModalProps {
   open: boolean
@@ -22,6 +23,11 @@ export function BorrowRequestModal({ open, onClose, assetContext, onSuccess }: B
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!purpose.trim()) {
+      setError('Please provide a purpose for borrowing.')
+      return
+    }
+
     setError(null)
     setSubmitting(true)
 
@@ -43,24 +49,80 @@ export function BorrowRequestModal({ open, onClose, assetContext, onSuccess }: B
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Request to Borrow Asset: ${assetContext.asset.name}`}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Request to Borrow Asset: ${assetContext.asset.name}`}
+      maxWidth={620}
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            disabled={submitting}
+            onClick={(e) => void handleSubmit(e as unknown as React.FormEvent)}
+          >
+            <Package size={14} style={{ marginRight: 6 }} />
+            {submitting ? 'Submitting...' : 'Submit Borrow Request'}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-lg">
+          <Alert tone="error" onClose={() => setError(null)}>
             {error}
-          </div>
+          </Alert>
         )}
 
-        <div className="bg-blue-50/70 border border-blue-100 p-3 rounded-xl text-xs space-y-1">
-          <div className="font-bold text-blue-900">{assetContext.asset.name}</div>
-          <div className="text-blue-700 font-mono">Code: {assetContext.asset.asset_number}</div>
-          <div className="text-blue-600">
-            Location: {assetContext.asset.office?.name || 'N/A'} - {assetContext.asset.location?.name || 'N/A'}
+        {/* Asset Summary Badge */}
+        <div style={{
+          borderRadius: 10,
+          border: '1px solid #BFDBFE',
+          background: '#EFF6FF',
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1E40AF' }}>
+              {assetContext.asset.name}
+            </div>
+            <div style={{ fontSize: 12, color: '#2563EB', fontFamily: 'monospace', marginTop: 2 }}>
+              {assetContext.asset.psa_qr_identifier || assetContext.asset.asset_number}
+            </div>
           </div>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '3px 10px',
+            borderRadius: 999,
+            fontSize: 11,
+            fontWeight: 700,
+            background: '#FFFFFF',
+            color: '#1E40AF',
+            border: '1px solid #BFDBFE',
+          }}>
+            {assetContext.asset.office?.name || 'Main Office'}
+          </span>
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">Borrow Purpose *</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+            Borrow Purpose *
+          </label>
           <Input
             value={purpose}
             onChange={(e) => setPurpose(e.target.value)}
@@ -69,9 +131,11 @@ export function BorrowRequestModal({ open, onClose, assetContext, onSuccess }: B
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
           <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">Start Date *</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+              Start Date *
+            </label>
             <Input
               type="date"
               value={startDate}
@@ -80,7 +144,9 @@ export function BorrowRequestModal({ open, onClose, assetContext, onSuccess }: B
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">Expected Return Date *</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+              Expected Return Date *
+            </label>
             <Input
               type="date"
               value={endDate}
@@ -91,21 +157,14 @@ export function BorrowRequestModal({ open, onClose, assetContext, onSuccess }: B
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">Additional Remarks</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+            Additional Remarks
+          </label>
           <Input
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
-            placeholder="Optional additional details"
+            placeholder="Optional additional notes"
           />
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-          <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Submit Borrow Request'}
-          </Button>
         </div>
       </form>
     </Modal>

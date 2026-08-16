@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Alert, Badge, Card, EmptyState, Spinner } from '@/components/ui'
+import { useEffect, useMemo, useState } from 'react'
+import { Alert, Badge, Button, Card, EmptyState, Input, Spinner } from '@/components/ui'
 import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
 import SplitView from '@/components/SplitView'
 import { borrowingService } from '@/services/borrowingService'
@@ -112,6 +112,7 @@ export function BorrowingPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [receipt, setReceipt] = useState<ReceiptRecord | null>(null)
   const [selectedBorrowingId, setSelectedBorrowingId] = useState<number | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
 
   useEffect(() => {
@@ -192,40 +193,54 @@ export function BorrowingPage() {
   const overdue  = rows.filter(r => r.status === 'OVERDUE').length
   const returned = rows.filter(r => r.status === 'RETURNED').length
 
+  const filteredRows = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    if (!term) return rows
+
+    return rows.filter((record) => {
+      const fields = [
+        record.asset_name,
+        record.asset_number,
+        record.employee_name,
+        record.employee_id,
+        record.authorized_by_name,
+        record.status,
+      ]
+
+      return fields.some((field) => (field ?? '').toLowerCase().includes(term))
+    })
+  }, [rows, searchTerm])
+
   const leftPane = (
     <>
-      {/* ── Summary chips ── */}
-      {!loading && rows.length > 0 && (
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      {!loading && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
           {[
-            { label: 'Total',    count: rows.length, bg: '#F1F5F9', color: '#475569', dot: '#94A3B8' },
-            { label: 'Active',   count: active,   bg: '#EFF6FF', color: '#1D4ED8', dot: '#3B82F6' },
-            { label: 'Overdue',  count: overdue,  bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
-            { label: 'Returned', count: returned, bg: '#F0FDF4', color: '#15803D', dot: '#22C55E' },
-          ].map(({ label, count, bg, color, dot }) => (
-            <div key={label} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: bg, color,
-              border: `1px solid ${color}22`,
-              borderRadius: 8, padding: '6px 14px',
-              fontSize: 12.5, fontWeight: 600,
-            }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, display: 'inline-block', flexShrink: 0 }} />
-              {label}: {count}
+            { label: 'Total', count: rows.length, bg: '#F8FAFC', color: '#475569', accent: '#94A3B8' },
+            { label: 'Active', count: active, bg: '#EFF6FF', color: '#1D4ED8', accent: '#3B82F6' },
+            { label: 'Overdue', count: overdue, bg: '#FEF2F2', color: '#DC2626', accent: '#EF4444' },
+            { label: 'Returned', count: returned, bg: '#F0FDF4', color: '#15803D', accent: '#22C55E' },
+          ].map(({ label, count, bg, color, accent }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: bg, color, border: '1px solid rgba(148, 163, 184, 0.25)', borderRadius: 14, padding: '14px 16px', boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.8 }}>{label}</div>
+                <div style={{ marginTop: 8, fontSize: 28, fontWeight: 700, lineHeight: 1 }}>{count}</div>
+              </div>
+              <span style={{ width: 12, height: 12, borderRadius: '50%', background: accent, display: 'inline-block', boxShadow: '0 0 0 4px rgba(255,255,255,0.7)' }} />
             </div>
           ))}
         </div>
       )}
 
       {/* ── Table card ── */}
-      <Card noPadding>
+      <Card title="Borrowed assets" subtitle="Monitor active, overdue, and returned items across the system." noPadding>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}><Spinner /></div>
-        ) : rows.length === 0 ? (
+        ) : filteredRows.length === 0 ? (
           <div style={{ padding: '64px 0' }}>
             <EmptyState
               title="No borrowed items found"
-              description="Borrowed assets will appear here after a request is approved or an item is borrowed."
+              description={searchTerm ? 'No borrowed items match your search.' : 'Borrowed assets will appear here after a request is approved or an item is borrowed.'}
             />
           </div>
         ) : (
@@ -251,7 +266,7 @@ export function BorrowingPage() {
                 </thead>
 
                 <tbody>
-                  {rows.map((r) => {
+                  {filteredRows.map((r) => {
                     const canReturn = r.status === 'BORROWED' || r.status === 'ACTIVE' || r.status === 'OVERDUE'
                     const canRequestExtension = user?.id === r.user_id && canReturn && !r.has_pending_extension
                     return (
@@ -423,7 +438,7 @@ export function BorrowingPage() {
               </table>
             ) : (
               <div style={{ display: 'grid', gap: 12 }}>
-                {rows.map((r) => {
+                {filteredRows.map((r) => {
                   const canReturn = r.status === 'BORROWED' || r.status === 'ACTIVE' || r.status === 'OVERDUE'
                   return (
                     <div key={r.id} style={{ border: '1px solid #E2E8F0', borderRadius: 14, padding: 12, background: '#fff', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -462,31 +477,36 @@ export function BorrowingPage() {
     );
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <PageHeader title="Borrowed Items" subtitle="View borrowed assets and process returns." />
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button
-                onClick={() => {
-                  if (selectedBorrowingId !== null) {
-                    setSelectedBorrowingId(null)
-                  } else if (rows.length > 0) {
-                    setSelectedBorrowingId(rows[0].id)
-                  } else {
-                    alert('No borrowing records available to open.')
-                  }
-                }}
-                style={{
-                  height: 36, paddingInline: 12, borderRadius: 8,
-                  border: '1px solid #D1D5DB', background: selectedBorrowingId ? '#EFF6FF' : '#FFFFFF',
-                  color: '#0F172A', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                }}
-                title={selectedBorrowingId ? 'Close details pane' : 'Open details pane for first row'}
-              >
-                {selectedBorrowingId ? 'Close Details' : 'Open Details'}
-              </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <PageHeader title="Borrowed Items" subtitle="View borrowed assets and process returns." />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', minWidth: 220, maxWidth: 320, flex: 1 }}>
+              <Input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search assets..."
+                style={{ height: 38, fontSize: 13, paddingLeft: 14 } as React.CSSProperties}
+              />
             </div>
+            <Button
+              variant={selectedBorrowingId ? 'secondary' : 'primary'}
+              size="md"
+              onClick={() => {
+                if (selectedBorrowingId !== null) {
+                  setSelectedBorrowingId(null)
+                } else if (rows.length > 0) {
+                  setSelectedBorrowingId(rows[0].id)
+                } else {
+                  alert('No borrowing records available to open.')
+                }
+              }}
+              title={selectedBorrowingId ? 'Close details pane' : 'Open details pane for first row'}
+            >
+              {selectedBorrowingId ? 'Close Details' : 'Open Details'}
+            </Button>
           </div>
+        </div>
 
           {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 

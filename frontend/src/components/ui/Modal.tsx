@@ -30,21 +30,36 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 1040,
   useEffect(() => {
     const handler = () => setIsNarrow(window.innerWidth <= 420)
     window.addEventListener('resize', handler)
-    // run once
     handler()
     return () => window.removeEventListener('resize', handler)
   }, [])
 
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, onClose])
+
   if (!open) return null
 
-  const headerPadding = isNarrow ? '10px 14px 8px' : '12px 18px 10px'
-  const bodyPadding = isNarrow ? '12px' : '12px 14px 14px'
-  const footerPadding = isNarrow ? '8px 14px' : '8px 16px'
-  const borderRadius = isNarrow ? 12 : 18
+  const headerPadding = isNarrow ? '10px 14px 8px' : '10px 18px 8px'
+  const bodyPadding = isNarrow ? '10px 12px' : '10px 16px 12px'
+  const footerPadding = isNarrow ? '6px 14px' : '8px 16px'
+  const borderRadius = isNarrow ? 12 : 16
   const maxH = maxHeight ?? (isNarrow ? 'calc(100dvh - 1rem)' : 'calc(100dvh - 2rem)')
 
   return (
     <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
       style={{
         position: 'fixed', inset: 0, zIndex: 50,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -55,17 +70,19 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 1040,
       aria-modal="true"
       role="dialog"
     >
-      <div style={{
-        display: 'flex', flexDirection: 'column',
-        width: '100%', maxWidth: maxWidth,
-        maxHeight: maxH,
-        borderRadius: borderRadius,
-        border: '1px solid #e2e8f0',
-        background: '#ffffff',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
-        overflow: 'hidden',
-      }}>
-
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          display: 'flex', flexDirection: 'column',
+          width: '100%', maxWidth: maxWidth,
+          maxHeight: maxH,
+          borderRadius: borderRadius,
+          border: '1px solid #e2e8f0',
+          background: '#ffffff',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
+          overflow: 'hidden',
+        }}
+      >
         {/* ── Header ── */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
@@ -75,13 +92,13 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 1040,
         }}>
           <div>
             {/* PSA tri-colour accent bar */}
-            <div style={{ display: 'flex', gap: 4, marginBottom: isNarrow ? 6 : 8 }}>
+            <div style={{ display: 'flex', gap: 4, marginBottom: isNarrow ? 4 : 6 }}>
               <span style={{ height: 3, width: 24, borderRadius: 999, background: '#0B3D91', display: 'block' }} />
               <span style={{ height: 3, width: 12, borderRadius: 999, background: '#FFD400', display: 'block' }} />
               <span style={{ height: 3, width: 8,  borderRadius: 999, background: '#E31C23', display: 'block' }} />
             </div>
             <h2 style={{
-              fontSize: isNarrow ? 16 : 17,
+              fontSize: isNarrow ? 15 : 16.5,
               fontWeight: 700,
               color: '#1e293b',
               margin: 0,
@@ -124,10 +141,10 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 1040,
             borderTop: '1px solid #f1f5f9',
             background: '#f8fafc',
             flexShrink: 0,
-            minHeight: 64,
+            minHeight: 48,
           }}>
             {footer ?? (
-              <Button variant="secondary" onClick={onClose}>Close</Button>
+              <Button type="button" variant="secondary" size="sm" onClick={onClose}>Close</Button>
             )}
           </div>
         )}

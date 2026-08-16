@@ -1,8 +1,32 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Shield, Plus, Users, KeyRound, Clock } from 'lucide-react'
-import { Card, Button, Input, Table, Modal, Alert, Spinner, SearchBar, Pagination, Badge, EmptyState } from '@/components/ui'
-import type { Column } from '@/components/ui'
-import { roleService, type RoleFilters, type CreateRolePayload, type UpdateRolePayload, type Role } from '@/services/roleService'
+import {
+  Shield,
+  Plus,
+  KeyRound,
+  Clock,
+  Search,
+  Edit,
+  Trash2,
+  Lock,
+  CheckCircle2,
+} from 'lucide-react'
+import {
+  Alert,
+  Badge,
+  Button,
+  EmptyState,
+  Input,
+  Modal,
+  Pagination,
+  Spinner,
+} from '@/components/ui'
+import {
+  roleService,
+  type RoleFilters,
+  type CreateRolePayload,
+  type UpdateRolePayload,
+  type Role,
+} from '@/services/roleService'
 import { PageHeader } from '@/components/PageHeader'
 
 export function RolesPage() {
@@ -14,7 +38,8 @@ export function RolesPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [filters, setFilters] = useState<RoleFilters>({ per_page: 15, page: 1 })
   const [pagination, setPagination] = useState({ current_page: 1, per_page: 15, total: 0, last_page: 1 })
-  const [search, setSearch] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [roleTypeFilter, setRoleTypeFilter] = useState<'all' | 'system' | 'custom'>('all')
 
   const [formData, setFormData] = useState<CreateRolePayload>({ name: '', description: '', permissions: [] })
 
@@ -22,8 +47,8 @@ export function RolesPage() {
     setLoading(true)
     try {
       const result = await roleService.getRoles(filters)
-      setRoles(result.items)
-      setPagination(result.meta)
+      setRoles(result.items || [])
+      setPagination(result.meta || { current_page: 1, per_page: 15, total: (result.items || []).length, last_page: 1 })
     } catch (error: unknown) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to load roles.' })
     } finally {
@@ -31,14 +56,34 @@ export function RolesPage() {
     }
   }
 
-  useEffect(() => { void loadRoles() }, [filters])
+  useEffect(() => {
+    void loadRoles()
+  }, [filters])
 
-  const handleSearch = (s: string) => {
-    setSearch(s)
-    setFilters({ ...filters, search: s, page: 1 })
-  }
+  const filteredRoles = useMemo(() => {
+    let list = roles
+    if (roleTypeFilter === 'system') {
+      list = list.filter((r) => ['admin', 'staff', 'employee'].includes(r.name.toLowerCase()))
+    } else if (roleTypeFilter === 'custom') {
+      list = list.filter((r) => !['admin', 'staff', 'employee'].includes(r.name.toLowerCase()))
+    }
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim()
+      list = list.filter(
+        (r) =>
+          r.name.toLowerCase().includes(term) ||
+          (r.description && r.description.toLowerCase().includes(term))
+      )
+    }
+    return list
+  }, [roles, roleTypeFilter, searchTerm])
 
-  const handlePageChange = (page: number) => setFilters({ ...filters, page })
+  const stats = useMemo(() => {
+    const total = pagination.total || roles.length
+    const system = roles.filter((r) => ['admin', 'staff', 'employee'].includes(r.name.toLowerCase())).length
+    const custom = roles.filter((r) => !['admin', 'staff', 'employee'].includes(r.name.toLowerCase())).length
+    return { total, system, custom }
+  }, [pagination.total, roles])
 
   const handleCreate = () => {
     setEditingRole(null)
@@ -53,10 +98,10 @@ export function RolesPage() {
   }
 
   const handleDelete = async (role: Role) => {
-    if (!confirm(`Delete role "${role.name}"?`)) return
+    if (!confirm(`Delete role "${role.name}"? This action cannot be undone.`)) return
     try {
       await roleService.deleteRole(role.id)
-      setMessage({ type: 'success', text: 'Role deleted.' })
+      setMessage({ type: 'success', text: `Role "${role.name}" deleted successfully.` })
       await loadRoles()
     } catch (error: unknown) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to delete role.' })
@@ -64,15 +109,16 @@ export function RolesPage() {
   }
 
   const handleSubmit = async () => {
+    if (!formData.name.trim()) return
     setSaving(true)
     setMessage(null)
     try {
       if (editingRole) {
         await roleService.updateRole(editingRole.id, formData as UpdateRolePayload)
-        setMessage({ type: 'success', text: 'Role updated.' })
+        setMessage({ type: 'success', text: `Role "${formData.name}" updated successfully.` })
       } else {
         await roleService.createRole(formData)
-        setMessage({ type: 'success', text: 'Role created.' })
+        setMessage({ type: 'success', text: `Role "${formData.name}" created successfully.` })
       }
       setModalOpen(false)
       await loadRoles()
@@ -83,190 +129,494 @@ export function RolesPage() {
     }
   }
 
-  const columns: Column<Role>[] = useMemo(() => [
-    {
-      key: 'name',
-      header: 'Role Name',
-      render: (r) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: '#EEF4FF', border: '1px solid #C5D8FF',
-          }}>
-            <Shield size={15} style={{ color: '#0B3D91' }} />
-          </div>
-          <span style={{ fontWeight: 600, fontSize: 13.5, color: '#0F172A' }}>{r.name}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'description',
-      header: 'Description',
-      render: (r) => (
-        <span style={{ fontSize: 13, color: '#64748B' }}>
-          {r.description || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'created_at',
-      header: 'Created',
-      render: (r) => (
-        <span style={{ fontSize: 12, color: '#94A3B8' }}>
-          {r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'updated_at',
-      header: 'Last Updated',
-      render: (r) => (
-        <span style={{ fontSize: 12, color: '#94A3B8' }}>
-          {r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (r) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-          <Button size="sm" variant="secondary" onClick={() => handleEdit(r)}>Edit</Button>
-          <Button size="sm" variant="danger" onClick={() => void handleDelete(r)}>Delete</Button>
-        </div>
-      ),
-    },
-  ], [])
-
-  const stats = useMemo(() => [
-    { label: 'Total Roles', value: pagination.total, icon: Shield, color: '#0B3D91', bg: '#EEF4FF' },
-    { label: 'System Roles', value: roles.filter((r) => ['admin', 'staff', 'employee'].includes(r.name.toLowerCase())).length, icon: Users, color: '#7C3AED', bg: '#FAF5FF' },
-    { label: 'Custom Roles', value: roles.filter((r) => !['admin', 'staff', 'employee'].includes(r.name.toLowerCase())).length, icon: KeyRound, color: '#D97706', bg: '#FFFBEB' },
-  ], [pagination.total, roles])
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 32 }}>
+      {/* ── Page Header ── */}
       <PageHeader
         title="Roles & Permissions"
-        subtitle="Manage what each type of user can access."
-        actions={<Button onClick={handleCreate}><Plus size={14} /> Add Role</Button>}
+        subtitle="Configure user roles, security access levels, and granular system permission scopes."
+        actions={
+          <Button
+            variant="primary"
+            onClick={handleCreate}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              height: 40,
+              paddingInline: 18,
+              fontWeight: 700,
+              fontSize: 13.5,
+              background: '#0B3D91',
+            }}
+          >
+            <Plus size={16} />
+            <span>Add Role</span>
+          </Button>
+        }
       />
 
       {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>
+        <Alert tone={message.type} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
       )}
 
-      {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-        {stats.map((stat) => (
-          <div key={stat.label} style={{
-            background: '#fff', borderRadius: 14, border: '1px solid #E2E8F0',
-            padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+      {/* ── Summary Stat Cards ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 14,
+      }}>
+        {/* Total Roles */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #E2E8F0',
+          padding: '16px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: '#EFF6FF',
+            color: '#0B3D91',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: stat.bg,
-            }}>
-              <stat.icon size={20} style={{ color: stat.color }} />
+            <Shield size={22} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748B' }}>
+              Total Roles
             </div>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
-                {stat.value}
-              </div>
-              <div style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500, marginTop: 2 }}>
-                {stat.label}
-              </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', lineHeight: 1.1 }}>
+              {stats.total}
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Main table card */}
-      <Card noPadding>
-        {/* Search bar */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-          borderBottom: '1px solid #F1F5F9', padding: '14px 20px',
-        }}>
-          <SearchBar onSearch={handleSearch} placeholder="Search roles by name…" />
-          <Badge tone="blue">{pagination.total} {pagination.total === 1 ? 'role' : 'roles'}</Badge>
         </div>
 
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
-            <Spinner />
+        {/* System Roles */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #E2E8F0',
+          padding: '16px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: '#FAF5FF',
+            color: '#7C3AED',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Lock size={22} />
           </div>
-        ) : roles.length === 0 ? (
-          <div style={{ padding: '60px 0' }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748B' }}>
+              System Roles
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#7C3AED', lineHeight: 1.1 }}>
+              {stats.system}
+            </div>
+          </div>
+        </div>
+
+        {/* Custom Roles */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #E2E8F0',
+          padding: '16px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: '#FFFBEB',
+            color: '#D97706',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <KeyRound size={22} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748B' }}>
+              Custom Roles
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#D97706', lineHeight: 1.1 }}>
+              {stats.custom}
+            </div>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: 14,
+          border: '1px solid #E2E8F0',
+          padding: '16px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: '#F0FDF4',
+            color: '#16A34A',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <CheckCircle2 size={22} />
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748B' }}>
+              Security Status
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#16A34A', lineHeight: 1.2 }}>
+              RBAC Active
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main Roles Card & Table ── */}
+      <div style={{
+        background: '#FFFFFF',
+        borderRadius: 16,
+        border: '1px solid #E2E8F0',
+        overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(15,23,42,0.04)',
+      }}>
+        {/* Filters Toolbar */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 14,
+          padding: '16px 20px',
+          borderBottom: '1px solid #F1F5F9',
+        }}>
+          {/* Search Input */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 260, maxWidth: 380 }}>
+            <Search
+              size={15}
+              style={{
+                position: 'absolute',
+                left: 12,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#94A3B8',
+                pointerEvents: 'none',
+              }}
+            />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search roles by name or description..."
+              style={{
+                width: '100%',
+                height: 38,
+                paddingLeft: 34,
+                paddingRight: 14,
+                borderRadius: 8,
+                border: '1px solid #CBD5E1',
+                background: '#FFFFFF',
+                fontSize: 13,
+                color: '#0F172A',
+                outline: 'none',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          {/* Role Type Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: '#64748B' }}>Category:</span>
+            <select
+              value={roleTypeFilter}
+              onChange={(e) => setRoleTypeFilter(e.target.value as any)}
+              style={{
+                height: 38,
+                padding: '0 12px',
+                borderRadius: 8,
+                border: '1px solid #CBD5E1',
+                background: '#FFFFFF',
+                fontSize: 13,
+                color: '#334155',
+                outline: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              <option value="all">All Role Categories</option>
+              <option value="system">System Roles</option>
+              <option value="custom">Custom Roles</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Roles Table */}
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
+            <Spinner label="Loading roles..." />
+          </div>
+        ) : filteredRoles.length === 0 ? (
+          <div style={{ padding: '64px 20px' }}>
             <EmptyState
-              title={search ? 'No roles match your search' : 'No roles yet'}
-              description={search ? 'Try a different search term.' : 'Add your first role to control user access.'}
+              title={searchTerm ? 'No roles match your search' : 'No roles configured'}
+              description={searchTerm ? 'Try adjusting your search criteria.' : 'Create your first custom role to manage access control.'}
+              action={
+                <Button variant="primary" size="sm" onClick={handleCreate} style={{ marginTop: 12 }}>
+                  <Plus size={14} style={{ marginRight: 6 }} />
+                  Add New Role
+                </Button>
+              }
             />
           </div>
         ) : (
-          <>
-            <Table columns={columns} rows={roles} rowKey={(r) => r.id} />
-            <div style={{ borderTop: '1px solid #F1F5F9', padding: '10px 20px' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', textAlign: 'left', color: '#64748B' }}>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Role Title</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', width: 140 }}>Classification</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', width: 130 }}>Created</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', width: 130 }}>Updated</th>
+                  <th style={{ padding: '12px 18px', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right', width: 140 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRoles.map((r) => {
+                  const isSystem = ['admin', 'staff', 'employee'].includes(r.name.toLowerCase())
+                  return (
+                    <tr
+                      key={r.id}
+                      style={{
+                        borderBottom: '1px solid #F1F5F9',
+                        transition: 'background 0.1s ease',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#F8FAFC' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      {/* Name & Icon */}
+                      <td style={{ padding: '12px 18px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 10,
+                            background: isSystem ? '#FAF5FF' : '#EFF6FF',
+                            color: isSystem ? '#7C3AED' : '#0B3D91',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: `1px solid ${isSystem ? '#E9D5FF' : '#BFDBFE'}`,
+                            flexShrink: 0,
+                          }}>
+                            <Shield size={16} />
+                          </div>
+                          <span style={{ fontWeight: 700, color: '#0F172A', fontSize: 13.5 }}>
+                            {r.name}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Classification Badge */}
+                      <td style={{ padding: '12px 18px' }}>
+                        <Badge tone={isSystem ? 'violet' : 'blue'}>
+                          {isSystem ? 'System Core' : 'Custom'}
+                        </Badge>
+                      </td>
+
+                      {/* Description */}
+                      <td style={{ padding: '12px 18px', color: '#475569', maxWidth: 300 }}>
+                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.description || ''}>
+                          {r.description || <span style={{ color: '#CBD5E1' }}>No description specified</span>}
+                        </span>
+                      </td>
+
+                      {/* Created */}
+                      <td style={{ padding: '12px 18px', color: '#64748B', fontSize: 12.5 }}>
+                        {r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}
+                      </td>
+
+                      {/* Updated */}
+                      <td style={{ padding: '12px 18px', color: '#64748B', fontSize: 12.5 }}>
+                        {r.updated_at ? new Date(r.updated_at).toLocaleDateString() : '—'}
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: '12px 18px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            title="Edit Role"
+                            onClick={() => handleEdit(r)}
+                            style={{
+                              padding: '5px 9px',
+                              borderRadius: 6,
+                              border: '1px solid #E2E8F0',
+                              background: '#FFFFFF',
+                              color: '#0B3D91',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <Edit size={12} />
+                            <span>Edit</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            title="Delete Role"
+                            onClick={() => void handleDelete(r)}
+                            style={{
+                              padding: '5px 8px',
+                              borderRadius: 6,
+                              border: '1px solid #FEE2E2',
+                              background: '#FFF5F5',
+                              color: '#DC2626',
+                              fontSize: 12,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            <div style={{ borderTop: '1px solid #F1F5F9', padding: '12px 20px' }}>
               <Pagination
                 page={pagination.current_page}
                 lastPage={pagination.last_page}
                 total={pagination.total}
-                onPageChange={handlePageChange}
+                onPageChange={(p) => setFilters({ ...filters, page: p })}
               />
             </div>
-          </>
+          </div>
         )}
-      </Card>
+      </div>
 
-      {/* Add / Edit modal */}
+      {/* ── Add / Edit Role Modal ── */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingRole ? 'Edit Role' : 'Add Role'}
+        title={editingRole ? `Edit Role: ${editingRole.name}` : 'Add New Role'}
+        maxWidth={520}
         footer={
-          <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={saving || !formData.name.trim()}>
-              {saving ? 'Saving…' : editingRole ? 'Save Changes' : 'Add Role'}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, width: '100%' }}>
+            <Button variant="secondary" size="sm" onClick={() => setModalOpen(false)}>
+              Cancel
             </Button>
-          </>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleSubmit}
+              disabled={saving || !formData.name.trim()}
+            >
+              {saving ? 'Saving...' : editingRole ? 'Save Changes' : 'Create Role'}
+            </Button>
+          </div>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <Input
-            label="Role Name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g. Property Custodian"
-          />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: '#334155' }}>
-              Description
+            <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+              Role Title <span style={{ color: '#EF4444' }}>*</span>
             </label>
-            <textarea
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., Property Custodian, Division Head"
               style={{
-                width: '100%', borderRadius: 10, border: '1px solid #E5E7EB',
-                background: '#fff', padding: '10px 12px', fontSize: 14, color: '#1F2937',
-                outline: 'none', fontFamily: 'inherit', resize: 'vertical', minHeight: 80,
-                boxShadow: '0 1px 2px rgba(0,0,0,0.05)', boxSizing: 'border-box',
+                height: 42,
+                paddingLeft: 14,
+                paddingRight: 14,
+                borderRadius: 10,
+                border: '1px solid #CBD5E1',
+                background: '#FFFFFF',
+                fontSize: 13.5,
               }}
-              value={formData.description || ''}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Describe what this role can do…"
-              rows={3}
             />
           </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+              Role Description <span style={{ fontWeight: 400, color: '#94A3B8' }}>(optional)</span>
+            </label>
+            <textarea
+              rows={3}
+              value={formData.description || ''}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Describe access privileges and permissions managed under this role..."
+              style={{
+                width: '100%',
+                borderRadius: 10,
+                border: '1px solid #CBD5E1',
+                background: '#FFFFFF',
+                padding: '10px 14px',
+                fontSize: 13.5,
+                color: '#0F172A',
+                outline: 'none',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
+                lineHeight: 1.5,
+              }}
+            />
+          </div>
+
           {editingRole && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
-              borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0',
-              fontSize: 12, color: '#64748B',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 12px',
+              borderRadius: 8,
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              fontSize: 12,
+              color: '#64748B',
             }}>
               <Clock size={13} style={{ color: '#94A3B8' }} />
-              Created {editingRole.created_at ? new Date(editingRole.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+              <span>Created on {editingRole.created_at ? new Date(editingRole.created_at).toLocaleDateString() : '—'}</span>
             </div>
           )}
         </div>

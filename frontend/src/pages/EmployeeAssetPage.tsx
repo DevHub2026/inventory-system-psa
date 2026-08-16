@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Button, Badge, Spinner, Alert } from '@/components/ui'
+import { Button, Alert, Spinner } from '@/components/ui'
 import { ApprovalHistoryTimeline } from '@/components/workflows/ApprovalHistoryTimeline'
 import { qrService } from '@/services/qrService'
 import type { AssetContext } from '@/types'
@@ -10,8 +10,6 @@ import { ReIssuanceRequestModal } from '@/components/qr/ReIssuanceRequestModal'
 import { ReportDamageModal } from '@/components/qr/ReportDamageModal'
 import { ReportLostModal } from '@/components/qr/ReportLostModal'
 import {
-  ArrowLeft,
-  QrCode,
   Package,
   User as UserIcon,
   MapPin,
@@ -20,6 +18,8 @@ import {
   RotateCcw,
   Wrench,
   HelpCircle,
+  CheckCircle2,
+  X,
 } from 'lucide-react'
 
 export function EmployeeAssetPage() {
@@ -41,7 +41,7 @@ export function EmployeeAssetPage() {
       const res = await qrService.resolveAsset(identifier)
       setContext(res)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Asset not found or invalid QR.'
+      const msg = err instanceof Error ? err.message : 'Asset not found or invalid QR code.'
       setError({ status: 404, message: msg })
     } finally {
       setLoading(false)
@@ -52,294 +52,796 @@ export function EmployeeAssetPage() {
     void loadAsset()
   }, [identifier])
 
+  const handleBack = () => {
+    navigate(`/qr?asset=${encodeURIComponent(identifier || '')}`)
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <Spinner label="Scanning PSA Asset Record..." />
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC' }}>
+        <Spinner label="Loading asset details..." />
       </div>
     )
   }
 
   if (error || !context) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 max-w-md mx-auto text-center">
-        <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4">
-          <AlertTriangle className="w-8 h-8" />
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#F8FAFC' }}>
+        <div style={{
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          background: '#FEE2E2',
+          color: '#DC2626',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 16,
+        }}>
+          <AlertTriangle size={28} />
         </div>
-        <h1 className="text-lg font-bold text-slate-900 mb-1">Asset Validation Error</h1>
-        <p className="text-xs text-slate-500 mb-6">{error?.message || 'Invalid or unrecognized PSA QR code.'}</p>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => navigate('/qr')}>
+        <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: '0 0 6px 0' }}>Asset Validation Error</h1>
+        <p style={{ fontSize: 13, color: '#64748B', margin: '0 0 20px 0', textAlign: 'center', maxWidth: 360 }}>
+          {error?.message || 'Invalid or unrecognized PSA QR code.'}
+        </p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Button variant="secondary" onClick={() => navigate('/qr')}>
             Scan Another QR
           </Button>
-          <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
+          <Button variant="primary" onClick={() => navigate('/dashboard')}>
+            Go to Dashboard
+          </Button>
         </div>
       </div>
     )
   }
 
-  const { asset, actions, active_borrowing, pending_reservation, history } = context
+  const { asset, actions, active_borrowing, pending_reservation, active_maintenance, history } = context
+
+  const isAvailable = asset.status === 'AVAILABLE'
+  const isBorrowed = asset.status === 'BORROWED' || Boolean(active_borrowing)
+  const isReserved = asset.status === 'RESERVED' || Boolean(pending_reservation)
+  const isMaintenance = asset.status === 'MAINTENANCE' || Boolean(active_maintenance)
+  const isPermanentlyIssued = Boolean(asset.issued_to)
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800 pb-12">
-      {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button
-            onClick={() => navigate('/qr')}
-            className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to Scanner
-          </button>
-          <div className="flex items-center gap-2 font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg">
-            <QrCode className="w-3.5 h-3.5 text-blue-600" />
-            {asset.psa_qr_identifier || asset.asset_number}
+    <div style={{
+      minHeight: '100vh',
+      background: 'rgba(15, 23, 42, 0.65)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px 16px',
+      boxSizing: 'border-box',
+    }}>
+      {/* ── Modal Card Container ── */}
+      <div style={{
+        width: '100%',
+        maxWidth: 740,
+        borderRadius: 16,
+        border: '1px solid #E2E8F0',
+        background: '#FFFFFF',
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.22)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        {/* ── Header with PSA Ribbon & Title ── */}
+        <div style={{
+          padding: '12px 18px 10px',
+          borderBottom: '1px solid #F1F5F9',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          background: '#FFFFFF',
+        }}>
+          {/* PSA Tri-color Accent Bar */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            <span style={{ height: 3, width: 24, borderRadius: 999, background: '#0B3D91', display: 'block' }} />
+            <span style={{ height: 3, width: 12, borderRadius: 999, background: '#FFD400', display: 'block' }} />
+            <span style={{ height: 3, width: 8,  borderRadius: 999, background: '#E31C23', display: 'block' }} />
           </div>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
-          >
-            Dashboard
-          </button>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}>
+            <h2 style={{
+              margin: 0,
+              fontSize: 16,
+              fontWeight: 800,
+              color: '#0F172A',
+              lineHeight: 1.3,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              PSA Asset Record: {asset.name}
+            </h2>
+
+            <button
+              type="button"
+              onClick={handleBack}
+              aria-label="Close"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                border: 'none',
+                background: 'transparent',
+                color: '#64748B',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                const b = e.currentTarget as HTMLButtonElement
+                b.style.background = '#F1F5F9'
+                b.style.color = '#0F172A'
+              }}
+              onMouseLeave={(e) => {
+                const b = e.currentTarget as HTMLButtonElement
+                b.style.background = 'transparent'
+                b.style.color = '#64748B'
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col gap-6">
-        {actionMessage && (
-          <Alert tone={actionMessage.tone} onClose={() => setActionMessage(null)}>
-            {actionMessage.text}
-          </Alert>
-        )}
+        {/* ── Modal Body Content ── */}
+        <div style={{
+          padding: '12px 18px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          boxSizing: 'border-box',
+          maxHeight: 'calc(100vh - 120px)',
+          overflowY: 'auto',
+        }}>
+          {actionMessage && (
+            <Alert tone={actionMessage.tone} onClose={() => setActionMessage(null)}>
+              {actionMessage.text}
+            </Alert>
+          )}
 
-        {/* Header Section - Centered */}
-        <div className="text-center mb-2">
-          <div className="flex justify-center mb-3">
-            <Badge tone={asset.status === 'AVAILABLE' ? 'green' : asset.status === 'BORROWED' ? 'blue' : 'yellow'}>
-              {asset.status}
-            </Badge>
+          {/* Top Hero Section */}
+          <div style={{
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderRadius: 10,
+            padding: '10px 14px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}>
+            {/* Status Badge */}
+            <div style={{ marginBottom: 4 }}>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '2px 10px',
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                background: asset.status === 'AVAILABLE' ? '#E8F5E9' : asset.status === 'BORROWED' ? '#EFF6FF' : '#FEF3C7',
+                color: asset.status === 'AVAILABLE' ? '#166534' : asset.status === 'BORROWED' ? '#1E40AF' : '#92400E',
+                border: asset.status === 'AVAILABLE' ? '1px solid #BBF7D0' : asset.status === 'BORROWED' ? '1px solid #BFDBFE' : '1px solid #FDE68A',
+                lineHeight: 1.3,
+              }}>
+                {asset.status}
+              </span>
+            </div>
+
+            {/* Asset Name */}
+            <h1 style={{
+              fontSize: 17,
+              fontWeight: 800,
+              color: '#0F172A',
+              margin: '0 0 3px 0',
+              lineHeight: 1.2,
+              letterSpacing: '-0.01em',
+            }}>
+              {asset.name}
+            </h1>
+
+            {/* Description (if present) */}
+            {asset.description && (
+              <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 4px 0', maxWidth: 500 }}>
+                {asset.description}
+              </p>
+            )}
+
+            {/* Identifiers */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              fontSize: 12,
+              fontFamily: 'monospace',
+              color: '#64748B',
+            }}>
+              <span style={{ fontWeight: 600, color: '#475569' }}>
+                {asset.psa_qr_identifier || 'PSA-ASSET-000000'}
+              </span>
+              <span style={{ color: '#CBD5E1' }}>•</span>
+              <span style={{ color: '#64748B' }}>
+                {asset.asset_number}
+              </span>
+            </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3">{asset.name}</h1>
-          <p className="text-base text-slate-600 max-w-2xl mx-auto">{asset.description || 'No description provided.'}</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm">
-            <span className="font-mono text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
-              Asset #: {asset.asset_number}
-            </span>
-            <span className="font-mono text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
-              ID: {asset.psa_qr_identifier || 'N/A'}
-            </span>
-          </div>
-        </div>
 
-        {/* Asset Details Grid */}
-        <div className="grid gap-3 sm:grid-cols-2 mb-2">
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                <Package className="h-4 w-4" />
+          {/* Status Alert Notification */}
+          {isAvailable && !isPermanentlyIssued && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              borderRadius: 10,
+              border: '1px solid #BBF7D0',
+              background: '#F0FDF4',
+              padding: '7px 12px',
+            }}>
+              <div style={{
+                display: 'flex',
+                width: 20,
+                height: 20,
+                flexShrink: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+                background: '#DCFCE7',
+                color: '#16A34A',
+              }}>
+                <CheckCircle2 size={14} />
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Category</div>
-                <div className="truncate text-sm font-semibold text-slate-900">{asset.category?.name || 'N/A'}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  color: '#15803D',
+                  lineHeight: 1.2,
+                }}>
+                  READY TO BORROW
+                </div>
+                <div style={{ fontSize: 12, color: '#166534', marginTop: 1, lineHeight: 1.3 }}>
+                  This asset is currently available for borrowing.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isBorrowed && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              borderRadius: 10,
+              border: '1px solid #BFDBFE',
+              background: '#EFF6FF',
+              padding: '7px 12px',
+            }}>
+              <div style={{
+                display: 'flex',
+                width: 20,
+                height: 20,
+                flexShrink: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+                background: '#DBEAFE',
+                color: '#2563EB',
+              }}>
+                <Clock size={14} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#1E40AF' }}>
+                  CURRENTLY BORROWED
+                </div>
+                <div style={{ fontSize: 12, color: '#1E3A8A', marginTop: 1 }}>
+                  {active_borrowing?.user_name ? (
+                    <>Borrowed by: <strong>{active_borrowing.user_name}</strong> · Due: <strong>{active_borrowing.due_date || 'N/A'}</strong></>
+                  ) : (
+                    'This asset is currently unavailable for borrowing.'
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isReserved && !isBorrowed && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              borderRadius: 10,
+              border: '1px solid #FDE68A',
+              background: '#FFFBEB',
+              padding: '7px 12px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  display: 'flex',
+                  width: 20,
+                  height: 20,
+                  flexShrink: 0,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  background: '#FEF3C7',
+                  color: '#D97706',
+                }}>
+                  <Clock size={14} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#92400E' }}>
+                    PENDING BORROW REQUEST
+                  </div>
+                  <div style={{ fontSize: 12, color: '#78350F', marginTop: 1 }}>
+                    Requested by: <strong>{pending_reservation?.user_name || 'Staff'}</strong>
+                  </div>
+                </div>
+              </div>
+              {pending_reservation && (
+                <div style={{ marginTop: 2, paddingTop: 6, borderTop: '1px solid #FEF3C7' }}>
+                  <ApprovalHistoryTimeline
+                    requestType="borrow_request"
+                    requestId={pending_reservation.id}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {isMaintenance && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              borderRadius: 10,
+              border: '1px solid #DDD6FE',
+              background: '#FAF5FF',
+              padding: '7px 12px',
+            }}>
+              <div style={{
+                display: 'flex',
+                width: 20,
+                height: 20,
+                flexShrink: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+                background: '#F3E8FF',
+                color: '#7C3AED',
+              }}>
+                <Wrench size={14} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6B21A8' }}>
+                  UNDER MAINTENANCE
+                </div>
+                <div style={{ fontSize: 12, color: '#581C87', marginTop: 1 }}>
+                  This asset is currently under maintenance and cannot be borrowed.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isPermanentlyIssued && (
+            <div style={{
+              borderRadius: 10,
+              border: '1px solid #E2E8F0',
+              background: '#F8FAFC',
+              padding: '8px 12px',
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>Permanently Issued</div>
+              <div style={{ fontSize: 12, color: '#475569', marginTop: 1 }}>
+                Issued to: <strong>{asset.issued_to_name || asset.issued_to}</strong>
+                {asset.date_issued && <span> · Date: {asset.date_issued}</span>}
+              </div>
+            </div>
+          )}
+
+          {/* Category and Office Location Cards */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 8,
+          }}>
+            {/* Category */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              borderRadius: 10,
+              border: '1px solid #E2E8F0',
+              background: '#FFFFFF',
+              padding: '7px 12px',
+            }}>
+              <div style={{
+                display: 'flex',
+                width: 26,
+                height: 26,
+                flexShrink: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 6,
+                background: '#F1F5F9',
+                color: '#475569',
+              }}>
+                <Package size={15} />
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B' }}>
+                  CATEGORY
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {asset.category?.name || 'Inventory Item'}
+                </div>
+              </div>
+            </div>
+
+            {/* Office Location */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              borderRadius: 10,
+              border: '1px solid #E2E8F0',
+              background: '#FFFFFF',
+              padding: '7px 12px',
+            }}>
+              <div style={{
+                display: 'flex',
+                width: 26,
+                height: 26,
+                flexShrink: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 6,
+                background: '#F1F5F9',
+                color: '#475569',
+              }}>
+                <MapPin size={15} />
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B' }}>
+                  OFFICE LOCATION
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {asset.office?.name || 'Main Office'}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                <MapPin className="h-4 w-4" />
+          {/* Asset Specifications */}
+          <div>
+            <h3 style={{
+              fontSize: 11.5,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: '#0F172A',
+              margin: '0 0 6px 0',
+            }}>
+              ASSET SPECIFICATIONS
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 8,
+            }}>
+              {/* Manufacturer */}
+              <div style={{
+                borderRadius: 10,
+                border: '1px solid #E2E8F0',
+                background: '#FFFFFF',
+                padding: '6px 12px',
+              }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B' }}>
+                  MANUFACTURER
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginTop: 1 }}>
+                  {asset.manufacturer?.name || 'HERCULES'}
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Office / Department</div>
-                <div className="truncate text-sm font-semibold text-slate-900">{asset.office?.name || 'N/A'}</div>
+
+              {/* Model */}
+              <div style={{
+                borderRadius: 10,
+                border: '1px solid #E2E8F0',
+                background: '#FFFFFF',
+                padding: '6px 12px',
+              }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B' }}>
+                  MODEL
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginTop: 1 }}>
+                  {asset.model || 'MS632B'}
+                </div>
+              </div>
+
+              {/* Condition */}
+              <div style={{
+                borderRadius: 10,
+                border: '1px solid #E2E8F0',
+                background: '#FFFFFF',
+                padding: '6px 12px',
+              }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B' }}>
+                  CONDITION
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginTop: 1 }}>
+                  {asset.condition_status || 'GOOD'}
+                </div>
+              </div>
+
+              {/* Location */}
+              <div style={{
+                borderRadius: 10,
+                border: '1px solid #E2E8F0',
+                background: '#FFFFFF',
+                padding: '6px 12px',
+              }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B' }}>
+                  LOCATION
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginTop: 1 }}>
+                  {asset.location?.name || 'N/A'}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Current State Status Cards */}
-        {active_borrowing && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-            <div className="flex items-center gap-2 font-semibold text-blue-900 mb-2">
-              <Clock className="h-4 w-4 text-blue-600" /> Currently Borrowed
-            </div>
-            <p className="text-sm text-blue-800">
-              Borrower: <strong>{active_borrowing.user_name}</strong>
-            </p>
-            <p className="text-sm text-blue-800">
-              Due Date: <strong>{active_borrowing.due_date || 'N/A'}</strong>
-            </p>
-          </div>
-        )}
+          {/* ── ACTION BUTTONS SECTION ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
+            {/* Primary Action Button (Full Width) */}
+            {actions.can_request_borrow && (
+              <Button
+                variant="primary"
+                style={{
+                  width: '100%',
+                  height: 38,
+                  borderRadius: 8,
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  background: '#0B3D91',
+                  borderColor: '#0B3D91',
+                  color: '#FFFFFF',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                onClick={() => setActiveModal('borrow')}
+              >
+                <Package size={16} />
+                <span>Request to Borrow Asset</span>
+              </Button>
+            )}
 
-        {pending_reservation && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 font-semibold text-amber-900">
-                <Clock className="h-4 w-4 text-amber-600" /> Pending Borrow Request
-              </div>
-              <Badge tone="yellow">Level {pending_reservation.current_level_order || 1}</Badge>
-            </div>
-            <p className="text-sm text-amber-800 mb-3">
-              Requested by: <strong>{pending_reservation.user_name}</strong>
-            </p>
-            <ApprovalHistoryTimeline
-              requestType="borrow_request"
-              requestId={pending_reservation.id}
-            />
-          </div>
-        )}
+            {/* Workflow Action Buttons (if extension or reissuance available) */}
+            {(actions.can_request_extension || actions.can_request_reissuance) && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: 8,
+              }}>
+                {actions.can_request_extension && (
+                  <Button
+                    variant="secondary"
+                    style={{
+                      width: '100%',
+                      height: 36,
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      background: '#FFFFFF',
+                      border: '1px solid #CBD5E1',
+                      color: '#0B3D91',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
+                    onClick={() => setActiveModal('extension')}
+                  >
+                    <RotateCcw size={15} style={{ color: '#0B3D91' }} />
+                    <span>Request Extension</span>
+                  </Button>
+                )}
 
-        {/* Asset Specifications */}
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-600">Asset Specifications</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Manufacturer</div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">{asset.manufacturer?.name || 'N/A'}</div>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Model</div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">{asset.model || 'N/A'}</div>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Condition</div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">{asset.condition_status || 'GOOD'}</div>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Location</div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">{asset.location?.name || 'N/A'}</div>
-            </div>
-            {asset.issued_to && (
-              <div className="sm:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Permanently Issued To</div>
-                <div className="text-sm font-semibold text-slate-900 mb-1">{asset.issued_to_name || asset.issued_to}</div>
-                {asset.date_issued && (
-                  <div className="text-xs text-slate-600">Date Issued: {asset.date_issued}</div>
+                {actions.can_request_reissuance && (
+                  <Button
+                    variant="secondary"
+                    style={{
+                      width: '100%',
+                      height: 36,
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      background: '#FFFFFF',
+                      border: '1px solid #CBD5E1',
+                      color: '#0B3D91',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
+                    onClick={() => setActiveModal('reissuance')}
+                  >
+                    <UserIcon size={15} style={{ color: '#0B3D91' }} />
+                    <span>Transfer Accountability</span>
+                  </Button>
                 )}
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Primary Action */}
-        {actions.can_request_borrow && (
-          <Button
-            variant="primary"
-            className="w-full justify-center rounded-lg h-12 text-base font-semibold shadow-md transition-transform hover:-translate-y-0.5"
-            onClick={() => setActiveModal('borrow')}
-          >
-            <Package className="mr-2 h-5 w-5" /> Request to Borrow Asset
-          </Button>
-        )}
+            {/* Issue Reporting Section */}
+            {(actions.can_report_damage || actions.can_report_lost) && (
+              <div style={{ marginTop: 2 }}>
+                <h3 style={{
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: '#0F172A',
+                  margin: '0 0 6px 0',
+                }}>
+                  REPORT AN ISSUE
+                </h3>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: 8,
+                }}>
+                  {/* Report Damage */}
+                  {actions.can_report_damage && (
+                    <Button
+                      variant="secondary"
+                      style={{
+                        width: '100%',
+                        height: 36,
+                        borderRadius: 8,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        background: '#FFFFFF',
+                        border: '1px solid #CBD5E1',
+                        color: '#0B3D91',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                      }}
+                      onClick={() => setActiveModal('damage')}
+                    >
+                      <Wrench size={15} style={{ color: '#0B3D91' }} />
+                      <span>Report Damage</span>
+                    </Button>
+                  )}
 
-        {/* Secondary Actions Grid */}
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Button
-            variant="outline"
-            className="justify-center rounded-lg border-slate-300 bg-white h-10 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => setActiveModal('damage')}
-          >
-            <Wrench className="mr-2 h-4 w-4" /> Report Damage
-          </Button>
-
-          {actions.can_request_extension && (
-            <Button
-              variant="outline"
-              className="justify-center rounded-lg border-slate-300 bg-white h-10 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              onClick={() => setActiveModal('extension')}
-            >
-              <RotateCcw className="mr-2 h-4 w-4" /> Request Extension
-            </Button>
-          )}
-
-          {actions.can_request_reissuance && (
-            <Button
-              variant="outline"
-              className="justify-center rounded-lg border-slate-300 bg-white h-10 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              onClick={() => setActiveModal('reissuance')}
-            >
-              <UserIcon className="mr-2 h-4 w-4" /> Transfer Accountability
-            </Button>
-          )}
-
-          {actions.can_report_lost && (
-            <Button
-              variant="danger"
-              className="justify-center rounded-lg h-10 text-sm font-medium shadow-sm hover:shadow-md"
-              onClick={() => setActiveModal('lost')}
-            >
-              <HelpCircle className="mr-2 h-4 w-4" /> Report Lost
-            </Button>
-          )}
-        </div>
-
-        {/* Borrow History */}
-        {history.borrow_history.length > 0 && (
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-600">Recent Borrow History</h2>
-            <div className="space-y-3">
-              {history.borrow_history.map((b) => (
-                <div key={b.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">{b.user_name}</div>
-                    <div className="text-xs text-slate-600">{b.borrow_date} to {b.due_date}</div>
-                  </div>
-                  <Badge tone={b.status === 'RETURNED' ? 'gray' : 'blue'}>{b.status}</Badge>
+                  {/* Report Lost */}
+                  {actions.can_report_lost && (
+                    <Button
+                      variant="danger"
+                      style={{
+                        width: '100%',
+                        height: 36,
+                        borderRadius: 8,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        background: '#DC2626',
+                        border: '1px solid #DC2626',
+                        color: '#FFFFFF',
+                        boxShadow: '0 1px 2px rgba(220,38,38,0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                      }}
+                      onClick={() => setActiveModal('lost')}
+                    >
+                      <HelpCircle size={15} style={{ color: '#FFFFFF' }} />
+                      <span>Report Lost</span>
+                    </Button>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Header Section - Centered */}
-        <div className="text-center mb-2">
-          <div className="flex justify-center mb-3">
-            <Badge tone={asset.status === 'AVAILABLE' ? 'green' : asset.status === 'BORROWED' ? 'blue' : 'yellow'}>
-              {asset.status}
-            </Badge>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-3">{asset.name}</h1>
-          <p className="text-base text-slate-600 max-w-2xl mx-auto">{asset.description || 'No description provided.'}</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm">
-            <span className="font-mono text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
-              Asset #: {asset.asset_number}
-            </span>
-            <span className="font-mono text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
-              ID: {asset.psa_qr_identifier || 'N/A'}
-            </span>
-          </div>
+          {/* Borrow History Section (if present) */}
+          {history && history.borrow_history && history.borrow_history.length > 0 && (
+            <div style={{
+              marginTop: 6,
+              paddingTop: 10,
+              borderTop: '1px solid #F1F5F9',
+            }}>
+              <h3 style={{
+                fontSize: 11.5,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                color: '#64748B',
+                margin: '0 0 6px 0',
+              }}>
+                Recent Borrow History
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {history.borrow_history.map((b) => (
+                  <div
+                    key={b.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderRadius: 8,
+                      border: '1px solid #E2E8F0',
+                      background: '#F8FAFC',
+                      padding: '8px 12px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: '#0F172A' }}>{b.user_name}</div>
+                      <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 1 }}>{b.borrow_date} → {b.due_date}</div>
+                    </div>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '2px 8px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      background: b.status === 'RETURNED' ? '#F1F5F9' : '#EFF6FF',
+                      color: b.status === 'RETURNED' ? '#64748B' : '#1D4ED8',
+                    }}>
+                      {b.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Asset Details Grid */}
-        <div className="grid gap-3 sm:grid-cols-2 mb-2">
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                <Package className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Category</div>
-                <div className="truncate text-sm font-semibold text-slate-900">{asset.category?.name || 'N/A'}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                <MapPin className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Office / Department</div>
-                <div className="truncate text-sm font-semibold text-slate-900">{asset.office?.name || 'N/A'}</div>
-              </div>
-            </div>
-          </div>
+        {/* ── Footer with Close Button ── */}
+        <div style={{
+          padding: '10px 18px',
+          background: '#F8FAFC',
+          borderTop: '1px solid #F1F5F9',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          gap: 10,
+        }}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleBack}
+            style={{ minWidth: 80 }}
+          >
+            Close
+          </Button>
         </div>
       </div>
 
-      {/* Action Modals */}
+      {/* Triggered Modals */}
       {activeModal === 'borrow' && (
         <BorrowRequestModal
           open={true}
@@ -348,6 +850,7 @@ export function EmployeeAssetPage() {
           onSuccess={() => {
             setActionMessage({ tone: 'success', text: 'Borrow request submitted successfully. Workflow initialized.' })
             void loadAsset()
+            setActiveModal(null)
           }}
         />
       )}
@@ -360,6 +863,7 @@ export function EmployeeAssetPage() {
           onSuccess={() => {
             setActionMessage({ tone: 'success', text: 'Borrow extension request submitted.' })
             void loadAsset()
+            setActiveModal(null)
           }}
         />
       )}
@@ -370,8 +874,9 @@ export function EmployeeAssetPage() {
           onClose={() => setActiveModal(null)}
           assetContext={context}
           onSuccess={() => {
-            setActionMessage({ tone: 'success', text: 'Asset re-issuance transfer request submitted.' })
+            setActionMessage({ tone: 'success', text: 'Custody re-issuance request submitted.' })
             void loadAsset()
+            setActiveModal(null)
           }}
         />
       )}
@@ -382,8 +887,9 @@ export function EmployeeAssetPage() {
           onClose={() => setActiveModal(null)}
           assetContext={context}
           onSuccess={() => {
-            setActionMessage({ tone: 'success', text: 'Damage report submitted. Maintenance ticket generated.' })
+            setActionMessage({ tone: 'success', text: 'Damage report logged successfully.' })
             void loadAsset()
+            setActiveModal(null)
           }}
         />
       )}
@@ -396,6 +902,7 @@ export function EmployeeAssetPage() {
           onSuccess={() => {
             setActionMessage({ tone: 'success', text: 'Lost asset report submitted.' })
             void loadAsset()
+            setActiveModal(null)
           }}
         />
       )}

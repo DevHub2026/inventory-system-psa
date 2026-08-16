@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Modal, Button, Input } from '@/components/ui'
+import { Modal, Button, Input, Alert } from '@/components/ui'
 import { lostAssetService } from '@/services/lostAssetService'
 import type { AssetContext } from '@/types'
+import { AlertTriangle, HelpCircle } from 'lucide-react'
 
 interface ReportLostModalProps {
   open: boolean
@@ -20,15 +21,20 @@ export function ReportLostModal({ open, onClose, assetContext, onSuccess }: Repo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!description.trim() || description.trim().length < 10) {
+      setError('Please provide a detailed loss incident description (at least 10 characters).')
+      return
+    }
+
     setError(null)
     setSubmitting(true)
 
     try {
       await lostAssetService.reportLost(assetContext.asset.id, {
-        description,
-        last_known_location: lastKnownLocation || undefined,
+        description: description.trim(),
+        last_known_location: lastKnownLocation.trim() || undefined,
         date_lost: dateLost || undefined,
-        remarks: remarks || undefined,
+        remarks: remarks.trim() || undefined,
       })
       onSuccess()
       onClose()
@@ -40,45 +46,143 @@ export function ReportLostModal({ open, onClose, assetContext, onSuccess }: Repo
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Report Lost Asset: ${assetContext.asset.name}`}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Report Lost Asset: ${assetContext.asset.name}`}
+      maxWidth={620}
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            disabled={submitting}
+            onClick={(e) => void handleSubmit(e as unknown as React.FormEvent)}
+          >
+            <HelpCircle size={14} style={{ marginRight: 6 }} />
+            {submitting ? 'Submitting...' : 'Submit Lost Asset Report'}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-lg">
+          <Alert tone="error" onClose={() => setError(null)}>
             {error}
-          </div>
+          </Alert>
         )}
 
-        <div className="bg-red-50/70 border border-red-100 p-3 rounded-xl text-xs space-y-1">
-          <div className="font-bold text-red-900">Warning: Incident Report</div>
-          <div className="text-red-700">
-            Filing a lost asset report initiates a formal review workflow and property accountability check.
+        {/* Incident Warning Banner */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+          borderRadius: 10,
+          border: '1px solid #FECACA',
+          background: '#FEF2F2',
+          padding: '12px 14px',
+        }}>
+          <AlertTriangle size={18} style={{ color: '#DC2626', flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#991B1B' }}>
+              Official Incident Report Notice
+            </div>
+            <div style={{ fontSize: 12, color: '#B91C1C', marginTop: 2, lineHeight: 1.4 }}>
+              Filing a lost asset report initiates a formal administrative review workflow and property accountability check.
+            </div>
           </div>
         </div>
 
+        {/* Asset Summary Badge */}
+        <div style={{
+          borderRadius: 10,
+          border: '1px solid #E2E8F0',
+          background: '#F8FAFC',
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+              {assetContext.asset.name}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748B', fontFamily: 'monospace', marginTop: 2 }}>
+              {assetContext.asset.psa_qr_identifier || assetContext.asset.asset_number}
+            </div>
+          </div>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '3px 10px',
+            borderRadius: 999,
+            fontSize: 11,
+            fontWeight: 700,
+            background: '#F1F5F9',
+            color: '#475569',
+            border: '1px solid #E2E8F0',
+          }}>
+            {assetContext.asset.office?.name || 'Main Office'}
+          </span>
+        </div>
+
+        {/* Loss Incident Description */}
         <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">Loss Incident Description *</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+            Loss Incident Description *
+          </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
+            style={{
+              width: '100%',
+              borderRadius: 8,
+              border: '1px solid #CBD5E1',
+              background: '#FFFFFF',
+              padding: '10px 12px',
+              fontSize: 13,
+              color: '#0F172A',
+              outline: 'none',
+              resize: 'vertical',
+              minHeight: 72,
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+            }}
             placeholder="Explain how, where, or under what circumstances the asset was discovered missing..."
             required
             minLength={10}
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Location & Date Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
           <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">Last Known Location</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+              Last Known Location
+            </label>
             <Input
               value={lastKnownLocation}
               onChange={(e) => setLastKnownLocation(e.target.value)}
               placeholder="e.g., Regional Office Room 302"
             />
           </div>
+
           <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">Estimated Date Lost</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+              Estimated Date Lost
+            </label>
             <Input
               type="date"
               value={dateLost}
@@ -87,22 +191,16 @@ export function ReportLostModal({ open, onClose, assetContext, onSuccess }: Repo
           </div>
         </div>
 
+        {/* Additional Remarks */}
         <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">Additional Remarks</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+            Additional Remarks
+          </label>
           <Input
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
             placeholder="Optional notes or security measures taken"
           />
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-          <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="danger" disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Submit Lost Asset Report'}
-          </Button>
         </div>
       </form>
     </Modal>

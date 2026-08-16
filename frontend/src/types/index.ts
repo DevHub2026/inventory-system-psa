@@ -359,6 +359,8 @@ export interface MaintenanceRequest {
   asset_name: string
   description: string
   status: MaintenanceStatus
+  type?: 'preventive' | 'corrective' | string
+  cost?: number
   scheduled_date?: string
   scheduled_at?: string
 }

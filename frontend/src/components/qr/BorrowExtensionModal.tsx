@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Modal, Button, Input } from '@/components/ui'
+import { Modal, Button, Input, Alert } from '@/components/ui'
 import { borrowExtensionService } from '@/services/borrowExtensionService'
 import type { AssetContext } from '@/types'
+import { RotateCcw } from 'lucide-react'
 
 interface BorrowExtensionModalProps {
   open: boolean
@@ -21,13 +22,18 @@ export function BorrowExtensionModal({ open, onClose, assetContext, onSuccess }:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!borrowing) return
+    if (!requestedDueDate || !reason.trim()) {
+      setError('Please select a new due date and specify a reason.')
+      return
+    }
+
     setError(null)
     setSubmitting(true)
 
     try {
       await borrowExtensionService.requestExtension(borrowing.id, {
         requested_due_date: requestedDueDate,
-        reason,
+        reason: reason.trim(),
       })
       onSuccess()
       onClose()
@@ -39,23 +45,69 @@ export function BorrowExtensionModal({ open, onClose, assetContext, onSuccess }:
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`Request Extension for: ${assetContext.asset.name}`}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={`Request Extension: ${assetContext.asset.name}`}
+      maxWidth={620}
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            disabled={submitting}
+            onClick={(e) => void handleSubmit(e as unknown as React.FormEvent)}
+          >
+            <RotateCcw size={14} style={{ marginRight: 6 }} />
+            {submitting ? 'Submitting...' : 'Submit Extension Request'}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-lg">
+          <Alert tone="error" onClose={() => setError(null)}>
             {error}
-          </div>
+          </Alert>
         )}
 
-        <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs space-y-1">
-          <div className="font-semibold text-amber-900">Current Due Date</div>
-          <div className="font-mono text-sm font-bold text-amber-700">
-            {borrowing?.due_date || 'N/A'}
+        {/* Current Due Date Box */}
+        <div style={{
+          borderRadius: 10,
+          border: '1px solid #FDE68A',
+          background: '#FFFBEB',
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <div>
+            <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', color: '#92400E' }}>
+              Current Due Date
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#78350F', fontFamily: 'monospace', marginTop: 2 }}>
+              {borrowing?.due_date || 'N/A'}
+            </div>
           </div>
+          <span style={{ fontSize: 12, color: '#B45309', fontWeight: 600 }}>
+            {assetContext.asset.name}
+          </span>
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">Proposed New Due Date *</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+            Proposed New Due Date *
+          </label>
           <Input
             type="date"
             value={requestedDueDate}
@@ -65,22 +117,15 @@ export function BorrowExtensionModal({ open, onClose, assetContext, onSuccess }:
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700 block mb-1">Reason for Extension *</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+            Reason for Extension *
+          </label>
           <Input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="e.g., Project fieldwork extended by 3 days"
             required
           />
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-          <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Submit Extension Request'}
-          </Button>
         </div>
       </form>
     </Modal>
