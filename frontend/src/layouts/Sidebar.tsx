@@ -37,6 +37,7 @@ const allLinks = [
   { to: '/extension-requests',     label: 'Extension Requests',     icon: CalendarClock,       roles: ['admin', 'staff'] },
   { to: '/inventory',              label: 'Inventory',              icon: Package,             roles: ['admin', 'staff'] },
   { to: '/maintenance',            label: 'Maintenance',            icon: Wrench,              roles: ['admin', 'staff'] },
+  { to: '/damage-reports',         label: 'Damage Reports',         icon: AlertTriangle,       roles: ['admin', 'staff'] },
   { to: '/lost-asset-reports',     label: 'Lost Asset Reports',     icon: AlertTriangle,       roles: ['admin', 'staff'] },
   { to: '/reports',                label: 'Reports',                icon: FileBarChart,        roles: ['admin', 'staff'] },
   { to: '/users',                  label: 'Users',                  icon: Users,               roles: ['admin'] },
@@ -55,7 +56,7 @@ const allLinks = [
 const NAV_GROUPS = [
   { label: 'Self Service', paths: ['/qr'] },
   { label: 'Main Menu',  paths: ['/dashboard', '/assets', '/reservations', '/borrowings'] },
-  { label: 'Operations', paths: ['/issued-assets', '/extension-requests', '/inventory', '/maintenance', '/lost-asset-reports', '/reports'] },
+  { label: 'Operations', paths: ['/issued-assets', '/extension-requests', '/inventory', '/maintenance', '/damage-reports', '/lost-asset-reports', '/reports'] },
   { label: 'Admin',      paths: ['/users', '/roles', '/system-setup', '/workflows', '/qr-scan-history', '/document-templates'] },
   { label: 'Account',    paths: ['/settings', '/sessions', '/privacy', '/developers'] },
 ]
@@ -63,6 +64,8 @@ const NAV_GROUPS = [
 interface SidebarProps {
   open: boolean
   isDesktop: boolean
+  side: 'left' | 'right'
+  onToggleSide: () => void
   onClose: () => void
 }
 
@@ -102,16 +105,19 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
 
   const sidebarStyle: React.CSSProperties = isDesktop
     ? {
-        position: 'relative',
-        width: 260,
-        flexShrink: 0,
+        position: 'fixed',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        width: open ? 260 : 72,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         background: 'linear-gradient(180deg, #0B3D91 0%, #0A3580 50%, #082A6A 100%)',
-        transform: 'none',
-        zIndex: 'auto',
-        transition: 'none',
+        transform: 'translateX(0)',
+        transition: 'width 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+        zIndex: 30,
+        boxShadow: '0 8px 24px rgba(15, 23, 42, 0.16)',
       }
     : {
         position: 'fixed',
@@ -161,7 +167,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
           }}>
             <img src={logo} alt="PSA" style={{ width: 34, height: 34, objectFit: 'contain' }} />
           </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ minWidth: 0, flex: 1, display: open || !isDesktop ? 'block' : 'none' }}>
             <div style={{
               fontSize: 15, fontWeight: 800, color: '#ffffff',
               lineHeight: 1.3, letterSpacing: '0.01em',
@@ -210,6 +216,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                   textTransform: 'uppercase', letterSpacing: '0.16em',
                   color: 'rgba(255,255,255,0.25)',
                   padding: '0 10px', marginBottom: 4, lineHeight: 1,
+                  display: open || !isDesktop ? 'block' : 'none',
                 }}>
                   {group.label}
                 </div>
@@ -253,7 +260,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                                 strokeWidth={isActive ? 2.25 : 1.75}
                                 aria-hidden="true"
                               />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: open || !isDesktop ? 'inline' : 'none' }}>
                                 {linkLabel(link)}
                               </span>
                             </>
@@ -298,7 +305,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
             }}>
               {initials}
             </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ minWidth: 0, flex: 1, display: open || !isDesktop ? 'block' : 'none' }}>
               <div style={{
                 fontSize: 13, fontWeight: 600, color: '#ffffff',
                 lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',

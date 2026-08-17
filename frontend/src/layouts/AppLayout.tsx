@@ -24,6 +24,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
  */
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarSide, setSidebarSide] = useState<'left' | 'right'>('left')
   const [isDesktop,   setIsDesktop]   = useState(() => window.innerWidth >= 768)
 
   useEffect(() => {
@@ -50,6 +51,8 @@ export function AppLayout() {
       <Sidebar
         open={sidebarOpen}
         isDesktop={isDesktop}
+        side={sidebarSide}
+        onToggleSide={() => setSidebarSide((current) => current === 'left' ? 'right' : 'left')}
         onClose={() => setSidebarOpen(false)}
       />
 
@@ -61,7 +64,7 @@ export function AppLayout() {
         flexDirection: 'column',
         overflow: 'hidden',
       }}>
-        <TopNav onMenuClick={() => setSidebarOpen(true)} />
+        <TopNav onMenuClick={() => setSidebarOpen((s) => !s)} />
         <main style={{ flex: 1, overflowY: 'auto' }}>
           <div style={{ maxWidth: 1440, margin: '0 auto', padding: '24px 32px' }}>
             {/* If a splitRight query param exists, render the current route (Outlet) as left and the requested page as right */}

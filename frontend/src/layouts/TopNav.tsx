@@ -14,6 +14,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/borrowings':   'Borrowed Items',
   '/inventory':    'Inventory',
   '/maintenance':  'Maintenance',
+  '/damage-reports': 'Damage Reports',
   '/lost-asset-reports': 'Lost Asset Reports',
   '/reports':      'Reports',
   '/users':        'Users',
@@ -56,9 +57,8 @@ export function TopNav({ onMenuClick }: TopNavProps) {
         {/* Hamburger — hidden on desktop via media query class */}
         <button
           type="button"
-          aria-label="Open navigation"
+          aria-label="Toggle navigation"
           onClick={onMenuClick}
-          className="md:hidden"
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: 34, height: 34, flexShrink: 0,
