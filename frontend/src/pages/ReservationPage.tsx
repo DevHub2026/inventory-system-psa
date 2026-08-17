@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { ApprovalHistoryTimeline } from '@/components/workflows/ApprovalHistoryTimeline'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 import { formatDate, formatTime } from '@/utils/dateFormat'
+import ScrollableTableWrapper from '@/components/ui/ScrollableTableWrapper'
 
 // ─── table styles (shared with BorrowingPage) ─────────────────────────────────
 
@@ -361,7 +362,7 @@ export function ReservationPage() {
             />
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <ScrollableTableWrapper>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <colgroup>
                 <col style={{ width: 70  }} />
@@ -481,7 +482,7 @@ export function ReservationPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollableTableWrapper>
         )}
       </Card>
 

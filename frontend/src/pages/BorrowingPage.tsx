@@ -12,6 +12,7 @@ import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefr
 import { formatDate, formatTime } from '@/utils/dateFormat'
 import BorrowingDetailsPage from '@/pages/BorrowingDetailsPage'
 import { useSearchParams } from 'react-router-dom'
+import ScrollableTableWrapper from '@/components/ui/ScrollableTableWrapper'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -222,7 +223,7 @@ export function BorrowingPage() {
             />
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <ScrollableTableWrapper>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <colgroup>
                 <col style={{ width: 80 }} /><col /><col style={{ width: 120 }} /><col style={{ width: 100 }} /><col style={{ width: 130 }} /><col style={{ width: 130 }} /><col style={{ width: 130 }} /><col style={{ width: 120 }} /><col style={{ width: 120 }} />
@@ -413,7 +414,7 @@ export function BorrowingPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </ScrollableTableWrapper>
         )}
       </Card>
     </>

@@ -1295,7 +1295,7 @@ export function AssetPage() {
             ) : archivedRows.length === 0 ? (
               <EmptyState title="No archived assets" description="Assets archived from the active list will appear here for review and restoration." />
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <ScrollableTableWrapper>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
@@ -1329,7 +1329,7 @@ export function AssetPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollableTableWrapper>
             )}
           </div>
           <div style={{ borderTop: '1px solid #F1F5F9', padding: '10px 20px' }}>

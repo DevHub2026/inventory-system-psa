@@ -13,6 +13,7 @@ import {
   type AssetHistoryReportItem,
 } from '@/services/reportService'
 import { borrowingStatusLabel, inventoryStatusLabel } from '@/utils/displayLabels'
+import ScrollableTableWrapper from '@/components/ui/ScrollableTableWrapper'
 import { Printer, FileSpreadsheet, FileCode } from 'lucide-react'
 
 type ReportType = 'assets' | 'borrowings' | 'overdue' | 'low_stock' | 'inventory' | 'user_activity' | 'reissuances' | 'reservations' | 'asset_history'
@@ -415,7 +416,7 @@ export function ReportPage() {
             />
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <ScrollableTableWrapper>
             {renderTable()}
             {reportType === 'asset_history' && assetHistoryMeta && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px' }}>
@@ -428,7 +429,7 @@ export function ReportPage() {
                 </div>
               </div>
             )}
-          </div>
+          </ScrollableTableWrapper>
         )}
       </Card>
 

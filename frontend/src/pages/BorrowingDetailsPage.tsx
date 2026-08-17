@@ -9,6 +9,7 @@ import type { Borrowing, BorrowExtensionRequest } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { formatDate, formatTime } from '@/utils/dateFormat'
+import ScrollableTableWrapper from '@/components/ui/ScrollableTableWrapper'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 import { GenerateDocumentModal } from '@/components/documents/GenerateDocumentModal'
 import { Printer } from 'lucide-react'
@@ -515,7 +516,7 @@ export function BorrowingDetailsPage({
                 No extension requests recorded for this borrowing.
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <ScrollableTableWrapper>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
@@ -565,7 +566,7 @@ export function BorrowingDetailsPage({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollableTableWrapper>
             )}
           </Card>
         </>

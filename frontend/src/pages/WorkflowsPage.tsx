@@ -6,6 +6,7 @@ import { WorkflowEditorModal } from '@/components/workflows/WorkflowEditorModal'
 import { WorkflowVersionHistoryModal } from '@/components/workflows/WorkflowVersionHistoryModal'
 import { Search, Copy, Archive, RotateCcw, History, Edit, Power, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
+import ScrollableTableWrapper from '@/components/ui/ScrollableTableWrapper'
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const th: React.CSSProperties = {
@@ -234,7 +235,7 @@ export function WorkflowsPage() {
             />
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <ScrollableTableWrapper>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
               <colgroup>
                 <col />
@@ -405,7 +406,7 @@ export function WorkflowsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </ScrollableTableWrapper>
         )}
       </div>
 
