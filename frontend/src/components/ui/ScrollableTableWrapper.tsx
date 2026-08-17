@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function ScrollableTableWrapper({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement | null>(null)
@@ -85,33 +84,31 @@ export default function ScrollableTableWrapper({ children }: { children: React.R
 
   return (
     <div style={{ position: 'relative' }}>
-      {canScrollLeft && (
-        <button
-          aria-label="Scroll table left"
-          onClick={() => scrollBy(-240)}
-          style={{
-            position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)',
-            zIndex: 30, border: '1px solid rgba(14, 165, 233, 0.12)', background: '#fff',
-            borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(2,6,23,0.06)'
-          }}
-        >
-          <ChevronLeft size={18} style={{ color: '#0B3D91' }} />
-        </button>
-      )}
+      <button
+        aria-label="Scroll table left"
+        onClick={() => scrollBy(-240)}
+        disabled={!canScrollLeft}
+        style={{
+          position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)',
+          zIndex: 30, border: '1px solid rgba(14, 165, 233, 0.12)', background: '#fff',
+          borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: canScrollLeft ? 'pointer' : 'default', boxShadow: '0 1px 4px rgba(2,6,23,0.06)', opacity: canScrollLeft ? 1 : 0.48, pointerEvents: canScrollLeft ? 'auto' : 'none'
+        }}
+      >
+        <span style={{ fontSize: 16, fontWeight: 700, color: '#0B3D91' }}>&lt;</span>
+      </button>
 
-      {canScrollRight && (
-        <button
-          aria-label="Scroll table right"
-          onClick={() => scrollBy(240)}
-          style={{
-            position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-            zIndex: 30, border: '1px solid rgba(14, 165, 233, 0.12)', background: '#fff',
-            borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(2,6,23,0.06)'
-          }}
-        >
-          <ChevronRight size={18} style={{ color: '#0B3D91' }} />
-        </button>
-      )}
+      <button
+        aria-label="Scroll table right"
+        onClick={() => scrollBy(240)}
+        disabled={!canScrollRight}
+        style={{
+          position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+          zIndex: 30, border: '1px solid rgba(14, 165, 233, 0.12)', background: '#fff',
+          borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: canScrollRight ? 'pointer' : 'default', boxShadow: '0 1px 4px rgba(2,6,23,0.06)', opacity: canScrollRight ? 1 : 0.48, pointerEvents: canScrollRight ? 'auto' : 'none'
+        }}
+      >
+        <span style={{ fontSize: 16, fontWeight: 700, color: '#0B3D91' }}>&gt;</span>
+      </button>
 
       <div ref={ref} style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {children}
