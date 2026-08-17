@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
+  AlertTriangle,
   Boxes,
   CalendarClock,
   ClipboardList,
@@ -36,6 +37,7 @@ const allLinks = [
   { to: '/extension-requests',     label: 'Extension Requests',     icon: CalendarClock,       roles: ['admin', 'staff'] },
   { to: '/inventory',              label: 'Inventory',              icon: Package,             roles: ['admin', 'staff'] },
   { to: '/maintenance',            label: 'Maintenance',            icon: Wrench,              roles: ['admin', 'staff'] },
+  { to: '/lost-asset-reports',     label: 'Lost Asset Reports',     icon: AlertTriangle,       roles: ['admin', 'staff'] },
   { to: '/reports',                label: 'Reports',                icon: FileBarChart,        roles: ['admin', 'staff'] },
   { to: '/users',                  label: 'Users',                  icon: Users,               roles: ['admin'] },
   { to: '/roles',                  label: 'Roles & Permissions',    icon: Shield,              roles: ['admin'] },
@@ -53,7 +55,7 @@ const allLinks = [
 const NAV_GROUPS = [
   { label: 'Self Service', paths: ['/qr'] },
   { label: 'Main Menu',  paths: ['/dashboard', '/assets', '/reservations', '/borrowings'] },
-  { label: 'Operations', paths: ['/issued-assets', '/extension-requests', '/inventory', '/maintenance', '/reports'] },
+  { label: 'Operations', paths: ['/issued-assets', '/extension-requests', '/inventory', '/maintenance', '/lost-asset-reports', '/reports'] },
   { label: 'Admin',      paths: ['/users', '/roles', '/system-setup', '/workflows', '/qr-scan-history', '/document-templates'] },
   { label: 'Account',    paths: ['/settings', '/sessions', '/privacy', '/developers'] },
 ]

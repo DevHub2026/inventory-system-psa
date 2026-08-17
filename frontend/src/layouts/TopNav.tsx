@@ -14,6 +14,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/borrowings':   'Borrowed Items',
   '/inventory':    'Inventory',
   '/maintenance':  'Maintenance',
+  '/lost-asset-reports': 'Lost Asset Reports',
   '/reports':      'Reports',
   '/users':        'Users',
   '/roles':        'Roles & Permissions',

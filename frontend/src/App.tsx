@@ -11,6 +11,7 @@ import { DocumentTemplatesPage } from '@/pages/DocumentTemplatesPage'
 import { InventoryPage } from '@/pages/InventoryPage'
 import { IssuedAssetsPage } from '@/pages/IssuedAssetsPage'
 import { MaintenancePage } from '@/pages/MaintenancePage'
+import { LostAssetReportsPage } from '@/pages/LostAssetReportsPage'
 import { PermissionsPage } from '@/pages/PermissionsPage'
 import { PrivacyNoticePage } from '@/pages/PrivacyNoticePage'
 import { ReportPage } from '@/pages/ReportPage'
@@ -63,6 +64,7 @@ function App() {
               <Route path="/issued-assets" element={<IssuedAssetsPage />} />
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/maintenance" element={<MaintenancePage />} />
+              <Route path="/lost-asset-reports" element={<LostAssetReportsPage />} />
               <Route path="/reports" element={<ReportPage />} />
               <Route path="/users" element={<UsersPage />} />
               <Route path="/users/:id" element={<UserProfilePage />} />
