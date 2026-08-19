@@ -1376,7 +1376,7 @@ export function AssetPage() {
           </div>
 
           {/* Status filter */}
-          <select
+          <select aria-label="Asset status filter"
             value={status}
             onChange={(e) => { setStatus(e.target.value); void load(1, search) }}
             style={{

@@ -49,6 +49,15 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }
       }[maxWidth] ?? 520)
     : maxWidth
 
+  // Close on Escape for accessibility
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
   return (
     <div
       style={{

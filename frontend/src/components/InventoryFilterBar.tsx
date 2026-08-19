@@ -138,7 +138,7 @@ export function InventoryFilterBar({
         </div>
 
         <div style={{ minWidth: 140 }}>
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); onApplyFilters() }} style={{ height: 38, minWidth: 140 }}>
+          <select aria-label="Status filter" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); onApplyFilters() }} style={{ height: 38, minWidth: 140 }}>
             <option value="">All statuses</option>
             <option value="IN_STOCK">In Stock</option>
             <option value="LOW_STOCK">Low Stock</option>

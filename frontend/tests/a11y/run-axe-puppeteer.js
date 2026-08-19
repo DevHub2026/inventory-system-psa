@@ -82,7 +82,7 @@ async function runAudit() {
     try { return await loginAndGetSession() } catch { return null }
   })()
 
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'] })
+  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'], ignoreHTTPSErrors: true })
   try {
     const page = await browser.newPage()
     page.setDefaultTimeout(30000)

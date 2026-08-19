@@ -129,6 +129,7 @@ function PasswordField({
       />
       <button
         type="button"
+        aria-label={show ? 'Hide password' : 'Show password'}
         onClick={onToggle}
         style={{
           position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
