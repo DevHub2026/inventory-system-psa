@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, Search, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode, CheckCircle2, XCircle, ArrowRightLeft, ClipboardCheck, Save } from 'lucide-react'
+import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode, CheckCircle2, XCircle, ArrowRightLeft, ClipboardCheck, Save, Wrench, HelpCircle } from 'lucide-react'
 import {
   Alert, Button, EmptyState, Input,
   Modal, Spinner, Badge, Card, SetupDropdown,
@@ -12,10 +12,14 @@ import {
   type InventoryCountSession,
   type UpdateInventoryItemPayload,
 } from '@/services/inventoryService'
+import { InventoryFilterBar } from '@/components/InventoryFilterBar'
 import { assetService } from '@/services/assetService'
 import { setupService, type SetupRecord } from '@/services/setupService'
 import { api, unwrapData } from '@/services/api'
-import type { ApiResponse, InventoryItem, StockMovement } from '@/types'
+import { qrService } from '@/services/qrService'
+import { ReportDamageModal } from '@/components/qr/ReportDamageModal'
+import { ReportLostModal } from '@/components/qr/ReportLostModal'
+import type { ApiResponse, InventoryItem, StockMovement, AssetContext } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { InventoryImportWizard } from '@/components/InventoryImportWizard'
 import { notifyDataChanged } from '@/utils/dataRefresh'
@@ -306,9 +310,11 @@ interface ActionCellProps {
   onFinalizeDisposal?: () => void
   onCancelDisposal?: () => void
   onViewDisposal?: () => void
+  /** Callback to open a report modal from parent. Called as (type, assetContext) */
+  onOpenReportModal?: (type: 'damage' | 'lost', assetContext: AssetContext) => void
 }
 
-function ActionCell({ item, onStockIn, onStockOut, onTransfer, onAdjust, onHistory, onEdit, onAsset, onDelete, onMarkForDisposal, onFinalizeDisposal, onCancelDisposal, onViewDisposal }: ActionCellProps) {
+function ActionCell({ item, onStockIn, onStockOut, onTransfer, onAdjust, onHistory, onEdit, onAsset, onDelete, onMarkForDisposal, onFinalizeDisposal, onCancelDisposal, onViewDisposal, onOpenReportModal }: ActionCellProps) {
   const [openMenu, setOpenMenu] = useState(false)
   const menuContainerRef = useRef<HTMLDivElement | null>(null)
   const selectRef = useRef<HTMLButtonElement | null>(null)
@@ -419,6 +425,32 @@ function ActionCell({ item, onStockIn, onStockOut, onTransfer, onAdjust, onHisto
       </button>
     )
 
+  // Asset context (fetched on-demand when the menu opens) — used to show Report Damage / Lost only when allowed.
+  const [assetCtx, setAssetCtx] = useState<AssetContext | null>(null)
+  const [assetCtxLoading, setAssetCtxLoading] = useState(false)
+
+  useEffect(() => {
+    if (!openMenu) return
+    // Only attempt to resolve for linked assets
+    if (!item.asset_id) return
+    // If already fetched, skip
+    if (assetCtx) return
+    let cancelled = false
+    const identifier = item.asset_number ?? String(item.asset_id)
+    setAssetCtxLoading(true)
+    void (async () => {
+      try {
+        const res = await qrService.resolveAsset(identifier)
+        if (!cancelled) setAssetCtx(res)
+      } catch (_err) {
+        // silently ignore; we simply won't show report items
+      } finally {
+        if (!cancelled) setAssetCtxLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [openMenu, assetCtx, item.asset_id, item.asset_number])
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
       {/* Quick action: Stock In (always visible) */}
@@ -451,6 +483,22 @@ function ActionCell({ item, onStockIn, onStockOut, onTransfer, onAdjust, onHisto
 
         {openMenu && createPortal(
                   <div ref={popupRef} role="menu" aria-label="Row actions" style={{ ...popupPos, background: '#fff', border: '1px solid #E2E8F0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6 }}>
+            {/* Report / Incident group — shown only for linked assets and based on server-provided available_actions */}
+            {/* Fetch asset context when menu opens; show items conditionally. */}
+            {item.asset_id && (
+              <div style={{ padding: '6px 8px', borderRadius: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Report / Incident</div>
+                {assetCtxLoading ? (
+                  <div style={{ padding: '6px 12px' }}><Spinner /></div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {assetCtx?.actions?.can_report_damage && menuItem(<Wrench size={14} />, 'Report Damage', () => onOpenReportModal?.('damage', assetCtx))}
+                                        {assetCtx?.actions?.can_report_lost && menuItem(<HelpCircle size={14} />, 'Report Lost', () => onOpenReportModal?.('lost', assetCtx), 'danger')}
+                  </div>
+                )}
+              </div>
+            )}
+
             {menuItem(<ArrowRightLeft size={14} />, 'Transfer Location', onTransfer)}
             {menuItem(<RotateCcw size={14} />, 'Adjust Quantity', onAdjust)}
             {menuItem(<History size={14} />, 'View History', onHistory)}
@@ -491,6 +539,19 @@ export function InventoryPage() {
   const [statusFilter,   setStatusFilter]   = useState('')
   const [activeTab,      setActiveTab]      = useState<TabKey>('all')
 
+  // Additional filters (kept optional — UI controls may set these)
+  const [assetCategoryFilter, _setAssetCategoryFilter] = useState<number | null>(null)
+  const [officeFilter, _setOfficeFilter] = useState<number | null>(null)
+  const [locationFilter, _setLocationFilter] = useState<number | null>(null)
+  const [manufacturerFilter, _setManufacturerFilter] = useState<number | null>(null)
+  const [assignedUserFilter, _setAssignedUserFilter] = useState<number | null>(null)
+  const [createdFromFilter, _setCreatedFromFilter] = useState<string | null>(null)
+  const [createdToFilter, _setCreatedToFilter] = useState<string | null>(null)
+
+  // Server-side sorting
+  const [orderBy, _setOrderBy] = useState<string | null>(null)
+  const [orderDir, _setOrderDir] = useState<'ASC' | 'DESC' | null>(null)
+
   // Sentinel ref for infinite scroll
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
@@ -523,6 +584,23 @@ export function InventoryPage() {
   const [historyRows,    setHistoryRows]    = useState<StockMovement[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [wizardOpen,     setWizardOpen]     = useState(false)
+
+  // Report modal state (Inventory row entry points)
+  const [reportModalOpen, setReportModalOpen] = useState(false)
+  const [reportModalType, setReportModalType] = useState<'damage' | 'lost' | null>(null)
+  const [reportAssetContext, setReportAssetContext] = useState<AssetContext | null>(null)
+
+  const openReportModal = (type: 'damage' | 'lost', ctx: AssetContext) => {
+    setReportModalType(type)
+    setReportAssetContext(ctx)
+    setReportModalOpen(true)
+  }
+
+  const handleReportSuccess = () => {
+    // Refresh inventory & show success message
+    void loadInventory(1)
+    setMessage({ type: 'success', text: reportModalType === 'damage' ? 'Damage report submitted.' : 'Lost asset report submitted.' })
+  }
   const [countSessions, setCountSessions] = useState<InventoryCountSession[]>([])
   const [countSessionsLoading, setCountSessionsLoading] = useState(false)
   const [countSessionModalOpen, setCountSessionModalOpen] = useState(false)
@@ -666,6 +744,15 @@ export function InventoryPage() {
         search: search || undefined,
         status: statusFilter || undefined,
         classification,
+        asset_category_id: assetCategoryFilter ?? undefined,
+        office_id: officeFilter ?? undefined,
+        location_id: locationFilter ?? undefined,
+        manufacturer_id: manufacturerFilter ?? undefined,
+        assigned_user_id: assignedUserFilter ?? undefined,
+        created_from: createdFromFilter ?? undefined,
+        created_to: createdToFilter ?? undefined,
+        order_by: orderBy ?? undefined,
+        order_dir: orderDir ?? undefined,
       })
       setRows(prev => pg === 1 ? result.items : [...prev, ...result.items])
       setPage(result.meta.current_page)
@@ -676,7 +763,7 @@ export function InventoryPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [search, statusFilter, activeTab])
+  }, [search, statusFilter, activeTab, assetCategoryFilter, officeFilter, locationFilter, manufacturerFilter, assignedUserFilter, createdFromFilter, createdToFilter, orderBy, orderDir])
 
   // Load summary counts — fires once and on explicit refresh only
   const loadSummary = useCallback(async () => {
@@ -1130,7 +1217,7 @@ export function InventoryPage() {
             : 'SUPPLY'
 
       if (exportFormat === 'json') {
-        const result = await inventoryService.list({ per_page: 9999, search: search || undefined, classification: scopeFilter })
+              const result = await inventoryService.list({ per_page: 9999, search: search || undefined, classification: scopeFilter, asset_category_id: assetCategoryFilter ?? undefined, office_id: officeFilter ?? undefined, location_id: locationFilter ?? undefined, manufacturer_id: manufacturerFilter ?? undefined, assigned_user_id: assignedUserFilter ?? undefined, created_from: createdFromFilter ?? undefined, created_to: createdToFilter ?? undefined, order_by: orderBy ?? undefined, order_dir: orderDir ?? undefined })
         // Filter object keys based on selected exportColumns when exporting JSON
         const filtered = result.items.map((it) => {
           const obj: Record<string, unknown> = {}
@@ -1148,7 +1235,7 @@ export function InventoryPage() {
         document.body.appendChild(a); a.click(); document.body.removeChild(a)
         URL.revokeObjectURL(url)
       } else if (exportFormat === 'csv') {
-        const result = await inventoryService.list({ per_page: 9999, search: search || undefined, classification: scopeFilter })
+              const result = await inventoryService.list({ per_page: 9999, search: search || undefined, classification: scopeFilter, asset_category_id: assetCategoryFilter ?? undefined, office_id: officeFilter ?? undefined, location_id: locationFilter ?? undefined, manufacturer_id: manufacturerFilter ?? undefined, assigned_user_id: assignedUserFilter ?? undefined, created_from: createdFromFilter ?? undefined, created_to: createdToFilter ?? undefined, order_by: orderBy ?? undefined, order_dir: orderDir ?? undefined })
         const headers = exportColumns.length ? exportColumns : ['id', 'name', 'type', 'classification', 'sku', 'property_number', 'asset_number', 'serial_number', 'accountability', 'quantity', 'unit', 'status', 'reorder_level', 'remarks']
         const lines   = [headers.join(',')]
         for (const item of result.items) {
@@ -1169,7 +1256,21 @@ export function InventoryPage() {
         document.body.appendChild(a); a.click(); document.body.removeChild(a)
         URL.revokeObjectURL(url)
       } else {
-        const blob = await inventoryService.downloadExport({ search: search || undefined, status: statusFilter || undefined, classification: scopeFilter })
+        const blob = await inventoryService.downloadExport({
+          search: search || undefined,
+          status: statusFilter || undefined,
+          classification: scopeFilter,
+          columns: exportColumns,
+                  asset_category_id: assetCategoryFilter ?? undefined,
+                  office_id: officeFilter ?? undefined,
+                  location_id: locationFilter ?? undefined,
+                  manufacturer_id: manufacturerFilter ?? undefined,
+                  assigned_user_id: assignedUserFilter ?? undefined,
+                  created_from: createdFromFilter ?? undefined,
+                  created_to: createdToFilter ?? undefined,
+                  order_by: orderBy ?? undefined,
+                  order_dir: orderDir ?? undefined,
+                })
         const url  = URL.createObjectURL(blob)
         const a    = document.createElement('a')
         a.href     = url
@@ -1433,87 +1534,76 @@ export function InventoryPage() {
 
           {/* Search + filter row — sits flush below tabs */}
           {activeTab !== 'counts' && (
-          <div style={{
-            display: 'flex',
-            gap: 10,
-            alignItems: 'center',
-            padding: '12px 20px',
-            borderBottom: '1px solid #E2E8F0',
-            background: '#fff',
-          }}>
-            {/* Search */}
-            <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
-              <Search size={14} style={{
-                position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-                color: '#94A3B8', pointerEvents: 'none',
-              }} />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={handleSearch}
-                placeholder="Search by name, code, or unit..."
-                style={{
-                  width: '100%', height: 38, paddingLeft: 34, paddingRight: 14,
-                  borderRadius: 10, border: '1.5px solid #E2E8F0',
-                  fontSize: 13.5, color: '#1E293B', outline: 'none',
-                  boxSizing: 'border-box', fontFamily: 'inherit',
-                  background: '#F8FAFC',
-                  transition: 'border-color 0.15s, background 0.15s',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#93C5FD'
-                  e.currentTarget.style.background = '#fff'
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#E2E8F0'
-                  e.currentTarget.style.background = '#F8FAFC'
-                }}
-              />
-            </div>
+            <>
+            <InventoryFilterBar
+              search={search}
+              setSearch={(v) => setSearch(v)}
+              onSearchKeyDown={handleSearch}
 
-            {/* Status filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); void loadInventory(1) }}
-              style={{
-                height: 38, paddingInline: '12px 32px', borderRadius: 10,
-                border: '1.5px solid #E2E8F0', fontSize: 13, color: statusFilter ? '#1E293B' : '#94A3B8',
-                background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 12px center`,
-                backgroundSize: '10px 6px',
-                appearance: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                outline: 'none', flexShrink: 0,
-                transition: 'border-color 0.15s',
+              statusFilter={statusFilter}
+              setStatusFilter={(v) => { setStatusFilter(v) }}
+
+              assetCategoryId={assetCategoryFilter}
+              setAssetCategoryId={(v) => { _setAssetCategoryFilter(v) }}
+
+              officeId={officeFilter}
+              setOfficeId={(v) => { _setOfficeFilter(v) }}
+
+              locationId={locationFilter}
+              setLocationId={(v) => { _setLocationFilter(v) }}
+
+              manufacturerId={manufacturerFilter}
+              setManufacturerId={(v) => { _setManufacturerFilter(v) }}
+
+              assignedUserId={assignedUserFilter}
+              setAssignedUserId={(v) => { _setAssignedUserFilter(v) }}
+
+              createdFrom={createdFromFilter}
+              setCreatedFrom={(v) => { _setCreatedFromFilter(v) }}
+
+              createdTo={createdToFilter}
+              setCreatedTo={(v) => { _setCreatedToFilter(v) }}
+
+              orderBy={orderBy}
+              setOrderBy={(v) => { _setOrderBy(v) }}
+              orderDir={orderDir}
+              setOrderDir={(v) => { _setOrderDir(v) }}
+
+              onApplyFilters={() => { void loadInventory(1) }}
+              onClearFilters={() => {
+                _setAssetCategoryFilter(null); _setOfficeFilter(null); _setLocationFilter(null); _setManufacturerFilter(null);
+                // keep search and classification/status intact per requirements
+                _setAssignedUserFilter(null); _setCreatedFromFilter(null); _setCreatedToFilter(null);
+                _setOrderBy(null); _setOrderDir(null);
+                void loadInventory(1)
               }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = '#93C5FD' }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = '#E2E8F0' }}
-            >
-              <option value="">All statuses</option>
-              <option value="IN_STOCK">In Stock</option>
-              <option value="LOW_STOCK">Low Stock</option>
-              <option value="OUT_OF_STOCK">Out of Stock</option>
-              <option value="AVAILABLE">Available</option>
-              <option value="IN_USE">In Use</option>
-              <option value="UNDER_MAINTENANCE">Under Maintenance</option>
-            </select>
+
+              assetCategories={assetCategories}
+              manufacturers={manufacturers}
+              offices={offices}
+              locations={locations}
+            />
 
             {/* Filter button */}
-            <button
-              onClick={handleFilter}
-              style={{
-                height: 38, paddingInline: 14, borderRadius: 10,
-                border: '1.5px solid #E2E8F0', background: '#F8FAFC',
-                fontSize: 13, fontWeight: 600, color: '#374151',
-                cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                transition: 'background 0.12s',
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
-            >
-              <Filter size={14} />
-              Filter
-            </button>
-          </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 20px' }}>
+              <button
+                onClick={handleFilter}
+                style={{
+                  height: 38, paddingInline: 14, borderRadius: 10,
+                  border: '1.5px solid #E2E8F0', background: '#F8FAFC',
+                  fontSize: 13, fontWeight: 600, color: '#374151',
+                  cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  transition: 'background 0.12s',
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
+              >
+                <Filter size={14} />
+                Filter
+              </button>
+            </div>
+            </>
           )}
         </div>
 
@@ -1735,7 +1825,8 @@ export function InventoryPage() {
                         onFinalizeDisposal={r.asset_id ? () => openFinalizeDisposal(r) : undefined}
                         onCancelDisposal={r.asset_id ? () => openCancelDisposal(r) : undefined}
                         onViewDisposal={() => { setActiveTab('disposal'); setSearch(r.name ?? r.asset_number ?? r.sku ?? '') }}
-                      />
+                                              onOpenReportModal={openReportModal}
+                                            />
                     </td>
                   </tr>
                 ))}
@@ -2203,6 +2294,25 @@ export function InventoryPage() {
           />
         </div>
       </Modal>
+
+      {/* Report modals (opened from row actions) */}
+      {reportModalOpen && reportModalType === 'damage' && reportAssetContext && (
+        <ReportDamageModal
+          open={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          assetContext={reportAssetContext}
+          onSuccess={() => { handleReportSuccess(); setReportModalOpen(false) }}
+        />
+      )}
+
+      {reportModalOpen && reportModalType === 'lost' && reportAssetContext && (
+        <ReportLostModal
+          open={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          assetContext={reportAssetContext}
+          onSuccess={() => { handleReportSuccess(); setReportModalOpen(false) }}
+        />
+      )}
 
       {/* ── Transfer modal ── */}
       <Modal

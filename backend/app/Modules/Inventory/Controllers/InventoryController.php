@@ -10,7 +10,7 @@ use App\Modules\Inventory\Requests\StoreInventoryItemRequest;
 use App\Modules\Inventory\Services\InventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -301,6 +301,11 @@ class InventoryController extends Controller
 
     public function update(InventoryItem $item, StoreInventoryItemRequest $request): JsonResponse
     {
+        // Authorize update with potential requested classification override
+        $requestedClassification = $request->input('classification');
+
+        $this->authorize('update', [$item, $requestedClassification]);
+
         $item = $this->inventoryService->update($item, $request->validated());
 
         return $this->success($this->transform($item), 'Inventory item updated successfully.');
@@ -308,6 +313,8 @@ class InventoryController extends Controller
 
     public function destroy(InventoryItem $item): JsonResponse
     {
+        $this->authorize('delete', $item);
+
         $this->inventoryService->delete($item);
 
         return $this->success(null, 'Inventory item deleted successfully.');

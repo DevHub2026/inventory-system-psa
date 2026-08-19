@@ -18,10 +18,7 @@ class WorkflowService
             ->with(['currentVersion.approvalLevels.office', 'currentVersion.approvalLevels.department', 'creator'])
             ->when(! empty($filters['search']), function ($q) use ($filters) {
                 $search = $filters['search'];
-                $q->where(function ($sub) use ($search) {
-                    $sub->where('name', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%");
-                });
+                $q->whereLikeInsensitive(['name', 'description'], $search);
             })
             ->when(! empty($filters['module_type']), fn ($q) => $q->where('module_type', $filters['module_type']))
             ->when(isset($filters['is_active']), fn ($q) => $q->where('is_active', (bool) $filters['is_active']))

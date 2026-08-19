@@ -32,7 +32,7 @@ class ImportWizardService
         ];
     }
 
-    public function uploadAndParse(User $user, string $storedPath, string $type): array
+    public function uploadAndParse(User $user, string $storedPath, string $type, ?int $existingImportId = null): array
     {
         $handler = $this->registry->handler($type);
         [$headers, $dataRows] = $this->readRows($storedPath);
@@ -71,7 +71,7 @@ class ImportWizardService
         $duplicateHeaders = array_filter($headerCounts, fn (int $count): bool => $count > 1);
         $systemFields = $handler->systemFields();
 
-        $import = InventoryImport::query()->create([
+        $import = $existingImportId ? InventoryImport::query()->findOrFail($existingImportId) : InventoryImport::query()->create([
             'import_type' => $handler->type(),
             'original_filename' => basename($storedPath),
             'stored_path' => $storedPath,
@@ -298,6 +298,57 @@ class ImportWizardService
             ->toArray();
     }
 
+    public function resumeImport(int $importId, string $type): array
+    {
+        $import = InventoryImport::query()->findOrFail($importId);
+
+        if (($import->import_type ?? 'inventory') !== $type) {
+            throw new \InvalidArgumentException("Import {$importId} is a '{$import->import_type}' import, not '{$type}'.");
+        }
+
+        if (in_array($import->status, ['completed', 'completed_with_errors'], true)) {
+            throw new \InvalidArgumentException('Completed imports cannot be resumed.');
+        }
+
+        if (empty($import->stored_path) || ! Storage::exists($import->stored_path)) {
+            throw new \InvalidArgumentException('The uploaded file for this import is missing or has been removed.');
+        }
+
+        $result = $this->uploadAndParse(
+            User::query()->findOrFail($import->created_by),
+            $import->stored_path,
+            $type,
+            $import->id,
+        );
+
+        $result['status'] = $import->status;
+        $result['column_mapping'] = $import->column_mapping ?? [];
+        $result['resume_allowed'] = true;
+
+        return $result;
+    }
+
+    public function deleteImport(int $importId, string $type): bool
+    {
+        $import = InventoryImport::query()->findOrFail($importId);
+
+        if (($import->import_type ?? 'inventory') !== $type) {
+            throw new \InvalidArgumentException("Import {$importId} is a '{$import->import_type}' import, not '{$type}'.");
+        }
+
+        if (in_array($import->status, ['completed', 'completed_with_errors', 'importing'], true) || (int) ($import->imported_rows ?? 0) > 0) {
+            throw new \InvalidArgumentException('Only pending or validation-stage imports can be deleted.');
+        }
+
+        if (! empty($import->stored_path)) {
+            Storage::delete($import->stored_path);
+        }
+
+        $import->delete();
+
+        return true;
+    }
+
     private function handlerForImport(int $importId, string $type): ImportHandlerInterface
     {
         $import = InventoryImport::query()->findOrFail($importId);
@@ -367,18 +418,86 @@ class ImportWizardService
 
     private function suggestMapping(string $excelColumn, array $systemFields, array $aliases): ?array
     {
-        $normalized = strtolower(trim($excelColumn));
-        $normalized = preg_replace('/[^a-z0-9]/', '', $normalized) ?? '';
+        $trimmed = trim((string) $excelColumn);
+        $lower = strtolower($trimmed);
+        $normalized = preg_replace('/[^a-z0-9]/', '', $lower) ?? '';
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $ignoredHeaders = [
+            'id',
+            'stockstatus',
+            'assetnumber',
+            'propertynumber',
+            'serialnumber',
+            'assetstatus',
+            'accountability',
+            'createdat',
+            'updatedat',
+            'inventorytype',
+            'classification',
+            'assetstatus',
+            'status',
+        ];
+
+        if (in_array($normalized, $ignoredHeaders, true)) {
+            return null;
+        }
+
+        $headerWords = array_values(array_filter(
+            preg_split('/[^a-z0-9]+/', strtolower($trimmed)) ?: [],
+            fn (string $word): bool => $word !== ''
+        ));
+
+        $assetDescriptorWords = ['asset', 'property', 'serial', 'number', 'accountability', 'status'];
+        if (array_intersect($headerWords, $assetDescriptorWords) !== [] && ! in_array('category', $headerWords, true)) {
+            return null;
+        }
+
+        if (count($headerWords) >= 2 && in_array('created', $headerWords, true) && in_array('at', $headerWords, true)) {
+            return null;
+        }
+
+        if (count($headerWords) >= 2 && in_array('updated', $headerWords, true) && in_array('at', $headerWords, true)) {
+            return null;
+        }
+
+        $bestMatch = null;
+        $bestScore = -1;
 
         foreach ($aliases as $fieldKey => $patterns) {
             foreach ($patterns as $pattern) {
-                if ($normalized === $pattern || str_contains($normalized, $pattern)) {
-                    return collect($systemFields)->firstWhere('key', $fieldKey);
+                $patternKey = strtolower(trim((string) $pattern));
+                $patternKey = preg_replace('/[^a-z0-9]/', '', $patternKey) ?? '';
+
+                if ($patternKey === '') {
+                    continue;
+                }
+
+                if (in_array($patternKey, ['asset', 'item', 'code', 'stock', 'status'], true)) {
+                    continue;
+                }
+
+                $score = 0;
+                if ($normalized === $patternKey) {
+                    $score = 200 + strlen($patternKey);
+                } elseif (strlen($patternKey) >= 4 && str_contains($normalized, $patternKey) && ! in_array($patternKey, ['asset', 'stock'], true)) {
+                    $score = 60 + strlen($patternKey);
+                    if (count($headerWords) > 1 && in_array($patternKey, $headerWords, true)) {
+                        $score += 25;
+                    }
+                }
+
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $bestMatch = collect($systemFields)->firstWhere('key', $fieldKey);
                 }
             }
         }
 
-        return null;
+        return $bestMatch;
     }
 
     private function isEmptyRow(array $row): bool

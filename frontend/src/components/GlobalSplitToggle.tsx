@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import AccessibilityQaPanel from '@/components/AccessibilityQaPanel'
 
 const pages = [
   { key: 'borrowings', label: 'Borrowings' },
@@ -12,7 +11,6 @@ const pages = [
 
 export function GlobalSplitToggle() {
   const [open, setOpen] = useState(false)
-  const [a11yOpen, setA11yOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -38,7 +36,6 @@ export function GlobalSplitToggle() {
               <button key={p.key} onClick={() => openAsRight(p.key)} style={menuBtnStyle}>{p.label}</button>
             ))}
             <div style={{ height: 1, background: '#F1F5F9', margin: '6px 0' }} />
-            <button onClick={() => { setOpen(false); setA11yOpen(true) }} style={menuBtnStyle}>Accessibility QA</button>
           </div>
         )}
 
@@ -54,7 +51,6 @@ export function GlobalSplitToggle() {
           ≡
         </button>
 
-        <AccessibilityQaPanel open={a11yOpen} onClose={() => setA11yOpen(false)} />
       </div>
     </div>
   )

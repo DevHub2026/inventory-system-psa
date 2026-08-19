@@ -142,6 +142,11 @@ export const authService = {
     await api.put('/change-password', payload)
   },
 
+  async updateAccessibilityPreferences(payload: { fontSize?: string; highContrast?: boolean; reducedMotion?: boolean }): Promise<Record<string, unknown>> {
+    const { data } = await api.put('/me/accessibility-preferences', payload)
+    return unwrapData(data)
+  },
+
   async forgotPassword(payload: ForgotPasswordPayload): Promise<void> {
     await api.post('/forgot-password', payload)
   },

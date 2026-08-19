@@ -1,0 +1,605 @@
+You are working on the PSA PhilSys Queue Management System.
+
+Your task is to perform a full system audit, verify the existing implementation, identify broken/disconnected/incomplete functionality, and implement the required fixes.
+
+IMPORTANT:
+- Treat this as maintenance and stabilization of an existing system.
+- Do not restart, rebuild, or replace the application.
+- Do not blindly rewrite existing features.
+- Inspect the actual project first and follow its current backend, frontend, database, realtime, routing, authentication, authorization, testing, and deployment conventions.
+- Do not assume a specific framework, language, realtime provider, or build tool unless it is already present in the codebase.
+- Reuse existing architecture, models, controllers/views, routes, services, events, components, styles, and tests wherever possible.
+- Do not introduce duplicate models, duplicate queue logic, duplicate status systems, or parallel implementations.
+- Preserve existing queue numbering, queue lifecycle, services, counters/windows, kiosk behavior, staff/window behavior, TV display behavior, authentication/RBAC, reports, and existing UI design unless a requested fix requires a scoped change.
+- Do not change unrelated UI or unrelated business logic.
+- Do not remove existing functionality unless the audit confirms it is unused, broken, or explicitly superseded by the requested behavior.
+- Before modifying anything, trace each affected feature end-to-end: database -> backend/business logic -> API/route -> frontend/client -> realtime layer if present -> displayed result.
+- Verify that every feature is actually wired end-to-end, not merely present in the code.
+- After implementation, run the project's appropriate backend tests, frontend checks, build checks, and manual workflow verification.
+
+==================================================
+CURRENT OBJECTIVE
+==================================================
+
+Stabilize and complete the queue-management workflows listed below:
+
+1. Full system audit
+2. Priority display on TV/public display
+3. Separate priority numbering where required
+4. Kiosk privacy cleanup
+5. Daily filtering/reset behavior
+6. Skipped queue status/card/display/recater workflow
+7. No Show workflow
+8. Transfer workflow
+9. Report generation filters and output
+10. Catered/served timer behavior
+11. Queue history completeness
+12. Realtime synchronization if the system has a realtime layer
+13. End-to-end regression verification
+
+==================================================
+PHASE 1 — FULL SYSTEM AUDIT
+==================================================
+
+Audit the entire queue management system, not only the requested features.
+
+Inspect the actual project structure and identify the real implementation paths for:
+
+1. Database models and relationships
+2. Migrations/schema
+3. Queue creation and numbering
+4. Service assignment
+5. Priority handling
+6. Kiosk queue creation
+7. Staff/window queue calling
+8. Queue catering/serving
+9. Skip functionality
+10. No Show handling
+11. Transfer functionality
+12. Queue history
+13. TV/public display
+14. Realtime events, polling, broadcasts, or refresh logic if present
+15. Counter/window state
+16. "My Window" or assigned-window logic
+17. Service filtering
+18. Daily filtering/reset behavior
+19. Reports and report generation
+20. Timers and persisted timestamps
+21. Authentication/RBAC/permissions
+22. API endpoints/routes
+23. Frontend routes/pages/components
+24. Loading/error/empty states
+25. Backend/frontend data consistency
+26. Any TODOs, placeholders, dead code, disconnected endpoints, broken routes, unused fields, or partially wired UI
+
+For every important feature, determine:
+
+- Is it implemented?
+- Is it correctly wired?
+- Does the backend support it?
+- Does the frontend/client actually consume it?
+- Does the database persist it?
+- Does realtime or refresh behavior update correctly where applicable?
+- Does it work after page refresh?
+- Does it work across multiple staff/window sessions where applicable?
+- Are edge cases handled?
+
+Fix genuine issues found during the audit when they are clearly related to the intended queue-management functionality.
+
+==================================================
+PHASE 2 — PRIORITY QUEUE IMPROVEMENTS
+==================================================
+
+### 1. Display Priority On TV/Public Display
+
+The public display must clearly indicate when a queue is PRIORITY.
+
+Acceptable examples:
+
+P-001
+PRIORITY
+
+or an appropriate professional badge/label that matches the current UI.
+
+Do not rely only on the queue number to communicate priority.
+
+Verify the real data path:
+
+Kiosk/service selection -> queue record -> backend/API -> staff/window interface -> realtime/refresh mechanism -> TV/public display.
+
+Do not expose unnecessary personal information on public displays.
+
+### 2. Separate Priority Numbering From Regular Numbering
+
+Implement or verify separate queue numbering for priority and regular queues when they belong to the same service, if that is the intended business rule.
+
+Example:
+
+Regular:
+A-001
+A-002
+A-003
+
+Priority:
+P-A-001
+P-A-002
+P-A-003
+
+The exact format must follow the existing project's queue-numbering conventions.
+
+Rules:
+- Priority and regular queues must not accidentally share the same sequence if the intended system requires separate numbering.
+- Different services must still maintain their own appropriate numbering.
+- Daily reset behavior must remain consistent.
+- Existing queue records must not become corrupted.
+- Before changing numbering, inspect the current queue-number generation logic and modify it in place instead of creating a second numbering system.
+
+==================================================
+PHASE 3 — KIOSK PRIVACY
+==================================================
+
+### 3. Remove Unnecessary User Input From Kiosk
+
+Audit the kiosk UI and remove unnecessary personal-information inputs that are not required for queue generation.
+
+The kiosk should avoid collecting unnecessary personally identifiable information.
+
+Determine exactly what information is required for:
+
+- Queue generation
+- Service selection
+- Priority determination
+- Queue tracking
+- Reporting/history required by the business process
+
+Remove unnecessary fields only after confirming they are not required by backend validation or the business process.
+
+After removing fields, verify:
+
+- Queue creation still works
+- Priority selection still works
+- Service selection still works
+- Queue receipt/display still works
+- API payloads remain valid
+- Public display still avoids personal information
+
+==================================================
+PHASE 4 — DAILY FILTER / RESET
+==================================================
+
+### 4. Filter And Reset Per Day
+
+Audit all queue-related lists, dashboards, history, skipped queues, reports, and TV/public-display data.
+
+Ensure daily filtering is correct.
+
+The system should clearly distinguish today's queues from historical queues.
+
+Implement or verify:
+
+- Today filter
+- Date filter where appropriate
+- Reset/clear filter action where appropriate
+- Daily queue-number reset where intended
+- No accidental mixing of previous-day queue data
+- No deletion of historical records when a "reset" action is performed
+
+IMPORTANT:
+"Reset" must not mean deleting queue history unless the existing architecture explicitly defines that behavior and the user confirms it.
+
+Prefer date-based filtering and daily sequence logic.
+
+==================================================
+PHASE 5 — SKIPPED QUEUES
+==================================================
+
+### 5. Skipped Queue Card/Status
+
+When a queue is skipped:
+
+- It must receive a clear SKIPPED state/status.
+- It must be visually distinguishable in the staff/window interface.
+- The queue card should indicate that it was skipped.
+- The queue must remain recoverable if recatering is supported.
+- Queue history must record the skip event appropriately.
+
+Do not destroy the queue record.
+
+### 6. Show Skipped Queues On TV/Public Display
+
+Audit the public display.
+
+If the intended behavior is to show skipped queues, display a clear SKIPPED status/label.
+
+Do not display misleading serving/called status for a skipped queue.
+
+Avoid exposing unnecessary personal information.
+
+### 7. Recater Skipped Queue
+
+Add, restore, or verify a clear action allowing staff to cater/call a skipped queue again.
+
+Use the existing UI button style and terminology where possible.
+
+When recater is selected:
+
+- Queue transitions from SKIPPED to the appropriate active/called/serving state used by the system.
+- It appears in the correct staff/window queue.
+- Timer behavior is correct.
+- Public display updates correctly.
+- Queue history records the event.
+- A duplicate queue is not created.
+
+Respect existing window/service rules.
+
+==================================================
+PHASE 6 — NO SHOW
+==================================================
+
+### 8. Fix No Show Behavior
+
+Audit the current No Show workflow.
+
+Verify:
+
+- UI action
+- Backend endpoint/handler
+- Queue status
+- Database persistence
+- History record
+- TV/public display behavior
+- Staff/window queue behavior
+- Timer behavior
+- Reporting behavior
+
+"No Show" must not behave like "Skipped" unless that is explicitly intended and documented in the existing system.
+
+Use the project's existing status definitions where available. Do not create duplicate enum/status systems.
+
+Preserve clear state semantics such as:
+
+- WAITING
+- CALLED
+- SERVING/CATERED
+- SKIPPED
+- NO_SHOW
+- SERVED
+- TRANSFERRED
+
+Only use status values actually supported or intentionally added to the system.
+
+==================================================
+PHASE 7 — TRANSFER BEHAVIOR
+==================================================
+
+### 9. Fix Transferred Queue Workflow
+
+When a queue is transferred:
+
+- Set or retain a clear TRANSFERRED status/label where appropriate.
+- Do not immediately mark the queue as CATERED/SERVING merely because it was transferred.
+- The transferred queue must be added to the receiving staff member/window's queue/list.
+- The receiving staff member must explicitly cater/call it.
+- Do not automatically start the catering timer before the receiving staff member actually caters it.
+- Preserve the original service/window information in history.
+- Record the transfer destination.
+- Record transfer time.
+- Ensure public display and realtime/refresh state are accurate.
+
+Expected lifecycle:
+
+Window A -> Transfer -> Transferred -> appears in Window B / receiving queue -> Window B explicitly caters/calls -> Serving/Catered -> timer starts.
+
+Invalid lifecycle:
+
+Transfer -> automatically catered/serving without receiving staff action.
+
+==================================================
+PHASE 8 — REPORT GENERATION
+==================================================
+
+### 10. Fix Generate Report
+
+Audit the report-generation implementation end-to-end.
+
+The user should be able to select/filter the dataset before generating a report.
+
+Depending on the existing report architecture, support relevant filters such as:
+
+- Date
+- Date range
+- Service
+- Window/Counter
+- Staff/Served By
+- Queue status
+- Priority
+- Regular/Priority
+- Skipped
+- No Show
+- Served
+- Transferred
+
+Add or verify a clear Generate Report action if the existing UI expects one.
+
+The generated report must contain the filtered dataset, not the entire database.
+
+Verify:
+
+- Frontend/client filter state
+- API request parameters
+- Backend query filtering
+- Pagination behavior
+- Exported/generated data
+- Correct dates/times
+- Correct statuses
+- Correct service
+- Correct staff/window
+
+Do not duplicate report-generation logic.
+
+==================================================
+PHASE 9 — CATERED/SERVED QUEUE TIMER
+==================================================
+
+### 11. Fix Timer For Catered Queues
+
+Audit the timer lifecycle.
+
+Timer behavior should:
+
+- Start when the queue is actually catered/called/serving according to the system's intended state.
+- Not start merely because a queue is transferred.
+- Not restart incorrectly when the page refreshes.
+- Continue correctly across frontend/client rerenders.
+- Stop when the appropriate terminal state is reached.
+- Persist the correct start/end timestamps in the backend/database.
+
+Do not rely solely on a frontend-only timer.
+
+Backend/database timestamps must be the source of truth.
+
+Verify timer behavior after:
+
+- Refresh
+- Navigation
+- Realtime reconnect or polling refresh
+- Transfer
+- Skip
+- Recater
+- No Show
+- Served/completed
+
+==================================================
+PHASE 10 — QUEUE HISTORY
+==================================================
+
+### 12. Complete Queue History Data
+
+Audit queue history.
+
+Each completed/processed queue should correctly record, where applicable:
+
+- Queue number
+- Served by
+- Service
+- Status
+- Start/catered time
+- End/completion time
+- Date
+- Window/Counter
+- Priority state
+- Transfer information
+- Skip information
+- No-show information
+
+The user specifically requires queue history to include:
+
+- Served by
+- Service
+- Status
+- Time
+- Date
+
+Do not only add columns visually.
+
+Verify the entire data path:
+
+Database -> backend model/query -> API/serializer/resource -> frontend/client -> history table/card -> report generation.
+
+Ensure historical records remain accurate and are not overwritten in a way that destroys the audit trail.
+
+==================================================
+PHASE 11 — REALTIME / REFRESH AUDIT
+==================================================
+
+Audit the actual realtime or refresh mechanism used by the system.
+
+If the system uses WebSockets, broadcasts, server-sent events, polling, cache invalidation, or manual refresh, verify the implementation that actually exists.
+
+Do not assume a specific realtime technology.
+
+Verify that:
+
+- Queue called -> public display updates
+- Queue skipped -> public display updates
+- Queue recatered -> public display updates
+- Queue transferred -> receiving window updates
+- Queue served -> displays/history update
+- No Show -> correct displays update
+- Priority -> public display shows correct priority state
+- Timer/status changes -> relevant clients update
+
+Inspect the actual:
+
+- Event/broadcast/polling mechanism
+- Server-side event emitters or update endpoints
+- Client-side listeners or refresh logic
+- Payload structure
+- Reconnect/retry behavior if present
+- Stale state handling
+- Duplicate event handling
+
+Do not assume a feature works simply because an API endpoint exists.
+
+==================================================
+PHASE 12 — END-TO-END VERIFICATION
+==================================================
+
+After implementation, test the complete lifecycle.
+
+TEST 1 — Regular Queue
+
+Kiosk -> select service -> generate regular queue -> appears in waiting list -> staff calls queue -> public display updates -> timer starts -> staff serves/completes -> history updates.
+
+TEST 2 — Priority Queue
+
+Kiosk -> generate priority queue -> separate priority number if required -> staff calls it -> public display clearly displays PRIORITY -> timer works -> history records priority.
+
+TEST 3 — Skip
+
+Queue called -> skip -> status becomes SKIPPED -> public display reflects SKIPPED where intended -> queue remains recoverable -> recater -> queue becomes active again -> timer behaves correctly -> history records actions.
+
+TEST 4 — No Show
+
+Queue called -> No Show -> correct NO_SHOW state -> history records it -> public display reflects correct state -> queue does not incorrectly remain active.
+
+TEST 5 — Transfer
+
+Window A -> transfer queue -> status becomes TRANSFERRED where appropriate -> queue appears in Window B / receiving list -> timer does not start -> Window B explicitly caters/calls -> timer starts -> public display updates -> history records transfer and service.
+
+TEST 6 — Daily Filtering
+
+Previous-day queues exist -> Today filter shows only today's records -> clear/reset filter restores expected dataset -> historical data remains intact.
+
+TEST 7 — Reports
+
+Apply filters such as date + service + status -> generate report -> verify generated/exported report contains only matching records.
+
+==================================================
+PHASE 13 — CODE QUALITY / REGRESSION AUDIT
+==================================================
+
+After implementing the requested features:
+
+- Run the project's backend test/check command.
+- Run the project's migration/schema checks.
+- Check for migration conflicts.
+- Check API routes.
+- Check frontend/client routes.
+- Run the project's frontend lint/type/build checks if present.
+- Check server-side errors.
+- Check browser console errors.
+- Check realtime/broadcast/polling errors if present.
+- Check broken imports.
+- Check unused/dead code introduced by the changes.
+- Check duplicated business logic.
+- Check race conditions in queue transitions.
+- Check authorization/permissions.
+- Check that staff cannot manipulate queues outside their allowed scope.
+- Check that public TV/kiosk endpoints do not expose private information.
+- Check that historical queue records are not accidentally deleted.
+- Check that existing queue numbering is not broken.
+
+==================================================
+IMPLEMENTATION CHECKLIST
+==================================================
+
+Use this checklist while working:
+
+- [ ] Inspect actual backend, frontend/client, database, routing, auth, and realtime/refresh architecture.
+- [ ] Map the current queue lifecycle and status values.
+- [ ] Verify queue creation and numbering.
+- [ ] Verify priority queue creation, numbering, staff display, and public display.
+- [ ] Fix priority badge/label on public display if missing.
+- [ ] Verify or fix separate priority numbering if required by the existing business rules.
+- [ ] Audit kiosk input fields and remove only unnecessary personal-information fields.
+- [ ] Verify daily filtering/reset behavior without deleting history.
+- [ ] Verify or fix skipped queue status/card behavior.
+- [ ] Verify or fix skipped queue public-display behavior.
+- [ ] Verify or fix recater workflow.
+- [ ] Verify or fix No Show workflow.
+- [ ] Verify or fix transfer workflow.
+- [ ] Verify or fix report filters and generated/exported output.
+- [ ] Verify or fix timer start/stop/persistence.
+- [ ] Verify or fix queue history fields: served by, service, status, time, date.
+- [ ] Audit realtime/refresh behavior using the mechanism actually present in the app.
+- [ ] Add or update focused tests for changed behavior.
+- [ ] Run backend checks/tests.
+- [ ] Run frontend/client checks/build if present.
+- [ ] Manually verify end-to-end workflows.
+- [ ] Document verified working items, fixes, limitations, and remaining issues.
+
+==================================================
+IMPORTANT IMPLEMENTATION RULES
+==================================================
+
+1. Inspect before modifying.
+2. Reuse existing architecture.
+3. Preserve existing UI unless the requested feature requires UI changes.
+4. Preserve existing queue lifecycle semantics unless fixing a confirmed bug.
+5. Do not create duplicate models, duplicate status systems, or duplicate queue services.
+6. Do not create fake/mock functionality.
+7. Do not simply add frontend labels while the backend lacks the underlying state.
+8. Do not simply add backend fields without wiring them to the frontend/client.
+9. Every feature must be verified end-to-end.
+10. Maintain backward compatibility with existing queue records where practical.
+11. Create migrations only for genuine database changes.
+12. Do not delete historical queue data as a shortcut.
+13. Keep personal information out of public kiosk/TV displays.
+14. Use backend/database timestamps as the source of truth for queue timing.
+15. Use the existing realtime/refresh/deployment architecture instead of assuming a new one.
+16. Do not change unrelated features.
+17. If a requested feature already exists, fix or complete it instead of rebuilding it.
+18. If you discover another clearly broken or disconnected component during the audit, fix it only if it is within the existing queue-management scope.
+19. If a potentially destructive architectural change is required, stop and explain the issue before making that change.
+
+==================================================
+FINAL RESPONSE REQUIRED
+==================================================
+
+After implementation, provide a concise audit/implementation report containing:
+
+### A. Verified Working
+List features that were already correctly implemented.
+
+### B. Fixed
+List each bug/fix implemented.
+
+### C. Added
+List genuinely new functionality added.
+
+### D. Backend Changes
+List affected models, migrations, services, routes, controllers/handlers, APIs, events, or jobs.
+
+### E. Frontend/Client Changes
+List affected pages/components/screens and user-visible changes.
+
+### F. Database Changes
+List migrations and fields added/changed. If none, say none.
+
+### G. Realtime/Refresh Changes
+Explain changes to WebSockets, broadcasts, polling, refresh behavior, or state synchronization. If no realtime layer exists, say so.
+
+### H. Testing
+List commands/tests performed and their results.
+
+### I. Remaining Issues
+List anything that could not be verified or requires manual testing.
+
+### J. End-To-End Status
+For each workflow, report PASS / FAIL / PARTIAL:
+
+- Regular queue
+- Priority queue
+- Skip
+- Recater
+- No Show
+- Transfer
+- Timer
+- Queue history
+- TV/public display
+- Daily filter
+- Reports
+- Realtime/refresh behavior
+
+Do not claim a feature is working unless you actually verified the relevant implementation path.

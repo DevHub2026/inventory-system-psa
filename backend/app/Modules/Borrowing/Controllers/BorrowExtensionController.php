@@ -119,6 +119,43 @@ class BorrowExtensionController extends Controller
         }
     }
 
+    public function indexAll(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $this->extensionService->canManageExtensions($user)) {
+            return $this->error('You do not have permission to view extension requests.', null, 403);
+        }
+
+        $filters = [
+            'status' => $request->query('status'),
+            'borrowing_id' => $request->query('borrowing_id'),
+            'user_id' => $request->query('user_id'),
+            'requested_from' => $request->query('requested_from'),
+            'requested_to' => $request->query('requested_to'),
+        ];
+
+        $perPage = (int) $request->query('per_page', 20);
+
+        $paginator = $this->extensionService->paginateAll(array_filter($filters), $perPage);
+
+        return $this->success([
+            'items' => collect($paginator->items())->map(fn (BorrowExtensionRequest $r) => $this->transform($r))->values(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+            ],
+            'links' => [
+                'first' => $paginator->url(1),
+                'last' => $paginator->url($paginator->lastPage()),
+                'prev' => $paginator->previousPageUrl(),
+                'next' => $paginator->nextPageUrl(),
+            ],
+        ], 'Extension requests retrieved successfully.');
+    }
+
     public function pendingCount(): JsonResponse
     {
         $count = $this->extensionService->countPending();

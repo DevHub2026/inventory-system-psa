@@ -62,7 +62,8 @@ export const setupService = {
     return unwrapData(data)
   },
 
-  async remove(resource: SetupResource, id: number): Promise<void> {
-    await api.delete(`/${resource}/${id}`)
+  async remove(resource: SetupResource, id: number | string): Promise<void> {
+    // Coerce and encode the id to avoid accidental malformed URLs (defensive).
+    await api.delete(`/${resource}/${encodeURIComponent(String(id))}`)
   },
 }

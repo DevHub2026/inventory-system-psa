@@ -55,4 +55,31 @@ class BorrowExtensionRequestRepository implements BorrowExtensionRequestReposito
             ->where('status', ExtensionRequestStatus::PENDING)
             ->count();
     }
+
+    public function paginateAll(array $filters = [], int $perPage = 20): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        $query = BorrowExtensionRequest::query()->with(['borrowing.user', 'borrowing.asset', 'reviewer']);
+
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (! empty($filters['borrowing_id'])) {
+            $query->where('borrowing_id', (int) $filters['borrowing_id']);
+        }
+
+        if (! empty($filters['user_id'])) {
+            $query->whereHas('borrowing', fn ($q) => $q->where('user_id', (int) $filters['user_id']));
+        }
+
+        if (! empty($filters['requested_from'])) {
+            $query->whereDate('requested_due_date', '>=', $filters['requested_from']);
+        }
+
+        if (! empty($filters['requested_to'])) {
+            $query->whereDate('requested_due_date', '<=', $filters['requested_to']);
+        }
+
+        return $query->orderByDesc('created_at')->paginate($perPage);
+    }
 }

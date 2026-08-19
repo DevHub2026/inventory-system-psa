@@ -15,8 +15,7 @@ class PermissionRepository implements PermissionRepositoryInterface
 
         if (isset($filters['search'])) {
             $search = $filters['search'];
-            $query->where('name', 'like', "%{$search}%")
-                ->orWhere('module', 'like', "%{$search}%");
+            $query->whereLikeInsensitive(['name', 'module'], $search);
         }
 
         if (isset($filters['module'])) {

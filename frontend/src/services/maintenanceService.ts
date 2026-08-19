@@ -39,8 +39,10 @@ function mapMaintenanceRequest(request: BackendMaintenanceRequest): MaintenanceR
 }
 
 export const maintenanceService = {
-  async list(): Promise<Paginated<MaintenanceRequest>> {
-    const { data } = await api.get<ApiResponse<BackendMaintenanceRequest[] | Paginated<BackendMaintenanceRequest>>>('/maintenances')
+  async list(filters?: Record<string, unknown>): Promise<Paginated<MaintenanceRequest>> {
+    const { data } = await api.get<ApiResponse<BackendMaintenanceRequest[] | Paginated<BackendMaintenanceRequest>>>('/maintenances', {
+      params: filters,
+    })
     const result = unwrapPaginated(data)
 
     return {

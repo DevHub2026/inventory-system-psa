@@ -106,35 +106,21 @@ export function ExtensionRequestsPage() {
   const loadRequests = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch all borrowings, then gather extension requests — or use the
-      // pending-count-aware combined approach using the list endpoint.
-      // The service gives us per-borrowing history; we need a flat pending list.
-      // We'll collect all pending requests from the service's global approach.
-      // The backend exposes: GET /borrowings/{id}/extension-requests per borrowing,
-      // and GET /extension-requests/pending-count for the badge.
-      // There is no global flat listing endpoint yet, so we do the practical approach:
-      // fetch the pending count and — if the caller has canManage rights — pull from
-      // each individual borrowing. Since the backend's BorrowExtensionController
-      // returns ALL requests for a borrowing that the caller can manage, we will
-      // call a helper that requests a broad list.
-      //
-      // For now, the most realistic approach is to call borrowingService.list,
-      // then for each active borrowing with a pending extension, pull its requests.
-      // However that's too many network calls. Instead we rely on the borrowings
-      // list endpoint (which already exposes `has_pending_extension`) to filter
-      // candidates, then fetch their extension requests.
-      //
-      // ⚡ Practical shortcut: because the backend only has per-borrowing endpoints,
-      // we'll use a small "gather" utility to load borrowings and expand requests.
-
-      const all = await gatherPendingRequests()
-      setRows(all)
+      if (canManage) {
+        // Staff: use the new global paginated endpoint
+        const pag = await borrowExtensionService.getExtensionRequests({ per_page: 200 })
+        setRows(pag.items)
+      } else {
+        // Non-staff: fallback to the legacy gather approach
+        const all = await gatherPendingRequests()
+        setRows(all)
+      }
     } catch (e: unknown) {
       setToast({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load extension requests.' })
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [canManage])
 
   useEffect(() => { void loadRequests() }, [loadRequests])
 

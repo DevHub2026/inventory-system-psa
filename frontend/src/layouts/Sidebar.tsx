@@ -64,8 +64,6 @@ const NAV_GROUPS = [
 interface SidebarProps {
   open: boolean
   isDesktop: boolean
-  side: 'left' | 'right'
-  onToggleSide: () => void
   onClose: () => void
 }
 
@@ -181,7 +179,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
               textTransform: 'uppercase', letterSpacing: '0.18em',
               lineHeight: 1.3, marginTop: 2,
             }}>
-              Region XII
+              Saragani-Gensan
             </div>
           </div>
           {!isDesktop && (
@@ -230,7 +228,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                         <NavLink
                           to={link.to}
                           end={true}
-                          onClick={onClose}
+                          onClick={() => { if (!isDesktop) onClose() }}
                           style={({ isActive }) => ({
                             display: 'flex',
                             alignItems: 'center',
@@ -283,7 +281,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
         }}>
           <button
             type="button"
-            onClick={() => { navigate('/settings'); onClose() }}
+            onClick={() => { navigate('/settings'); if (!isDesktop) onClose() }}
             style={{
               display: 'flex', width: '100%', alignItems: 'center', gap: 10,
               borderRadius: 8, padding: '8px 10px',

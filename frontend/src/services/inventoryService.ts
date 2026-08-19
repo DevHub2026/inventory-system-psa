@@ -98,6 +98,20 @@ export interface InventoryFilters {
   item_type_id?: number | null
   classification?: 'PPE' | 'SE' | 'SUPPLY' | null
   low_stock?: boolean
+  columns?: string[]
+
+  // Additional server-side filters
+  asset_category_id?: number | null
+  office_id?: number | null
+  location_id?: number | null
+  manufacturer_id?: number | null
+  assigned_user_id?: number | null
+  created_from?: string | null
+  created_to?: string | null
+
+  // Sorting
+  order_by?: 'name' | 'created_at' | 'quantity' | string
+  order_dir?: 'ASC' | 'DESC' | string
 }
 
 export interface StockMovementPayload {
@@ -275,6 +289,17 @@ export const inventoryService = {
     const params = new URLSearchParams()
     if (filters.search) params.set('search', filters.search)
     if (filters.status) params.set('status', filters.status)
+    if (filters.classification) params.set('classification', filters.classification)
+    if (filters.columns?.length) params.set('columns', filters.columns.join(','))
+    if (filters.asset_category_id) params.set('asset_category_id', String(filters.asset_category_id))
+    if (filters.office_id) params.set('office_id', String(filters.office_id))
+    if (filters.location_id) params.set('location_id', String(filters.location_id))
+    if (filters.manufacturer_id) params.set('manufacturer_id', String(filters.manufacturer_id))
+    if (filters.assigned_user_id) params.set('assigned_user_id', String(filters.assigned_user_id))
+    if (filters.created_from) params.set('created_from', String(filters.created_from))
+    if (filters.created_to) params.set('created_to', String(filters.created_to))
+    if (filters.order_by) params.set('order_by', String(filters.order_by))
+    if (filters.order_dir) params.set('order_dir', String(filters.order_dir))
     const qs = params.toString()
     return `/api/v1/inventory/export/download${qs ? '?' + qs : ''}`
   },

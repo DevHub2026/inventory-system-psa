@@ -110,6 +110,30 @@ class AuthController extends Controller
         ]);
     }
 
+    public function updateAccessibilityPreferences(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'fontSize' => ['nullable', 'in:default,large'],
+            'highContrast' => ['nullable', 'boolean'],
+            'reducedMotion' => ['nullable', 'boolean'],
+        ]);
+
+        $prefs = [
+            'font_size' => $data['fontSize'] ?? 'default',
+            'high_contrast' => isset($data['highContrast']) ? (bool) $data['highContrast'] : false,
+            'reduced_motion' => isset($data['reducedMotion']) ? (bool) $data['reducedMotion'] : false,
+        ];
+
+        $user = $request->user();
+        $user->update(['accessibility_preferences' => $prefs]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Accessibility preferences updated.',
+            'data' => $prefs,
+        ]);
+    }
+
     public function updateProfile(UpdateProfileRequest $request): JsonResponse
     {
         $user = $this->authService->updateProfile(

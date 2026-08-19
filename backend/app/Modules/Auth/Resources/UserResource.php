@@ -40,6 +40,11 @@ class UserResource extends JsonResource
                     'name' => $role->name,
                 ]);
             }),
+            'accessibility_preferences' => [
+                'fontSize' => $this->accessibility_preferences['font_size'] ?? 'default',
+                'highContrast' => (bool) ($this->accessibility_preferences['high_contrast'] ?? false),
+                'reducedMotion' => (bool) ($this->accessibility_preferences['reduced_motion'] ?? false),
+            ],
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

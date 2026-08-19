@@ -1,0 +1,88 @@
+name: Accessibility
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  accessibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v3
+        with:
+          php-version: '8.1'
+          extensions: mbstring, pdo, pdo_sqlite
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --no-suggest --prefer-dist
+        working-directory: backend
+
+      - name: Prepare SQLite database
+        run: |
+          cd backend
+          cp .env.example .env || true
+          php artisan key:generate --ansi
+          mkdir -p database
+          touch database/database.sqlite
+          php artisan migrate --force
+        env:
+          APP_ENV: testing
+
+      - name: (Optional) Seed accessibility test user
+        # This step expects your repository to provide a seeder that creates a deterministic
+        # accessibility test user with credentials matching the A11Y_TEST_EMAIL / A11Y_TEST_PASSWORD
+        # GitHub Secrets: A11Y_TEST_EMAIL / A11Y_TEST_PASSWORD
+        run: |
+          cd backend
+          # If you have a seeder like AccessibilityTestSeeder, run it; otherwise ensure your normal seeders
+          # create a user for the a11y test. This command is non-fatal if the seeder is absent.
+          php artisan db:seed --class=AccessibilityTestSeeder || true
+
+      - name: Start Laravel
+        run: |
+          cd backend
+          php artisan serve --host=127.0.0.1 --port=8000 > /tmp/laravel.log 2>&1 &
+          sleep 3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Start frontend preview
+        # Use vite preview to serve the built assets at 5173
+        run: npm run preview > /tmp/vite.log 2>&1 &
+        working-directory: frontend
+
+      - name: Run accessibility tests
+        env:
+          FRONTEND_URL: http://localhost:5173
+          API_BASE: http://127.0.0.1:8000/api/v1
+          A11Y_TEST_EMAIL: ${{ secrets.A11Y_TEST_EMAIL }}
+          A11Y_TEST_PASSWORD: ${{ secrets.A11Y_TEST_PASSWORD }}
+        run: npm run a11y:test
+        working-directory: frontend
+
+      - name: Upload accessibility logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-logs
+          path: |
+            backend/storage/logs/*.log
+            frontend/tests/a11y/*.json

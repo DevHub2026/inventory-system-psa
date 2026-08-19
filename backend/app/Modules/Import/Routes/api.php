@@ -10,6 +10,8 @@ Route::middleware([
     Route::get('types', [ImportWizardController::class, 'types']);
     Route::get('{type}/configuration', [ImportWizardController::class, 'configuration']);
     Route::post('upload', [ImportWizardController::class, 'upload']);
+    Route::post('resume', [ImportWizardController::class, 'resume']);
+    Route::delete('pending', [ImportWizardController::class, 'destroy']);
     Route::post('validate-mapping', [ImportWizardController::class, 'validateMapping']);
     Route::post('validate-data', [ImportWizardController::class, 'validateData']);
     Route::post('execute', [ImportWizardController::class, 'execute']);

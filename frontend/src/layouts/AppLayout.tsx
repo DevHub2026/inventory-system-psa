@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from '@/layouts/Sidebar'
 import { TopNav } from '@/layouts/TopNav'
-import GlobalSplitToggle from '@/components/GlobalSplitToggle'
 import SplitView from '@/components/SplitView'
+import GlobalQuickAccess from '@/components/GlobalQuickAccess'
 import { BorrowingPage } from '@/pages/BorrowingPage'
 import { AssetPage } from '@/pages/AssetPage'
 import { InventoryPage } from '@/pages/InventoryPage'
@@ -23,8 +23,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
  * Everything is inline — no CSS class can interfere.
  */
 export function AppLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarSide, setSidebarSide] = useState<'left' | 'right'>('left')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isDesktop,   setIsDesktop]   = useState(() => window.innerWidth >= 768)
 
   useEffect(() => {
@@ -51,8 +50,6 @@ export function AppLayout() {
       <Sidebar
         open={sidebarOpen}
         isDesktop={isDesktop}
-        side={sidebarSide}
-        onToggleSide={() => setSidebarSide((current) => current === 'left' ? 'right' : 'left')}
         onClose={() => setSidebarOpen(false)}
       />
 
@@ -63,6 +60,8 @@ export function AppLayout() {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
+        marginLeft: isDesktop ? (sidebarOpen ? 260 : 72) : 0,
+        transition: 'margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
         <TopNav onMenuClick={() => setSidebarOpen((s) => !s)} />
         <main style={{ flex: 1, overflowY: 'auto' }}>
@@ -73,8 +72,8 @@ export function AppLayout() {
         </main>
       </div>
 
-      {/* Global split selector button (accessibility FAB) */}
-      <GlobalSplitToggle />
+      {/* Global Quick Access — consolidates split selector, help, scanner, etc. */}
+      <GlobalQuickAccess />
       {/* Bottom navigation for mobile */}
       {!isDesktop && (
         <MobileBottomNav />

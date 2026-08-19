@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware([
     'auth:sanctum',
-    'role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head',
+    'role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Supply Officer,Department Head',
 ])->group(function (): void {
     Route::get('inventory/validate-sku', [InventoryController::class, 'validateSku']);
     Route::get('inventory/generate-sku', [InventoryController::class, 'generateSku']);

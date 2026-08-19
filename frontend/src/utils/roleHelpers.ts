@@ -1,7 +1,7 @@
 import type { User } from '@/types'
 
 const ADMIN_ROLES = ['Super Administrator', 'System Administrator']
-const STAFF_ROLES = ['Property Custodian', 'Inventory Officer', 'Department Head', 'Auditor']
+const STAFF_ROLES = ['Property Custodian', 'Inventory Officer', 'Department Head', 'Auditor', 'Supply Officer']
 const EMPLOYEE_ROLES = ['Employee']
 
 export function hasRole(user: User | null, role: string): boolean {

@@ -23,7 +23,7 @@ class RoleController extends Controller
 
         if ($request->has('search')) {
             $search = $request->input('search');
-            $query->where('name', 'like', "%{$search}%");
+            $query->whereLikeInsensitive('name', $search);
         }
 
         $roles = $query->paginate($request->input('per_page', 15));

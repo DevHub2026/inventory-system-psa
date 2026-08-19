@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BorrowController;
+use App\Http\Controllers\FaqController;
 use App\Modules\Auth\Controllers\AuthController;
 use App\Modules\Auth\Controllers\PermissionController;
 use App\Modules\Auth\Controllers\RoleController;
@@ -90,6 +91,16 @@ Route::prefix('v1')->group(function (): void {
             Route::put('/permissions/{permission}', [PermissionController::class, 'update']);
             Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy']);
         });
+
+        Route::get('/faqs', [FaqController::class, 'index']);
+        Route::middleware('role:Super Administrator,System Administrator')->group(function (): void {
+            Route::post('/faqs', [FaqController::class, 'store']);
+            Route::put('/faqs/{faq}', [FaqController::class, 'update']);
+            Route::delete('/faqs/{faq}', [FaqController::class, 'destroy']);
+        });
+
+        // Accessibility preferences for authenticated user
+        Route::put('/me/accessibility-preferences', [\App\Modules\Auth\Controllers\AuthController::class, 'updateAccessibilityPreferences']);
 
         // Borrow routes
         Route::post('/assets/{asset}/borrow', [BorrowController::class, 'borrow']);

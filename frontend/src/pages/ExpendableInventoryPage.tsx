@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Alert, Badge, Button, Card, Dropdown, EmptyState, Input,
-  Modal, Pagination, SearchBar, Spinner, Table, type Column,
+  Alert, Badge, Button, Card, EmptyState, Input,
+  Modal, Pagination, Spinner, Table, type Column,
 } from '@/components/ui'
 import {
   inventoryService,
   type CreateInventoryItemPayload,
   type UpdateInventoryItemPayload,
 } from '@/services/inventoryService'
+import { InventoryFilterBar } from '@/components/InventoryFilterBar'
+import { setupService, type SetupRecord } from '@/services/setupService'
 import type { InventoryItem, StockMovement } from '@/types'
 import { inventoryStatusLabel } from '@/utils/displayLabels'
 import { PageHeader } from '@/components/PageHeader'
+import { useAuth } from '@/hooks/useAuth'
+import { hasRole } from '@/utils/roleHelpers'
 
 const ITEM_TYPE = 'expendable' as const
 
@@ -35,6 +39,23 @@ export function ExpendableInventoryPage() {
   const [total,          setTotal]          = useState(0)
   const [search,         setSearch]         = useState('')
   const [statusFilter,   setStatusFilter]   = useState('')
+
+  // Additional filters & options
+  const [assetCategoryFilter, setAssetCategoryFilter] = useState<number | null>(null)
+  const [officeFilter, setOfficeFilter] = useState<number | null>(null)
+  const [locationFilter, setLocationFilter] = useState<number | null>(null)
+  const [manufacturerFilter, setManufacturerFilter] = useState<number | null>(null)
+  const [assignedUserFilter, setAssignedUserFilter] = useState<number | null>(null)
+  const [createdFromFilter, setCreatedFromFilter] = useState<string | null>(null)
+  const [createdToFilter, setCreatedToFilter] = useState<string | null>(null)
+  const [orderBy, setOrderBy] = useState<string | null>(null)
+  const [orderDir, setOrderDir] = useState<'ASC' | 'DESC' | null>(null)
+
+  const [assetCategories, setAssetCategories] = useState<SetupRecord[]>([])
+  const [manufacturers, setManufacturers] = useState<SetupRecord[]>([])
+  const [offices, setOffices] = useState<SetupRecord[]>([])
+  const [locations, setLocations] = useState<SetupRecord[]>([])
+
   const [modalOpen,      setModalOpen]      = useState(false)
   const [editingItem,    setEditingItem]    = useState<InventoryItem | null>(null)
   const [saving,         setSaving]         = useState(false)
@@ -65,6 +86,15 @@ export function ExpendableInventoryPage() {
         search: searchRef.current || undefined,
         status: statusFilterRef.current || undefined,
         type: ITEM_TYPE,
+        asset_category_id: assetCategoryFilter ?? undefined,
+        office_id: officeFilter ?? undefined,
+        location_id: locationFilter ?? undefined,
+        manufacturer_id: manufacturerFilter ?? undefined,
+        assigned_user_id: assignedUserFilter ?? undefined,
+        created_from: createdFromFilter ?? undefined,
+        created_to: createdToFilter ?? undefined,
+        order_by: orderBy ?? undefined,
+        order_dir: orderDir ?? undefined,
       })
       setRows(result.items)
       setPage(result.meta.current_page)
@@ -73,10 +103,27 @@ export function ExpendableInventoryPage() {
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load inventory items.' })
     } finally { setLoading(false) }
-  }, [])
+  }, [assetCategoryFilter, officeFilter, locationFilter, manufacturerFilter, assignedUserFilter, createdFromFilter, createdToFilter, orderBy, orderDir])
 
   useEffect(() => { void loadInventory(1) }, [loadInventory])
-  useEffect(() => { if (statusFilter !== undefined) void loadInventory(1) }, [loadInventory, statusFilter])
+
+  const loadSetupOptions = async () => {
+    try {
+      const [mfr, cats, offs, locs] = await Promise.all([
+        setupService.list('manufacturers'),
+        setupService.list('asset-categories'),
+        setupService.list('offices'),
+        setupService.list('locations'),
+      ])
+      setManufacturers(mfr); setAssetCategories(cats); setOffices(offs); setLocations(locs)
+    } catch { /* best-effort */ }
+  }
+
+  useEffect(() => { void loadSetupOptions() }, [])
+  useEffect(() => { if (statusFilter !== undefined) void loadInventory(1) }, [loadInventory, statusFilter, assetCategoryFilter, officeFilter, locationFilter, manufacturerFilter, assignedUserFilter, createdFromFilter, createdToFilter, orderBy, orderDir])
+
+  const { user } = useAuth()
+  const isOnlySupplyOfficer = Boolean(user && Array.isArray(user.roles) && user.roles.length === 1 && hasRole(user, 'Supply Officer'))
 
   const handleCreate = () => { setEditingItem(null); setFormData(BLANK_FORM); setModalOpen(true) }
 
@@ -172,9 +219,9 @@ export function ExpendableInventoryPage() {
           <Button size="sm" variant="secondary" onClick={() => { setStockItem(r); setStockType('out'); setStockQty(1); setStockReason(''); setStockModalOpen(true) }}>- Stock</Button>
           <Button size="sm" variant="ghost"     onClick={() => { setAdjustItem(r); setAdjustQty(r.quantity); setAdjustReason('') }}>Adjust</Button>
           <Button size="sm" variant="ghost"     onClick={() => void loadHistory(r)}>History</Button>
-          <Button size="sm" variant="secondary" onClick={() => handleEdit(r)}>Edit</Button>
+          {!isOnlySupplyOfficer && <Button size="sm" variant="secondary" onClick={() => handleEdit(r)}>Edit</Button>}
           {r.asset_number && <Button size="sm" variant="ghost" onClick={() => navigate(`/assets?search=${encodeURIComponent(r.asset_number ?? '')}`)}>Asset</Button>}
-          <Button size="sm" variant="danger"    onClick={() => handleDelete(r)}>Delete</Button>
+          {!isOnlySupplyOfficer && <Button size="sm" variant="danger"    onClick={() => handleDelete(r)}>Delete</Button> }
         </div>
       ),
     },
@@ -188,16 +235,42 @@ export function ExpendableInventoryPage() {
         Back to Inventory
       </button>
 
-      <PageHeader title="Semi-Expendable (SE)" subtitle="Manage consumable items and supplies that are used up during operations." actions={<Button onClick={handleCreate}>Add Item</Button>} />
+      <PageHeader title="Semi-Expendable (SE)" subtitle="Manage consumable items and supplies that are used up during operations." actions={isOnlySupplyOfficer ? null : <Button onClick={handleCreate}>Add Item</Button>} />
 
       {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}
 
       <Card noPadding>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #E5E7EB', padding: '12px 20px' }}>
-          <SearchBar placeholder="Search item name, code, or unit..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void loadInventory(1) }} style={{ maxWidth: 'none', flex: 1 }} />
-          <Dropdown value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} placeholder="All stock statuses" options={[{ label: 'In Stock', value: 'IN_STOCK' }, { label: 'Low Stock', value: 'LOW_STOCK' }, { label: 'Out of Stock', value: 'OUT_OF_STOCK' }]} />
-          <Button variant="secondary" onClick={() => void loadInventory(1)}>Filter</Button>
-        </div>
+        <InventoryFilterBar
+          search={search}
+          setSearch={setSearch}
+          onSearchKeyDown={(e) => { if ((e as React.KeyboardEvent).key === 'Enter') void loadInventory(1) }}
+          statusFilter={statusFilter}
+          setStatusFilter={(v) => { setStatusFilter(v) }}
+          assetCategoryId={assetCategoryFilter}
+          setAssetCategoryId={(v) => { setAssetCategoryFilter(v) }}
+          officeId={officeFilter}
+          setOfficeId={(v) => { setOfficeFilter(v) }}
+          locationId={locationFilter}
+          setLocationId={(v) => { setLocationFilter(v) }}
+          manufacturerId={manufacturerFilter}
+          setManufacturerId={(v) => { setManufacturerFilter(v) }}
+          assignedUserId={assignedUserFilter}
+          setAssignedUserId={(v) => { setAssignedUserFilter(v) }}
+          createdFrom={createdFromFilter}
+          setCreatedFrom={(v) => { setCreatedFromFilter(v) }}
+          createdTo={createdToFilter}
+          setCreatedTo={(v) => { setCreatedToFilter(v) }}
+          orderBy={orderBy}
+          setOrderBy={(v) => { setOrderBy(v) }}
+          orderDir={orderDir}
+          setOrderDir={(v) => { setOrderDir(v) }}
+          onApplyFilters={() => { void loadInventory(1) }}
+          onClearFilters={() => { setAssetCategoryFilter(null); setOfficeFilter(null); setLocationFilter(null); setManufacturerFilter(null); setAssignedUserFilter(null); setCreatedFromFilter(null); setCreatedToFilter(null); setOrderBy(null); setOrderDir(null); void loadInventory(1) }}
+          assetCategories={assetCategories}
+          manufacturers={manufacturers}
+          offices={offices}
+          locations={locations}
+        />
         {loading ? (
           <div className="flex items-center justify-center py-16"><Spinner /></div>
         ) : (

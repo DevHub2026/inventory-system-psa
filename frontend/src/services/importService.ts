@@ -86,6 +86,12 @@ export interface ImportMappingValidationResult {
   is_valid: boolean
 }
 
+export interface ImportResumeResult extends ImportUploadResult {
+  status: string
+  column_mapping: ImportColumnMapping[]
+  resume_allowed: boolean
+}
+
 export interface ImportHistoryItem {
   id: number
   import_type: string
@@ -121,6 +127,24 @@ export const importService = {
     })
 
     return unwrapData(data)
+  },
+
+  async resume(importType: string, importId: number): Promise<ImportResumeResult> {
+    const { data } = await api.post<ApiResponse<ImportResumeResult>>('/imports/resume', {
+      import_type: importType,
+      import_id: importId,
+    })
+
+    return unwrapData(data)
+  },
+
+  async deletePending(importType: string, importId: number): Promise<void> {
+    await api.delete<ApiResponse<void>>('/imports/pending', {
+      data: {
+        import_type: importType,
+        import_id: importId,
+      },
+    })
   },
 
   async validateMapping(

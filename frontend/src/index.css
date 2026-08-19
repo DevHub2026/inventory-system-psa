@@ -204,6 +204,98 @@ h6 { font-size: var(--text-secondary);     font-weight: 500; }
 /* ============================================================
    4. FORM ELEMENT TRANSITIONS
    ============================================================ */
+
+/* ============================================================
+   HIGH CONTRAST MODE
+   When [data-psa-high-contrast] is present on :root, increase contrast
+   without changing overall PSA design. Support values '1' and 'true'.
+   ============================================================ */
+:root[data-psa-high-contrast], :root[data-psa-high-contrast="1"], :root[data-psa-high-contrast="true"] {
+  /* Backgrounds */
+  --clr-bg:            #ffffff; /* page background */
+  --clr-surface:       #ffffff; /* panel surface */
+  --clr-card:          #ffffff; /* cards */
+
+  /* Borders and dividers */
+  --clr-border:        #1f2937; /* stronger border */
+  --clr-border-light:  #334155;
+
+  /* Text */
+  --clr-text:          #0b1726; /* near-black */
+  --clr-text-secondary:#0f172a; /* strong secondary */
+  --clr-text-muted:    #3f4b59; /* muted but readable */
+
+  /* Hover / surfaces */
+  --clr-hover-bg:      #f1f5f9;
+
+  /* Focus ring -- use PSA yellow for strong visibility */
+  --psa-focus-ring:    #FFD400;
+
+  /* Slightly stronger shadows for separation */
+  --psa-shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+  --psa-shadow:    0 6px 18px rgba(0,0,0,.14);
+}
+
+/* Focus visibility in high contrast mode */
+:root[data-psa-high-contrast] :focus-visible {
+  outline: 3px solid var(--psa-focus-ring) !important;
+  outline-offset: 2px;
+}
+
+/* Strengthen inputs, buttons and card borders */
+:root[data-psa-high-contrast] input,
+:root[data-psa-high-contrast] select,
+:root[data-psa-high-contrast] textarea,
+:root[data-psa-high-contrast] button {
+  border-color: var(--clr-border) !important;
+}
+
+:root[data-psa-high-contrast] .psa-card,
+:root[data-psa-high-contrast] .card,
+:root[data-psa-high-contrast] .modal,
+:root[data-psa-high-contrast] .dropdown {
+  background: var(--clr-card) !important;
+  border: 1px solid var(--clr-border) !important;
+  box-shadow: var(--psa-shadow) !important;
+}
+
+/* Links: keep brand blue but strengthen weight */
+:root[data-psa-high-contrast] a {
+  color: var(--clr-primary) !important;
+  text-decoration: underline;
+}
+
+/* Status badges: ensure readable text with stronger borders */
+:root[data-psa-high-contrast] .badge,
+:root[data-psa-high-contrast] .status {
+  border: 1px solid var(--clr-border-light) !important;
+  color: var(--clr-text) !important;
+  background: #fff !important;
+}
+
+/* Buttons: preserve brand color but increase contrast for text */
+:root[data-psa-high-contrast] button,
+:root[data-psa-high-contrast] .btn {
+  color: #fff !important;
+}
+
+/* Inputs focus box-shadow stronger */
+:root[data-psa-high-contrast] input:focus,
+:root[data-psa-high-contrast] select:focus,
+:root[data-psa-high-contrast] textarea:focus {
+  box-shadow: 0 0 0 4px rgba(13,71,161,0.18) !important;
+  border-color: var(--clr-primary) !important;
+}
+
+/* Reduced motion: minimize non-essential transitions and animations */
+:root[data-psa-reduced-motion], :root[data-psa-reduced-motion="1"], :root[data-psa-reduced-motion="true"] * {
+  transition-duration: 0.01s !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+/* ============================================================ */
 button, input, select, textarea {
   transition:
     border-color var(--transition),

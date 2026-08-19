@@ -21,9 +21,15 @@ class BorrowingController extends Controller
         $isReturned = $borrowing->status === 'RETURNED';
         $receiptPrefix = $isReturned ? 'RT' : 'BR';
         
-        $hasPendingExtension = $borrowing->relationLoaded('pendingExtensionRequest')
-            ? $borrowing->pendingExtensionRequest->isNotEmpty()
-            : false;
+        // Prefer using a precomputed count (withCount) when available to avoid extra
+        // relation loads. Fall back to relationLoaded check for backwards compatibility.
+        if (array_key_exists('pending_extension_request_count', $borrowing->getAttributes())) {
+            $hasPendingExtension = (int) ($borrowing->pending_extension_request_count ?? 0) > 0;
+        } else {
+            $hasPendingExtension = $borrowing->relationLoaded('pendingExtensionRequest')
+                ? $borrowing->pendingExtensionRequest->isNotEmpty()
+                : false;
+        }
         
         return [
             'id' => $borrowing->id,

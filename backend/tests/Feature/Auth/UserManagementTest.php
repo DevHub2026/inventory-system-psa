@@ -420,6 +420,52 @@ class UserManagementTest extends TestCase
         $this->assertStringContainsString('Role was not found.', $reasons);
     }
 
+    public function test_user_search_is_case_insensitive_and_partial_matches(): void
+    {
+        $admin = User::factory()->create();
+        // Create target user with mixed/upper case data
+        User::factory()->create([
+            'first_name' => 'JoHn',
+            'last_name' => 'Doe',
+            'email' => 'JoHn.DoE@Example.COM',
+            'employee_number' => 'EMP-CASE-01',
+        ]);
+
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        // lowercase search
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=john');
+        $response->assertStatus(200);
+        $this->assertSame(1, $response->json('meta.total'));
+
+        // uppercase search
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=JOHN');
+        $response->assertStatus(200);
+        $this->assertSame(1, $response->json('meta.total'));
+
+        // mixed-case search
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=jOhN');
+        $response->assertStatus(200);
+        $this->assertSame(1, $response->json('meta.total'));
+
+        // partial search
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=jo');
+        $response->assertStatus(200);
+        $this->assertGreaterThanOrEqual(1, $response->json('meta.total'));
+
+        // search by employee number lowercase/uppercase variants
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=emp-case-01');
+        $this->assertSame(1, $response->json('meta.total'));
+
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=EMP-CASE-01');
+        $this->assertSame(1, $response->json('meta.total'));
+
+        // pagination preserved
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=john&per_page=1&page=1');
+        $response->assertStatus(200);
+        $this->assertSame(1, $response->json('meta.per_page'));
+    }
+
     private function csvUpload(string $contents): UploadedFile
     {
         $path = tempnam(sys_get_temp_dir(), 'psa-user-import-');

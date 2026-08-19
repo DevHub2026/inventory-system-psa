@@ -424,27 +424,6 @@ export function BorrowingPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <PageHeader title="Borrowed Items" subtitle="View borrowed assets and process returns." />
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button
-                onClick={() => {
-                  if (selectedBorrowingId !== null) {
-                    setSelectedBorrowingId(null)
-                  } else if (rows.length > 0) {
-                    setSelectedBorrowingId(rows[0].id)
-                  } else {
-                    alert('No borrowing records available to open.')
-                  }
-                }}
-                style={{
-                  height: 36, paddingInline: 12, borderRadius: 8,
-                  border: '1px solid #D1D5DB', background: selectedBorrowingId ? '#EFF6FF' : '#FFFFFF',
-                  color: '#0F172A', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                }}
-                title={selectedBorrowingId ? 'Close details pane' : 'Open details pane for first row'}
-              >
-                {selectedBorrowingId ? 'Close Details' : 'Open Details'}
-              </button>
-            </div>
           </div>
 
           {message && <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>}

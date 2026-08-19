@@ -23,8 +23,7 @@ class PermissionController extends Controller
 
         if ($request->has('search')) {
             $search = $request->input('search');
-            $query->where('name', 'like', "%{$search}%")
-                ->orWhere('module', 'like', "%{$search}%");
+            $query->whereLikeInsensitive(['name', 'module'], $search);
         }
 
         if ($request->has('module')) {

@@ -186,6 +186,21 @@ class InventoryManagementTest extends TestCase
             ]);
     }
 
+    public function test_supply_officer_can_access_inventory_routes(): void
+    {
+        $user = User::factory()->create();
+        $user->assignRole(UserRole::SUPPLY_OFFICER->value);
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->getJson('/api/v1/inventory');
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+            ]);
+    }
+
     public function test_authenticated_user_can_filter_inventory_by_search(): void
     {
         $user = User::factory()->create();

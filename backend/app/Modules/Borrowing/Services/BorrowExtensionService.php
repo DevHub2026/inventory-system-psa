@@ -165,6 +165,11 @@ class BorrowExtensionService
         });
     }
 
+    public function paginateAll(array $filters = [], int $perPage = 20): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        return $this->repository->paginateAll($filters, $perPage);
+    }
+
     public function canManageExtensions(User $user): bool
     {
         return $user->hasRole(UserRole::SUPER_ADMINISTRATOR->value)

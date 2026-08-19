@@ -16,6 +16,10 @@ class DepartmentServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->loadRoutesFrom(__DIR__.'/../Routes/api.php');
+        // Register department routes under the standard API prefix and middleware
+        // to be consistent with other modules (e.g., AssetServiceProvider).
+        \Illuminate\Support\Facades\Route::middleware('api')
+            ->prefix('api/v1')
+            ->group(__DIR__.'/../Routes/api.php');
     }
 }

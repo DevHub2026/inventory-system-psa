@@ -8,8 +8,10 @@ import BorrowingDetailsPage from '@/pages/BorrowingDetailsPage'
 import ExtensionRequestsPage from '@/pages/ExtensionRequestsPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { DocumentTemplatesPage } from '@/pages/DocumentTemplatesPage'
+import { DocumentationPage } from '@/pages/DocumentationPage'
 import { InventoryPage } from '@/pages/InventoryPage'
 import { IssuedAssetsPage } from '@/pages/IssuedAssetsPage'
+import { DamageReportsPage } from '@/pages/DamageReportsPage'
 import { MaintenancePage } from '@/pages/MaintenancePage'
 import { LostAssetReportsPage } from '@/pages/LostAssetReportsPage'
 import { PermissionsPage } from '@/pages/PermissionsPage'
@@ -64,6 +66,7 @@ function App() {
               <Route path="/issued-assets" element={<IssuedAssetsPage />} />
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/maintenance" element={<MaintenancePage />} />
+              <Route path="/damage-reports" element={<DamageReportsPage />} />
               <Route path="/lost-asset-reports" element={<LostAssetReportsPage />} />
               <Route path="/reports" element={<ReportPage />} />
               <Route path="/users" element={<UsersPage />} />
@@ -75,6 +78,7 @@ function App() {
               <Route path="/qr-scan-history" element={<QRScanHistoryPage />} />
               <Route path="/document-templates" element={<DocumentTemplatesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/documentation" element={<DocumentationPage />} />
               <Route path="/sessions" element={<SessionsPage />} />
               <Route path="/privacy" element={<PrivacyNoticePage />} />
               <Route path="/developers" element={<DevelopersPage />} />

@@ -11,6 +11,7 @@ enum UserRole: string
     case DEPARTMENT_HEAD = 'Department Head';
     case EMPLOYEE = 'Employee';
     case AUDITOR = 'Auditor';
+    case SUPPLY_OFFICER = 'Supply Officer';
 
     public static function values(): array
     {

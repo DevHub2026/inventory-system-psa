@@ -1,11 +1,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Alert, Badge, Button, Card, EmptyState, Input, Modal, Spinner } from '@/components/ui'
+import { qrService } from '@/services/qrService'
+import { ReportDamageModal } from '@/components/qr/ReportDamageModal'
+import { ReportLostModal } from '@/components/qr/ReportLostModal'
 import { PageHeader } from '@/components/PageHeader'
 import { borrowingService } from '@/services/borrowingService'
 import { borrowExtensionService } from '@/services/borrowExtensionService'
 import { useAuth } from '@/hooks/useAuth'
-import type { Borrowing, BorrowExtensionRequest } from '@/types'
+import type { Borrowing, BorrowExtensionRequest, AssetContext } from '@/types'
 import { borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel } from '@/utils/displayLabels'
 import { formatDate, formatTime } from '@/utils/dateFormat'
@@ -93,6 +96,13 @@ export function BorrowingDetailsPage({
   const [historyLoading, setHistoryLoading] = useState(false)
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Asset context for report actions
+  const [assetCtx, setAssetCtx] = useState<AssetContext | null>(null)
+
+  // Report modal state
+  const [reportModalOpen, setReportModalOpen] = useState(false)
+  const [reportModalType, setReportModalType] = useState<'damage' | 'lost' | null>(null)
+
   // Extension Modal State
   const [modalOpen, setModalOpen] = useState(false)
   const [additionalDays, setAdditionalDays] = useState('')
@@ -124,6 +134,22 @@ export function BorrowingDetailsPage({
       })
     }
   }, [targetId])
+
+  // Resolve asset context for report actions based on borrowing's asset identifier
+  useEffect(() => {
+    let cancelled = false
+    if (!borrowing || !borrowing.asset_id) return
+    const identifier = borrowing.asset_number ?? String(borrowing.asset_id)
+    void (async () => {
+      try {
+        const ctx = await qrService.resolveAsset(identifier)
+        if (!cancelled) setAssetCtx(ctx)
+      } catch (_err) {
+        // fail gracefully — do not show report actions
+      }
+    })()
+    return () => { cancelled = true }
+  }, [borrowing])
 
   // Load extension history
   const loadHistory = useCallback(async () => {
@@ -235,6 +261,12 @@ export function BorrowingDetailsPage({
 
   const calculatedDueDate = calculateNewDueDate(borrowing?.due_date, parseInt(additionalDays, 10))
 
+  // Report modal success handler — refresh borrowing details
+  const handleReportSuccess = async () => {
+    await refreshAll()
+    setToastMessage({ type: 'success', text: reportModalType === 'damage' ? 'Damage report submitted.' : 'Lost asset report submitted.' })
+  }
+
   if (!targetId) {
     return (
       <div style={{ padding: 24 }}>
@@ -251,49 +283,65 @@ export function BorrowingDetailsPage({
         subtitle="View borrowing status, asset allocation, and request due date extensions."
         actions={
           <div style={{ display: 'flex', gap: 10 }}>
-            {onClose ? (
-              <Button variant="secondary" onClick={onClose}>
-                Back
-              </Button>
-            ) : (
-              <Button variant="secondary" onClick={() => navigate('/borrowings')}>
-                ← Back to Borrowed Items
-              </Button>
-            )}
+              {onClose ? (
+                <Button variant="secondary" onClick={onClose}>
+                  Back
+                </Button>
+              ) : (
+                <Button variant="secondary" onClick={() => navigate('/borrowings')}>
+                  ← Back to Borrowed Items
+                </Button>
+              )}
 
-            {/* Print Borrow Receipt */}
-            {!loading && borrowing && (
-              <Button variant="secondary" onClick={() => openPrintModal('borrow_receipt')}>
-                <Printer size={14} style={{ marginRight: 6 }} /> Generate Borrow Receipt
-              </Button>
-            )}
+              {/* Print Borrow Receipt */}
+              {!loading && borrowing && (
+                <Button variant="secondary" onClick={() => openPrintModal('borrow_receipt')}>
+                  <Printer size={14} style={{ marginRight: 6 }} /> Generate Borrow Receipt
+                </Button>
+              )}
 
-            {/* Print Return Receipt (only once returned) */}
-            {!loading && borrowing && ['RETURNED', 'COMPLETED'].includes(borrowing.status) && (
-              <Button variant="secondary" onClick={() => openPrintModal('return_receipt')}>
-                <Printer size={14} style={{ marginRight: 6 }} /> Generate Return Receipt
-              </Button>
-            )}
+              {/* Print Return Receipt (only once returned) */}
+              {!loading && borrowing && ['RETURNED', 'COMPLETED'].includes(borrowing.status) && (
+                <Button variant="secondary" onClick={() => openPrintModal('return_receipt')}>
+                  <Printer size={14} style={{ marginRight: 6 }} /> Generate Return Receipt
+                </Button>
+              )}
 
-            {/* Requirement 1: Display "Request Extension" button if eligible */}
-            {!loading && isEligibleForExtension && (
-              <Button variant="primary" onClick={handleOpenModal}>
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-                Request Extension
-              </Button>
-            )}
+              {/* Report / Incident group: show if server authorizes via asset context */}
+              {!loading && assetCtx && (
+                <>
+                  {assetCtx.actions?.can_report_damage && (
+                    <Button variant="outline" onClick={() => { setReportModalType('damage'); setReportModalOpen(true) }}>
+                      Report Damage
+                    </Button>
+                  )}
+                  {assetCtx.actions?.can_report_lost && (
+                    <Button variant="danger" onClick={() => { setReportModalType('lost'); setReportModalOpen(true) }}>
+                      Report Lost
+                    </Button>
+                  )}
+                </>
+              )}
+
+              {/* Requirement 1: Display "Request Extension" button if eligible */}
+              {!loading && isEligibleForExtension && (
+                <Button variant="primary" onClick={handleOpenModal}>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  Request Extension
+                </Button>
+              )}
           </div>
         }
       />
@@ -694,6 +742,25 @@ export function BorrowingDetailsPage({
         targetId={targetId ?? null}
         title={printDocType === 'return_receipt' ? 'Property Return Receipt' : 'Property Borrow Receipt'}
       />
+
+      {/* Report modals (open from header actions) */}
+      {reportModalOpen && reportModalType === 'damage' && assetCtx && (
+        <ReportDamageModal
+          open={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          assetContext={assetCtx}
+          onSuccess={() => { void handleReportSuccess(); setReportModalOpen(false) }}
+        />
+      )}
+
+      {reportModalOpen && reportModalType === 'lost' && assetCtx && (
+        <ReportLostModal
+          open={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          assetContext={assetCtx}
+          onSuccess={() => { void handleReportSuccess(); setReportModalOpen(false) }}
+        />
+      )}
     </div>
   )
 }

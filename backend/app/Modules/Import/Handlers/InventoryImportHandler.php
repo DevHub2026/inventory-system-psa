@@ -35,11 +35,19 @@ class InventoryImportHandler implements ImportHandlerInterface
         return [
             ['key' => 'name', 'label' => 'Item Name', 'required' => true, 'type' => 'text'],
             ['key' => 'sku', 'label' => 'SKU/Code', 'required' => false, 'type' => 'text'],
+            ['key' => 'description', 'label' => 'Description', 'required' => false, 'type' => 'text'],
             ['key' => 'item_type_name', 'label' => 'Type', 'required' => false, 'type' => 'reference', 'reference_model' => \App\Modules\Inventory\Models\InventoryItemType::class, 'reference_field' => 'name'],
             ['key' => 'category_name', 'label' => 'Category', 'required' => false, 'type' => 'reference', 'reference_model' => InventoryCategory::class, 'reference_field' => 'name'],
+            ['key' => 'asset_category_name', 'label' => 'Asset Category', 'required' => false, 'type' => 'text'],
+            ['key' => 'manufacturer_name', 'label' => 'Manufacturer', 'required' => false, 'type' => 'text'],
+            ['key' => 'model', 'label' => 'Model', 'required' => false, 'type' => 'text'],
             ['key' => 'unit', 'label' => 'Unit', 'required' => false, 'type' => 'text'],
+            ['key' => 'unit_cost', 'label' => 'Unit Cost', 'required' => false, 'type' => 'number'],
+            ['key' => 'office_name', 'label' => 'Default Office', 'required' => false, 'type' => 'text'],
+            ['key' => 'location_name', 'label' => 'Default Location', 'required' => false, 'type' => 'text'],
             ['key' => 'quantity', 'label' => 'Quantity', 'required' => false, 'type' => 'number'],
             ['key' => 'reorder_level', 'label' => 'Reorder Level', 'required' => false, 'type' => 'number'],
+            ['key' => 'is_borrowable', 'label' => 'Borrowable', 'required' => false, 'type' => 'boolean'],
             ['key' => 'remarks', 'label' => 'Remarks', 'required' => false, 'type' => 'text'],
         ];
     }
@@ -61,14 +69,22 @@ class InventoryImportHandler implements ImportHandlerInterface
     public function aliases(): array
     {
         return [
-            'name' => ['itemname', 'assetname', 'equipmentname', 'productname', 'descriptionofitem', 'item', 'asset', 'equipment', 'product'],
-            'sku' => ['sku', 'code', 'itemcode', 'assetcode', 'propertyno', 'propertynumber', 'stockcode', 'partnumber', 'reference'],
-            'item_type_name' => ['itemtype', 'item type', 'item_type', 'itemtypename', 'item type name', 'inventory item type'],
+            'name' => ['itemname', 'equipmentname', 'productname', 'descriptionofitem', 'equipment', 'product'],
+            'sku' => ['sku', 'itemcode', 'assetcode', 'propertyno', 'propertynumber', 'stockcode', 'partnumber'],
+            'description' => ['description', 'itemdescription', 'details', 'specification', 'specifications'],
+            'item_type_name' => ['itemtype', 'item type', 'item_type', 'itemtypename', 'item type name', 'inventory item type', 'inventorytype'],
             'category_name' => ['category', 'categoryname'],
-            'unit' => ['unit', 'uom', 'measurement', 'unitofmeasure', 'unitofmeasurement'],
-            'quantity' => ['quantity', 'qty', 'count', 'numberofitems', 'stock', 'available', 'onhand'],
-            'reorder_level' => ['reorder', 'reorderlevel', 'minstock', 'minimumstock', 'threshold', 'alertlevel'],
-            'remarks' => ['remarks', 'notes', 'comments', 'description', 'additionalinfo', 'note'],
+            'asset_category_name' => ['assetcategory', 'asset category', 'assetcategoryname', 'categoryasset'],
+            'manufacturer_name' => ['manufacturer', 'manufacturername', 'brand'],
+            'model' => ['model', 'modelnumber', 'modelno'],
+            'unit' => ['unit', 'uom', 'measurement', 'unitofmeasure', 'unitofmeasurement', 'unitofmeasuremnt'],
+            'unit_cost' => ['unitcost', 'unit cost', 'unitcostphp', 'cost', 'unitprice', 'price'],
+            'office_name' => ['defaultoffice', 'office', 'office_name', 'default office'],
+            'location_name' => ['defaultlocation', 'location', 'location_name', 'default location'],
+            'quantity' => ['quantity', 'qty', 'count', 'numberofitems', 'available', 'onhand'],
+            'reorder_level' => ['reorder', 'reorderlevel', 'minstock', 'minimumstock', 'threshold', 'alertlevel', 'lowstockalert'],
+            'is_borrowable' => ['borrowable', 'isborrowable', 'loanable'],
+            'remarks' => ['remarks', 'notes', 'comments', 'description', 'additionalinfo', 'note', 'inventoryremarks'],
         ];
     }
 
@@ -79,10 +95,18 @@ class InventoryImportHandler implements ImportHandlerInterface
         $data = [
             'name' => $this->nullableString($mappedData['name'] ?? null),
             'sku' => $this->nullableString($mappedData['sku'] ?? null),
+            'description' => $this->nullableString($mappedData['description'] ?? null),
             'item_type_name' => $this->nullableString($mappedData['item_type_name'] ?? null),
+            'asset_category_name' => $this->nullableString($mappedData['asset_category_name'] ?? null),
+            'manufacturer_name' => $this->nullableString($mappedData['manufacturer_name'] ?? null),
+            'model' => $this->nullableString($mappedData['model'] ?? null),
             'unit' => $this->nullableString($mappedData['unit'] ?? null),
-            'quantity' => (int) ($mappedData['quantity'] ?? 0),
-            'reorder_level' => $this->nullableString($mappedData['reorder_level'] ?? null),
+            'unit_cost' => $this->decimalNumber($mappedData['unit_cost'] ?? null),
+            'office_name' => $this->nullableString($mappedData['office_name'] ?? null),
+            'location_name' => $this->nullableString($mappedData['location_name'] ?? null),
+            'quantity' => $this->integerNumber($mappedData['quantity'] ?? null) ?? 0,
+            'reorder_level' => $this->integerNumber($mappedData['reorder_level'] ?? null),
+            'is_borrowable' => $this->booleanValue($mappedData['is_borrowable'] ?? true),
             'remarks' => $this->nullableString($mappedData['remarks'] ?? null),
         ];
 
@@ -90,9 +114,14 @@ class InventoryImportHandler implements ImportHandlerInterface
             $errors[] = "Row {$rowNumber}: Item name is required.";
         }
 
-        foreach (['quantity' => 'Quantity', 'reorder_level' => 'Reorder level'] as $key => $label) {
-            $value = $this->nullableString($mappedData[$key] ?? null);
-            if ($value !== null && ! is_numeric($value)) {
+        foreach (['quantity' => 'Quantity', 'reorder_level' => 'Reorder level', 'unit_cost' => 'Unit cost'] as $key => $label) {
+            $value = $mappedData[$key] ?? null;
+            $parsedValue = match ($key) {
+                'unit_cost' => $this->decimalNumber($value),
+                default => $this->integerNumber($value),
+            };
+
+            if ($value !== null && $this->nullableString($value) !== null && $parsedValue === null) {
                 $errors[] = "Row {$rowNumber}: {$label} must be numeric.";
             }
         }

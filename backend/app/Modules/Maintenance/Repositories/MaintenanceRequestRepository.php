@@ -15,7 +15,7 @@ class MaintenanceRequestRepository implements MaintenanceRequestRepositoryInterf
 
         if (isset($filters['search'])) {
             $search = $filters['search'];
-            $query->where('title', 'like', "%{$search}%");
+            $query->whereLikeInsensitive('title', $search);
         }
 
         if (isset($filters['status'])) {

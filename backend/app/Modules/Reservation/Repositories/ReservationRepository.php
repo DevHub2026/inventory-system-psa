@@ -15,7 +15,7 @@ class ReservationRepository implements ReservationRepositoryInterface
 
         if (isset($filters['search'])) {
             $search = $filters['search'];
-            $query->where('purpose', 'like', "%{$search}%");
+            $query->whereLikeInsensitive('purpose', $search);
         }
 
         if (isset($filters['status'])) {

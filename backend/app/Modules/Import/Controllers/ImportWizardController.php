@@ -117,6 +117,44 @@ class ImportWizardController extends Controller
         }
     }
 
+    public function resume(Request $request): JsonResponse
+    {
+        $request->validate([
+            'import_type' => ['required', 'string'],
+            'import_id' => ['required', 'integer', 'exists:inventory_imports,id'],
+        ]);
+
+        try {
+            $result = $this->wizardService->resumeImport(
+                (int) $request->input('import_id'),
+                (string) $request->input('import_type'),
+            );
+
+            return $this->success($result, 'Import state restored successfully.');
+        } catch (\Throwable $exception) {
+            return $this->error($exception->getMessage(), null, 422);
+        }
+    }
+
+    public function destroy(Request $request): JsonResponse
+    {
+        $request->validate([
+            'import_type' => ['required', 'string'],
+            'import_id' => ['required', 'integer', 'exists:inventory_imports,id'],
+        ]);
+
+        try {
+            $this->wizardService->deleteImport(
+                (int) $request->input('import_id'),
+                (string) $request->input('import_type'),
+            );
+
+            return $this->success(null, 'Pending import deleted successfully.');
+        } catch (\Throwable $exception) {
+            return $this->error($exception->getMessage(), null, 422);
+        }
+    }
+
     public function history(Request $request): JsonResponse
     {
         return $this->success(

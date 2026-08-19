@@ -1,0 +1,67 @@
+{
+  "generated_at": "2026-08-19T03:20:38.835Z",
+  "navigationErrors": [
+    {
+      "route": "quick-access-flow",
+      "error": "Error: Navigation error: Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/dashboard"
+    },
+    {
+      "route": "/",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/"
+    },
+    {
+      "route": "/dashboard",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/dashboard"
+    },
+    {
+      "route": "/inventory",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/inventory"
+    },
+    {
+      "route": "/borrowings",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/borrowings"
+    },
+    {
+      "route": "/assets",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/assets"
+    },
+    {
+      "route": "/users",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/users"
+    },
+    {
+      "route": "/settings",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/settings"
+    }
+  ],
+  "allResults": [
+    {
+      "route": "/",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/"
+    },
+    {
+      "route": "/dashboard",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/dashboard"
+    },
+    {
+      "route": "/inventory",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/inventory"
+    },
+    {
+      "route": "/borrowings",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/borrowings"
+    },
+    {
+      "route": "/assets",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/assets"
+    },
+    {
+      "route": "/users",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/users"
+    },
+    {
+      "route": "/settings",
+      "error": "Error: net::ERR_CONNECTION_REFUSED at http://localhost:5173/settings"
+    }
+  ]
+}

@@ -272,11 +272,7 @@ class ReportService
 
         if (! empty($filters['search'])) {
             $s = trim((string) $filters['search']);
-            $query->where(function ($q) use ($s) {
-                $q->where('name', 'like', "%{$s}%")
-                    ->orWhere('asset_number', 'like', "%{$s}%")
-                    ->orWhere('property_number', 'like', "%{$s}%");
-            });
+            $query->whereLikeInsensitive(['name', 'asset_number', 'property_number'], $s);
         }
 
         return $query->pluck('id');

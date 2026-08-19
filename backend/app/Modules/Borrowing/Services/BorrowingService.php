@@ -27,6 +27,7 @@ class BorrowingService
     {
         return Borrowing::query()
             ->with(['user', 'asset', 'authorizer'])
+            ->withCount('pendingExtensionRequest')
             ->when(! $this->canViewAllBorrowings($user), fn ($query) => $query->where('user_id', $user->id))
             ->orderByDesc('created_at')
             ->paginate($perPage);

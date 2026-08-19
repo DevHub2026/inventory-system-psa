@@ -32,7 +32,25 @@ class StoreInventoryItemRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $classification = $this->input('classification');
+
+        // Decide which policy check to run based on whether this is a create or
+        // update request. When route('item') exists it's an update; otherwise create.
+        try {
+            $policy = app(\App\Policies\InventoryItemPolicy::class);
+            $item = $this->route('item');
+
+            if ($item instanceof \App\Modules\Inventory\Models\InventoryItem) {
+                // Update authorization: pass both the existing item and the requested classification
+                return $policy->update($this->user(), $item, $classification);
+            }
+
+            // Create authorization
+            return $policy->create($this->user(), $classification);
+        } catch (\Throwable $e) {
+            // Fail closed on unexpected errors
+            return false;
+        }
     }
 
     public function rules(): array

@@ -247,6 +247,233 @@ class BorrowExtensionTest extends TestCase
         $this->assertEquals(1, $response->json('data.count'));
     }
 
+    public function test_borrowing_list_includes_has_pending_extension(): void
+    {
+        // Create a pending extension request for the borrowing
+        BorrowExtensionRequest::query()->create([
+            'borrowing_id' => $this->borrowing->id,
+            'current_due_date' => $this->borrowing->due_date,
+            'requested_due_date' => now()->addDays(7),
+            'reason' => 'Pending from test',
+            'status' => ExtensionRequestStatus::PENDING,
+        ]);
+
+        $response = $this->withToken($this->adminToken)
+            ->getJson('/api/v1/borrowings');
+
+        $response->assertStatus(200);
+
+        $items = $response->json('data.items');
+        $this->assertIsArray($items);
+
+        // Find our borrowing in the returned items
+        $found = null;
+        foreach ($items as $item) {
+            if (isset($item['id']) && $item['id'] === $this->borrowing->id) {
+                $found = $item;
+                break;
+            }
+        }
+
+        $this->assertNotNull($found, 'Borrowing not found in listing');
+        $this->assertArrayHasKey('has_pending_extension', $found);
+        $this->assertTrue($found['has_pending_extension'], 'Expected has_pending_extension to be true for borrowing with pending request');
+    }
+
+    public function test_borrowing_list_has_no_extension_returns_false(): void
+    {
+        // Ensure no extension requests exist for this borrowing
+        BorrowExtensionRequest::query()->where('borrowing_id', $this->borrowing->id)->delete();
+
+        $response = $this->withToken($this->adminToken)
+            ->getJson('/api/v1/borrowings');
+
+        $response->assertStatus(200);
+            
+        $items = $response->json('data.items');
+        $this->assertIsArray($items);
+
+        $found = null;
+        foreach ($items as $item) {
+            if (isset($item['id']) && $item['id'] === $this->borrowing->id) {
+                $found = $item;
+                break;
+            }
+        }
+
+        $this->assertNotNull($found, 'Borrowing not found in listing');
+        $this->assertArrayHasKey('has_pending_extension', $found);
+        $this->assertFalse($found['has_pending_extension'], 'Expected has_pending_extension to be false when no pending request exists');
+    }
+
+    public function test_borrowing_list_shows_false_for_approved_and_rejected(): void
+    {
+        // Create approved request
+        BorrowExtensionRequest::query()->create([
+            'borrowing_id' => $this->borrowing->id,
+            'current_due_date' => $this->borrowing->due_date,
+            'requested_due_date' => now()->addDays(5),
+            'reason' => 'Approved request',
+            'status' => ExtensionRequestStatus::APPROVED,
+            'reviewed_by' => $this->admin->id,
+            'reviewed_at' => now(),
+        ]);
+
+        // Create another borrowing and a rejected request for it
+        $otherBorrower = User::factory()->create();
+        $borrowing2 = Borrowing::query()->create([
+            'user_id' => $otherBorrower->id,
+            'asset_id' => $this->asset->id,
+            'borrow_date' => now()->subDays(3)->toDateString(),
+            'borrowed_at' => now()->subDays(3),
+            'due_date' => now()->addDays(1)->toDateString(),
+            'status' => 'BORROWED',
+            'remarks' => 'Second borrowing',
+            'authorized_by' => $this->admin->id,
+            'authorized_at' => now()->subDays(3),
+        ]);
+
+        BorrowExtensionRequest::query()->create([
+            'borrowing_id' => $borrowing2->id,
+            'current_due_date' => $borrowing2->due_date,
+            'requested_due_date' => now()->addDays(6),
+            'reason' => 'Rejected request',
+            'status' => ExtensionRequestStatus::REJECTED,
+            'reviewed_by' => $this->admin->id,
+            'reviewed_at' => now(),
+            'remarks' => 'Not allowed',
+        ]);
+
+        $response = $this->withToken($this->adminToken)
+            ->getJson('/api/v1/borrowings');
+
+        $response->assertStatus(200);
+        $items = $response->json('data.items');
+
+        // Find both borrowings and verify flags
+        $found1 = null; $found2 = null;
+        foreach ($items as $item) {
+            if (isset($item['id'])) {
+                if ($item['id'] === $this->borrowing->id) $found1 = $item;
+                if ($item['id'] === $borrowing2->id) $found2 = $item;
+            }
+        }
+
+        $this->assertNotNull($found1);
+        $this->assertArrayHasKey('has_pending_extension', $found1);
+        $this->assertFalse($found1['has_pending_extension']);
+
+        $this->assertNotNull($found2);
+        $this->assertArrayHasKey('has_pending_extension', $found2);
+        $this->assertFalse($found2['has_pending_extension']);
+    }
+
+    public function test_multiple_borrowings_with_different_extension_states(): void
+    {
+        // Borrowing A: pending
+        $borA = $this->borrowing;
+        BorrowExtensionRequest::query()->create([
+            'borrowing_id' => $borA->id,
+            'current_due_date' => $borA->due_date,
+            'requested_due_date' => now()->addDays(4),
+            'reason' => 'Pending A',
+            'status' => ExtensionRequestStatus::PENDING,
+        ]);
+
+        // Borrowing B: approved
+        $otherUser = User::factory()->create();
+        $borB = Borrowing::query()->create([
+            'user_id' => $otherUser->id,
+            'asset_id' => $this->asset->id,
+            'borrow_date' => now()->subDays(2)->toDateString(),
+            'borrowed_at' => now()->subDays(2),
+            'due_date' => now()->addDays(2)->toDateString(),
+            'status' => 'BORROWED',
+            'remarks' => 'B borrowing',
+            'authorized_by' => $this->admin->id,
+            'authorized_at' => now()->subDays(2),
+        ]);
+
+        BorrowExtensionRequest::query()->create([
+            'borrowing_id' => $borB->id,
+            'current_due_date' => $borB->due_date,
+            'requested_due_date' => now()->addDays(8),
+            'reason' => 'Approved B',
+            'status' => ExtensionRequestStatus::APPROVED,
+            'reviewed_by' => $this->admin->id,
+            'reviewed_at' => now(),
+        ]);
+
+        $response = $this->withToken($this->adminToken)
+            ->getJson('/api/v1/borrowings');
+
+        $response->assertStatus(200);
+        $items = $response->json('data.items');
+
+        $foundA = null; $foundB = null;
+        foreach ($items as $item) {
+            if (isset($item['id'])) {
+                if ($item['id'] === $borA->id) $foundA = $item;
+                if ($item['id'] === $borB->id) $foundB = $item;
+            }
+        }
+
+        $this->assertNotNull($foundA);
+        $this->assertTrue($foundA['has_pending_extension']);
+
+        $this->assertNotNull($foundB);
+        $this->assertFalse($foundB['has_pending_extension']);
+    }
+
+    public function test_staff_can_fetch_global_extension_requests_list_and_filters(): void
+    {
+        // Create several extension requests with different statuses and borrowings
+        $r1 = BorrowExtensionRequest::query()->create([
+            'borrowing_id' => $this->borrowing->id,
+            'current_due_date' => $this->borrowing->due_date,
+            'requested_due_date' => now()->addDays(4),
+            'reason' => 'Pending global',
+            'status' => ExtensionRequestStatus::PENDING,
+        ]);
+
+        $r2 = BorrowExtensionRequest::query()->create([
+            'borrowing_id' => $this->borrowing->id,
+            'current_due_date' => $this->borrowing->due_date,
+            'requested_due_date' => now()->addDays(8),
+            'reason' => 'Approved global',
+            'status' => ExtensionRequestStatus::APPROVED,
+            'reviewed_by' => $this->admin->id,
+            'reviewed_at' => now(),
+        ]);
+
+        $response = $this->withToken($this->adminToken)
+            ->getJson('/api/v1/extension-requests?per_page=10');
+
+        // debug dump
+        // $response->dump();
+
+        $response->assertStatus(200);
+        $data = $response->json('data');
+        $this->assertArrayHasKey('items', $data);
+        $this->assertArrayHasKey('meta', $data);
+        $this->assertGreaterThanOrEqual(2, count($data['items']));
+
+        // Filter by status=pending
+        $resp2 = $this->withToken($this->adminToken)
+            ->getJson('/api/v1/extension-requests?status=pending');
+
+        $resp2->assertStatus(200);
+        $this->assertGreaterThanOrEqual(1, count($resp2->json('data.items')));
+    }
+
+    public function test_employee_cannot_access_global_extension_requests_list(): void
+    {
+        $response = $this->withToken($this->borrowerToken)
+            ->getJson('/api/v1/extension-requests');
+
+        $response->assertStatus(403);
+    }
+
     public function test_borrower_cannot_submit_for_returned_borrowing(): void
     {
         $this->borrowing->update(['status' => 'RETURNED', 'returned_at' => now()]);

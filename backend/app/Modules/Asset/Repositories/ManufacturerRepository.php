@@ -15,7 +15,7 @@ class ManufacturerRepository implements ManufacturerRepositoryInterface
 
         if (isset($filters['search'])) {
             $search = $filters['search'];
-            $query->where('name', 'like', "%{$search}%");
+            $query->whereLikeInsensitive('name', $search);
         }
 
         return $query->paginate($filters['per_page'] ?? 15);

@@ -17,12 +17,7 @@ class UserRepository implements UserRepositoryInterface
 
         if (isset($filters['search'])) {
             $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('employee_number', 'like', "%{$search}%");
-            });
+            $query->whereLikeInsensitive(['first_name', 'last_name', 'email', 'employee_number'], $search);
         }
 
         if (isset($filters['status'])) {

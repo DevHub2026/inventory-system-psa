@@ -61,6 +61,25 @@ export const borrowExtensionService = {
     }
   },
 
+  async getExtensionRequests(filters?: Record<string, string | number | undefined>): Promise<Paginated<BorrowExtensionRequest>> {
+    const params = new URLSearchParams()
+    if (filters?.per_page) params.set('per_page', String(filters.per_page))
+    if (filters?.page) params.set('page', String(filters.page))
+    if (filters?.status) params.set('status', String(filters.status))
+    if (filters?.borrowing_id) params.set('borrowing_id', String(filters.borrowing_id))
+    if (filters?.user_id) params.set('user_id', String(filters.user_id))
+    if (filters?.requested_from) params.set('requested_from', String(filters.requested_from))
+    if (filters?.requested_to) params.set('requested_to', String(filters.requested_to))
+
+    const url = `/extension-requests${params.toString() ? `?${params.toString()}` : ''}`
+    const { data } = await api.get<ApiResponse<Paginated<BackendBorrowExtensionRequest>>>(url)
+    const pag = unwrapPaginated(data)
+    return {
+      ...pag,
+      items: pag.items.map(mapBorrowExtensionRequest),
+    }
+  },
+
   async approveExtension(requestId: number): Promise<BorrowExtensionRequest> {
     const { data } = await api.patch<ApiResponse<BackendBorrowExtensionRequest>>(
       `/extension-requests/${requestId}/approve`

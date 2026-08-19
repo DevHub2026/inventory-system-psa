@@ -27,13 +27,7 @@ class UserController extends Controller
 
         if ($request->has('search')) {
             $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('employee_number', 'like', "%{$search}%")
-                    ->orWhere('username', 'like', "%{$search}%");
-            });
+            $query->whereLikeInsensitive(['first_name', 'last_name', 'email', 'employee_number', 'username'], $search);
         }
 
         if ($request->has('status')) {

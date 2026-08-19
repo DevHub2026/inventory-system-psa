@@ -19,6 +19,8 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer,Department Head')->group(function (): void {
         Route::patch('extension-requests/{extensionRequest}/approve', [BorrowExtensionController::class, 'approve']);
         Route::patch('extension-requests/{extensionRequest}/reject', [BorrowExtensionController::class, 'reject']);
+        // Staff endpoint: paginated list of extension requests
+        Route::get('extension-requests', [BorrowExtensionController::class, 'indexAll']);
     });
     Route::get('extension-requests/pending-count', [BorrowExtensionController::class, 'pendingCount']);
 });

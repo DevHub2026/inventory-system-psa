@@ -15,7 +15,7 @@ class InventoryItemRepository implements InventoryItemRepositoryInterface
 
         if (isset($filters['search'])) {
             $search = $filters['search'];
-            $query->where('name', 'like', "%{$search}%");
+            $query->whereLikeInsensitive('name', $search);
         }
 
         if (isset($filters['status'])) {

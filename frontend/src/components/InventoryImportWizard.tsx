@@ -350,6 +350,42 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
     } finally { setLoading(false) }
   }
 
+  async function handleResumeImport(importId: number) {
+    setLoading(true); setMessage(null)
+    try {
+      const result = await importService.resume(selectedImportType, importId)
+      setUploadResult(result)
+      const savedMappings: ColumnMapping[] = (result.column_mapping && result.column_mapping.length > 0)
+        ? result.column_mapping
+        : result.suggested_mappings.map((m: SuggestedMapping) => ({
+            excel_column: m.excel_column,
+            excel_index: m.excel_index,
+            target_type: m.suggested_system_field ? 'system' : 'ignore',
+            target_key: m.suggested_system_field ? m.suggested_system_field.key : null,
+          }))
+      setColumnMappings(savedMappings)
+      setShowHistory(false)
+      setStep('mapping')
+      setMessage({ type: 'success', text: 'Pending import restored. You can fix the mapping and continue.' })
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to resume the pending import.' })
+    } finally { setLoading(false) }
+  }
+
+  async function handleDeletePendingImport(importId: number) {
+    if (!window.confirm('Delete this pending import and its uploaded file? This does not affect inventory records already imported.')) {
+      return
+    }
+
+    setLoading(true); setMessage(null)
+    try {
+      await importService.deletePending(selectedImportType, importId)
+      await loadHistory()
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to delete the pending import.' })
+    } finally { setLoading(false) }
+  }
+
   async function loadHistory() {
     setLoading(true); setMessage(null)
     try {
@@ -822,6 +858,17 @@ export function ImportWizard({ open, onClose, onCompleted, initialImportType, ti
                       </div>
                     ))}
                   </div>
+
+                  {['pending', 'validated', 'validating'].includes(h.status) && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '10px 14px', borderTop: '1px solid #F1F5F9' }}>
+                      <Button variant="secondary" size="sm" onClick={() => void handleResumeImport(h.id)}>
+                        Continue
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => void handleDeletePendingImport(h.id)}>
+                        Delete
+                      </Button>
+                    </div>
+                  )}
 
                   {h.errors && h.errors.length > 0 && (
                     <details style={{ padding: '8px 14px', borderTop: '1px solid #F1F5F9' }}>

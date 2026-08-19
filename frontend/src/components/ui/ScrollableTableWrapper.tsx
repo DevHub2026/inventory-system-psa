@@ -13,18 +13,31 @@ export default function ScrollableTableWrapper({ children }: { children: React.R
     function update() {
       const cur = ref.current
       if (!cur) return
-      setCanScrollLeft(cur.scrollLeft > 5)
-      setCanScrollRight(cur.scrollWidth - cur.clientWidth - cur.scrollLeft > 5)
+      const atLeft = cur.scrollLeft <= 5
+      const atRight = cur.scrollWidth - cur.clientWidth - cur.scrollLeft <= 5
+      setCanScrollLeft(!atLeft)
+      setCanScrollRight(!atRight)
     }
 
     update()
+
     const ro = new ResizeObserver(update)
-    ro.observe(el!)
-    el!.addEventListener('scroll', update, { passive: true })
+    ro.observe(el)
+    // also observe the content in case table width changes
+    if (el.firstElementChild instanceof Element) ro.observe(el.firstElementChild)
+
+    el.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+
+    // MutationObserver to detect DOM changes that may affect width (columns added/removed)
+    const mo = new MutationObserver(() => update())
+    mo.observe(el, { childList: true, subtree: true, attributes: true })
 
     return () => {
       ro.disconnect()
-      el!.removeEventListener('scroll', update)
+      mo.disconnect()
+      el.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
     }
   }, [])
 
@@ -76,39 +89,52 @@ export default function ScrollableTableWrapper({ children }: { children: React.R
     }
   }, [])
 
-  function scrollBy(amount: number) {
+  function scrollByAmount(direction: 'left' | 'right') {
     const el = ref.current
     if (!el) return
-    el.scrollBy({ left: amount, behavior: 'smooth' })
+    const visible = el.clientWidth
+    // adaptive amount: 70% of visible width
+    const amount = Math.max(100, Math.round(visible * 0.7))
+    const delta = direction === 'right' ? amount : -amount
+    el.scrollBy({ left: delta, behavior: 'smooth' })
   }
 
   return (
     <div style={{ position: 'relative' }}>
-      <button
-        aria-label="Scroll table left"
-        onClick={() => scrollBy(-240)}
-        disabled={!canScrollLeft}
-        style={{
-          position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)',
-          zIndex: 30, border: '1px solid rgba(14, 165, 233, 0.12)', background: '#fff',
-          borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: canScrollLeft ? 'pointer' : 'default', boxShadow: '0 1px 4px rgba(2,6,23,0.06)', opacity: canScrollLeft ? 1 : 0.48, pointerEvents: canScrollLeft ? 'auto' : 'none'
-        }}
-      >
-        <span style={{ fontSize: 16, fontWeight: 700, color: '#0B3D91' }}>&lt;</span>
-      </button>
+      {/* Left control — only render if there is overflow */}
+      {(canScrollLeft || canScrollRight) && (
+        <>
+          <button
+            aria-label="Scroll table left"
+            onClick={() => scrollByAmount('left')}
+            disabled={!canScrollLeft}
+            style={{
+              position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)',
+              zIndex: 30, border: '1px solid rgba(14, 165, 233, 0.12)', background: '#fff',
+              borderRadius: 8, width: 36, height: 36, display: canScrollLeft ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', cursor: canScrollLeft ? 'pointer' : 'default', boxShadow: '0 1px 4px rgba(2,6,23,0.06)', opacity: canScrollLeft ? 1 : 0.48
+            }}
+          >
+            <span style={{ fontSize: 16, fontWeight: 700, color: '#0B3D91' }}>&lt;</span>
+          </button>
 
-      <button
-        aria-label="Scroll table right"
-        onClick={() => scrollBy(240)}
-        disabled={!canScrollRight}
-        style={{
-          position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-          zIndex: 30, border: '1px solid rgba(14, 165, 233, 0.12)', background: '#fff',
-          borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: canScrollRight ? 'pointer' : 'default', boxShadow: '0 1px 4px rgba(2,6,23,0.06)', opacity: canScrollRight ? 1 : 0.48, pointerEvents: canScrollRight ? 'auto' : 'none'
-        }}
-      >
-        <span style={{ fontSize: 16, fontWeight: 700, color: '#0B3D91' }}>&gt;</span>
-      </button>
+          <button
+            aria-label="Scroll table right"
+            onClick={() => scrollByAmount('right')}
+            disabled={!canScrollRight}
+            style={{
+              position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+              zIndex: 30, border: '1px solid rgba(14, 165, 233, 0.12)', background: '#fff',
+              borderRadius: 8, width: 36, height: 36, display: canScrollRight ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', cursor: canScrollRight ? 'pointer' : 'default', boxShadow: '0 1px 4px rgba(2,6,23,0.06)', opacity: canScrollRight ? 1 : 0.48
+            }}
+          >
+            <span style={{ fontSize: 16, fontWeight: 700, color: '#0B3D91' }}>&gt;</span>
+          </button>
+
+          {/* edge fades */}
+          <div aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 28, pointerEvents: 'none', display: canScrollLeft ? 'block' : 'none', background: 'linear-gradient(90deg, rgba(15,23,42,0.06), rgba(15,23,42,0))', zIndex: 20 }} />
+          <div aria-hidden style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 28, pointerEvents: 'none', display: canScrollRight ? 'block' : 'none', background: 'linear-gradient(270deg, rgba(15,23,42,0.06), rgba(15,23,42,0))', zIndex: 20 }} />
+        </>
+      )}
 
       <div ref={ref} style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {children}

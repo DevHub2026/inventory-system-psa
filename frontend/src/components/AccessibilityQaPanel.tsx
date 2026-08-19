@@ -15,13 +15,14 @@ function getSelector(el: Element) {
   return selector
 }
 
-export function AccessibilityQaPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function AccessibilityQaPanel({ open, onClose, inline }: { open?: boolean; onClose?: () => void; inline?: boolean }) {
   const [scanning, setScanning] = useState(false)
   const [issues, setIssues] = useState<Issue[]>([])
   const [highlighted, setHighlighted] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!open) return
+    // Run scan when the panel is opened (modal) or when embedded inline
+    if (!open && !inline) return
     let mounted = true
 
     const scan = async () => {
@@ -86,7 +87,7 @@ export function AccessibilityQaPanel({ open, onClose }: { open: boolean; onClose
 
     scan()
     return () => { mounted = false }
-  }, [open])
+  }, [open, inline])
 
   useEffect(() => {
     // apply highlight style to currently highlighted element
@@ -114,89 +115,98 @@ export function AccessibilityQaPanel({ open, onClose }: { open: boolean; onClose
     }
   }, [highlighted])
 
-  return (
-    <Modal open={open} title="Accessibility QA" onClose={onClose} maxWidth={900}>
-      <div style={{ minHeight: 240 }}>
-        {scanning ? (
-          <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Spinner /></div>
-        ) : (
-          <div style={{ display: 'flex', gap: 14 }}>
-            <div style={{ width: 380, maxHeight: 480, overflowY: 'auto', borderRight: '1px solid #EEF2F7', paddingRight: 12 }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>Detected issues ({issues.length})</div>
-              {issues.length === 0 ? (
-                <div style={{ color: '#475569' }}>No obvious issues found by the lightweight scan. This is not a replacement for axe-core or manual testing.</div>
-              ) : (
-                <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {issues.map((it) => (
-                    <li key={it.id} style={{ padding: 8, borderRadius: 8, background: '#fff', border: '1px solid #EEF2F7', display: 'flex', gap: 8, alignItems: 'center' }} onMouseEnter={() => setHighlighted(it.selector)} onMouseLeave={() => setHighlighted(null)}>
-                      <div style={{ flex: '0 0 8px', height: 8, background: '#F59E0B', borderRadius: 4 }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700 }}>{it.description}</div>
-                        <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>{it.selector}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Button size="sm" variant="secondary" onClick={() => {
-                          if (it.element && (it.element as HTMLElement).focus) {
-                            try {
-                              (it.element as HTMLElement).focus()
-                              setHighlighted(it.selector)
-                            } catch {
-                              // The element may no longer be focusable.
-                            }
+  const content = (
+    <div style={{ minHeight: 240 }}>
+      {scanning ? (
+        <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Spinner /></div>
+      ) : (
+        <div style={{ display: 'flex', gap: 14 }}>
+          <div style={{ width: 380, maxHeight: 480, overflowY: 'auto', borderRight: '1px solid #EEF2F7', paddingRight: 12 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Detected issues ({issues.length})</div>
+            {issues.length === 0 ? (
+              <div style={{ color: '#475569' }}>No obvious issues found by the lightweight scan. This is not a replacement for axe-core or manual testing.</div>
+            ) : (
+              <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {issues.map((it) => (
+                  <li key={it.id} style={{ padding: 8, borderRadius: 8, background: '#fff', border: '1px solid #EEF2F7', display: 'flex', gap: 8, alignItems: 'center' }} onMouseEnter={() => setHighlighted(it.selector)} onMouseLeave={() => setHighlighted(null)}>
+                    <div style={{ flex: '0 0 8px', height: 8, background: '#F59E0B', borderRadius: 4 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700 }}>{it.description}</div>
+                      <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>{it.selector}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button size="sm" variant="secondary" onClick={() => {
+                        if (it.element && (it.element as HTMLElement).focus) {
+                          try {
+                            (it.element as HTMLElement).focus()
+                            setHighlighted(it.selector)
+                          } catch {
+                            // The element may no longer be focusable.
                           }
-                        }}>Focus</Button>
-                        <Button size="sm" onClick={() => { if (it.element) {
-                          const html = (it.element as Element).outerHTML
-                          // open a small window for inspection
-                          const w = window.open('', '_blank', 'width=600,height=400,menubar=no,toolbar=no,location=no')
-                          if (w) {
-                            w.document.write('<pre style="white-space:pre-wrap">' + escapeHtml(html) + '</pre>')
-                            w.document.title = 'Element inspector'
-                          }
-                        } }}>Inspect</Button>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>Preview / Guidance</div>
-              <div style={{ color: '#475569', fontSize: 13 }}>
-                Use this panel to find common accessibility issues: images missing alt text, interactive elements without an accessible name, and form controls without labels. This lightweight scanner is a quick aid — run a full automated audit (axe-core) or manual testing for complete coverage.
-              </div>
-
-              <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                <Button variant="secondary" onClick={() => window.location.reload()}>Rerun Scan</Button>
-                <Button onClick={() => {
-                  // simple export
-                  const data = issues.map(i => ({ description: i.description, selector: i.selector }))
-                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = 'a11y-issues.json'
-                  document.body.appendChild(a)
-                  a.click()
-                  a.remove()
-                  URL.revokeObjectURL(url)
-                }}>Export JSON</Button>
-              </div>
-
-              <div style={{ marginTop: 18 }}>
-                <div style={{ fontWeight: 700, marginBottom: 8 }}>Notes</div>
-                <ul style={{ marginTop: 0, color: '#475569' }}>
-                  <li>Keyboard navigation and screen reader testing are recommended.</li>
-                  <li>Color contrast checks require computed color access and are not included in this quick scan.</li>
-                  <li>For deeper automated checks consider integrating axe-core or Lighthouse.</li>
-                </ul>
-              </div>
-
-            </div>
+                        }
+                      }}>Focus</Button>
+                      <Button size="sm" onClick={() => { if (it.element) {
+                        const html = (it.element as Element).outerHTML
+                        // open a small window for inspection
+                        const w = window.open('', '_blank', 'width=600,height=400,menubar=no,toolbar=no,location=no')
+                        if (w) {
+                          w.document.write('<pre style="white-space:pre-wrap">' + escapeHtml(html) + '</pre>')
+                          w.document.title = 'Element inspector'
+                        }
+                      } }}>Inspect</Button>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
-        )}
-      </div>
+
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Preview / Guidance</div>
+            <div style={{ color: '#475569', fontSize: 13 }}>
+              Use this panel to find common accessibility issues: images missing alt text, interactive elements without an accessible name, and form controls without labels. This lightweight scanner is a quick aid — run a full automated audit (axe-core) or manual testing for complete coverage.
+            </div>
+
+            <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+              <Button variant="secondary" onClick={() => window.location.reload()}>Rerun Scan</Button>
+              <Button onClick={() => {
+                // simple export
+                const data = issues.map(i => ({ description: i.description, selector: i.selector }))
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = 'a11y-issues.json'
+                document.body.appendChild(a)
+                a.click()
+                a.remove()
+                URL.revokeObjectURL(url)
+              }}>Export JSON</Button>
+            </div>
+
+            <div style={{ marginTop: 18 }}>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}>Notes</div>
+              <ul style={{ marginTop: 0, color: '#475569' }}>
+                <li>Keyboard navigation and screen reader testing are recommended.</li>
+                <li>Color contrast checks require computed color access and are not included in this quick scan.</li>
+                <li>For deeper automated checks consider integrating axe-core or Lighthouse.</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  if (inline) {
+    return content
+  }
+
+  const safeOnClose = onClose || (() => {})
+  return (
+    <Modal open={!!open} title="Diagnostics" onClose={safeOnClose} maxWidth={900}>
+      {content}
     </Modal>
   )
 }

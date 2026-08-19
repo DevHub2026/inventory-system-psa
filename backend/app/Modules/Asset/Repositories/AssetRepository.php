@@ -15,11 +15,7 @@ class AssetRepository implements AssetRepositoryInterface
 
         if (isset($filters['search'])) {
             $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('asset_number', 'like', "%{$search}%")
-                    ->orWhere('serial_number', 'like', "%{$search}%");
-            });
+            $query->whereLikeInsensitive(['name', 'asset_number', 'serial_number'], $search);
         }
 
         if (isset($filters['status'])) {
