@@ -60,6 +60,10 @@ The project currently includes:
 - [Accessibility preferences](./accessibility/preferences.md)
 - [Accessibility testing](./accessibility/testing.md)
 
+### Development & Contribution
+
+- [Development & Contribution README](./development/README.md)
+
 ### Feature documentation (implementation-backed)
 
 These feature documents are written from the current repository implementation (frontend pages, services, backend controllers, routes, models and policies). Update these documents whenever the implementation changes.
