@@ -57,10 +57,10 @@ Borrowing statuses are defined on the model and referenced in the controller. Ty
 
 - Borrowing listing includes additional computed fields (e.g., has_pending_extension) added by the service/controller and returned in the transform() output consumed by the frontend.
 - Source files:
-  - [Borrowing routes](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Borrowing/Routes/api.php)
-  - [BorrowingController](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Borrowing/Controllers/BorrowingController.php)
-  - [BorrowingPage](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/pages/BorrowingPage.tsx)
-  - [borrowingService](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/services/borrowingService.ts)
+  - [Borrowing routes](backend/app/Modules/Borrowing/Routes/api.php)
+  - [BorrowingController](backend/app/Modules/Borrowing/Controllers/BorrowingController.php)
+  - [BorrowingPage](frontend/src/pages/BorrowingPage.tsx)
+  - [borrowingService](frontend/src/services/borrowingService.ts)
 
 ## Source-of-Truth References
 - Borrowing routes: backend/app/Modules/Borrowing/Routes/api.php

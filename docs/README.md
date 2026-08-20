@@ -44,9 +44,15 @@ The project currently includes:
 
 ### Security and access control
 
-- [Authentication](./security/authentication.md)
-- [Authorization and RBAC](./security/authorization-rbac.md)
-- [Role model and permissions](./security/roles.md)
+- [Security & RBAC index](./security/README.md)
+- [Authentication (implementation-backed)](./security/authentication.md)
+- [Roles and RBAC (implementation-backed)](./security/roles-and-rbac.md)
+- [Authorization (implementation-backed)](./security/authorization.md)
+- [Policies and permissions (implementation-backed)](./security/policies-and-permissions.md)
+
+### Database
+
+- [Database docs (implementation-backed)](./database/README.md)
 
 ### Accessibility
 

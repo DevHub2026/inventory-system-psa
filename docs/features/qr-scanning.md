@@ -44,5 +44,5 @@ QR endpoints are behind auth:sanctum. Some history endpoints are role-protected 
 - Source-of-truth: qrService in the frontend and backend module QrScan routes. Look for endpoints: GET /qr/resolve/{identifier}, GET /qr/asset/{identifier}, POST /qr/scan-action, GET /qr/my-history, GET /qr/history.
 
 ## Source-of-Truth References
-- [qrService](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/services/qrService.ts)
-- [QR routes](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/QrScan/Routes/api.php)
+- frontend/src/services/qrService.ts
+- backend/app/Modules/QrScan/Routes/api.php

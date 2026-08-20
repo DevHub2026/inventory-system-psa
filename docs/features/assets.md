@@ -66,11 +66,11 @@ Asset statuses are managed on the model and presented by the controller transfor
 
 ## Technical Notes
 
-- Routes and role restrictions: [Asset routes](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Asset/Routes/api.php)
+- Routes and role restrictions: backend/app/Modules/Asset/Routes/api.php
 - Controller: backend/app/Modules/Asset/Controllers/AssetController.php
-- Frontend: [assetService](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/services/assetService.ts)
+- Frontend: frontend/src/services/assetService.ts
 
 ## Source-of-Truth References
-- [Asset routes](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Asset/Routes/api.php)
-- [AssetController](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Asset/Controllers/AssetController.php)
-- [AssetPage](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/pages/AssetPage.tsx)
+- backend/app/Modules/Asset/Routes/api.php
+- backend/app/Modules/Asset/Controllers/AssetController.php
+- frontend/src/pages/AssetPage.tsx

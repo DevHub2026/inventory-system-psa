@@ -58,6 +58,6 @@ Reservation statuses are defined in backend enums (e.g., backend/app/Enums/Reser
 - Reservation statuses: backend/app/Enums/ReservationStatus.php
 
 ## Source-of-Truth References
-- [ReservationPage](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/pages/ReservationPage.tsx)
-- [Reservation routes](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Reservation/Routes/api.php)
-- [ReservationStatus enum](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Enums/ReservationStatus.php)
+- [ReservationPage](frontend/src/pages/ReservationPage.tsx)
+- [Reservation routes](backend/app/Modules/Reservation/Routes/api.php)
+- [ReservationStatus enum](backend/app/Enums/ReservationStatus.php)

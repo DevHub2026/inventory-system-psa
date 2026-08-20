@@ -45,5 +45,5 @@ Some reports are restricted to specific roles (e.g., reissuance reports limited 
 - For reissuances: backend asset reissuance controller handles report and export (see asset module routes)
 
 ## Source-of-Truth References
-- [reportService](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/services/reportService.ts)
+- [reportService](frontend/src/services/reportService.ts)
 - Routes: search backend/app/Modules/*/Routes/api.php and backend/app/Modules/Asset/Routes/api.php for reissuance report endpoints

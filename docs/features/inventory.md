@@ -60,11 +60,11 @@ Inventory items do not generally have a complex lifecycle like assets. They have
 
 ## Technical Notes
 
-- Source routes: [inventory routes](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Inventory/Routes/api.php)
-- Controller: InventoryController in backend/app/Modules/Inventory/Controllers
-- Frontend: [InventoryPage](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/pages/InventoryPage.tsx) and [inventoryService](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/services/inventoryService.ts)
+- Source routes: backend/app/Modules/Inventory/Routes/api.php
+- Controller: backend/app/Modules/Inventory/Controllers/InventoryController.php
+- Frontend: frontend/src/pages/InventoryPage.tsx and frontend/src/services/inventoryService.ts
 
 ## Source-of-Truth References
-- [Inventory routes](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Inventory/Routes/api.php)
-- [InventoryController](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Inventory/Controllers/InventoryController.php)
-- [InventoryPage](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/pages/InventoryPage.tsx)
+- backend/app/Modules/Inventory/Routes/api.php
+- backend/app/Modules/Inventory/Controllers/InventoryController.php
+- frontend/src/pages/InventoryPage.tsx

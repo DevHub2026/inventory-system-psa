@@ -51,6 +51,6 @@ Backend route middleware and frontend guards indicate the dashboard pages are be
 - Backend data sources: controllers exposed in module route files (search backend/app/Modules/*/Routes/api.php)
 
 ## Source-of-Truth References
-- [AdminDashboard](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/pages/AdminDashboard.tsx)
-- [dashboardService](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/services/dashboardService.ts)
+- frontend/src/pages/AdminDashboard.tsx
+- frontend/src/services/dashboardService.ts
 - Routes: search under backend/app/Modules/*/Routes/api.php for dashboard endpoints

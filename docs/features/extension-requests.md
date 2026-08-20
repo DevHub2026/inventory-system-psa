@@ -58,7 +58,7 @@ Extension request statuses observed include: PENDING, APPROVED, REJECTED (use ex
 - Frontend field: has_pending_extension is returned by BorrowingController transform() and consumed by frontend/src/services/borrowingService.ts
 
 ## Source-of-Truth References
-- [Borrowing routes](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Borrowing/Routes/api.php)
-- [BorrowExtensionController](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Borrowing/Controllers/BorrowExtensionController.php)
-- [BorrowExtensionService](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/backend/app/Modules/Borrowing/Services/BorrowExtensionService.php)
-- [borrowingService](/C:/Users/salva/Downloads/PSA_DOCS/INVENTORY_SYSTEM/frontend/src/services/borrowingService.ts)
+- backend/app/Modules/Borrowing/Routes/api.php
+- backend/app/Modules/Borrowing/Controllers/BorrowExtensionController.php
+- backend/app/Modules/Borrowing/Services/BorrowExtensionService.php
+- frontend/src/services/borrowingService.ts
