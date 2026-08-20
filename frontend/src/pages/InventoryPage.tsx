@@ -54,7 +54,7 @@ const colors = {
   amber:   { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A', icon: '#D97706' },
   red:     { bg: '#FEF2F2', text: '#DC2626', border: '#FECACA', icon: '#EF4444' },
   violet:  { bg: '#FAF5FF', text: '#7C3AED', border: '#DDD6FE', icon: '#8B5CF6' },
-  gray:    { bg: '#F8FAFC', text: '#475569', border: '#E2E8F0', icon: '#94A3B8' },
+  gray:    { bg: '#F8FAFC', text: '#475569', border: '#E2E8F0', icon: '#64748B' },
 }
 
 // ─── Stat card (individual stat inside a summary card) ────────────────────────
@@ -188,7 +188,7 @@ function SummaryCardInner({
         <IconBox icon={icon} color={color} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', lineHeight: 1.3 }}>{title}</div>
-          <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 1 }}>{subtitle}</div>
+          <div style={{ fontSize: 12, color: '#64748B', marginTop: 1 }}>{subtitle}</div>
         </div>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -205,7 +205,7 @@ function SummaryCardInner({
         <span style={{ fontSize: 36, fontWeight: 800, color: '#0F172A', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
           {total}
         </span>
-        <span style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500 }}>{totalLabel}</span>
+        <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>{totalLabel}</span>
       </div>
 
       {/* Divider */}
@@ -1300,7 +1300,7 @@ export function InventoryPage() {
     padding: '10px 16px',
     fontSize: 11,
     fontWeight: 700,
-    color: '#94A3B8',
+    color: '#64748B',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.07em',
     background: '#FAFBFC',
@@ -1428,7 +1428,7 @@ export function InventoryPage() {
                       <div style={{ color: '#64748B', fontSize: 12 }}>{item.sku ?? 'No SKU'}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700 }}>Expected</div>
+                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 700 }}>Expected</div>
                       <div style={{ fontWeight: 800, color: '#0F172A' }}>{item.expected_quantity}</div>
                     </div>
                     <Input
@@ -1440,7 +1440,7 @@ export function InventoryPage() {
                       onChange={(e) => setCountActuals((prev) => ({ ...prev, [item.inventory_item_id]: e.target.value }))}
                     />
                     <div>
-                      <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700 }}>Variance</div>
+                      <div style={{ fontSize: 11, color: '#64748B', fontWeight: 700 }}>Variance</div>
                       <div style={{ fontWeight: 800, color: variance === 0 ? '#166534' : variance < 0 ? '#DC2626' : '#D97706' }}>
                         {variance > 0 ? '+' : ''}{variance}
                       </div>
@@ -1490,7 +1490,7 @@ export function InventoryPage() {
           }}>
             Inventory
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: 14, color: '#64748B', lineHeight: 1.4 }}>
+          <p style={{ margin: '6px 0 0', fontSize: 14, color: '#475569', lineHeight: 1.4 }}>
             Track and manage all items, supplies, and equipment in one place.
           </p>
         </div>
@@ -1857,7 +1857,7 @@ export function InventoryPage() {
 
           {/* ── A. BASIC INFORMATION ── */}
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 14 }}>Basic Information</div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#64748B', marginBottom: 14 }}>Basic Information</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <Input label="Item Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Laptop EB-X1 001" />
 
@@ -1895,7 +1895,7 @@ export function InventoryPage() {
                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                     placeholder={skuGenerating ? 'Generating SKU…' : 'e.g. INV-20260809-A1B2'}
                   />
-                  <div style={{ marginTop: 4, fontSize: 11.5, color: '#94A3B8' }}>
+                  <div style={{ marginTop: 4, fontSize: 11.5, color: '#64748B' }}>
                     {editingItem
                       ? 'Leave unchanged to keep the existing code.'
                       : skuGenerating
@@ -1948,11 +1948,11 @@ export function InventoryPage() {
                         padding: '8px 12px', borderRadius: 10,
                         border: '1px solid #E2E8F0', background: '#F1F5F9',
                         fontSize: 13, fontFamily: "'SF Mono','Fira Code',ui-monospace,monospace",
-                        color: editingItem?.asset_number ? '#1E293B' : '#94A3B8',
+                        color: editingItem?.asset_number ? '#1E293B' : '#64748B',
                       }}>
                         {editingItem?.asset_number ?? 'Auto-generated by the system on save'}
                       </div>
-                      <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 3 }}>
+                      <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 3 }}>
                         Asset Number is system-generated and cannot be changed.
                       </div>
                     </div>
@@ -1965,7 +1965,7 @@ export function InventoryPage() {
                         onChange={(e) => setFormData({ ...formData, property_number: e.target.value || null })}
                         placeholder="e.g. PROP-2026-0001"
                       />
-                      <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 3 }}>
+                      <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 3 }}>
                         Government property record number for this asset instance.
                       </div>
                     </div>
@@ -1978,7 +1978,7 @@ export function InventoryPage() {
                         onChange={(e) => setFormData({ ...formData, serial_number: e.target.value || null })}
                         placeholder="e.g. SN-ABCD-1234567"
                       />
-                      <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 3 }}>
+                      <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 3 }}>
                         Manufacturer's serial number printed on the physical unit.
                       </div>
                     </div>
@@ -2007,7 +2007,7 @@ export function InventoryPage() {
                   placeholder="Select or add a type"
                   codeLabel="Type Code"
                 />
-                <div style={{ marginTop: 4, fontSize: 11.5, color: '#94A3B8' }}>
+                <div style={{ marginTop: 4, fontSize: 11.5, color: '#64748B' }}>
                   Select an existing type or add a new one.
                 </div>
               </div>
@@ -2035,7 +2035,7 @@ export function InventoryPage() {
                     )
                   })}
                 </div>
-                <div style={{ marginTop: 6, fontSize: 11.5, color: '#94A3B8' }}>
+                <div style={{ marginTop: 6, fontSize: 11.5, color: '#64748B' }}>
                   {formData.classification === 'PPE' && 'Property, Plant & Equipment — unit cost ≥ ₱50,000'}
                   {formData.classification === 'SE' && 'Semi-Expendable — unit cost below ₱50,000'}
                   {formData.classification === 'SUPPLY' && 'Consumable supply — quantity-based, not individually tracked'}
@@ -2046,7 +2046,7 @@ export function InventoryPage() {
 
           {/* ── B. STOCK AND COST ── */}
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 14 }}>Stock and Cost</div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#64748B', marginBottom: 14 }}>Stock and Cost</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <Input
@@ -2070,7 +2070,7 @@ export function InventoryPage() {
                     onRefreshNeeded={loadSetupOptions}
                     placeholder="e.g. piece, unit, ream"
                   />
-                  <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 3 }}>e.g. piece, unit, ream, box, cartridge</div>
+                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 3 }}>e.g. piece, unit, ream, box, cartridge</div>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -2091,7 +2091,7 @@ export function InventoryPage() {
                     value={formData.unit_cost !== null && formData.unit_cost !== undefined ? String(formData.unit_cost) : ''}
                     onChange={(e) => { const r = e.target.value; setFormData({ ...formData, unit_cost: r === '' ? null : parseFloat(r) || 0 }) }}
                   />
-                  <div style={{ marginTop: 4, fontSize: 11, color: '#94A3B8' }}>
+                  <div style={{ marginTop: 4, fontSize: 11, color: '#64748B' }}>
                     {formData.classification !== 'SUPPLY' && (
                       formData.unit_cost != null && formData.unit_cost >= 50000
                         ? <span style={{ color: '#1D4ED8', fontWeight: 600 }}>→ PPE (≥ ₱50,000)</span>
@@ -2107,8 +2107,8 @@ export function InventoryPage() {
 
           {/* ── C. PROCUREMENT ── */}
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 6 }}>Procurement</div>
-            <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#64748B', marginBottom: 6 }}>Procurement</div>
+            <div style={{ fontSize: 11, color: '#64748B', marginBottom: 12 }}>
               Inventory is the single source of truth for procurement information. These values appear read-only in Asset Management.
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -2130,7 +2130,7 @@ export function InventoryPage() {
               <div style={{
                 padding: '10px 14px', borderRadius: 10,
                 border: '1px dashed #E2E8F0', background: '#FAFBFC',
-                fontSize: 12.5, color: '#94A3B8',
+                fontSize: 12.5, color: '#64748B',
                 display: 'flex', alignItems: 'center', gap: 8,
               }}>
                 <span style={{ fontSize: 16 }}>🏭</span>
@@ -2148,7 +2148,7 @@ export function InventoryPage() {
           {/* ── D. SHARED ITEM DETAILS (PPE / SE) ── */}
           {formData.classification !== 'SUPPLY' && (
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 14 }}>Shared Item Details</div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#64748B', marginBottom: 14 }}>Shared Item Details</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <SetupDropdown
@@ -2182,7 +2182,7 @@ export function InventoryPage() {
 
           {/* ── E. DEFAULT ASSIGNMENT ── */}
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#64748B', marginBottom: 6 }}>
               Default Assignment
               {editingItem && editingItem.asset_id && (
                 <span style={{ marginLeft: 8, fontWeight: 400, fontSize: 10, color: '#F59E0B', textTransform: 'none' as const }}>
@@ -2190,7 +2190,7 @@ export function InventoryPage() {
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 11, color: '#94A3B8', marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: '#64748B', marginBottom: 12 }}>
               {formData.classification === 'SUPPLY'
                 ? 'Office and location for supply storage tracking.'
                 : 'Initial office and location used when a new linked asset is created. Does not override an existing asset\'s current location.'}
@@ -2222,7 +2222,7 @@ export function InventoryPage() {
           {/* ── E. BORROWING POLICY (PPE / SE only) ── */}
           {formData.classification !== 'SUPPLY' && (
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>Borrowing Policy</div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#64748B', marginBottom: 10 }}>Borrowing Policy</div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, border: '1px solid #E2E8F0', background: '#FAFBFC', padding: '12px 16px', gap: 16 }}>
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0F172A' }}>
@@ -2254,7 +2254,7 @@ export function InventoryPage() {
 
           {/* ── F. NOTES ── */}
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>Notes</div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#64748B', marginBottom: 10 }}>Notes</div>
             <Input
               label="Inventory Remarks"
               value={formData.remarks || ''}
@@ -2335,11 +2335,11 @@ export function InventoryPage() {
               borderRadius: 12, border: '1px solid #E2E8F0', background: '#F8FAFC', padding: 14,
             }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8' }}>Available</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B' }}>Available</div>
                 <div style={{ fontWeight: 800, color: '#0F172A' }}>{transferItem.quantity} {transferItem.unit}</div>
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8' }}>Current Location</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B' }}>Current Location</div>
                 <div style={{ fontWeight: 800, color: '#0F172A' }}>{transferItem.location_name ?? 'Unassigned'}</div>
               </div>
             </div>
@@ -2474,7 +2474,7 @@ export function InventoryPage() {
               ].map(({ label, value, color }) => (
                 <div key={label}>
                   <div style={{
-                    fontSize: 11, color: '#94A3B8', fontWeight: 600,
+                    fontSize: 11, color: '#64748B', fontWeight: 600,
                     textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4,
                   }}>
                     {label}

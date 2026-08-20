@@ -76,7 +76,7 @@ const colors = {
   amber:   { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A', icon: '#D97706' },
   red:     { bg: '#FEF2F2', text: '#DC2626', border: '#FECACA', icon: '#EF4444' },
   violet:  { bg: '#FAF5FF', text: '#7C3AED', border: '#DDD6FE', icon: '#8B5CF6' },
-  gray:    { bg: '#F8FAFC', text: '#475569', border: '#E2E8F0', icon: '#94A3B8' },
+  gray:    { bg: '#F8FAFC', text: '#475569', border: '#E2E8F0', icon: '#64748B' },
 }
 
 // ─── Summary Card ──────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ function SummaryCard({
         {icon}
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {label}
         </div>
         <div style={{ fontSize: 24, fontWeight: 800, color: '#0F172A', lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>
@@ -804,7 +804,7 @@ export function AssetPage() {
     padding: '10px 16px',
     fontSize: 11,
     fontWeight: 700,
-    color: '#94A3B8',
+    color: '#64748B',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.07em',
     background: '#FAFBFC',
@@ -823,7 +823,7 @@ export function AssetPage() {
 
   const renderDisposalField = (label: string, value: React.ReactNode) => (
     <div style={{ background: '#F8FAFC', border: '1px solid #F1F5F9', borderRadius: 10, padding: '10px 12px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
       <div style={{ fontSize: 13, color: '#0F172A', marginTop: 4, fontWeight: 600, overflowWrap: 'anywhere' }}>{value ?? '—'}</div>
     </div>
   )
@@ -977,7 +977,7 @@ export function AssetPage() {
           }}>
             Assets
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: 14, color: '#64748B', lineHeight: 1.4 }}>
+          <p style={{ margin: '6px 0 0', fontSize: 14, color: '#475569', lineHeight: 1.4 }}>
             Search, scan, borrow, and view PSA-tracked assets.
           </p>
         </div>
@@ -1067,7 +1067,7 @@ export function AssetPage() {
             )
           })}
         </div>
-        <div style={{ fontSize: 13, color: '#64748B' }}>
+        <div style={{ fontSize: 13, color: '#475569' }}>
           {activeSection === 'disposal' ? 'Manage disposal workflow and lifecycle actions.' : activeSection === 'archived' ? 'Review archived assets and restore them when permitted.' : 'Browse operational asset states and workflows.'}
         </div>
       </div>
@@ -1131,7 +1131,7 @@ export function AssetPage() {
             <Card noPadding>
               <div style={{ padding: '18px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending / For Disposal</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pending / For Disposal</div>
                   <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginTop: 4 }}>{summary.disposalPending}</div>
                 </div>
                 <div style={{ width: 42, height: 42, borderRadius: 12, background: '#FFFBEB', border: '1px solid #FDE68A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1142,7 +1142,7 @@ export function AssetPage() {
             <Card noPadding>
               <div style={{ padding: '18px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Disposed</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Disposed</div>
                   <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginTop: 4 }}>{summary.disposalDisposed}</div>
                 </div>
                 <div style={{ width: 42, height: 42, borderRadius: 12, background: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1153,7 +1153,7 @@ export function AssetPage() {
             <Card noPadding>
               <div style={{ padding: '18px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Disposal Records</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Disposal Records</div>
                   <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', marginTop: 4 }}>{summary.disposalTotal}</div>
                 </div>
                 <div style={{ width: 42, height: 42, borderRadius: 12, background: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1272,7 +1272,7 @@ export function AssetPage() {
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #E2E8F0', background: '#fff' }}>
             <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
-              <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
+              <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748B', pointerEvents: 'none' }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -1312,7 +1312,7 @@ export function AssetPage() {
                     {archivedRows.map((r, idx) => (
                       <tr key={r.id} style={{ background: idx % 2 === 0 ? '#fff' : '#FAFBFC', transition: 'background 0.1s' }} onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = '#F1F5F9' }} onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? '#fff' : '#FAFBFC' }}>
                         <td style={td}><code style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace", fontSize: 11.5, color: '#475569', background: '#F1F5F9', padding: '3px 8px', borderRadius: 6, display: 'inline-block' }}>{r.asset_number}</code></td>
-                        <td style={td}>{r.property_number ? <code style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace", fontSize: 11.5, color: '#475569', background: '#F1F5F9', padding: '3px 8px', borderRadius: 6, display: 'inline-block' }}>{r.property_number}</code> : <span style={{ color: '#94A3B8' }}>—</span>}</td>
+                        <td style={td}>{r.property_number ? <code style={{ fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace", fontSize: 11.5, color: '#475569', background: '#F1F5F9', padding: '3px 8px', borderRadius: 6, display: 'inline-block' }}>{r.property_number}</code> : <span style={{ color: '#64748B' }}>—</span>}</td>
                         <td style={td}><div><span style={{ fontWeight: 600, color: '#0F172A', fontSize: 13.5 }}>{r.name}</span>{r.description && <div style={{ fontSize: 11.5, color: '#9CA3AF', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{r.description}</div>}</div></td>
                         <td style={td}><span style={{ color: '#64748B', fontSize: 13 }}>{r.category ?? '—'}</span></td>
                         <td style={td}>{(() => { const eff = getEffectiveAssetStatus(r); return <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}><Badge tone={eff.tone}>{eff.label}</Badge>{eff.subtext && eff.subtextTone && <Badge tone={eff.subtextTone}>{eff.subtext}</Badge>}</div> })()}</td>
@@ -1349,7 +1349,7 @@ export function AssetPage() {
           <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
             <Search size={14} style={{
               position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-              color: '#94A3B8', pointerEvents: 'none',
+              color: '#64748B', pointerEvents: 'none',
             }} />
             <input
               value={search}
@@ -1381,7 +1381,7 @@ export function AssetPage() {
             onChange={(e) => { setStatus(e.target.value); void load(1, search) }}
             style={{
               height: 38, paddingInline: '12px 32px', borderRadius: 10,
-              border: '1.5px solid #E2E8F0', fontSize: 13, color: status ? '#1E293B' : '#94A3B8',
+              border: '1.5px solid #E2E8F0', fontSize: 13, color: status ? '#1E293B' : '#64748B',
               background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 12px center`,
               backgroundSize: '10px 6px',
               appearance: 'none', cursor: 'pointer', fontFamily: 'inherit',
@@ -1495,7 +1495,7 @@ export function AssetPage() {
                           {r.property_number}
                         </code>
                       ) : (
-                        <span style={{ color: '#94A3B8' }}>—</span>
+                        <span style={{ color: '#64748B' }}>—</span>
                       )}
                     </td>
 
@@ -1960,7 +1960,7 @@ export function AssetPage() {
                   <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                       <div>
-                        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#94A3B8]">Disposal workflow</div>
+                        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#64748B]">Disposal workflow</div>
                         <div className="mt-1 text-[15px] font-semibold text-[#0F172A]">
                           {viewAsset.status === 'FOR_DISPOSAL' ? 'Pending finalization' : viewAsset.status === 'DISPOSED' ? 'Finalized disposal' : 'Disposal information'}
                         </div>
@@ -2012,7 +2012,7 @@ export function AssetPage() {
                       borderBottom: '1px solid #E2E8F0',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>
                         Item Information
                       </span>
                       <button
@@ -2040,7 +2040,7 @@ export function AssetPage() {
                                                 { label: 'Description', value: viewAsset.inventory.description ?? '—', full: true },
                       ] as { label: string; value: string; mono?: boolean; full?: boolean }[]).map(({ label, value, mono, full }) => (
                         <div key={label} style={full ? { gridColumn: '1 / -1' } : {}}>
-                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 3 }}>{label}</div>
                           <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B', fontFamily: mono ? 'ui-monospace,monospace' : undefined }}>{value}</div>
                         </div>
                       ))}
@@ -2051,7 +2051,7 @@ export function AssetPage() {
                 {/* ── Asset Identity ── */}
                 <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
                   <div style={{ padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>Asset Identity</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Asset Identity</span>
                   </div>
                   <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     {([
@@ -2059,13 +2059,13 @@ export function AssetPage() {
                       { label: 'Property Number', value: viewAsset.property_number ?? '—', mono: true },
                     ] as { label: string; value: string; mono?: boolean }[]).map(({ label, value, mono }) => (
                       <div key={label}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 3 }}>{label}</div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B', fontFamily: mono ? 'ui-monospace,monospace' : undefined }}>{value}</div>
                       </div>
                     ))}
                     {(viewAsset.identifiers ?? []).length > 0 ? (
                       <div style={{ gridColumn: '1 / -1' }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 6 }}>Identifiers</div>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 6 }}>Identifiers</div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           {(viewAsset.identifiers ?? []).map((id) => (
                             <span key={id.id} style={{
@@ -2085,11 +2085,11 @@ export function AssetPage() {
                 {/* ── Operational Status ── */}
                 <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
                   <div style={{ padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>Operational Status</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Operational Status</span>
                   </div>
                   <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 4 }}>Status</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 4 }}>Status</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
                         {(() => {
                           const effectiveStatus = getEffectiveAssetStatus(viewAsset)
@@ -2110,7 +2110,7 @@ export function AssetPage() {
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 4 }}>Condition</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 4 }}>Condition</div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: viewAsset.condition_status ? '#1E293B' : '#CBD5E1' }}>
                         {viewAsset.condition_status ?? '—'}
                       </div>
@@ -2120,13 +2120,13 @@ export function AssetPage() {
                       { label: 'Current Location', value: viewAsset.location ?? '—' },
                     ].map(({ label, value }) => (
                       <div key={label}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 3 }}>{label}</div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B' }}>{value}</div>
                       </div>
                     ))}
                     {viewAsset.remarks && (
                       <div style={{ gridColumn: '1 / -1' }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>Operational Notes</div>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 3 }}>Operational Notes</div>
                         <div style={{ fontSize: 13, color: '#475569', whiteSpace: 'pre-line' }}>{viewAsset.remarks}</div>
                       </div>
                     )}
@@ -2136,7 +2136,7 @@ export function AssetPage() {
                 {/* ── Accountability / Issuance ── */}
                 <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
                   <div style={{ padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>Accountability</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Accountability</span>
                   </div>
                   <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     {[
@@ -2146,14 +2146,14 @@ export function AssetPage() {
                       { label: 'Date Issued', value: viewAsset.date_issued ?? '—' },
                     ].map(({ label, value, full }) => (
                       <div key={label} style={full ? { gridColumn: '1 / -1' } : {}}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 3 }}>{label}</div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' || value === 'Unlinked record' ? '#CBD5E1' : '#1E293B' }}>{value}</div>
                       </div>
                     ))}
 
                     {/* Custodian display */}
                     <div style={{ gridColumn: '1 / -1' }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>Custodian</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 3 }}>Custodian</div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: viewAsset.custodian ? '#1E293B' : '#CBD5E1' }}>{viewAsset.custodian?.full_name ?? '—'}</div>
                     </div>
 
@@ -2173,10 +2173,10 @@ export function AssetPage() {
                       borderBottom: '1px solid #E2E8F0',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>
                         Procurement Information
                       </span>
-                      <span style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic' }}>owned by Inventory</span>
+                      <span style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic' }}>owned by Inventory</span>
                     </div>
                     <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                       {[
@@ -2190,13 +2190,13 @@ export function AssetPage() {
                         { label: 'Warranty Until', value: viewAsset.inventory.procurement.warranty_until ?? '—' },
                       ].map(({ label, value }) => (
                         <div key={label}>
-                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 3 }}>{label}</div>
                           <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B' }}>{value}</div>
                         </div>
                       ))}
                       {viewAsset.inventory.procurement.supplier_name && (
                         <div style={{ gridColumn: '1 / -1' }}>
-                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>Supplier</div>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 3 }}>Supplier</div>
                           <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{viewAsset.inventory.procurement.supplier_name}</div>
                         </div>
                       )}
@@ -2208,7 +2208,7 @@ export function AssetPage() {
                 {Boolean((viewAsset as unknown as Record<string, unknown>)['insurance_provider']) && (
                   <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
                     <div style={{ padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8' }}>Insurance</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B' }}>Insurance</span>
                     </div>
                     <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       {[
@@ -2217,7 +2217,7 @@ export function AssetPage() {
                         { label: 'Expiration', value: String((viewAsset as unknown as Record<string, unknown>)['insurance_expiration_date'] ?? '—') },
                       ].map(({ label, value }) => (
                         <div key={label}>
-                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94A3B8', marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748B', marginBottom: 3 }}>{label}</div>
                           <div style={{ fontSize: 13, fontWeight: 600, color: value === '—' ? '#CBD5E1' : '#1E293B' }}>{value}</div>
                         </div>
                       ))}
@@ -2227,7 +2227,7 @@ export function AssetPage() {
 
                 {/* ── Audit ── */}
                 <div style={{ borderRadius: 14, border: '1px solid #E2E8F0', background: '#F8FAFC', padding: '14px 16px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94A3B8', marginBottom: 10 }}>Audit</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B', marginBottom: 10 }}>Audit</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12, color: '#64748B' }}>
                     <div><span style={{ fontWeight: 700, color: '#475569' }}>Created By:</span> {viewAsset.created_by_name ?? 'System'}</div>
                     <div><span style={{ fontWeight: 700, color: '#475569' }}>Created At:</span> {viewAsset.created_at ? new Date(viewAsset.created_at).toLocaleString() : '—'}</div>
@@ -2454,7 +2454,7 @@ export function AssetPage() {
               }}>
                 {qrAsset.name}
               </h3>
-              <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>
+              <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
                 Permanent organization-owned asset identifier
               </p>
             </div>
@@ -2483,7 +2483,7 @@ export function AssetPage() {
               <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', letterSpacing: '0.02em' }}>
                 {qrAsset.psa_qr_identifier ?? 'PSA QR not generated'}
               </div>
-              <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>
+              <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
                 Asset No: {qrAsset.asset_number}
               </div>
             </div>
@@ -2521,7 +2521,7 @@ export function AssetPage() {
                   ))}
                 </ul>
               ) : (
-                <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>No additional identifiers registered.</p>
+                <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>No additional identifiers registered.</p>
               )}
             </div>
           </div>
@@ -2614,7 +2614,7 @@ export function AssetPage() {
 
             {/* A: Read-only item identity */}
             <div>
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Item Identity (read-only)</p>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#64748B]">Item Identity (read-only)</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {([
                   { label: 'Item Name',       value: editAsset.name },
@@ -2628,7 +2628,7 @@ export function AssetPage() {
                   { label: 'Location',        value: editAsset.location ?? '—' },
                   { label: 'Description',     value: editAsset.description ?? '—' },
                 ] as { label: string; value: string; mono?: boolean }[]).map(({ label, value, mono }) => (                  <div key={label} className={label === 'Description' ? 'sm:col-span-2' : ''}>
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8] mb-0.5">{label}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-[#64748B] mb-0.5">{label}</p>
                     <p style={{
                       fontSize: 13.5, margin: 0,
                       fontFamily: mono ? "'SF Mono','Fira Code',ui-monospace,monospace" : undefined,
@@ -2669,7 +2669,7 @@ export function AssetPage() {
 
             {/* B: Asset Identity (editable) */}
             <div>
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Asset Identity</p>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#64748B]">Asset Identity</p>
               {editAsset.inventory_item_id ? (
                 /* Inventory-linked asset: Property Number is edited from Inventory Edit */
                 <div style={{
@@ -2706,7 +2706,7 @@ export function AssetPage() {
 
             {/* B.5: Custodian */}
             <div>
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Custodian</p>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#64748B]">Custodian</p>
               <div className="space-y-3 rounded-xl border border-[#E5E7EB] p-4">
                 <IssuanceUserSearchSelect
                   value={editForm.custodian_id ?? null}
@@ -2718,7 +2718,7 @@ export function AssetPage() {
             </div>
 
             <div>
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Operational Status</p>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#64748B]">Operational Status</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className={LABEL_CLS}>Status</label>
@@ -2758,7 +2758,7 @@ export function AssetPage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   marginBottom: 12,
                 }}>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Procurement Information</p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-[#64748B]">Procurement Information</p>
                   <button
                     type="button"
                     onClick={() => { setEditAsset(null); navigate(`/inventory?highlight=${editAsset.inventory_item_id}`) }}
@@ -2785,7 +2785,7 @@ export function AssetPage() {
                     { label: 'Warranty Until', value: editAsset.inventory.procurement.warranty_until ?? '—' },
                   ]).map((item) => (
                     <div key={item.label}>
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-[#94A3B8] mb-0.5">{item.label}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-[#64748B] mb-0.5">{item.label}</p>
                       <p style={{
                         fontSize: 13.5, margin: 0, color: item.value === '—' ? '#CBD5E1' : '#1E293B',
                         fontWeight: 500, padding: '7px 12px', borderRadius: 8,
@@ -2816,7 +2816,7 @@ export function AssetPage() {
             {/* D: Borrowable toggle */}
             {editAsset.inventory_item_id && (
               <div>
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Borrowing</p>
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#64748B]">Borrowing</p>
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   borderRadius: 12, border: '1px solid #E2E8F0',
@@ -2872,7 +2872,7 @@ export function AssetPage() {
 
             {/* F: Permanent Issuance */}
             <div>
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Permanent Issuance</p>
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-[#64748B]">Permanent Issuance</p>
               {hasPermanentHolder(editAsset) ? (
                 <div className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-4 space-y-1.5">
                   <p className="text-sm font-semibold text-[#0F172A]">
@@ -2918,7 +2918,7 @@ export function AssetPage() {
                   >
                     {issuing ? 'Issuing…' : 'Issue Asset'}
                   </Button>
-                  <p className="text-xs text-[#94A3B8]">
+                  <p className="text-xs text-[#64748B]">
                     Select an employee and click <strong>Issue Asset</strong>, or use <strong>Save Changes</strong> to update status and issue in one step.
                   </p>
                 </div>
@@ -2929,7 +2929,7 @@ export function AssetPage() {
 
             {/* G: Audit */}
             <div className="rounded-xl border border-[#E5E7EB] bg-[#F8FAFC] p-3.5">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">Audit</p>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#64748B]">Audit</p>
               <div className="grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
                 <div><span className="font-semibold text-slate-700">Created By:</span> {editAsset.created_by_name || 'System'}</div>
                 <div><span className="font-semibold text-slate-700">Created At:</span> {editAsset.created_at ? new Date(editAsset.created_at).toLocaleString() : '—'}</div>

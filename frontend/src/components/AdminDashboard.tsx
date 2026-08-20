@@ -42,7 +42,7 @@ const T = {
   text:        '#1e293b',
   textMid:     '#475569',
   textMuted:   '#64748b',
-  textFaint:   '#94a3b8',
+  textFaint:   '#64748b',
   accent:      '#0B3D91',
   accentLight: '#1565C0',
   success:     '#2E7D32',

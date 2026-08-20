@@ -13,7 +13,7 @@ export function PageHeader({ title, subtitle, breadcrumb, actions }: PageHeaderP
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
       <div>
         {breadcrumb && (
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: '#94a3b8', marginBottom: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: '#475569', marginBottom: 4 }}>
             {breadcrumb}
           </div>
         )}
@@ -21,7 +21,7 @@ export function PageHeader({ title, subtitle, breadcrumb, actions }: PageHeaderP
           {title}
         </h1>
         {subtitle && (
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 6, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: '#475569', marginTop: 6, lineHeight: 1.5 }}>
             {subtitle}
           </div>
         )}

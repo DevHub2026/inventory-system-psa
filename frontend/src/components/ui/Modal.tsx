@@ -31,6 +31,16 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }
     return () => window.removeEventListener('resize', handler)
   }, [])
 
+  // Close on Escape for accessibility — effect must be registered unconditionally
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose, open])
+
   if (!open) return null
 
   const headerPadding = isNarrow ? '12px 16px 10px' : '18px 24px 16px'
@@ -48,15 +58,6 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }
         'max-w-4xl': 896,
       }[maxWidth] ?? 520)
     : maxWidth
-
-  // Close on Escape for accessibility
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
 
   return (
     <div

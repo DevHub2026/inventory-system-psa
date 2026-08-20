@@ -401,8 +401,9 @@ export function UsersPage() {
               <div className="grid gap-3 sm:grid-cols-3">
                 {/* Department selector */}
                 <div>
-                  <label className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Department</label>
+                  <label htmlFor="user-department" className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Department</label>
                   <select
+                    id="user-department"
                     className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/30"
                     value={formData.department_id ?? ''}
                     onChange={(e) => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : null })}
@@ -416,8 +417,9 @@ export function UsersPage() {
 
                 {/* Office selector */}
                 <div>
-                  <label className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Office</label>
+                  <label htmlFor="user-office" className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Office</label>
                   <select
+                    id="user-office"
                     className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/30"
                     value={formData.office_id ?? ''}
                     onChange={(e) => setFormData({ ...formData, office_id: e.target.value ? Number(e.target.value) : null })}
@@ -432,8 +434,9 @@ export function UsersPage() {
 
                 {/* Status selector */}
                 <div>
-                  <label className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Status</label>
+                  <label htmlFor="user-status" className="mb-1.5 block text-[12px] font-semibold text-[#475569]">Status</label>
                   <select
+                    id="user-status"
                     className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/30"
                     value={formData.status ?? 'active'}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}

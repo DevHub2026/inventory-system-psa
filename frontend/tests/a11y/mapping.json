@@ -1,0 +1,1842 @@
+[
+  {
+    "route": "/",
+    "ruleId": "select-name",
+    "ruleImpact": null,
+    "nodeImpact": null,
+    "target": null,
+    "html": null
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      ".sm\\:block"
+    ],
+    "html": "<div class=\"hidden sm:block\" style=\"font-size: 11px; color: rgb(148, 163, 184); line-height: 1.25; margin-top: 1px;\">PSA Region XII · Asset Management</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div > div > div:nth-child(1) > div > div"
+    ],
+    "html": "<div style=\"font-size: 13px; color: rgb(100, 116, 139); margin-top: 6px; line-height: 1.5;\">Welcome back. Here is your asset activity overview.</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "article:nth-child(1) > div:nth-child(3)"
+    ],
+    "html": "<div style=\"font-size: 12px; line-height: 1.4; color: rgb(148, 163, 184); margin-top: auto; padding-top: 10px;\">Requests you submitted</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "article:nth-child(2) > div:nth-child(3)"
+    ],
+    "html": "<div style=\"font-size: 12px; line-height: 1.4; color: rgb(148, 163, 184); margin-top: auto; padding-top: 10px;\">Items currently borrowed</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "article:nth-child(3) > div:nth-child(3)"
+    ],
+    "html": "<div style=\"font-size: 12px; line-height: 1.4; color: rgb(148, 163, 184); margin-top: auto; padding-top: 10px;\">Active items to monitor</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "article:nth-child(4) > div:nth-child(3)"
+    ],
+    "html": "<div style=\"font-size: 12px; line-height: 1.4; color: rgb(148, 163, 184); margin-top: auto; padding-top: 10px;\">Items needing return</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "section:nth-child(1) > div:nth-child(1) > div > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 12px; color: rgb(148, 163, 184); margin-top: 2px; line-height: 1.4;\">Track requests you sent for asset borrowing</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 15px; font-weight: 800; color: rgb(255, 255, 255); line-height: 1.3; letter-spacing: 0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">PSA Inventory</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10px; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 0.18em; line-height: 1.3; margin-top: 2px;\">Saragani-Gensan</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(1) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Self Service</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href=\"/qr\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">QR Scanner</span>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Main Menu</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "li:nth-child(2) > a[href$=\"assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Assets</span>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"reservations\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrow Requests</span>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"borrowings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrowed Items</span>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(3) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Operations</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"issued-assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">My Issued Assets</span>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(4) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Account</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"settings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Settings</span>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"sessions\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Active Sessions</span>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"privacy\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Privacy Notice</span>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"developers\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Development Team</span>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 13px; font-weight: 600; color: rgb(255, 255, 255); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">A11Y  TestUser</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10.5px; color: rgba(255, 255, 255, 0.45); line-height: 1.3; margin-top: 1px;\">Account settings</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.45);\">Sign out</div>"
+  },
+  {
+    "route": "/",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[aria-label=\"Open Quick Access\"]"
+    ],
+    "html": "<button aria-label=\"Open Quick Access\" title=\"Quick Access\" style=\"width: 52px; height:...\">"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "select-name",
+    "ruleImpact": null,
+    "nodeImpact": null,
+    "target": null,
+    "html": null
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      ".sm\\:block"
+    ],
+    "html": "<div class=\"hidden sm:block\" style=\"font-size: 11px; color: rgb(148, 163, 184); line-height: 1.25; margin-top: 1px;\">PSA Region XII · Asset Management</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div > div > div:nth-child(1) > div > div"
+    ],
+    "html": "<div style=\"font-size: 13px; color: rgb(100, 116, 139); margin-top: 6px; line-height: 1.5;\">Welcome back. Here is your asset activity overview.</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "article:nth-child(1) > div:nth-child(3)"
+    ],
+    "html": "<div style=\"font-size: 12px; line-height: 1.4; color: rgb(148, 163, 184); margin-top: auto; padding-top: 10px;\">Requests you submitted</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "article:nth-child(2) > div:nth-child(3)"
+    ],
+    "html": "<div style=\"font-size: 12px; line-height: 1.4; color: rgb(148, 163, 184); margin-top: auto; padding-top: 10px;\">Items currently borrowed</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "article:nth-child(3) > div:nth-child(3)"
+    ],
+    "html": "<div style=\"font-size: 12px; line-height: 1.4; color: rgb(148, 163, 184); margin-top: auto; padding-top: 10px;\">Active items to monitor</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "article:nth-child(4) > div:nth-child(3)"
+    ],
+    "html": "<div style=\"font-size: 12px; line-height: 1.4; color: rgb(148, 163, 184); margin-top: auto; padding-top: 10px;\">Items needing return</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "section:nth-child(1) > div:nth-child(1) > div > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 12px; color: rgb(148, 163, 184); margin-top: 2px; line-height: 1.4;\">Track requests you sent for asset borrowing</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 15px; font-weight: 800; color: rgb(255, 255, 255); line-height: 1.3; letter-spacing: 0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">PSA Inventory</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10px; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 0.18em; line-height: 1.3; margin-top: 2px;\">Saragani-Gensan</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(1) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Self Service</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href=\"/qr\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">QR Scanner</span>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Main Menu</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "li:nth-child(2) > a[href$=\"assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Assets</span>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"reservations\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrow Requests</span>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"borrowings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrowed Items</span>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(3) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Operations</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"issued-assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">My Issued Assets</span>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(4) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Account</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"settings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Settings</span>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"sessions\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Active Sessions</span>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"privacy\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Privacy Notice</span>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"developers\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Development Team</span>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 13px; font-weight: 600; color: rgb(255, 255, 255); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">A11Y  TestUser</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10.5px; color: rgba(255, 255, 255, 0.45); line-height: 1.3; margin-top: 1px;\">Account settings</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.45);\">Sign out</div>"
+  },
+  {
+    "route": "/dashboard",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[aria-label=\"Open Quick Access\"]"
+    ],
+    "html": "<button aria-label=\"Open Quick Access\" title=\"Quick Access\" style=\"width: 52px; height:...\">"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      ".sm\\:block"
+    ],
+    "html": "<div class=\"hidden sm:block\" style=\"font-size: 11px; color: rgb(148, 163, 184); line-height: 1.25; margin-top: 1px;\">PSA Region XII · Asset Management</div>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(1) > p"
+    ],
+    "html": "<p style=\"margin: 6px 0px 0px; font-size: 14px; color: rgb(100, 116, 139); line-height: 1.4;\">Track and manage all items, supplies, and equipment in one place.</p>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 12px; color: rgb(148, 163, 184); margin-top: 1px;\">PPE — Durable Assets</div>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(1) > div:nth-child(2) > span:nth-child(2)"
+    ],
+    "html": "<span style=\"font-size: 12px; color: rgb(148, 163, 184); font-weight: 500;\">Total Assets</span>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "select-name",
+    "ruleImpact": "critical",
+    "nodeImpact": "critical",
+    "target": [
+      "select"
+    ],
+    "html": "<select style=\"height: 38px; min-width: 140px;\"><option value=\"\">All statuses</option><option value=\"IN_STOCK\">In Stock</option><option value=\"LOW_STOCK\">Low Stock</option><option value=\"OUT_OF_STOCK\">Out of Stock</option></select>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 15px; font-weight: 800; color: rgb(255, 255, 255); line-height: 1.3; letter-spacing: 0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">PSA Inventory</div>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10px; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 0.18em; line-height: 1.3; margin-top: 2px;\">Saragani-Gensan</div>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(1) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Self Service</div>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href=\"/qr\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">QR Scanner</span>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Main Menu</div>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"dashboard\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Dashboard</span>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "li:nth-child(2) > a[href$=\"assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Assets</span>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"reservations\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrow Requests</span>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"borrowings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrowed Items</span>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(3) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Operations</div>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"issued-assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">My Issued Assets</span>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(4) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Account</div>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"settings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Settings</span>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"sessions\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Active Sessions</span>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"privacy\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Privacy Notice</span>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"developers\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Development Team</span>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 13px; font-weight: 600; color: rgb(255, 255, 255); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">A11Y  TestUser</div>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10.5px; color: rgba(255, 255, 255, 0.45); line-height: 1.3; margin-top: 1px;\">Account settings</div>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.45);\">Sign out</div>"
+  },
+  {
+    "route": "/inventory",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[aria-label=\"Open Quick Access\"]"
+    ],
+    "html": "<button aria-label=\"Open Quick Access\" title=\"Quick Access\" style=\"width: 52px; height:...\">"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "select-name",
+    "ruleImpact": null,
+    "nodeImpact": null,
+    "target": null,
+    "html": null
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      ".sm\\:block"
+    ],
+    "html": "<div class=\"hidden sm:block\" style=\"font-size: 11px; color: rgb(148, 163, 184); line-height: 1.25; margin-top: 1px;\">PSA Region XII · Asset Management</div>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div > div > div:nth-child(1) > div > div > div"
+    ],
+    "html": "<div style=\"font-size: 13px; color: rgb(100, 116, 139); margin-top: 6px; line-height: 1.5;\">View borrowed assets and process returns.</div>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 15px; font-weight: 800; color: rgb(255, 255, 255); line-height: 1.3; letter-spacing: 0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">PSA Inventory</div>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10px; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 0.18em; line-height: 1.3; margin-top: 2px;\">Saragani-Gensan</div>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(1) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Self Service</div>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href=\"/qr\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">QR Scanner</span>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Main Menu</div>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"dashboard\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Dashboard</span>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "li:nth-child(2) > a[href$=\"assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Assets</span>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"reservations\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrow Requests</span>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(3) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Operations</div>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"issued-assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">My Issued Assets</span>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(4) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Account</div>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"settings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Settings</span>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"sessions\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Active Sessions</span>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"privacy\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Privacy Notice</span>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"developers\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Development Team</span>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 13px; font-weight: 600; color: rgb(255, 255, 255); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">A11Y  TestUser</div>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10.5px; color: rgba(255, 255, 255, 0.45); line-height: 1.3; margin-top: 1px;\">Account settings</div>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.45);\">Sign out</div>"
+  },
+  {
+    "route": "/borrowings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[aria-label=\"Open Quick Access\"]"
+    ],
+    "html": "<button aria-label=\"Open Quick Access\" title=\"Quick Access\" style=\"width: 52px; height:...\">"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      ".sm\\:block"
+    ],
+    "html": "<div class=\"hidden sm:block\" style=\"font-size: 11px; color: rgb(148, 163, 184); line-height: 1.25; margin-top: 1px;\">PSA Region XII · Asset Management</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "p"
+    ],
+    "html": "<p style=\"margin: 6px 0px 0px; font-size: 14px; color: rgb(100, 116, 139); line-height: 1.4;\">Search, scan, borrow, and view PSA-tracked assets.</p>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "main > div > div > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 13px; color: rgb(100, 116, 139);\">Browse operational asset states and workflows.</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(3) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 11px; font-weight: 600; color: rgb(148, 163, 184); text-transform: uppercase; letter-spacing: 0.05em;\">Total Assets</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(3) > div:nth-child(2) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 11px; font-weight: 600; color: rgb(148, 163, 184); text-transform: uppercase; letter-spacing: 0.05em;\">Available</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(3) > div:nth-child(3) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 11px; font-weight: 600; color: rgb(148, 163, 184); text-transform: uppercase; letter-spacing: 0.05em;\">Borrowed</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(4) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 11px; font-weight: 600; color: rgb(148, 163, 184); text-transform: uppercase; letter-spacing: 0.05em;\">Reserved</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(5) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 11px; font-weight: 600; color: rgb(148, 163, 184); text-transform: uppercase; letter-spacing: 0.05em;\">Maintenance</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(6) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 11px; font-weight: 600; color: rgb(148, 163, 184); text-transform: uppercase; letter-spacing: 0.05em;\">Disposal</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "select-name",
+    "ruleImpact": "critical",
+    "nodeImpact": "critical",
+    "target": [
+      "select"
+    ],
+    "html": "<select style=\"height: 38px; paddin...\">"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 15px; font-weight: 800; color: rgb(255, 255, 255); line-height: 1.3; letter-spacing: 0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">PSA Inventory</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10px; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 0.18em; line-height: 1.3; margin-top: 2px;\">Saragani-Gensan</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(1) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Self Service</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href=\"/qr\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">QR Scanner</span>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Main Menu</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"dashboard\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Dashboard</span>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"reservations\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrow Requests</span>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"borrowings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrowed Items</span>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(3) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Operations</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"issued-assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">My Issued Assets</span>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(4) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Account</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"settings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Settings</span>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"sessions\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Active Sessions</span>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"privacy\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Privacy Notice</span>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"developers\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Development Team</span>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 13px; font-weight: 600; color: rgb(255, 255, 255); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">A11Y  TestUser</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10.5px; color: rgba(255, 255, 255, 0.45); line-height: 1.3; margin-top: 1px;\">Account settings</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.45);\">Sign out</div>"
+  },
+  {
+    "route": "/assets",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[aria-label=\"Open Quick Access\"]"
+    ],
+    "html": "<button aria-label=\"Open Quick Access\" title=\"Quick Access\" style=\"width: 52px; height:...\">"
+  },
+  {
+    "route": "/users",
+    "ruleId": "select-name",
+    "ruleImpact": null,
+    "nodeImpact": null,
+    "target": null,
+    "html": null
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      ".sm\\:block"
+    ],
+    "html": "<div class=\"hidden sm:block\" style=\"font-size: 11px; color: rgb(148, 163, 184); line-height: 1.25; margin-top: 1px;\">PSA Region XII · Asset Management</div>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      ".space-y-6 > div:nth-child(1) > div:nth-child(1) > div"
+    ],
+    "html": "<div style=\"font-size: 13px; color: rgb(100, 116, 139); margin-top: 6px; line-height: 1.5;\">Manage system users and their accounts.</div>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 15px; font-weight: 800; color: rgb(255, 255, 255); line-height: 1.3; letter-spacing: 0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">PSA Inventory</div>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10px; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 0.18em; line-height: 1.3; margin-top: 2px;\">Saragani-Gensan</div>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(1) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Self Service</div>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href=\"/qr\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">QR Scanner</span>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Main Menu</div>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"dashboard\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Dashboard</span>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "li:nth-child(2) > a[href$=\"assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Assets</span>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"reservations\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrow Requests</span>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"borrowings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrowed Items</span>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(3) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Operations</div>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"issued-assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">My Issued Assets</span>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(4) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Account</div>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"settings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Settings</span>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"sessions\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Active Sessions</span>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"privacy\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Privacy Notice</span>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"developers\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Development Team</span>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 13px; font-weight: 600; color: rgb(255, 255, 255); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">A11Y  TestUser</div>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10.5px; color: rgba(255, 255, 255, 0.45); line-height: 1.3; margin-top: 1px;\">Account settings</div>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.45);\">Sign out</div>"
+  },
+  {
+    "route": "/users",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[aria-label=\"Open Quick Access\"]"
+    ],
+    "html": "<button aria-label=\"Open Quick Access\" title=\"Quick Access\" style=\"width: 52px; height:...\">"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "select-name",
+    "ruleImpact": null,
+    "nodeImpact": null,
+    "target": null,
+    "html": null
+  },
+  {
+    "route": "/settings",
+    "ruleId": "button-name",
+    "ruleImpact": "critical",
+    "nodeImpact": "critical",
+    "target": [
+      "div:nth-child(3) > div > div:nth-child(1) > div:nth-child(2) > button[type=\"button\"]"
+    ],
+    "html": "<button type=\"button\" style=\"position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: rgb(148, 163, 184); display: flex; align-items: center; padding: 0px;\">"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "button-name",
+    "ruleImpact": "critical",
+    "nodeImpact": "critical",
+    "target": [
+      "div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > button[type=\"button\"]"
+    ],
+    "html": "<button type=\"button\" style=\"position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: rgb(148, 163, 184); display: flex; align-items: center; padding: 0px;\">"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "button-name",
+    "ruleImpact": "critical",
+    "nodeImpact": "critical",
+    "target": [
+      "div:nth-child(2) > div:nth-child(2) > button[type=\"button\"]"
+    ],
+    "html": "<button type=\"button\" style=\"position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: rgb(148, 163, 184); display: flex; align-items: center; padding: 0px;\">"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      ".sm\\:block"
+    ],
+    "html": "<div class=\"hidden sm:block\" style=\"font-size: 11px; color: rgb(148, 163, 184); line-height: 1.25; margin-top: 1px;\">PSA Region XII · Asset Management</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "p"
+    ],
+    "html": "<p style=\"margin: 6px 0px 0px; font-size: 14px; color: rgb(148, 163, 184); line-height: 1.4;\">Manage your account information and security.</p>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(2) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 12px; color: rgb(148, 163, 184); margin-top: 3px; line-height: 1.4;\">Your name, email address, and account details.</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(3) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgb(148, 163, 184); margin-bottom: 2px;\">Full Name</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(3) > div:nth-child(2) > div:nth-child(2) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgb(148, 163, 184); margin-bottom: 2px;\">Email</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(3) > div:nth-child(2) > div:nth-child(3) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgb(148, 163, 184); margin-bottom: 2px;\">Employee ID</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 15px; font-weight: 800; color: rgb(255, 255, 255); line-height: 1.3; letter-spacing: 0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">PSA Inventory</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "aside > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10px; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 0.18em; line-height: 1.3; margin-top: 2px;\">Saragani-Gensan</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(1) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Self Service</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href=\"/qr\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">QR Scanner</span>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Main Menu</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"dashboard\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Dashboard</span>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "li:nth-child(2) > a[href$=\"assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Assets</span>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"reservations\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrow Requests</span>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"borrowings\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Borrowed Items</span>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(3) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Operations</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"issued-assets\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">My Issued Assets</span>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "nav > div:nth-child(4) > div"
+    ],
+    "html": "<div style=\"font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.25); padding: 0px 10px; margin-bottom: 4px; line-height: 1; display: block;\">Account</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"sessions\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Active Sessions</span>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"privacy\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Privacy Notice</span>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "a[href$=\"developers\"] > span"
+    ],
+    "html": "<span style=\"overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline;\">Development Team</span>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 13px; font-weight: 600; color: rgb(255, 255, 255); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">A11Y  TestUser</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 10.5px; color: rgba(255, 255, 255, 0.45); line-height: 1.3; margin-top: 1px;\">Account settings</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[type=\"button\"]:nth-child(2) > div"
+    ],
+    "html": "<div style=\"font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.45);\">Sign out</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(2) > div:nth-child(3) > div:nth-child(1) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"display: grid; width: 56px; height: 56px; flex-shrink: 0; place-items: center; border-radius: 50%; background: linear-gradient(135deg, rgb(0, 61, 165), rgb(37, 99, 235)); font-size: 22px; font-weight: 800; color: rgb(255, 255, 255); box-shadow: rgba(0, 61, 165, 0.2) 0px 2px 8px;\">"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(2) > div:nth-child(3) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)"
+    ],
+    "html": "<div style=\"font-size: 16px; font-weight: 700; color: rgb(15, 23, 42); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">A11Y  TestUser</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "div:nth-child(2) > div:nth-child(3) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)"
+    ],
+    "html": "<div style=\"font-size: 13px; color: rgb(148, 163, 184); margin-top: 2px;\">a11y@example.test</div>"
+  },
+  {
+    "route": "/settings",
+    "ruleId": "color-contrast",
+    "ruleImpact": "serious",
+    "nodeImpact": "serious",
+    "target": [
+      "button[aria-label=\"Open Quick Access\"]"
+    ],
+    "html": "<button aria-label=\"Open Quick Access\" title=\"Quick Access\" style=\"width: 52px; height:...\">"
+  }
+]

@@ -175,7 +175,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
             </div>
             <div style={{
               fontSize: 10, fontWeight: 600,
-              color: 'rgba(255,255,255,0.40)',
+              color: 'rgba(255,255,255,0.88)',
               textTransform: 'uppercase', letterSpacing: '0.18em',
               lineHeight: 1.3, marginTop: 2,
             }}>
@@ -191,7 +191,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 30, height: 30, flexShrink: 0,
                 borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.08)',
-                color: 'rgba(255,255,255,0.55)', cursor: 'pointer',
+                color: 'rgba(255,255,255,0.78)', cursor: 'pointer',
               }}
             >
               <X size={16} />
@@ -212,7 +212,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                 <div style={{
                   fontSize: 9.5, fontWeight: 700,
                   textTransform: 'uppercase', letterSpacing: '0.16em',
-                  color: 'rgba(255,255,255,0.25)',
+                  color: 'rgba(255,255,255,0.60)',
                   padding: '0 10px', marginBottom: 4, lineHeight: 1,
                   display: open || !isDesktop ? 'block' : 'none',
                 }}>
@@ -240,7 +240,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                             fontWeight: isActive ? 600 : 450,
                             lineHeight: 1,
                             textDecoration: 'none',
-                            color: isActive ? '#0B3D91' : 'rgba(255,255,255,0.72)',
+                            color: isActive ? '#0B3D91' : 'rgba(255,255,255,0.88)',
                             background: isActive ? '#ffffff' : 'transparent',
                             boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.15)' : 'none',
                             transition: 'all 0.15s ease',
@@ -252,7 +252,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                               <Icon
                                 style={{
                                   width: 17, height: 17, flexShrink: 0,
-                                  color: isActive ? '#0B3D91' : 'rgba(255,255,255,0.48)',
+                                  color: isActive ? '#0B3D91' : 'rgba(255,255,255,0.72)',
                                   transition: 'color 0.15s',
                                 }}
                                 strokeWidth={isActive ? 2.25 : 1.75}
@@ -311,7 +311,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
                 {name}
               </div>
               <div style={{
-                fontSize: 10.5, color: 'rgba(255,255,255,0.45)',
+                fontSize: 10.5, color: 'rgba(255,255,255,0.68)',
                 lineHeight: 1.3, marginTop: 1,
               }}>
                 Account settings
@@ -337,8 +337,8 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
               b.style.background = 'transparent'
             }}
           >
-            <LogOut size={14} style={{ flexShrink: 0, color: 'rgba(255,255,255,0.45)' }} aria-hidden="true" />
-            <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.45)' }}>Sign out</div>
+            <LogOut size={14} style={{ flexShrink: 0, color: 'rgba(255,255,255,0.68)' }} aria-hidden="true" />
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.68)' }}>Sign out</div>
           </button>
         </div>
 

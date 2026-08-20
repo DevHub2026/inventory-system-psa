@@ -89,7 +89,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
             </div>
             <div
               className="hidden sm:block"
-              style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.25, marginTop: 1 }}
+              style={{ fontSize: 11, color: '#64748b', lineHeight: 1.25, marginTop: 1 }}
             >
               PSA Region XII · Asset Management
             </div>
@@ -117,7 +117,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
             boxSizing: 'border-box',
           }}
         >
-          <Search size={14} style={{ flexShrink: 0, color: '#94a3b8' }} aria-hidden="true" />
+          <Search size={14} style={{ flexShrink: 0, color: '#64748b' }} aria-hidden="true" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}

@@ -47,7 +47,7 @@ function Panel({
           <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', lineHeight: 1.3 }}>
             {title}
           </div>
-          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, lineHeight: 1.4 }}>
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>
             {subtitle}
           </div>
         </div>
@@ -122,25 +122,25 @@ export function EmployeeDashboard() {
 
   /* ── Column definitions — all text via inline style ── */
   const reservationColumns: Column<Reservation>[] = [
-    { key: 'id',      header: '#',        render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8' }}>#{r.id}</span> },
+    { key: 'id',      header: '#',        render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#64748b' }}>#{r.id}</span> },
     { key: 'purpose', header: 'Purpose',  render: (r) => <span style={{ fontSize: 13, color: '#334155', display: 'block', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.purpose}</span> },
     { key: 'status',  header: 'Status',   render: (r) => <Badge tone={reservationStatusTone(r.status)}>{reservationStatusLabel(r.status)}</Badge> },
-    { key: 'dates',   header: 'Schedule', render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>{r.reserved_from} → {r.reserved_until}</span> },
+    { key: 'dates',   header: 'Schedule', render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{r.reserved_from} → {r.reserved_until}</span> },
   ]
 
   const borrowingColumns: Column<Borrowing>[] = [
-    { key: 'id',          header: '#',        render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8' }}>#{r.id}</span> },
+    { key: 'id',          header: '#',        render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#64748b' }}>#{r.id}</span> },
     { key: 'asset_name',  header: 'Asset',    render: (r) => <span style={{ fontSize: 13, fontWeight: 500, color: '#1e293b' }}>{r.asset_name}</span> },
     { key: 'status',      header: 'Status',   render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> },
-    { key: 'borrowed_at', header: 'Borrowed', render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>{r.borrowed_at}</span> },
-    { key: 'due_at',      header: 'Due',      render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>{r.due_at}</span> },
+    { key: 'borrowed_at', header: 'Borrowed', render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{r.borrowed_at}</span> },
+    { key: 'due_at',      header: 'Due',      render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{r.due_at}</span> },
   ]
 
   const activeColumns: Column<Borrowing>[] = [
-    { key: 'id',         header: '#',      render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8' }}>#{r.id}</span> },
+    { key: 'id',         header: '#',      render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#64748b' }}>#{r.id}</span> },
     { key: 'asset_name', header: 'Asset',  render: (r) => <span style={{ fontSize: 13, fontWeight: 500, color: '#1e293b' }}>{r.asset_name}</span> },
     { key: 'status',     header: 'Status', render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> },
-    { key: 'due_at',     header: 'Due',    render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>{r.due_at}</span> },
+    { key: 'due_at',     header: 'Due',    render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{r.due_at}</span> },
     {
       key: 'actions', header: '',
       render: (r) => (
@@ -223,7 +223,7 @@ export function EmployeeDashboard() {
 
       {/* Quick actions */}
       <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: '#94a3b8', marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: '#64748b', marginBottom: 14 }}>
           Quick Actions
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 10 }} className="sm:!grid-cols-2">

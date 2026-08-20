@@ -82,7 +82,7 @@ export function DashboardStatCard({
           fontWeight: 600,
           textTransform: 'uppercase',
           letterSpacing: '0.07em',
-          color: '#64748b',
+          color: '#475569',
           lineHeight: 1.35,
         }}>
           {label}
@@ -113,7 +113,7 @@ export function DashboardStatCard({
       <div style={{
         fontSize: '12px',
         lineHeight: 1.4,
-        color: '#94a3b8',
+        color: '#475569',
         marginTop: 'auto',
         paddingTop: '10px',
       }}>

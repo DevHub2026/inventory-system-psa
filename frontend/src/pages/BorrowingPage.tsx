@@ -21,7 +21,7 @@ function DateTimeCell({ iso }: { iso?: string | null }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <span style={{ fontWeight: 500, color: '#0F172A', fontSize: 13 }}>{formatDate(iso)}</span>
-      <span style={{ fontSize: 11.5, color: '#94A3B8' }}>{formatTime(iso)}</span>
+      <span style={{ fontSize: 11.5, color: '#64748B' }}>{formatTime(iso)}</span>
     </div>
   )
 }
@@ -47,7 +47,7 @@ function BorrowerCell({ name, id }: { name?: string; id?: string | null }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <span style={{ fontWeight: 500, color: '#0F172A', fontSize: 13 }}>{name ?? '—'}</span>
-      {id && <span style={{ fontSize: 11, color: '#94A3B8' }}>{id}</span>}
+      {id && <span style={{ fontSize: 11, color: '#64748B' }}>{id}</span>}
     </div>
   )
 }
@@ -90,7 +90,7 @@ const th: React.CSSProperties = {
   fontWeight: 700,
   textTransform: 'uppercase',
   letterSpacing: '0.07em',
-  color: '#94A3B8',
+  color: '#64748B',
   whiteSpace: 'nowrap',
   background: '#F8FAFC',
   borderBottom: '1px solid #E2E8F0',
@@ -192,7 +192,7 @@ export function BorrowingPage() {
       {!loading && rows.length > 0 && (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {[
-            { label: 'Total',    count: rows.length, bg: '#F1F5F9', color: '#475569', dot: '#94A3B8' },
+            { label: 'Total',    count: rows.length, bg: '#F1F5F9', color: '#475569', dot: '#64748B' },
             { label: 'Active',   count: active,   bg: '#EFF6FF', color: '#1D4ED8', dot: '#3B82F6' },
             { label: 'Overdue',  count: overdue,  bg: '#FEF2F2', color: '#DC2626', dot: '#EF4444' },
             { label: 'Returned', count: returned, bg: '#F0FDF4', color: '#15803D', dot: '#22C55E' },
@@ -308,7 +308,7 @@ export function BorrowingPage() {
                             {r.authorized_by_name ?? '—'}
                           </span>
                           {r.authorized_at && (
-                            <span style={{ fontSize: 11, color: '#94A3B8' }}>
+                            <span style={{ fontSize: 11, color: '#64748B' }}>
                               {formatDate(r.authorized_at)}
                             </span>
                           )}
