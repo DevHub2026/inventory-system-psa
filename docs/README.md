@@ -53,6 +53,20 @@ The project currently includes:
 - [Accessibility preferences](./accessibility/preferences.md)
 - [Accessibility testing](./accessibility/testing.md)
 
+### Feature documentation (implementation-backed)
+
+These feature documents are written from the current repository implementation (frontend pages, services, backend controllers, routes, models and policies). Update these documents whenever the implementation changes.
+
+- [Feature docs README](./features/README.md)
+- [Dashboard](./features/dashboard.md) — Available dashboard cards, stats and data sources
+- [Inventory management](./features/inventory.md) — Inventory listing, count sessions, stock operations, import/export
+- [Assets](./features/assets.md) — Asset lifecycle, scan, reissuance and disposal
+- [Borrowing and returns](./features/borrowing-and-returns.md) — Borrowing creation, scan, returns, extension-requests
+- [Reservations](./features/reservations.md) — Reservation lifecycle and approval workflows
+- [QR scanning](./features/qr-scanning.md) — QR resolution endpoints and client scanning behavior
+- [Extension requests](./features/extension-requests.md) — Borrowing extension request lifecycle and management
+- [Reports](./features/reports.md) — Implemented reports and export behavior
+
 ## Documentation inventory and status
 
 ### Created and maintained in this pass
@@ -61,10 +75,10 @@ The project currently includes:
 - Architecture overview docs
 - Security and authorization docs
 - Accessibility docs
+- Feature documentation (implementation-backed) — see the Feature documentation section above
 
 ### Deferred until the feature is verified or expanded
 
-- Features-specific reference pages for inventory, assets, borrowings, reservations, QR scanning, reports, and system setup
 - Detailed API module documentation
 - Deployment operations guide
 - Troubleshooting reference
