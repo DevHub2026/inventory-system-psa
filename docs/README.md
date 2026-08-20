@@ -37,6 +37,7 @@ The project currently includes:
 
 ### Architecture
 
+- [Architecture docs index](./architecture/README.md)
 - [System overview](./architecture/system-overview.md)
 - [Frontend architecture](./architecture/frontend-architecture.md)
 - [Backend architecture](./architecture/backend-architecture.md)
