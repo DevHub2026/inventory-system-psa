@@ -422,46 +422,64 @@ class UserManagementTest extends TestCase
 
     public function test_user_search_is_case_insensitive_and_partial_matches(): void
     {
-        $admin = User::factory()->create();
-        // Create target user with mixed/upper case data
+        $admin = User::factory()->create([
+            'first_name' => 'SearchAdminUser',
+            'last_name' => 'Controller',
+            'email' => 'search.admin.controller@example.com',
+            'employee_number' => 'EMP-ADMIN-SEARCH-01',
+        ]);
+
+        // Use a unique, deterministic value so the test is not accidentally
+        // polluted by generic factory names or previous test data.
         User::factory()->create([
-            'first_name' => 'JoHn',
-            'last_name' => 'Doe',
-            'email' => 'JoHn.DoE@Example.COM',
-            'employee_number' => 'EMP-CASE-01',
+            'first_name' => 'ZyPhErCaSeUsEr',
+            'last_name' => 'Target',
+            'email' => 'zypher.case.user.target@example.com',
+            'employee_number' => 'EMP-SEARCH-CASE-01',
         ]);
 
         $token = $admin->createToken('auth')->plainTextToken;
 
         // lowercase search
-        $response = $this->withToken($token)->getJson('/api/v1/users?search=john');
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=zyphercaseuser');
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.total'));
 
         // uppercase search
-        $response = $this->withToken($token)->getJson('/api/v1/users?search=JOHN');
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=ZYPHERCASEUSER');
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.total'));
 
         // mixed-case search
-        $response = $this->withToken($token)->getJson('/api/v1/users?search=jOhN');
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=zYpHeRcAsEuSeR');
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.total'));
 
         // partial search
-        $response = $this->withToken($token)->getJson('/api/v1/users?search=jo');
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=zypher');
         $response->assertStatus(200);
-        $this->assertGreaterThanOrEqual(1, $response->json('meta.total'));
-
-        // search by employee number lowercase/uppercase variants
-        $response = $this->withToken($token)->getJson('/api/v1/users?search=emp-case-01');
         $this->assertSame(1, $response->json('meta.total'));
 
-        $response = $this->withToken($token)->getJson('/api/v1/users?search=EMP-CASE-01');
+        // employee number search lower/upper variants should match too
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=emp-search-case-01');
+        $this->assertSame(1, $response->json('meta.total'));
+
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=EMP-SEARCH-CASE-01');
+        $this->assertSame(1, $response->json('meta.total'));
+
+        // Ensure a non-matching user is excluded.
+        User::factory()->create([
+            'first_name' => 'NoMatchName',
+            'last_name' => 'Only',
+            'email' => 'nomatch.only@example.com',
+            'employee_number' => 'EMP-NO-MATCH-99',
+        ]);
+
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=zyphercaseuser');
         $this->assertSame(1, $response->json('meta.total'));
 
         // pagination preserved
-        $response = $this->withToken($token)->getJson('/api/v1/users?search=john&per_page=1&page=1');
+        $response = $this->withToken($token)->getJson('/api/v1/users?search=zyphercaseuser&per_page=1&page=1');
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.per_page'));
     }
