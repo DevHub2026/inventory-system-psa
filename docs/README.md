@@ -64,6 +64,10 @@ The project currently includes:
 
 - [Development & Contribution README](./development/README.md)
 
+### Operations & Administration
+
+- [Operations & Administration README](./operations/README.md)
+
 ### Feature documentation (implementation-backed)
 
 These feature documents are written from the current repository implementation (frontend pages, services, backend controllers, routes, models and policies). Update these documents whenever the implementation changes.
