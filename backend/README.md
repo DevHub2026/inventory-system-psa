@@ -1,58 +1,76 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+﻿# Backend API (Laravel)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This directory contains the Laravel backend for the PSA Inventory Management System. It exposes the authenticated API for user management, inventory and asset workflows, borrowings and returns, reservations, QR processing, reports, FAQs, system setup, audit data, and accessibility preferences.
 
-## About Laravel
+## Verified implementation
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+The current backend is a Laravel 13 application with Sanctum-based authentication and module-oriented code under `app/Modules/`.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Key implementation-backed sources of truth:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- `routes/api.php` — authenticated API routes and RBAC boundaries
+- `app/Enums/UserRole.php` — canonical role values
+- `app/Models/User.php` — user role resolution
+- `app/Modules/*` — domain modules such as `Auth`, `Inventory`, `Asset`, `Borrowing`, `Report`, and `Import`
+- `database/migrations/` — schema evolution and database state
+- `tests/` — backend regression coverage
 
-## Learning Laravel
+## Runtime configuration
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+The active project configuration uses PostgreSQL in `backend/.env` for the runtime database. SQLite may still be used for some lightweight local or test scenarios when explicitly configured, but it is not the default runtime configuration for this project.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Local backend workflow
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --force
+php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Common validation commands
 
-## Contributing
+```bash
+cd backend
+php artisan test
+php artisan test --filter=FaqApiTest
+php artisan test --filter=AccessibilityPreferencesTest
+php artisan test --filter=SupplyOfficerAuthorizationTest
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Backend command notes
 
-## Code of Conduct
+The repository includes a project-level composer script in `backend/composer.json`:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+cd backend
+composer run setup
+```
 
-## Security Vulnerabilities
+This script installs PHP dependencies, creates `.env` if missing, generates the app key, runs migrations, installs frontend dependencies, and builds the frontend bundle.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Security and RBAC
 
-## License
+Authorization and role enforcement are implemented in the backend. Frontend role helpers are UI convenience functions only and are not a replacement for backend authorization checks.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT). 
+Relevant files:
+
+- `app/Enums/UserRole.php`
+- `app/Models/User.php`
+- `app/Modules/Auth/` and route middleware in `routes/api.php`
+- domain policies and services under `app/Modules/`
+
+## Project documentation
+
+- [../README.md](../README.md)
+- [../docs/README.md](../docs/README.md)
+- [../docs/getting-started/installation.md](../docs/getting-started/installation.md)
+- [../docs/security/README.md](../docs/security/README.md)
+- [../docs/architecture/README.md](../docs/architecture/README.md)
+- [../docs/features/README.md](../docs/features/README.md)
+
+## Documentation note
+
+This README reflects the current repository implementation instead of the default Laravel starter kit. Use the codebase and the `docs/` directory as the authoritative source for project behavior and workflows.

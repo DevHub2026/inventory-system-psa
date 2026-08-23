@@ -1,139 +1,102 @@
-# Inventory System PSA
+# PSA Region XII Inventory Management System
 
-Inventory System PSA is a multi-platform inventory management and professional services automation (PSA) project. It provides tools to manage products, stock levels, orders, locations, and service engagements in a scalable way across web and mobile clients.
+This repository contains the PSA Region XII Inventory Management System, with a Laravel backend API, a Vite + React frontend, and supporting mobile and operational assets under the `mobile/` folder.
 
-> NOTE: This README is a general project documentation scaffold generated from the repository metadata (language composition and project name). For exact setup steps, configuration keys, and environment-specific instructions, check the repository's configuration files, environment templates (e.g., .env.example), and scripts in the codebase and update this README accordingly.
+The documentation in `docs/` is the maintained source of truth for implementation-backed project guidance. The repository root README is a concise entry point to the verified project structure and local setup.
 
-## Key features
+## Verified project layout
 
-- Product and SKU management
-- Inventory levels and movements (inbound / outbound / transfers)
-- Warehouse/location management
-- Orders and shipments
-- Basic PSA features: projects, tasks, time tracking, and service tickets
-- Role-based access and multi-user support
-- REST APIs for integration with other systems
-- Mobile clients for field technicians (Flutter/Dart)
+- Backend API: `backend/`
+- Web frontend: `frontend/`
+- Documentation: `docs/`
+- Mobile project code: `mobile/`
+- CI workflows: `.github/workflows/`
 
-## Architecture overview
+## Verified stack
 
-This project is multi-tier and multi-platform:
+- Backend: Laravel + PHP
+- Frontend: React + TypeScript + Vite
+- Database: PostgreSQL is the active project configuration in `backend/.env`; SQLite remains usable for lightweight local testing when configured explicitly.
+- Authentication: Laravel Sanctum-based API authentication plus frontend session cache bootstrap
+- Authorization: role-based checks backed by `backend/app/Enums/UserRole.php`
+- Accessibility: frontend a11y runner and CI workflow in `frontend/tests/a11y/run-axe-puppeteer.js` and `.github/workflows/accessibility.yml`
 
-- Backend: PHP (likely using a modern framework such as Laravel) — serves REST APIs and server-side business logic.
-- Web frontend / Admin UI: TypeScript (SPA application) — administrative dashboards and reporting.
-- Mobile apps: Dart (Flutter) — cross-platform mobile client for Android and iOS.
-- Native modules (optional): Kotlin (Android) and Swift (iOS) for any platform-specific code.
-- Blade templates: server-rendered views for some parts of the web app (if used alongside PHP framework).
+## Quick start
 
-Language composition (approximate):
+### Backend
 
-- PHP — 35.9%
-- TypeScript — 32.2%
-- Dart — 22.4%
-- Kotlin — 2.6%
-- Swift — 1.9%
-- Blade — 1.8%
-- Other — 3.2%
+```bash
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --force
+php artisan serve --host=127.0.0.1 --port=8000
+```
 
-## Tech stack
+### Frontend
 
-- PHP (server-side API)
-- TypeScript (web frontend)
-- Dart / Flutter (mobile apps)
-- Kotlin & Swift (native extensions)
-- Blade (server-side views)
-- Database: (likely MySQL / MariaDB / PostgreSQL) — check config
-- Caching: (Redis / Memcached) — optional
-- Background jobs: queue system (e.g., Laravel queues, Redis)
+```bash
+cd frontend
+npm install
+npm run dev -- --host 127.0.0.1 --port 4173
+```
 
-## Requirements
+### Validation commands used in this repository
 
-Before you begin, ensure you have the following installed on your development machine:
+```bash
+cd backend
+php artisan test --filter=FaqApiTest
+php artisan test --filter=AccessibilityPreferencesTest
+php artisan test --filter=SupplyOfficerAuthorizationTest
 
-- PHP 8.x (if backend is PHP)
-- Composer (PHP dependency manager)
-- Node.js (LTS) and npm or yarn
-- Dart SDK and Flutter (for mobile apps)
-- Android SDK / Xcode (for native builds, optional)
-- Database server (MySQL, MariaDB, or PostgreSQL)
+cd ../frontend
+npm run lint
+npm run build
+npm run a11y:test
+```
 
-## Getting started — general steps
+## Documentation
 
-1. Clone the repository
+Start here:
 
-   git clone https://github.com/DevHub2026/inventory-system-psa.git
-   cd inventory-system-psa
+- [docs/README.md](./docs/README.md)
+- [docs/getting-started/installation.md](./docs/getting-started/installation.md)
+- [docs/getting-started/development-setup.md](./docs/getting-started/development-setup.md)
+- [docs/architecture/README.md](./docs/architecture/README.md)
+- [docs/security/README.md](./docs/security/README.md)
+- [docs/features/README.md](./docs/features/README.md)
+- [docs/accessibility/overview.md](./docs/accessibility/overview.md)
 
-2. Backend (PHP) setup
+## Role and authorization notes
 
-   - Copy environment template: `cp .env.example .env` (or follow repo-specific file)
-   - Install PHP dependencies: `composer install`
-   - Generate app key (if Laravel): `php artisan key:generate`
-   - Configure database credentials in `.env`
-   - Run database migrations: `php artisan migrate`
-   - Seed initial data (if seeds provided): `php artisan db:seed`
-   - Start local server: `php artisan serve`
+Canonical role values are defined in `backend/app/Enums/UserRole.php` and include:
 
-3. Web frontend (TypeScript)
+- Super Administrator
+- System Administrator
+- Property Custodian
+- Inventory Officer
+- Department Head
+- Employee
+- Auditor
+- Supply Officer
 
-   - Navigate to frontend directory (e.g., `frontend/` or `web/`)
-   - Install dependencies: `npm install` or `yarn`
-   - Configure environment variables (e.g., API base URL)
-   - Start dev server: `npm run dev` or `yarn dev`
-   - Build for production: `npm run build` or `yarn build`
+The frontend role helpers in `frontend/src/utils/roleHelpers.ts` are presentation and UI gating helpers; backend authorization remains the authoritative enforcement layer.
 
-4. Mobile apps (Flutter / Dart)
+## Borrowing and extension notes
 
-   - Navigate to mobile app directory (e.g., `mobile/` or `app/`)
-   - Install Flutter dependencies: `flutter pub get`
-   - Run on emulator: `flutter run`
-   - Build release: `flutter build apk` / `flutter build ios`
+Documentation for extension requests should be treated as implementation-backed and should follow the existing backend contract, including the `has_pending_extension` field returned by borrowing list responses and the extension routes under `backend/app/Modules/Borrowing/`.
 
-## Configuration
+## Accessibility notes
 
-- Look for `.env.example`, `config/`, or platform-specific config files to set database, cache, OAuth, and third-party keys.
-- API endpoints and ports may be defined in frontend and mobile environment files.
+Accessibility verification is implemented in `frontend/tests/a11y/run-axe-puppeteer.js`. The repository includes a CI workflow at `.github/workflows/accessibility.yml` that builds the frontend, starts the backend, and runs route-based accessibility checks.
 
-## Database & Migrations
+## Scope and repository conventions
 
-- Check the `database/migrations` or `migrations/` directory for migration files.
-- Use the framework's migration tools (e.g., `php artisan migrate`) to create required tables.
+- This repository is a working system implementation, not a generated project scaffold.
+- Documentation should be validated against the current codebase before being treated as authoritative.
+- Legacy material under `docs/old_docs/` is retained only for historical context; it is not the maintained documentation source.
 
-## Running tests
+## License and governance
 
-- Backend: `php artisan test` or `vendor/bin/phpunit`
-- Frontend: `npm test` or `yarn test`
-- Mobile: `flutter test`
-
-## CI / CD
-
-- Look for workflow files in `.github/workflows/` for CI configuration.
-- Typical steps: lint, test, build, and deploy stages for each platform.
-
-## Contributing
-
-- Fork the repository and create a feature branch: `git checkout -b feat/my-feature`
-- Create a clear PR with description and related issue references.
-- Follow coding standards and run linters/tests before submitting.
-
-## Troubleshooting
-
-- If migrations fail, verify DB credentials and that the database exists.
-- For dependency errors, delete vendor/node_modules and reinstall.
-- Check platform-specific docs for Flutter, Node, and PHP when encountering build issues.
-
-## License
-
-Add the project license here (e.g., MIT, Apache-2.0). If the repository already has a LICENSE file, use that.
-
-## Contact / Maintainers
-
-If there are maintainer details in the repo (MAINTAINERS.md or package metadata), include them here. Otherwise, open an issue for questions.
-
----
-
-If you'd like, I can:
-
-- Tailor the README with exact install commands and paths if you point me to the backend, frontend, and mobile directories in the repo (or provide the files like `composer.json`, `package.json`, `pubspec.yaml`).
-- Add badges (CI, license, coverage) once you tell me which CI is used and the license file location.
-- Create a more detailed development guide (e.g., API docs, environment variables reference, example data) after inspecting the repo files.
+This repository does not currently declare a project license in the root directory. Review the repository state before publishing or distributing binaries. Use the project documentation and existing codebase as the source of truth for operational guidance.
