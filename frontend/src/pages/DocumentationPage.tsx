@@ -82,7 +82,7 @@ export function DocumentationPage() {
       </div>
 
       <Section title="Quick navigation" subtitle="Open the operational modules used by the current system" icon={<BookOpen size={18} />}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 12 }}>
           {navLinks.map((link) => (
             <button
               key={link.route}
@@ -130,7 +130,7 @@ export function DocumentationPage() {
         </div>
       </Section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 20 }}>
         <Section title="Inventory and assets" subtitle="Operational guidance" icon={<Package size={18} />}>
           <ul style={{ margin: 0, paddingLeft: 18, color: T.textMid, display: 'grid', gap: 10, lineHeight: 1.7 }}>
             <li>Use Inventory to manage stock records, filters, and exports.</li>

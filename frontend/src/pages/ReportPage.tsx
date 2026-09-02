@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { EmptyState, Spinner, Table, Alert, Card, type Column } from '@/components/ui'
 import {
   reportService,
@@ -15,8 +16,10 @@ import {
 import { borrowingStatusLabel, inventoryStatusLabel } from '@/utils/displayLabels'
 import ScrollableTableWrapper from '@/components/ui/ScrollableTableWrapper'
 import { Printer, FileSpreadsheet, FileCode } from 'lucide-react'
+import { DamageReportsPage } from '@/pages/DamageReportsPage'
+import { LostAssetReportsPage } from '@/pages/LostAssetReportsPage'
 
-type ReportType = 'assets' | 'borrowings' | 'overdue' | 'low_stock' | 'inventory' | 'user_activity' | 'reissuances' | 'reservations' | 'asset_history'
+type ReportType = 'assets' | 'borrowings' | 'overdue' | 'low_stock' | 'inventory' | 'user_activity' | 'reissuances' | 'reservations' | 'asset_history' | 'damage' | 'lost_assets'
 type ReportRow =
   | AssetReportItem
   | BorrowingReportItem
@@ -26,23 +29,52 @@ type ReportRow =
   | UserActivityReportItem
   | ReissuanceReportItem
   | ReservationReportItem
-
-const TABS: { key: ReportType; label: string; description: string }[] = [
-  { key: 'assets',        label: 'Assets',           description: 'All registered asset records' },
-  { key: 'borrowings',    label: 'Borrowed Items',   description: 'Currently borrowed assets' },
-  { key: 'overdue',       label: 'Overdue Items',    description: 'Assets past their due date' },
-  { key: 'reservations',   label: 'Reservations',     description: 'Borrow request reservation history' },
-  { key: 'inventory',     label: 'Stock Inventory',  description: 'Current stock levels' },
-  { key: 'low_stock',     label: 'Low Stock',        description: 'Items below reorder threshold' },
-  { key: 'user_activity', label: 'User Activity',    description: 'User action history' },
-  { key: 'reissuances',   label: 'Re-Issuances',     description: 'Asset transfer records' },
-  { key: 'asset_history', label: 'Asset History',    description: 'Chronological lifecycle and accountability events' },
+ 
+const TABS: { key: ReportType; label: string; description: string; path?: string }[] = [
+  { key: 'assets',        label: 'Assets',           description: 'All registered asset records', path: '/reports/assets' },
+  { key: 'borrowings',    label: 'Borrowed Items',   description: 'Currently borrowed assets', path: '/reports/borrowings' },
+  { key: 'overdue',       label: 'Overdue Items',    description: 'Assets past their due date', path: '/reports/overdue' },
+  { key: 'reservations',   label: 'Reservations',     description: 'Borrow request reservation history', path: '/reports/reservations' },
+  { key: 'inventory',     label: 'Stock Inventory',  description: 'Current stock levels', path: '/reports/inventory' },
+  { key: 'low_stock',     label: 'Low Stock',        description: 'Items below reorder threshold', path: '/reports/low-stock' },
+  { key: 'user_activity', label: 'User Activity',    description: 'User action history', path: '/reports/user-activity' },
+  { key: 'reissuances',   label: 'Re-Issuances',     description: 'Asset transfer records', path: '/reports/reissuances' },
+  { key: 'asset_history', label: 'Asset History',    description: 'Chronological lifecycle and accountability events', path: '/reports/asset-history' },
+  { key: 'damage',        label: 'Damage Reports',    description: 'Asset damage and maintenance issues', path: '/reports/damage' },
+  { key: 'lost_assets',   label: 'Lost Asset Reports', description: 'Employee-submitted missing asset incidents', path: '/reports/lost-assets' },
 ]
-
+ 
 export function ReportPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const pathname = location.pathname.replace(/\/+$/, '')
+
   const [reportType, setReportType] = useState<ReportType>('assets')
   const [data, setData] = useState<ReportRow[]>([])
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const match = pathname.replace(/^\/reports\/?/, '')
+    const normalized = match === '' ? 'assets' : match
+    const routeToReportType: Record<string, ReportType> = {
+      assets: 'assets',
+      borrowings: 'borrowings',
+      overdue: 'overdue',
+      reservations: 'reservations',
+      inventory: 'inventory',
+      'low-stock': 'low_stock',
+      'user-activity': 'user_activity',
+      reissuances: 'reissuances',
+      'asset-history': 'asset_history',
+      damage: 'damage',
+      'lost-assets': 'lost_assets',
+    }
+
+    if (normalized in routeToReportType) {
+      setReportType(routeToReportType[normalized])
+    }
+  }, [pathname])
+
   const [exporting, setExporting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -82,7 +114,14 @@ export function ReportPage() {
 
   useEffect(() => { void loadReport() }, [loadReport])
 
+  const supportsExport = reportType !== 'damage' && reportType !== 'lost_assets'
+
   const handleExport = async (format: 'excel' | 'csv') => {
+    if (!supportsExport) {
+      setMessage({ type: 'error', text: 'Exports are not available for this report type.' })
+      return
+    }
+
     setExporting(true)
     setMessage(null)
     try {
@@ -270,15 +309,15 @@ export function ReportPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} className="report-no-print">
           <button
             type="button"
-            disabled={exporting || data.length === 0}
+            disabled={exporting || !supportsExport || data.length === 0}
             onClick={() => void handleExport('excel')}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               height: 38, paddingInline: 16, borderRadius: 10,
               border: '1px solid #BBF7D0', background: '#F0FDF4',
               fontSize: 13, fontWeight: 600, color: '#166534',
-              cursor: exporting || data.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: exporting || data.length === 0 ? 0.5 : 1,
+              cursor: exporting || !supportsExport || data.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: exporting || !supportsExport || data.length === 0 ? 0.5 : 1,
               fontFamily: 'inherit', transition: 'all 0.15s',
             }}
           >
@@ -287,15 +326,15 @@ export function ReportPage() {
           </button>
           <button
             type="button"
-            disabled={exporting || data.length === 0}
+            disabled={exporting || !supportsExport || data.length === 0}
             onClick={() => void handleExport('csv')}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               height: 38, paddingInline: 16, borderRadius: 10,
               border: '1px solid #E2E8F0', background: '#fff',
               fontSize: 13, fontWeight: 600, color: '#475569',
-              cursor: exporting || data.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: exporting || data.length === 0 ? 0.5 : 1,
+              cursor: exporting || !supportsExport || data.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: exporting || !supportsExport || data.length === 0 ? 0.5 : 1,
               fontFamily: 'inherit', transition: 'all 0.15s',
             }}
           >
@@ -304,15 +343,15 @@ export function ReportPage() {
           </button>
           <button
             type="button"
-            disabled={data.length === 0}
+            disabled={!supportsExport || data.length === 0}
             onClick={() => window.print()}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               height: 38, paddingInline: 16, borderRadius: 10,
               border: '1px solid #003DA5', background: '#003DA5',
               fontSize: 13, fontWeight: 600, color: '#fff',
-              cursor: data.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: data.length === 0 ? 0.5 : 1,
+              cursor: !supportsExport || data.length === 0 ? 'not-allowed' : 'pointer',
+              opacity: !supportsExport || data.length === 0 ? 0.5 : 1,
               fontFamily: 'inherit', transition: 'all 0.15s',
             }}
           >
@@ -352,11 +391,20 @@ export function ReportPage() {
         }}>
           {TABS.map((tab) => {
             const active = reportType === tab.key
+            const handleTabClick = () => {
+              if (tab.path && (tab.key === 'damage' || tab.key === 'lost_assets')) {
+                navigate(tab.path)
+                return
+              }
+
+              setReportType(tab.key)
+            }
+
             return (
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setReportType(tab.key)}
+                onClick={handleTabClick}
                 style={{
                   position: 'relative',
                   padding: '14px 18px',
@@ -391,7 +439,7 @@ export function ReportPage() {
             <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#0F172A', lineHeight: 1.3 }}>{activeTab.label}</p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748B' }}>{activeTab.description}</p>
           </div>
-          {!loading && (
+          {!loading && reportType !== 'damage' && reportType !== 'lost_assets' && (
             <span style={{
               borderRadius: 20, background: '#EFF6FF',
               padding: '4px 14px', fontSize: 12, fontWeight: 600, color: '#003DA5',
@@ -403,7 +451,11 @@ export function ReportPage() {
         </div>
 
         {/* Content Area */}
-        {loading ? (
+        {reportType === 'damage' ? (
+          <div style={{ padding: 20 }}><DamageReportsPage embedded /></div>
+        ) : reportType === 'lost_assets' ? (
+          <div style={{ padding: 20 }}><LostAssetReportsPage embedded /></div>
+        ) : loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '80px 0' }}>
             <Spinner label="" />
             <p style={{ fontSize: 13, fontWeight: 500, color: '#64748B' }}>Loading report data…</p>

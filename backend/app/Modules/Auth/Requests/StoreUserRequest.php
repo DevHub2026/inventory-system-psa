@@ -34,7 +34,7 @@ class StoreUserRequest extends FormRequest
             $this->merge($blankToNull);
         }
 
-        if (empty($this->input('username')) && $lastName !== '' && $employeeNumber !== '') {
+        if (empty($this->input('username')) && $lastName !== '') {
             $this->merge([
                 'username' => static::buildUsername($lastName, $employeeNumber),
             ]);

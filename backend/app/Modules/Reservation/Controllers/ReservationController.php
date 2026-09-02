@@ -43,7 +43,10 @@ class ReservationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $perPage = (int) $request->query('per_page', 20);
-        $reservations = $this->reservationService->list($request->user(), $perPage);
+        // Optional status filter — allows the dashboard to request e.g. only
+        // PENDING reservations without fetching unrelated records.
+        $status = $request->query('status');
+        $reservations = $this->reservationService->list($request->user(), $perPage, $status ?: null);
 
         return $this->success([
             'items' => collect($reservations->items())->map(fn (Reservation $r) => $this->transform($r))->values(),

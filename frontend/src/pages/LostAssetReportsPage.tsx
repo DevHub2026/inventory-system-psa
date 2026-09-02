@@ -27,7 +27,11 @@ function formatDate(value?: string | null) {
   })
 }
 
-export function LostAssetReportsPage() {
+interface LostAssetReportsPageProps {
+  embedded?: boolean
+}
+
+export function LostAssetReportsPage({ embedded = false }: LostAssetReportsPageProps) {
   const [reports, setReports] = useState<LostAssetReport[]>([])
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [search, setSearch] = useState('')
@@ -131,28 +135,30 @@ export function LostAssetReportsPage() {
   ]
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              display: 'grid',
-              placeItems: 'center',
-              width: 44,
-              height: 44,
-              borderRadius: 14,
-              background: '#fef3c7',
-              color: '#b45309',
-            }}
-          >
-            <AlertTriangle size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>Lost Asset Reports</div>
-            <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Review employee-submitted missing asset incidents.</div>
+    <div style={{ padding: embedded ? 0 : 24 }}>
+      {!embedded && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                display: 'grid',
+                placeItems: 'center',
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                background: '#fef3c7',
+                color: '#b45309',
+              }}
+            >
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>Lost Asset Reports</div>
+              <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Review employee-submitted missing asset incidents.</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {message && (
         <div

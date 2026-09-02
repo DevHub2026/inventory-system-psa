@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Download, Upload, Filter, Plus, Monitor, Package, ChevronRight, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode, CheckCircle2, XCircle, ArrowRightLeft, ClipboardCheck, Save, Wrench, HelpCircle } from 'lucide-react'
+import { Download, Upload, Plus, Monitor, Package, ChevronRight, TrendingUp, TrendingDown, RotateCcw, History, Edit3, Trash2, Eye, FileDown, FileText, FileCode, CheckCircle2, XCircle, ArrowRightLeft, ClipboardCheck, Save, Wrench, HelpCircle } from 'lucide-react'
 import {
   Alert, Button, EmptyState, Input,
   Modal, Spinner, Badge, Card, SetupDropdown,
@@ -100,7 +100,7 @@ function SummaryCard({ data, onNavigate }: { data: SummaryData; onNavigate: (tab
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 20 }}>
       {/* PPE Card */}
       <SummaryCardInner
         style={cardStyle}
@@ -526,7 +526,7 @@ function ActionCell({ item, onStockIn, onStockOut, onTransfer, onAdjust, onHisto
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export function InventoryPage() {
+export function InventoryPage({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
 
   // Table state
@@ -540,6 +540,9 @@ export function InventoryPage() {
   const [activeTab,      setActiveTab]      = useState<TabKey>('all')
 
   // Additional filters (kept optional — UI controls may set these)
+  const [classificationFilter, setClassificationFilter] = useState<'PPE' | 'SE' | 'SUPPLY' | null>(null)
+  const [inventoryTypeFilter, setInventoryTypeFilter] = useState<'non_expendable' | 'expendable' | null>(null)
+  const [itemTypeFilter, setItemTypeFilter] = useState<number | null>(null)
   const [assetCategoryFilter, _setAssetCategoryFilter] = useState<number | null>(null)
   const [officeFilter, _setOfficeFilter] = useState<number | null>(null)
   const [locationFilter, _setLocationFilter] = useState<number | null>(null)
@@ -664,8 +667,11 @@ export function InventoryPage() {
   const [locations,       setLocations]       = useState<SetupRecord[]>([])
   const [units,           setUnits]           = useState<SetupRecord[]>([])
   const [inventoryItemTypes, setInventoryItemTypes] = useState<SetupRecord[]>([])
+  // Loading state for initial setup/master lists (used to avoid showing empty-state while fetching)
+  const [setupLoading,    setSetupLoading]    = useState<boolean>(false)
  
   const loadSetupOptions = useCallback(async () => {
+    setSetupLoading(true)
     try {
       const [mfr, cats, offs, locs, uns, itemTypes] = await Promise.all([
         setupService.list('manufacturers'),
@@ -682,7 +688,13 @@ export function InventoryPage() {
       setUnits(uns)
       setInventoryItemTypes(itemTypes)
     } catch { /* best-effort — dropdowns degrade gracefully if unavailable */ }
+    finally { setSetupLoading(false) }
   }, [])
+
+  // Prefetch setup lists on initial mount so filters don't show an empty state during a hard refresh
+  useEffect(() => {
+    void loadSetupOptions()
+  }, [loadSetupOptions])
 
   const [formData, setFormData] = useState<CreateInventoryItemPayload>({
     name: '', sku: '', quantity: 0, unit_cost: null, unit: '', unit_id: null, reorder_level: 0,
@@ -730,12 +742,23 @@ export function InventoryPage() {
     if (pg === 1) setLoading(true); else setLoadingMore(true)
     try {
       const classification =
-        activeTab === 'ppe'
-          ? 'PPE'
-          : activeTab === 'se'
-            ? 'SE'
-            : activeTab === 'supply'
-              ? 'SUPPLY'
+        activeTab === 'all'
+          ? classificationFilter ?? undefined
+          : activeTab === 'ppe'
+            ? 'PPE'
+            : activeTab === 'se'
+              ? 'SE'
+              : activeTab === 'supply'
+                ? 'SUPPLY'
+                : undefined
+
+      const inventoryType =
+        activeTab === 'all'
+          ? inventoryTypeFilter ?? undefined
+          : activeTab === 'supply'
+            ? 'expendable'
+            : activeTab === 'ppe' || activeTab === 'se'
+              ? 'non_expendable'
               : undefined
 
       const result = await inventoryService.list({
@@ -744,6 +767,8 @@ export function InventoryPage() {
         search: search || undefined,
         status: statusFilter || undefined,
         classification,
+        type: inventoryType,
+        item_type_id: itemTypeFilter ?? undefined,
         asset_category_id: assetCategoryFilter ?? undefined,
         office_id: officeFilter ?? undefined,
         location_id: locationFilter ?? undefined,
@@ -763,7 +788,7 @@ export function InventoryPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [search, statusFilter, activeTab, assetCategoryFilter, officeFilter, locationFilter, manufacturerFilter, assignedUserFilter, createdFromFilter, createdToFilter, orderBy, orderDir])
+  }, [search, statusFilter, activeTab, classificationFilter, inventoryTypeFilter, itemTypeFilter, assetCategoryFilter, officeFilter, locationFilter, manufacturerFilter, assignedUserFilter, createdFromFilter, createdToFilter, orderBy, orderDir])
 
   // Load summary counts — fires once and on explicit refresh only
   const loadSummary = useCallback(async () => {
@@ -776,7 +801,11 @@ export function InventoryPage() {
         inventoryService.list({ classification: 'SE', per_page: 100 }),
         inventoryService.list({ classification: 'SUPPLY', per_page: 100 }),
       ])
-      const count = (arr: InventoryItem[], s: string) => arr.filter((i) => i.status === s).length
+      const count = (arr: InventoryItem[], s: string) => {
+        // Asset-level disposed state is represented by asset_status === 'DISPOSED'.
+        if (s === 'DISPOSED') return arr.filter((i) => i.asset_status === 'DISPOSED').length
+        return arr.filter((i) => i.status === s).length
+      }
       setSummary({
         ppe: {
           total:       ppeMeta.meta.total,
@@ -832,6 +861,9 @@ export function InventoryPage() {
   const handleTabChange = (t: TabKey) => { 
     setActiveTab(t); 
     setPage(1);
+    setClassificationFilter(null)
+    setInventoryTypeFilter(null)
+    setItemTypeFilter(null)
     // When switching to Disposal tab, show disposed items by setting status filter
     if (t === 'disposal') {
       setStatusFilter('DISPOSED')
@@ -842,7 +874,6 @@ export function InventoryPage() {
       setStatusFilter('')
     }
   }
-  const handleFilter    = () => { void loadInventory(1) }
   const handleSearch    = (e: React.KeyboardEvent) => { if (e.key === 'Enter') void loadInventory(1) }
 
   // ── CRUD handlers ────────────────────────────────────────────────────────────
@@ -1354,7 +1385,7 @@ export function InventoryPage() {
       ) : countSessions.length === 0 ? (
         <EmptyState title="No count sessions yet" description="Start a count session to verify inventory quantities." />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 12 }}>
           {countSessions.map((session) => {
             const progress = countSessionProgress(session)
             return (
@@ -1422,7 +1453,7 @@ export function InventoryPage() {
               const isDraft = selectedCountSession.status === 'draft'
               return (
                 <div key={item.id} style={{ border: '1px solid #E5E7EB', borderRadius: 10, padding: 12, background: '#F8FAFC' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, alignItems: 'end' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: 10, alignItems: 'end' }}>
                     <div>
                       <div style={{ fontWeight: 700, color: '#1E293B', fontSize: 13.5 }}>{item.item_name ?? `Item #${item.inventory_item_id}`}</div>
                       <div style={{ color: '#64748B', fontSize: 12 }}>{item.sku ?? 'No SKU'}</div>
@@ -1533,7 +1564,7 @@ export function InventoryPage() {
           <Tabs active={activeTab} onChange={handleTabChange} />
 
           {/* Search + filter row — sits flush below tabs */}
-          {activeTab !== 'counts' && (
+          {!embedded && activeTab !== 'counts' && (
             <>
             <InventoryFilterBar
               search={search}
@@ -1542,6 +1573,15 @@ export function InventoryPage() {
 
               statusFilter={statusFilter}
               setStatusFilter={(v) => { setStatusFilter(v) }}
+
+              classification={classificationFilter}
+              setClassification={(v) => { setClassificationFilter(v) }}
+
+              inventoryType={inventoryTypeFilter}
+              setInventoryType={(v) => { setInventoryTypeFilter(v) }}
+
+              itemTypeId={itemTypeFilter}
+              setItemTypeId={(v) => { setItemTypeFilter(v) }}
 
               assetCategoryId={assetCategoryFilter}
               setAssetCategoryId={(v) => { _setAssetCategoryFilter(v) }}
@@ -1571,38 +1611,30 @@ export function InventoryPage() {
 
               onApplyFilters={() => { void loadInventory(1) }}
               onClearFilters={() => {
+                setClassificationFilter(null)
+                setInventoryTypeFilter(null)
+                setItemTypeFilter(null)
                 _setAssetCategoryFilter(null); _setOfficeFilter(null); _setLocationFilter(null); _setManufacturerFilter(null);
-                // keep search and classification/status intact per requirements
                 _setAssignedUserFilter(null); _setCreatedFromFilter(null); _setCreatedToFilter(null);
                 _setOrderBy(null); _setOrderDir(null);
                 void loadInventory(1)
               }}
 
+              setupLoading={setupLoading}
               assetCategories={assetCategories}
               manufacturers={manufacturers}
               offices={offices}
               locations={locations}
+              itemTypes={inventoryItemTypes}
+              advancedFields={['classification', 'type', 'itemType', 'assetCategory', 'office', 'location', 'manufacturer', 'assignedUser', 'createdFrom', 'createdTo', 'sort']}
+              statusOptions={[
+                { label: 'All statuses', value: '' },
+                { label: 'In Stock', value: 'IN_STOCK' },
+                { label: 'Low Stock', value: 'LOW_STOCK' },
+                { label: 'Out of Stock', value: 'OUT_OF_STOCK' },
+                { label: 'Disposed', value: 'DISPOSED' },
+              ]}
             />
-
-            {/* Filter button */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 20px' }}>
-              <button
-                onClick={handleFilter}
-                style={{
-                  height: 38, paddingInline: 14, borderRadius: 10,
-                  border: '1.5px solid #E2E8F0', background: '#F8FAFC',
-                  fontSize: 13, fontWeight: 600, color: '#374151',
-                  cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  transition: 'background 0.12s',
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
-              >
-                <Filter size={14} />
-                Filter
-              </button>
-            </div>
             </>
           )}
         </div>
@@ -2331,7 +2363,7 @@ export function InventoryPage() {
         {transferItem && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12,
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: 12,
               borderRadius: 12, border: '1px solid #E2E8F0', background: '#F8FAFC', padding: 14,
             }}>
               <div>
@@ -2353,7 +2385,7 @@ export function InventoryPage() {
               onChange={(e) => setTransferQty(parseInt(e.target.value) || 1)}
             />
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 14 }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Source Location</span>
                 <select
@@ -2762,7 +2794,7 @@ export function InventoryPage() {
               <button type="button" onClick={() => setExportColumns(availableExportColumns.map(c => c.key))} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', cursor: 'pointer' }}>Select all</button>
               <button type="button" onClick={() => setExportColumns([])} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #E2E8F0', background: '#fff', cursor: 'pointer' }}>Clear</button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, marginTop: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 8, marginTop: 10 }}>
               {availableExportColumns.map((col) => (
                 <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, border: `1px solid ${exportColumns.includes(col.key) ? '#1E40AF' : '#E2E8F0'}`, background: exportColumns.includes(col.key) ? '#EFF6FF' : '#fff', cursor: 'pointer' }}>
                   <input type="checkbox" checked={exportColumns.includes(col.key)} onChange={(e) => {

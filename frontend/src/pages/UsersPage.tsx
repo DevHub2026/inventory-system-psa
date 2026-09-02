@@ -18,8 +18,23 @@ interface DepartmentOption {
 
 /** Sanitise last_name + employee_number into a username exactly as the backend does. */
 function generateUsername(lastName: string, employeeNumber: string): string {
-  const sanitized = lastName.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const sanitized = lastName.trim().toLowerCase().replace(/[^a-z0-9]/g, '')
   return sanitized + employeeNumber.trim()
+}
+
+function isStaleGeneratedUsername(username: string | null | undefined, lastName: string): boolean {
+  const candidate = (username ?? '').trim().toLowerCase()
+  if (!candidate) {
+    return true
+  }
+
+  const normalizedLastName = lastName.trim().toLowerCase().replace(/[^a-z0-9]/g, '')
+  if (!normalizedLastName || !candidate.startsWith(normalizedLastName)) {
+    return false
+  }
+
+  const suffix = candidate.slice(normalizedLastName.length)
+  return suffix.length > 0 && /^[a-z0-9-]+$/i.test(suffix)
 }
 
 export function UsersPage() {
@@ -39,6 +54,7 @@ export function UsersPage() {
   const [departments, setDepartments] = useState<DepartmentOption[]>([])
   const [offices, setOffices] = useState<SetupRecord[]>([])
   const [lookupWarning, setLookupWarning] = useState<string | null>(null)
+  const [usernameAutoSyncEnabled, setUsernameAutoSyncEnabled] = useState(true)
 
   // Password change modal state
   const [passwordModalOpen, setPasswordModalOpen] = useState(false)
@@ -53,13 +69,17 @@ export function UsersPage() {
     email_notifications_enabled: true,
   })
 
-  /** Update username whenever last_name or employee_number change (create mode only). */
-  const updateUsername = (patch: Partial<CreateUserPayload>, current: CreateUserPayload) => {
-    const next = { ...current, ...patch }
-    if (!editingUser) {
-      next.username = generateUsername(next.last_name, next.employee_number)
+  /**
+   * Keep generated usernames synced while they still match the canonical last_name + employee_number
+   * pattern. Once the administrator manually overrides the value, stop auto-sync for that form session.
+   */
+  const syncGeneratedUsername = (next: CreateUserPayload) => {
+    if (!usernameAutoSyncEnabled) {
+      return next
     }
-    return next
+
+    const generated = generateUsername(next.last_name, next.employee_number)
+    return { ...next, username: generated }
   }
 
   const loadUsers = useCallback(async () => {
@@ -126,18 +146,31 @@ export function UsersPage() {
 
   const handleCreate = () => {
     setEditingUser(null)
+    setUsernameAutoSyncEnabled(true)
     setFormData({ employee_number: '', username: '', first_name: '', middle_name: '', last_name: '', email: '', password: '', department_id: null, office_id: null, status: 'active', roles: [], email_notifications_enabled: true })
     setModalOpen(true)
   }
 
   const handleEdit = (u: User) => {
+    const initialLastName = u.last_name ?? ''
+    const initialEmployeeNumber = u.employee_number ?? ''
+    const initialUsername = (u.username ?? '').trim()
+    const initialGeneratedUsername = generateUsername(initialLastName, initialEmployeeNumber)
+    const initialGeneratedByLastNameOnly = generateUsername(initialLastName, '')
+    const usernameIsGenerated = !initialUsername
+      || initialUsername === initialGeneratedUsername
+      || initialUsername === initialGeneratedByLastNameOnly
+      || isStaleGeneratedUsername(initialUsername, initialLastName)
+    const displayedUsername = usernameIsGenerated ? initialGeneratedUsername : initialUsername
+
     setEditingUser(u)
+    setUsernameAutoSyncEnabled(usernameIsGenerated)
     setFormData({
-      employee_number: u.employee_number || '',
-      username: u.username || '',
+      employee_number: initialEmployeeNumber,
+      username: displayedUsername,
       first_name: u.first_name || '',
       middle_name: u.middle_name || '',
-      last_name: u.last_name || '',
+      last_name: initialLastName,
       email: u.email,
       password: '',
       department_id: u.department_id || null,
@@ -177,13 +210,17 @@ export function UsersPage() {
           roles: formData.roles,
           email_notifications_enabled: formData.email_notifications_enabled,
         }
-        await userService.updateUser(editingUser.id, updatePayload)
+        const updatedUser = await userService.updateUser(editingUser.id, updatePayload)
+        setUsers((prev) => prev.map((user) => user.id === editingUser.id
+          ? { ...user, ...updatedUser, username: updatedUser.username ?? user.username }
+          : user))
         setMessage({ type: 'success', text: 'User updated successfully.' })
       } else {
         await userService.createUser(formData)
         setMessage({ type: 'success', text: 'User created successfully.' })
       }
-      setModalOpen(false); await loadUsers()
+      setModalOpen(false)
+      await loadUsers()
     } catch (e: unknown) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Failed to save user.' })
     } finally { setSaving(false) }
@@ -352,20 +389,30 @@ export function UsersPage() {
                 <Input
                   label="Employee Number"
                   value={formData.employee_number}
-                  onChange={(e) => setFormData((prev) => updateUsername({ employee_number: e.target.value }, prev))}
+                  onChange={(e) => {
+                    setFormData((prev) => syncGeneratedUsername({
+                      ...prev,
+                      employee_number: e.target.value,
+                    }))
+                  }}
                 />
                 <div>
                   <label className="mb-1.5 block text-[13px] font-medium text-[#1F2937]">
                     Username
                   </label>
                   <input
-                    readOnly
                     value={formData.username || ''}
-                    className="w-full h-11 rounded-[10px] border border-[#E5E7EB] bg-[#F8FAFC] px-3.5 text-[14px] text-[#6B7280] shadow-[0_1px_2px_rgba(0,0,0,.05)] cursor-not-allowed select-all"
-                    title="Auto-generated from Last Name + Employee Number"
+                    onChange={(e) => {
+                      setUsernameAutoSyncEnabled(false)
+                      setFormData((prev) => ({ ...prev, username: e.target.value }))
+                    }}
+                    className="w-full h-11 rounded-[10px] border border-[#E5E7EB] bg-white px-3.5 text-[14px] text-[#1F2937] shadow-[0_1px_2px_rgba(0,0,0,.05)] focus:outline-none focus:ring-2 focus:ring-[#0D47A1]/30"
+                    title={editingUser ? 'Manually override the username for this user' : 'Auto-generated by default. You can override the value manually.'}
                   />
                   <p className="mt-1 text-[11px] text-[#94A3B8]">
-                    Auto-generated from Last Name + Employee Number
+                    {editingUser
+                      ? 'Administrators may manually override this username.'
+                      : 'Auto-generated by default. Override it manually when needed.'}
                   </p>
                 </div>
               </div>
@@ -375,7 +422,12 @@ export function UsersPage() {
                 <Input
                   label="Last Name"
                   value={formData.last_name}
-                  onChange={(e) => setFormData((prev) => updateUsername({ last_name: e.target.value }, prev))}
+                  onChange={(e) => {
+                    setFormData((prev) => syncGeneratedUsername({
+                      ...prev,
+                      last_name: e.target.value,
+                    }))
+                  }}
                 />
               </div>
             </div>

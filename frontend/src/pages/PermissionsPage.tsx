@@ -156,7 +156,7 @@ export function PermissionsPage() {
       header: 'Description',
       render: (p) => (
         <span style={{ fontSize: 13, color: '#64748B' }}>
-          {p.description || '—'}
+          {p.description || '�'}
         </span>
       ),
     },
@@ -199,7 +199,7 @@ export function PermissionsPage() {
       )}
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16 }}>
         {stats.map((stat) => (
           <div key={stat.label} style={{
             background: '#fff', borderRadius: 14, border: '1px solid #E2E8F0',
@@ -233,7 +233,7 @@ export function PermissionsPage() {
           borderBottom: '1px solid #F1F5F9', padding: '14px 20px', flexWrap: 'wrap',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 0', minWidth: 200 }}>
-            <SearchBar onSearch={handleSearch} placeholder="Search permissions…" />
+            <SearchBar onSearch={handleSearch} placeholder="Search permissions�" />
           </div>
           <div style={{ width: 200, flexShrink: 0 }}>
             <Dropdown
@@ -280,7 +280,7 @@ export function PermissionsPage() {
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
             <Button onClick={handleSubmit} disabled={saving || !formData.name.trim() || !formData.module}>
-              {saving ? 'Saving…' : editingPermission ? 'Save Changes' : 'Add Permission'}
+              {saving ? 'Saving�' : editingPermission ? 'Save Changes' : 'Add Permission'}
             </Button>
           </>
         }
@@ -316,7 +316,7 @@ export function PermissionsPage() {
               }}
               value={formData.description || ''}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Describe what this permission allows…"
+              placeholder="Describe what this permission allows�"
               rows={3}
             />
           </div>

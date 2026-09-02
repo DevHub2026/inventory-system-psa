@@ -10,6 +10,7 @@ export interface Role {
   id: number
   name: string
   description?: string | null
+  permissions?: Array<{ id: number; name: string; module: string; description?: string }>
   created_at?: string
   updated_at?: string
 }

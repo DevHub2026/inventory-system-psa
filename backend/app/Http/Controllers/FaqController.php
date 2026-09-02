@@ -6,7 +6,6 @@ use App\Models\Faq;
 use App\Modules\Asset\Traits\RespondsWithJson;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class FaqController extends Controller
@@ -35,11 +34,32 @@ class FaqController extends Controller
         return $this->success($items->map(fn (Faq $faq) => $this->transform($faq))->values());
     }
 
+    /**
+     * Admin-only listing: returns all FAQs regardless of active/role status.
+     * Used by the FAQ Management page.
+     */
+    public function adminIndex(Request $request): JsonResponse
+    {
+        $this->authorize('create', Faq::class);
+
+        $query = Faq::query()
+            ->when($request->filled('category'), fn ($q) => $q->where('category', $request->input('category')))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = trim($request->input('search'));
+                $q->where(function ($inner) use ($search) {
+                    $inner->whereRaw('LOWER(question) like ?', ['%'.Str::lower($search).'%'])
+                        ->orWhereRaw('LOWER(answer) like ?', ['%'.Str::lower($search).'%'])
+                        ->orWhereRaw('LOWER(category) like ?', ['%'.Str::lower($search).'%']);
+                });
+            })
+            ->orderBy('created_at', 'desc');
+
+        return $this->success($query->get()->map(fn (Faq $faq) => $this->transform($faq))->values());
+    }
+
     public function store(Request $request): JsonResponse
     {
-        if (! $this->isAdmin($request->user())) {
-            return $this->error('You do not have permission to manage FAQ entries.', null, 403);
-        }
+        $this->authorize('create', Faq::class);
 
         $data = $this->validatePayload($request, null);
 
@@ -54,9 +74,7 @@ class FaqController extends Controller
 
     public function update(Request $request, Faq $faq): JsonResponse
     {
-        if (! $this->isAdmin($request->user())) {
-            return $this->error('You do not have permission to manage FAQ entries.', null, 403);
-        }
+        $this->authorize('update', $faq);
 
         $data = $this->validatePayload($request, $faq);
 
@@ -71,9 +89,7 @@ class FaqController extends Controller
 
     public function destroy(Request $request, Faq $faq): JsonResponse
     {
-        if (! $this->isAdmin($request->user())) {
-            return $this->error('You do not have permission to manage FAQ entries.', null, 403);
-        }
+        $this->authorize('delete', $faq);
 
         $faq->delete();
 
@@ -83,31 +99,31 @@ class FaqController extends Controller
     private function validatePayload(Request $request, ?Faq $faq): array
     {
         $data = $request->validate([
-            'question' => ['required', 'string', 'min:3', 'max:255'],
-            'answer' => ['required', 'string', 'min:10'],
-            'category' => ['nullable', 'string', 'max:100'],
-            'keywords' => ['nullable', 'array'],
-            'keywords.*' => ['string', 'max:100'],
-            'roles' => ['nullable', 'array'],
-            'roles.*' => ['string', 'max:100'],
-            'destination' => ['nullable', 'string', 'max:255'],
-            'actions' => ['nullable', 'array'],
-            'actions.*.label' => ['nullable', 'string', 'max:100'],
-            'actions.*.target' => ['nullable', 'string', 'max:255'],
-            'active' => ['nullable', 'boolean'],
+            'question'          => ['required', 'string', 'min:3', 'max:255'],
+            'answer'            => ['required', 'string', 'min:10'],
+            'category'          => ['nullable', 'string', 'max:100'],
+            'keywords'          => ['nullable', 'array'],
+            'keywords.*'        => ['string', 'max:100'],
+            'roles'             => ['nullable', 'array'],
+            'roles.*'           => ['string', 'max:100'],
+            'destination'       => ['nullable', 'string', 'max:255'],
+            'actions'           => ['nullable', 'array'],
+            'actions.*.label'   => ['nullable', 'string', 'max:100'],
+            'actions.*.target'  => ['nullable', 'string', 'max:255'],
+            'active'            => ['nullable', 'boolean'],
         ]);
 
-        $question = trim((string) ($data['question'] ?? ''));
-        $answer = trim((string) ($data['answer'] ?? ''));
+        $question    = trim((string) ($data['question'] ?? ''));
+        $answer      = trim((string) ($data['answer'] ?? ''));
         $destination = trim((string) ($data['destination'] ?? ''));
-        $roles = collect($data['roles'] ?? [])->map(fn ($role) => trim((string) $role))->filter()->values()->all();
-        $keywords = collect($data['keywords'] ?? [])->map(fn ($keyword) => trim((string) $keyword))->filter()->values()->all();
-        $actions = collect($data['actions'] ?? [])->map(function ($action) {
+        $roles       = collect($data['roles'] ?? [])->map(fn ($role) => trim((string) $role))->filter()->values()->all();
+        $keywords    = collect($data['keywords'] ?? [])->map(fn ($keyword) => trim((string) $keyword))->filter()->values()->all();
+        $actions     = collect($data['actions'] ?? [])->map(function ($action) {
             if (! is_array($action)) {
                 return null;
             }
 
-            $label = trim((string) ($action['label'] ?? ''));
+            $label  = trim((string) ($action['label'] ?? ''));
             $target = trim((string) ($action['target'] ?? ''));
 
             if ($label === '' && $target === '') {
@@ -115,8 +131,8 @@ class FaqController extends Controller
             }
 
             return [
-                'label' => $label,
-                'type' => 'route',
+                'label'  => $label,
+                'type'   => 'route',
                 'target' => $target,
             ];
         })->filter()->values()->all();
@@ -126,14 +142,14 @@ class FaqController extends Controller
         }
 
         return [
-            'question' => $question,
-            'answer' => $answer,
-            'category' => ! empty($data['category']) ? trim((string) $data['category']) : 'General',
-            'keywords' => $keywords,
-            'roles' => $roles,
+            'question'    => $question,
+            'answer'      => $answer,
+            'category'    => ! empty($data['category']) ? trim((string) $data['category']) : 'General',
+            'keywords'    => $keywords,
+            'roles'       => $roles,
             'destination' => $destination,
-            'actions' => $actions,
-            'active' => (bool) ($data['active'] ?? true),
+            'actions'     => $actions,
+            'active'      => (bool) ($data['active'] ?? true),
         ];
     }
 
@@ -162,35 +178,25 @@ class FaqController extends Controller
             return true;
         }
 
-        $targetRoles = array_map(fn ($role) => strtolower(trim((string) $role)), $roleNames);
-
-        return $user->roles()->whereIn(DB::raw('LOWER(name)'), $targetRoles)->exists();
-    }
-
-    private function isAdmin(?\Illuminate\Contracts\Auth\Authenticatable $user): bool
-    {
-        if (! $user || ! method_exists($user, 'hasAnyRole')) {
-            return false;
-        }
-
-        return $user->hasAnyRole(['Super Administrator', 'System Administrator']);
+        // Use a DB query to avoid eager-loading issues across request contexts.
+        return $user->roles()->whereIn('name', $roleNames)->exists();
     }
 
     private function transform(Faq $faq): array
     {
         return [
-            'id' => $faq->id,
-            'question' => $faq->question,
-            'answer' => $faq->answer,
-            'category' => $faq->category ?: 'General',
-            'keywords' => $faq->keywords ?? [],
-            'roles' => $faq->roles ?? [],
+            'id'          => $faq->id,
+            'question'    => $faq->question,
+            'answer'      => $faq->answer,
+            'category'    => $faq->category ?: 'General',
+            'keywords'    => $faq->keywords ?? [],
+            'roles'       => $faq->roles ?? [],
             'destination' => $faq->destination,
-            'actions' => $faq->actions ?? [],
-            'active' => (bool) $faq->active,
-            'published' => (bool) $faq->active,
-            'created_at' => $faq->created_at?->toISOString(),
-            'updated_at' => $faq->updated_at?->toISOString(),
+            'actions'     => $faq->actions ?? [],
+            'active'      => (bool) $faq->active,
+            'published'   => (bool) $faq->active,
+            'created_at'  => $faq->created_at?->toISOString(),
+            'updated_at'  => $faq->updated_at?->toISOString(),
         ];
     }
 }

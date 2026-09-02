@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Policies\FaqPolicy;
 use App\Policies\PermissionPolicy;
 use App\Policies\RolePolicy;
 use App\Policies\UserPolicy;
@@ -29,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
         Gate::policy(Permission::class, PermissionPolicy::class);
+        Gate::policy(\App\Models\Faq::class, FaqPolicy::class);
         \App\Modules\Inventory\Models\InventoryItem::class;
         // Register InventoryItem policy
         Gate::policy(\App\Modules\Inventory\Models\InventoryItem::class, \App\Policies\InventoryItemPolicy::class);

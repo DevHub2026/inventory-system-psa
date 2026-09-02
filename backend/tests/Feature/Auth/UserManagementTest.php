@@ -154,6 +154,27 @@ class UserManagementTest extends TestCase
         ]);
     }
 
+    public function test_username_uses_last_name_only_when_employee_number_is_blank(): void
+    {
+        $admin = User::factory()->create();
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/users', [
+                'first_name' => 'Maria',
+                'last_name'  => 'Santos',
+                'email'      => 'maria.santos.only@psa.gov.ph',
+                'password'   => 'password123',
+            ]);
+
+        $response->assertStatus(201);
+
+        $this->assertDatabaseHas('users', [
+            'email'    => 'maria.santos.only@psa.gov.ph',
+            'username' => 'santos',
+        ]);
+    }
+
     public function test_username_strips_spaces_and_special_chars(): void
     {
         $admin = User::factory()->create();
@@ -224,6 +245,32 @@ class UserManagementTest extends TestCase
             'id' => $user->id,
             'first_name' => 'Jane',
         ]);
+    }
+
+    public function test_unauthorized_users_cannot_assign_super_admin_role(): void
+    {
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $manager = User::factory()->create();
+        // Give manager a role that usually can update users
+        $managerRole = \App\Models\Role::where('name', \App\Enums\UserRole::SYSTEM_ADMINISTRATOR->value)->first();
+        $manager->roles()->sync([$managerRole->id]);
+
+        $superAdminRole = \App\Models\Role::where('name', \App\Enums\UserRole::SUPER_ADMINISTRATOR->value)->first();
+        
+        $targetUser = User::factory()->create();
+
+        $token = $manager->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->putJson("/api/v1/users/{$targetUser->id}", [
+                'first_name' => 'Hacked',
+                'roles' => [$superAdminRole->id],
+            ]);
+
+        $response->assertStatus(403)
+            ->assertJson([
+                'message' => 'You do not have permission to assign the Super Administrator role.',
+            ]);
     }
 
     public function test_authenticated_user_can_delete_user(): void
@@ -482,6 +529,148 @@ class UserManagementTest extends TestCase
         $response = $this->withToken($token)->getJson('/api/v1/users?search=zyphercaseuser&per_page=1&page=1');
         $response->assertStatus(200);
         $this->assertSame(1, $response->json('meta.per_page'));
+    }
+
+    public function test_existing_username_is_not_regenerated_when_user_data_changes(): void
+    {
+        $admin = User::factory()->create();
+        $user = User::factory()->create([
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'employee_number' => 'EMP-1001',
+            'username' => 'custom_doe',
+        ]);
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->putJson('/api/v1/users/'.$user->id, [
+                'last_name' => 'Dorian',
+                'email' => $user->email,
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertSame('custom_doe', $user->fresh()->username);
+
+        $response = $this->withToken($token)
+            ->putJson('/api/v1/users/'.$user->id, [
+                'employee_number' => 'EMP-9999',
+                'email' => $user->email,
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertSame('custom_doe', $user->fresh()->username);
+    }
+
+    public function test_admin_can_manually_override_username_and_duplicate_is_rejected(): void
+    {
+        $admin = User::factory()->create();
+        $user = User::factory()->create([
+            'first_name' => 'Jane',
+            'last_name' => 'Smith',
+            'employee_number' => 'EMP-2002',
+            'username' => 'smith_legacy',
+        ]);
+        $otherUser = User::factory()->create([
+            'username' => 'already_taken',
+        ]);
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->putJson('/api/v1/users/'.$user->id, [
+                'username' => 'smith_updated',
+                'email' => $user->email,
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'username' => 'smith_updated',
+        ]);
+
+        $duplicateResponse = $this->withToken($token)
+            ->putJson('/api/v1/users/'.$user->id, [
+                'username' => 'already_taken',
+                'email' => $user->email,
+            ]);
+
+        $duplicateResponse->assertStatus(422)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_non_admin_user_cannot_edit_another_users_username(): void
+    {
+        $other = User::factory()->create([
+            'username' => 'targetuser',
+            'email' => 'target@example.com',
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'regular@example.com',
+        ]);
+        $user->roles()->detach();
+
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->putJson('/api/v1/users/'.$other->id, [
+                'username' => 'hijacked',
+                'email' => $other->email,
+            ]);
+
+        $response->assertStatus(403);
+        $this->assertSame('targetuser', $other->fresh()->username);
+    }
+
+    public function test_admin_can_create_user_with_explicit_username_and_preserve_it(): void
+    {
+        $admin = User::factory()->create();
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/users', [
+                'employee_number' => 'EMP-5001',
+                'first_name' => 'Explicit',
+                'last_name' => 'User',
+                'email' => 'explicit.username@example.com',
+                'password' => 'password123',
+                'username' => 'manual_username',
+                'status' => 'active',
+            ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('users', [
+            'email' => 'explicit.username@example.com',
+            'username' => 'manual_username',
+        ]);
+    }
+
+    public function test_import_preserves_explicit_username_and_generates_blank_username(): void
+    {
+        $admin = User::factory()->create();
+        Role::query()->firstOrCreate(
+            ['name' => UserRole::EMPLOYEE->value],
+            ['description' => UserRole::EMPLOYEE->name],
+        );
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->post('/api/v1/users/import', [
+                'file' => $this->csvUpload(
+                    "first_name,last_name,id_number,email,role,username\n".
+                    "Maria,Santos,20250012,maria.santos@example.com,Employee,\n".
+                    "Ana,Lopez,20250013,ana.lopez@example.com,Employee,custom_unique\n",
+                ),
+            ], ['Accept' => 'application/json']);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('users', [
+            'email' => 'maria.santos@example.com',
+            'username' => 'santos20250012',
+        ]);
+        $this->assertDatabaseHas('users', [
+            'email' => 'ana.lopez@example.com',
+            'username' => 'custom_unique',
+        ]);
     }
 
     private function csvUpload(string $contents): UploadedFile

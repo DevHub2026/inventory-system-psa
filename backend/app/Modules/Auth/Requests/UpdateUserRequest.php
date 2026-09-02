@@ -15,8 +15,8 @@ class UpdateUserRequest extends FormRequest
     }
 
     /**
-     * If last_name or employee_number changes and no username is explicitly provided,
-     * re-generate the username automatically.
+     * Preserve the current username unless the caller explicitly changes it.
+     * Never regenerate a username during a normal update.
      */
     protected function prepareForValidation(): void
     {
@@ -31,17 +31,10 @@ class UpdateUserRequest extends FormRequest
             $this->merge($blankToNull);
         }
 
-        // Only regenerate if the caller is not explicitly setting a username
-        if (! $this->has('username')) {
-            $user           = $this->route('user');
-            $lastName       = trim((string) ($this->input('last_name') ?? $user?->last_name ?? ''));
-            $employeeNumber = trim((string) ($this->input('employee_number') ?? $user?->employee_number ?? ''));
-
-            if ($lastName !== '' && $employeeNumber !== '') {
-                $this->merge([
-                    'username' => StoreUserRequest::buildUsername($lastName, $employeeNumber),
-                ]);
-            }
+        if ($this->has('username')) {
+            $this->merge([
+                'username' => trim((string) $this->input('username')) === '' ? null : trim((string) $this->input('username')),
+            ]);
         }
     }
 

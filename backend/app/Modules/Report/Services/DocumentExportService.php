@@ -581,7 +581,7 @@ class DocumentExportService
         foreach ($rows as $rowData) {
             $col = 'A';
             foreach ($rowData as $val) {
-                $sheet->setCellValue($col.$currentRow, $val);
+                $sheet->setCellValue($col.$currentRow, $this->normalizeExportCellValue($val));
                 $col++;
             }
             $currentRow++;
@@ -605,5 +605,42 @@ class DocumentExportService
         return response()->download($tempPath, $filename, [
             'Content-Type' => $format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
+    }
+
+    private function normalizeExportCellValue(mixed $value): mixed
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+
+        if ($value instanceof \UnitEnum) {
+            return $value->name;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        if (is_array($value)) {
+            return json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        }
+
+        if (is_object($value)) {
+            if (method_exists($value, '__toString')) {
+                return (string) $value;
+            }
+
+            return json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) ?: '';
+        }
+
+        return $value;
     }
 }

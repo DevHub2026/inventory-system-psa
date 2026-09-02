@@ -56,3 +56,9 @@ export function getUserRoleCategory(user: User | null): 'admin' | 'staff' | 'emp
   if (isEmployee(user)) return 'employee'
   return null
 }
+
+export function hasPermission(user: User | null, permission: string): boolean {
+  if (!user?.permissions) return false
+  return user.permissions.includes(permission)
+}
+

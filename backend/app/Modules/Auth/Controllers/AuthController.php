@@ -60,7 +60,7 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Login successful.',
-            'user' => (new UserResource($user->load(['department', 'roles'])))->resolve(),
+            'user' => (new UserResource($user->load(['department', 'roles.permissions'])))->resolve(),
             'token' => $token,
         ]);
     }
@@ -106,7 +106,7 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Authenticated user retrieved successfully.',
-            'data' => new UserResource($request->user()->load(['department', 'roles'])),
+            'data' => new UserResource($request->user()->load(['department', 'roles.permissions'])),
         ]);
     }
 

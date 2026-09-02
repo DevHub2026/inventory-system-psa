@@ -761,6 +761,59 @@ class QrScanService
             ->paginate($perPage);
     }
 
+    /**
+     * Soft-delete active QR scan history records so they disappear from the active view
+     * without destroying the underlying audit evidence.
+     */
+    public function clearHistory(): int
+    {
+        $count = QrScanHistory::query()->count();
+
+        if ($count === 0) {
+            return 0;
+        }
+
+        QrScanHistory::query()->delete();
+
+        $userId = auth()->id();
+        $this->auditLogService->log(
+            'QR_HISTORY_ARCHIVED',
+            'QrScanHistory',
+            "Archived {$count} QR scan records from the active audit view. Records remain soft-deleted for retention.",
+            null,
+            ['archived_count' => $count],
+            $userId,
+            request()?->ip(),
+            request()?->userAgent(),
+        );
+
+        return $count;
+    }
+
+    public function restoreHistory(): int
+    {
+        $deletedCount = QrScanHistory::query()->onlyTrashed()->count();
+
+        if ($deletedCount === 0) {
+            return 0;
+        }
+
+        QrScanHistory::query()->onlyTrashed()->restore();
+
+        $this->auditLogService->log(
+            'QR_HISTORY_RESTORED',
+            'QrScanHistory',
+            "Restored {$deletedCount} soft-deleted QR scan records to the active audit view.",
+            null,
+            ['restored_count' => $deletedCount],
+            auth()->id(),
+            request()?->ip(),
+            request()?->userAgent(),
+        );
+
+        return $deletedCount;
+    }
+
     private function serializeAsset($asset, $assetIdentifier): array
     {
         return [

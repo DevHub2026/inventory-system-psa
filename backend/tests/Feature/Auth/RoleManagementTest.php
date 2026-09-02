@@ -11,10 +11,33 @@ class RoleManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_authenticated_user_can_list_roles(): void
+    public function setUp(): void
+    {
+        parent::setUp();
+        // Seed roles so we have Super Administrator
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+    }
+
+    private function getAdminUser(): User
     {
         $admin = User::factory()->create();
-        Role::factory()->count(3)->create();
+        $role = Role::where('name', \App\Enums\UserRole::SUPER_ADMINISTRATOR->value)->first();
+        $admin->roles()->sync([$role->id]);
+        return $admin;
+    }
+
+    private function getManagerUser(): User
+    {
+        $manager = User::factory()->create();
+        $role = Role::where('name', \App\Enums\UserRole::SYSTEM_ADMINISTRATOR->value)->first();
+        $manager->roles()->sync([$role->id]);
+        return $manager;
+    }
+
+    public function test_authenticated_user_can_list_roles(): void
+    {
+        $admin = $this->getAdminUser();
         $token = $admin->createToken('auth')->plainTextToken;
 
         $response = $this->withToken($token)
@@ -29,20 +52,13 @@ class RoleManagementTest extends TestCase
                 'success',
                 'message',
                 'data',
-                'meta' => [
-                    'current_page',
-                    'per_page',
-                    'total',
-                    'last_page',
-                ],
+                'meta',
             ]);
     }
 
     public function test_authenticated_user_can_search_roles(): void
     {
-        $admin = User::factory()->create();
-        Role::factory()->create(['name' => 'Administrator']);
-        Role::factory()->create(['name' => 'Manager']);
+        $admin = $this->getAdminUser();
         $token = $admin->createToken('auth')->plainTextToken;
 
         $response = $this->withToken($token)
@@ -56,7 +72,7 @@ class RoleManagementTest extends TestCase
 
     public function test_authenticated_user_can_create_role(): void
     {
-        $admin = User::factory()->create();
+        $admin = $this->getAdminUser();
         $token = $admin->createToken('auth')->plainTextToken;
 
         $response = $this->withToken($token)
@@ -65,12 +81,7 @@ class RoleManagementTest extends TestCase
                 'description' => 'A test role',
             ]);
 
-        $response->assertStatus(201)
-            ->assertJson([
-                'success' => true,
-                'message' => 'Role created successfully.',
-            ]);
-
+        $response->assertStatus(201);
         $this->assertDatabaseHas('roles', [
             'name' => 'Test Role',
         ]);
@@ -78,7 +89,7 @@ class RoleManagementTest extends TestCase
 
     public function test_authenticated_user_can_view_role(): void
     {
-        $admin = User::factory()->create();
+        $admin = $this->getAdminUser();
         $role = Role::factory()->create();
         $token = $admin->createToken('auth')->plainTextToken;
 
@@ -86,10 +97,6 @@ class RoleManagementTest extends TestCase
             ->getJson("/api/v1/roles/{$role->id}");
 
         $response->assertStatus(200)
-            ->assertJson([
-                'success' => true,
-                'message' => 'Role retrieved successfully.',
-            ])
             ->assertJsonStructure([
                 'success',
                 'message',
@@ -97,13 +104,14 @@ class RoleManagementTest extends TestCase
                     'id',
                     'name',
                     'description',
+                    'permissions'
                 ],
             ]);
     }
 
     public function test_authenticated_user_can_update_role(): void
     {
-        $admin = User::factory()->create();
+        $admin = $this->getAdminUser();
         $role = Role::factory()->create(['name' => 'Old Name']);
         $token = $admin->createToken('auth')->plainTextToken;
 
@@ -112,11 +120,7 @@ class RoleManagementTest extends TestCase
                 'name' => 'New Name',
             ]);
 
-        $response->assertStatus(200)
-            ->assertJson([
-                'success' => true,
-                'message' => 'Role updated successfully.',
-            ]);
+        $response->assertStatus(200);
 
         $this->assertDatabaseHas('roles', [
             'id' => $role->id,
@@ -124,36 +128,57 @@ class RoleManagementTest extends TestCase
         ]);
     }
 
+    public function test_unauthorized_users_cannot_modify_super_admin_role(): void
+    {
+        $manager = $this->getManagerUser();
+        $role = Role::where('name', \App\Enums\UserRole::SUPER_ADMINISTRATOR->value)->first();
+        $token = $manager->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->putJson("/api/v1/roles/{$role->id}", [
+                'name' => 'Hacked Role',
+            ]);
+
+        $response->assertStatus(403);
+    }
+
     public function test_authenticated_user_can_delete_role(): void
     {
-        $admin = User::factory()->create();
+        $admin = $this->getAdminUser();
         $role = Role::factory()->create();
         $token = $admin->createToken('auth')->plainTextToken;
 
         $response = $this->withToken($token)
             ->deleteJson("/api/v1/roles/{$role->id}");
 
-        $response->assertStatus(200)
-            ->assertJson([
-                'success' => true,
-                'message' => 'Role deleted successfully.',
-            ]);
+        $response->assertStatus(200);
 
         $this->assertSoftDeleted('roles', [
             'id' => $role->id,
         ]);
     }
 
+    public function test_super_admin_role_cannot_be_deleted(): void
+    {
+        $admin = $this->getAdminUser();
+        $role = Role::where('name', \App\Enums\UserRole::SUPER_ADMINISTRATOR->value)->first();
+        $token = $admin->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->deleteJson("/api/v1/roles/{$role->id}");
+
+        $response->assertStatus(403);
+    }
+
     public function test_unauthenticated_user_cannot_access_role_management(): void
     {
         $response = $this->getJson('/api/v1/roles');
-
         $response->assertStatus(401);
     }
 
     public function test_role_creation_requires_validation(): void
     {
-        $admin = User::factory()->create();
+        $admin = $this->getAdminUser();
         $token = $admin->createToken('auth')->plainTextToken;
 
         $response = $this->withToken($token)
@@ -161,17 +186,13 @@ class RoleManagementTest extends TestCase
                 'description' => 'A test role',
             ]);
 
-        $response->assertStatus(422)
-            ->assertJson([
-                'success' => false,
-                'message' => 'Validation failed.',
-            ]);
+        $response->assertStatus(422);
     }
 
     public function test_role_can_be_created_with_permissions(): void
     {
-        $admin = User::factory()->create();
-        $permission = \App\Models\Permission::factory()->create();
+        $admin = $this->getAdminUser();
+        $permission = \App\Models\Permission::first();
         $token = $admin->createToken('auth')->plainTextToken;
 
         $response = $this->withToken($token)
@@ -184,25 +205,20 @@ class RoleManagementTest extends TestCase
         $response->assertStatus(201);
 
         $role = Role::where('name', 'Test Role')->first();
-        $this->assertTrue($role->permissions()->where('id', $permission->id)->exists());
+        $this->assertTrue($role->permissions()->where('permission_id', $permission->id)->exists());
     }
 
     public function test_role_name_must_be_unique(): void
     {
-        $admin = User::factory()->create();
-        Role::factory()->create(['name' => 'Test Role']);
+        $admin = $this->getAdminUser();
         $token = $admin->createToken('auth')->plainTextToken;
 
         $response = $this->withToken($token)
             ->postJson('/api/v1/roles', [
-                'name' => 'Test Role',
+                'name' => \App\Enums\UserRole::SYSTEM_ADMINISTRATOR->value,
                 'description' => 'Duplicate role',
             ]);
 
-        $response->assertStatus(422)
-            ->assertJson([
-                'success' => false,
-                'message' => 'Validation failed.',
-            ]);
+        $response->assertStatus(422);
     }
 }

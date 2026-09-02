@@ -178,6 +178,10 @@ export const assetService = {
     per_page?: number
     search?: string
     status?: string
+    asset_category_id?: number | null
+    manufacturer_id?: number | null
+    office_id?: number | null
+    location_id?: number | null
   } = {}): Promise<Paginated<Asset>> {
     const { data } = await api.get<
       ApiResponse<{

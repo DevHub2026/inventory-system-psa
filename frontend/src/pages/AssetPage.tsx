@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ScanLine, CheckCircle2, Printer, Search, Filter, ExternalLink,
+  ScanLine, CheckCircle2, Printer, Search, ExternalLink,
   Eye, QrCode as QrIcon, Edit3, Trash2, ArrowUpRight, RotateCcw,
   Package, Wrench, Clock, Send, ToggleLeft, ToggleRight,
   Paperclip, UploadCloud, Download,
@@ -27,6 +27,8 @@ import { GenerateDocumentModal } from '@/components/documents/GenerateDocumentMo
 import { ReissueAssetModal } from '@/components/assets/ReissueAssetModal'
 import { PermanentIssueModal } from '@/components/issuance/PermanentIssueModal'
 import { IssuanceUserSearchSelect } from '@/components/issuance/IssuanceUserSearchSelect'
+import { InventoryFilterBar } from '@/components/InventoryFilterBar'
+import { setupService, type SetupRecord } from '@/services/setupService'
 import { permanentIssuanceService } from '@/services/permanentIssuanceService'
 import type { IssuanceUserSummary } from '@/types/permanentIssuance'
 import { canManageDisposal, canManageIssuance, isAdmin, isStaff, hasAnyRole } from '@/utils/roleHelpers'
@@ -333,6 +335,14 @@ export function AssetPage() {
   const [total,     setTotal]     = useState(0)
   const [search,    setSearch]    = useState(searchParams.get('search') ?? '')
   const [status,    setStatus]    = useState('')
+  const [assetCategoryFilter, setAssetCategoryFilter] = useState<number | null>(null)
+  const [officeFilter, setOfficeFilter] = useState<number | null>(null)
+  const [locationFilter, setLocationFilter] = useState<number | null>(null)
+  const [manufacturerFilter, setManufacturerFilter] = useState<number | null>(null)
+  const [assetCategories, setAssetCategories] = useState<SetupRecord[]>([])
+  const [offices, setOffices] = useState<SetupRecord[]>([])
+  const [locations, setLocations] = useState<SetupRecord[]>([])
+  const [manufacturers, setManufacturers] = useState<SetupRecord[]>([])
   const [loading,   setLoading]   = useState(true)
   const [message,   setMessage]   = useState<string | null>(null)
   const [deleteId,  setDeleteId]  = useState<number | null>(null)
@@ -460,10 +470,34 @@ export function AssetPage() {
     status: 'AVAILABLE', condition_status: '', remarks: '', property_number: '', custodian_id: null,
   })
 
-  const load = useCallback(async (nextPage: number = 1, nextSearch?: string) => {
+  const load = useCallback(async (
+    nextPage: number = 1,
+    nextSearch?: string,
+    nextFilters?: {
+      status?: string
+      assetCategoryId?: number | null
+      officeId?: number | null
+      locationId?: number | null
+      manufacturerId?: number | null
+    },
+  ) => {
     setLoading(true)
     try {
-      const result = await assetService.list({ page: nextPage, search: nextSearch || undefined, status: status || undefined })
+      const resolvedStatus = nextFilters?.status ?? status
+      const resolvedAssetCategoryId = nextFilters?.assetCategoryId ?? assetCategoryFilter
+      const resolvedOfficeId = nextFilters?.officeId ?? officeFilter
+      const resolvedLocationId = nextFilters?.locationId ?? locationFilter
+      const resolvedManufacturerId = nextFilters?.manufacturerId ?? manufacturerFilter
+
+      const result = await assetService.list({
+        page: nextPage,
+        search: (nextSearch ?? search) || undefined,
+        status: resolvedStatus || undefined,
+        asset_category_id: resolvedAssetCategoryId ?? undefined,
+        office_id: resolvedOfficeId ?? undefined,
+        location_id: resolvedLocationId ?? undefined,
+        manufacturer_id: resolvedManufacturerId ?? undefined,
+      })
       setRows(result.items)
       setPage(result.meta.current_page)
       setLastPage(result.meta.last_page)
@@ -471,7 +505,31 @@ export function AssetPage() {
     } finally {
       setLoading(false)
     }
-  }, [status])
+  }, [status, search, assetCategoryFilter, officeFilter, locationFilter, manufacturerFilter])
+
+  const loadSetupOptions = useCallback(async () => {
+    // Only these roles are authorized to access the setup endpoints
+    if (!hasAnyRole(user, ['Super Administrator', 'System Administrator', 'Property Custodian', 'Inventory Officer', 'Supply Officer', 'Department Head'])) {
+      return
+    }
+
+    try {
+      const [categories, officesList, locationsList, manufacturersList] = await Promise.all([
+        setupService.list('asset-categories'),
+        setupService.list('offices'),
+        setupService.list('locations'),
+        setupService.list('manufacturers'),
+      ])
+      setAssetCategories(categories)
+      setOffices(officesList)
+      setLocations(locationsList)
+      setManufacturers(manufacturersList)
+    } catch {
+      // best effort; the filter can degrade gracefully if setup metadata is unavailable
+    }
+  }, [user])
+
+  useEffect(() => { void loadSetupOptions() }, [loadSetupOptions])
 
   const loadArchived = useCallback(async (nextPage: number = 1, nextSearch?: string) => {
     setArchivedLoading(true)
@@ -1073,7 +1131,7 @@ export function AssetPage() {
       </div>
 
       {/* ── Summary cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 16 }}>
         <SummaryCard
           icon={<Package size={20} style={{ color: colors.blue.icon }} />}
           color={colors.blue}
@@ -1127,7 +1185,7 @@ export function AssetPage() {
       {/* ── Table card ── */}
       {activeSection === 'disposal' ? (
         <div style={{ display: 'grid', gap: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 16 }}>
             <Card noPadding>
               <div style={{ padding: '18px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <div>
@@ -1197,7 +1255,7 @@ export function AssetPage() {
                             )}
                           </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 14 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 12, marginTop: 14 }}>
                           {renderDisposalField('Category', asset.category ?? '—')}
                           {renderDisposalField('Current / Last Office', asset.office ?? '—')}
                           {renderDisposalField('Status', 'FOR_DISPOSAL')}
@@ -1242,7 +1300,7 @@ export function AssetPage() {
                             <button type="button" onClick={() => void openView(asset.id)} style={{ border: '1px solid #D1D5DB', borderRadius: 8, background: '#fff', color: '#475569', padding: '7px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>View Details</button>
                           </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 14 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 12, marginTop: 14 }}>
                           {renderDisposalField('Category', asset.category ?? '—')}
                           {renderDisposalField('Current / Last Office', asset.office ?? '—')}
                           {renderDisposalField('Status', 'DISPOSED')}
@@ -1339,87 +1397,66 @@ export function AssetPage() {
       ) : (
         <Card noPadding>
         {/* Toolbar */}
-        <div style={{
-          display: 'flex', gap: 10, alignItems: 'center',
-          padding: '12px 20px',
-          borderBottom: '1px solid #E2E8F0',
-          background: '#fff',
-        }}>
-          {/* Search */}
-          <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0 }}>
-            <Search size={14} style={{
-              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-              color: '#64748B', pointerEvents: 'none',
-            }} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void load(1, search) }}
-              placeholder="Search by asset number, name, or category..."
-              style={{
-                width: '100%', height: 38, paddingLeft: 34, paddingRight: 14,
-                borderRadius: 10, border: '1.5px solid #E2E8F0',
-                fontSize: 13.5, color: '#1E293B', outline: 'none',
-                boxSizing: 'border-box', fontFamily: 'inherit',
-                background: '#F8FAFC',
-                transition: 'border-color 0.15s, background 0.15s',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#93C5FD'
-                e.currentTarget.style.background = '#fff'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#E2E8F0'
-                e.currentTarget.style.background = '#F8FAFC'
-              }}
-            />
-          </div>
-
-          {/* Status filter */}
-          <select aria-label="Asset status filter"
-            value={status}
-            onChange={(e) => { setStatus(e.target.value); void load(1, search) }}
-            style={{
-              height: 38, paddingInline: '12px 32px', borderRadius: 10,
-              border: '1.5px solid #E2E8F0', fontSize: 13, color: status ? '#1E293B' : '#64748B',
-              background: `#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394A3B8'/%3E%3C/svg%3E") no-repeat right 12px center`,
-              backgroundSize: '10px 6px',
-              appearance: 'none', cursor: 'pointer', fontFamily: 'inherit',
-              outline: 'none', flexShrink: 0,
-              transition: 'border-color 0.15s',
-            }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = '#93C5FD' }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = '#E2E8F0' }}
-          >
-            <option value="">All statuses</option>
-            <option value="AVAILABLE">Available</option>
-            <option value="BORROWED">Borrowed</option>
-            <option value="RESERVED">Reserved</option>
-            <option value="MAINTENANCE">Maintenance</option>
-            <option value="UNAVAILABLE">Unavailable</option>
-            <option value="FOR_DISPOSAL">For Disposal</option>
-            <option value="RETIRED">Retired</option>
-            <option value="DISPOSED">Disposed</option>
-          </select>
-
-          {/* Search button */}
-          <button
-            onClick={() => void load(1, search)}
-            style={{
-              height: 38, paddingInline: 14, borderRadius: 10,
-              border: '1.5px solid #E2E8F0', background: '#F8FAFC',
-              fontSize: 13, fontWeight: 600, color: '#374151',
-              cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              transition: 'background 0.12s',
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F5F9' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC' }}
-          >
-            <Filter size={14} />
-            Filter
-          </button>
-        </div>
+        <InventoryFilterBar
+          search={search}
+          setSearch={setSearch}
+          onSearchKeyDown={(e) => { if (e.key === 'Enter') void load(1, search) }}
+          searchPlaceholder="Search by asset number, name, or category..."
+          statusFilter={status}
+          setStatusFilter={setStatus}
+          onApplyFilters={(snapshot) => {
+            const nextStatus = snapshot?.statusFilter ?? status
+            const nextAssetCategoryId = snapshot?.assetCategoryId ?? assetCategoryFilter
+            const nextOfficeId = snapshot?.officeId ?? officeFilter
+            const nextLocationId = snapshot?.locationId ?? locationFilter
+            const nextManufacturerId = snapshot?.manufacturerId ?? manufacturerFilter
+            void load(1, search, {
+              status: nextStatus,
+              assetCategoryId: nextAssetCategoryId,
+              officeId: nextOfficeId,
+              locationId: nextLocationId,
+              manufacturerId: nextManufacturerId,
+            })
+          }}
+          onClearFilters={() => {
+            setStatus('')
+            setAssetCategoryFilter(null)
+            setOfficeFilter(null)
+            setLocationFilter(null)
+            setManufacturerFilter(null)
+            void load(1, search, {
+              status: '',
+              assetCategoryId: null,
+              officeId: null,
+              locationId: null,
+              manufacturerId: null,
+            })
+          }}
+          statusOptions={[
+            { label: 'All statuses', value: '' },
+            { label: 'Available', value: 'AVAILABLE' },
+            { label: 'Borrowed', value: 'BORROWED' },
+            { label: 'Reserved', value: 'RESERVED' },
+            { label: 'Maintenance', value: 'MAINTENANCE' },
+            { label: 'Unavailable', value: 'UNAVAILABLE' },
+            { label: 'For Disposal', value: 'FOR_DISPOSAL' },
+            { label: 'Retired', value: 'RETIRED' },
+            { label: 'Disposed', value: 'DISPOSED' },
+          ]}
+          assetCategoryId={assetCategoryFilter}
+          setAssetCategoryId={setAssetCategoryFilter}
+          officeId={officeFilter}
+          setOfficeId={setOfficeFilter}
+          locationId={locationFilter}
+          setLocationId={setLocationFilter}
+          manufacturerId={manufacturerFilter}
+          setManufacturerId={setManufacturerFilter}
+          assetCategories={assetCategories}
+          offices={offices}
+          locations={locations}
+          manufacturers={manufacturers}
+          advancedFields={['assetCategory', 'office', 'location', 'manufacturer']}
+        />
 
         {/* Table */}
         <div style={{ overflowX: 'auto' }}>

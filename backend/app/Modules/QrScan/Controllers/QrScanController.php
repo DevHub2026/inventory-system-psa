@@ -140,4 +140,29 @@ class QrScanController extends Controller
             ],
         ], 'Your scan history retrieved successfully.');
     }
+
+    /**
+     * DELETE /api/v1/qr/history
+     * Admin-only: archive the active QR scan log view by soft-deleting the log entries.
+     */
+    public function clearHistory(): JsonResponse
+    {
+        $count = $this->qrScanService->clearHistory();
+
+        return $this->success([
+            'cleared' => $count,
+            'archived' => true,
+            'message' => 'QR scan history archived successfully. Records remain in the database as soft-deleted audit evidence.',
+        ], 'QR scan history archived successfully.');
+    }
+
+    public function restoreHistory(): JsonResponse
+    {
+        $count = $this->qrScanService->restoreHistory();
+
+        return $this->success([
+            'restored' => $count,
+            'message' => 'QR scan history restored successfully.',
+        ], 'QR scan history restored successfully.');
+    }
 }

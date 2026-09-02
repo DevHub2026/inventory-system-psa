@@ -43,4 +43,14 @@ export const qrService = {
     const { data } = await api.get<ApiResponse<Paginated<QrScanHistory>>>('/qr/my-history', { params })
     return unwrapPaginated(data)
   },
+
+  async clearHistory(): Promise<{ cleared: number; archived: boolean; message: string }> {
+    const { data } = await api.delete<ApiResponse<{ cleared: number; archived: boolean; message: string }>>('/qr/history')
+    return unwrapData(data)
+  },
+
+  async restoreHistory(): Promise<{ restored: number; message: string }> {
+    const { data } = await api.post<ApiResponse<{ restored: number; message: string }>>('/qr/history/restore')
+    return unwrapData(data)
+  },
 }

@@ -60,7 +60,10 @@ class BorrowingController extends Controller
     public function index(Request $request): JsonResponse
     {
         $perPage = (int) $request->query('per_page', 20);
-        $borrowings = $this->borrowingService->list($request->user(), $perPage);
+        // Optional status filter — allows the dashboard to fetch only
+        // e.g. BORROWED items without loading unrelated records.
+        $status = $request->query('status');
+        $borrowings = $this->borrowingService->list($request->user(), $perPage, $status ?: null);
 
         return $this->success([
             'items' => collect($borrowings->items())->map(fn (Borrowing $b) => $this->transform($b))->values(),

@@ -84,7 +84,7 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
           {title}
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px 18px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: '10px 18px' }}>
         {children}
       </div>
     </div>
@@ -169,7 +169,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
           </div>
 
           {/* ── Main body: details left, QR right ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 20, alignItems: 'start' }}>
 
             {/* Left: field sections */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

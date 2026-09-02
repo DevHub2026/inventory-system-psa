@@ -356,7 +356,7 @@ export function SettingsPage() {
         </div>
 
         {/* ── Info chips grid ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 10, marginBottom: 20 }}>
           <InfoChip icon={<User size={15} />} label="Full Name" value={name} />
           <InfoChip icon={<Mail size={15} />} label="Email" value={user?.email || '—'} />
           <InfoChip icon={<Hash size={15} />} label="Employee ID" value={user?.employee_number || '—'} />

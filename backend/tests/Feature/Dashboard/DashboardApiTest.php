@@ -18,9 +18,18 @@ class DashboardApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_authenticated_user_can_get_dashboard_stats(): void
+    private function createUserWithRole(string $roleName): User
     {
         $user = User::factory()->create();
+        $user->roles()->detach();
+        $user->assignRole($roleName);
+
+        return $user;
+    }
+
+    public function test_authenticated_user_can_get_dashboard_stats(): void
+    {
+        $user = $this->createUserWithRole('Super Administrator');
         $token = $user->createToken('auth')->plainTextToken;
 
         $this->createAsset('AVAILABLE', 1);
@@ -53,7 +62,7 @@ class DashboardApiTest extends TestCase
 
     public function test_authenticated_user_can_get_recent_activity(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUserWithRole('Property Custodian');
         $token = $user->createToken('auth')->plainTextToken;
 
         $asset = $this->createAsset('AVAILABLE', 1);
@@ -73,7 +82,7 @@ class DashboardApiTest extends TestCase
             'end_date' => now()->addDays(3),
         ]);
 
-        $response = $this->withToken($token)
+        $response = $this->actingAs($user, 'sanctum')
             ->getJson('/api/v1/dashboard/recent-activity');
 
         $response->assertStatus(200)
@@ -87,9 +96,64 @@ class DashboardApiTest extends TestCase
         $this->assertNotEmpty($data);
     }
 
+    public function test_employee_is_denied_system_wide_dashboard_activity(): void
+    {
+        $user = $this->createUserWithRole('Employee');
+
+        $request = \Illuminate\Http\Request::create('/api/v1/dashboard/recent-activity', 'GET');
+        $request->setUserResolver(fn () => $user);
+
+        $response = app(\App\Modules\Dashboard\Controllers\DashboardController::class)->recentActivity($request);
+
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertSame(false, $response->original['success'] ?? null);
+        $this->assertSame('You are not authorized to view system-wide dashboard activity.', $response->original['message'] ?? null);
+    }
+
+    public function test_staff_user_can_get_dashboard_analytics(): void
+    {
+        $user = $this->createUserWithRole('Property Custodian');
+
+        $this->createAsset('AVAILABLE', 5);
+        Borrowing::create([
+            'user_id' => $user->id,
+            'asset_id' => $this->createAsset('AVAILABLE', 6)->id,
+            'borrow_date' => now()->subDays(3),
+            'due_date' => now()->subDay(),
+            'status' => 'BORROWED',
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/dashboard/analytics');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Dashboard analytics retrieved successfully.');
+
+        $data = $response->json('data');
+        $this->assertArrayHasKey('asset_status_distribution', $data);
+        $this->assertArrayHasKey('inventory_health', $data);
+        $this->assertArrayHasKey('borrowing_trend', $data);
+        $this->assertArrayHasKey('reservation_trend', $data);
+        $this->assertArrayHasKey('maintenance_summary', $data);
+    }
+
+    public function test_employee_is_denied_dashboard_analytics(): void
+    {
+        $user = $this->createUserWithRole('Employee');
+
+        $request = \Illuminate\Http\Request::create('/api/v1/dashboard/analytics', 'GET');
+        $request->setUserResolver(fn () => $user);
+
+        $response = app(\App\Modules\Dashboard\Controllers\DashboardController::class)->analytics($request);
+
+        $this->assertSame(403, $response->getStatusCode());
+        $this->assertSame(false, $response->original['success'] ?? null);
+    }
+
     public function test_authenticated_user_can_get_low_stock_items(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUserWithRole('Super Administrator');
         $token = $user->createToken('auth')->plainTextToken;
 
         InventoryItem::create([
@@ -124,7 +188,7 @@ class DashboardApiTest extends TestCase
 
     public function test_authenticated_user_can_get_overdue_assets(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUserWithRole('Super Administrator');
         $token = $user->createToken('auth')->plainTextToken;
 
         $asset = $this->createAsset('AVAILABLE', 1);

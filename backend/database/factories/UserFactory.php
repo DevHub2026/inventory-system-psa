@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
+use App\Modules\Auth\Requests\StoreUserRequest;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -43,6 +44,10 @@ class UserFactory extends Factory
             'first_name' => fake()->firstName(),
             'middle_name' => fake()->optional()->firstName(),
             'last_name' => fake()->lastName(),
+            'username' => fn (array $attributes) => StoreUserRequest::buildUsername(
+                $attributes['last_name'] ?? '',
+                $attributes['employee_number'] ?? '',
+            ),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),

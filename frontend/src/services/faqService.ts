@@ -22,6 +22,13 @@ export const faqService = {
     return records.map(normalizeFaq)
   },
 
+  /** For FAQ management page — returns all FAQs including inactive. */
+  async getAdminFaqs(): Promise<FAQItem[]> {
+    const { data } = await api.get<ApiResponse<FAQItem[]>>('/faqs/admin')
+    const records = unwrapData(data)
+    return records.map(normalizeFaq)
+  },
+
   async createFaq(payload: FaqPayload): Promise<FAQItem> {
     const { data } = await api.post<ApiResponse<FAQItem>>('/faqs', payload)
     return normalizeFaq(unwrapData(data))

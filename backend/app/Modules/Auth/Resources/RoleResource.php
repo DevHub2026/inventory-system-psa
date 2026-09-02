@@ -16,6 +16,14 @@ class RoleResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
+            'permissions' => $this->whenLoaded('permissions', fn() => 
+                $this->permissions->map(fn($p) => [
+                    'id' => $p->id, 
+                    'name' => $p->name,
+                    'module' => $p->module,
+                    'description' => $p->description
+                ])
+            ),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

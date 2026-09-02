@@ -176,7 +176,7 @@ export function WorkflowEditorModal({ open, onClose, onSaved, workflowToEdit }: 
           <>
             {/* ── Basic Info ── */}
             <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 20,
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 14, marginBottom: 20,
             }}>
               <div>
                 <label style={fieldLabel}>Workflow Name <span style={{ color: '#EF4444' }}>*</span></label>
@@ -317,7 +317,7 @@ export function WorkflowEditorModal({ open, onClose, onSaved, workflowToEdit }: 
 
                           {/* Expanded level body */}
                           {isExp && (
-                            <div style={{ padding: '16px 14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+                            <div style={{ padding: '16px 14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 14 }}>
                               {/* Roles */}
                               <div>
                                 <label style={fieldLabel}>

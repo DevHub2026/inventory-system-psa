@@ -167,7 +167,7 @@ function ProfileTab({ profile }: { profile: UserProfile }) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))',
             gap: 24,
             padding: '24px 28px',
           }}

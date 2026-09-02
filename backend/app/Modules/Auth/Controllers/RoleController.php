@@ -19,7 +19,7 @@ class RoleController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Role::query();
+        $query = Role::query()->with('permissions');
 
         if ($request->has('search')) {
             $search = $request->input('search');
@@ -48,7 +48,7 @@ class RoleController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Role created successfully.',
-            'data' => new RoleResource($role),
+            'data' => new RoleResource($role->load('permissions')),
         ], 201);
     }
 
@@ -57,12 +57,16 @@ class RoleController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Role retrieved successfully.',
-            'data' => new RoleResource($role),
+            'data' => new RoleResource($role->load('permissions')),
         ]);
     }
 
     public function update(UpdateRoleRequest $request, Role $role): JsonResponse
     {
+        if ($role->name === \App\Enums\UserRole::SUPER_ADMINISTRATOR->value && !auth()->user()->hasRole(\App\Enums\UserRole::SUPER_ADMINISTRATOR->value)) {
+            abort(403, 'You cannot modify the Super Administrator role.');
+        }
+
         $role = $this->roleService->update($role, $request->validated());
 
         return response()->json([
@@ -74,6 +78,10 @@ class RoleController extends Controller
 
     public function destroy(Role $role): JsonResponse
     {
+        if ($role->name === \App\Enums\UserRole::SUPER_ADMINISTRATOR->value) {
+            abort(403, 'You cannot delete the Super Administrator role.');
+        }
+
         $this->roleService->delete($role);
 
         return response()->json([

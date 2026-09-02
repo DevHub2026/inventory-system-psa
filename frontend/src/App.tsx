@@ -9,11 +9,11 @@ import ExtensionRequestsPage from '@/pages/ExtensionRequestsPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { DocumentTemplatesPage } from '@/pages/DocumentTemplatesPage'
 import { DocumentationPage } from '@/pages/DocumentationPage'
+import { HistoryPage } from '@/pages/HistoryPage'
+import { AuditLogsPage } from '@/pages/AuditLogsPage'
 import { InventoryPage } from '@/pages/InventoryPage'
 import { IssuedAssetsPage } from '@/pages/IssuedAssetsPage'
-import { DamageReportsPage } from '@/pages/DamageReportsPage'
 import { MaintenancePage } from '@/pages/MaintenancePage'
-import { LostAssetReportsPage } from '@/pages/LostAssetReportsPage'
 import { PermissionsPage } from '@/pages/PermissionsPage'
 import { PrivacyNoticePage } from '@/pages/PrivacyNoticePage'
 import { ReportPage } from '@/pages/ReportPage'
@@ -29,7 +29,10 @@ import { EmployeeAssetPage } from '@/pages/EmployeeAssetPage'
 import { QRScanHistoryPage } from '@/pages/QRScanHistoryPage'
 import LoginPage from '@/pages/LoginPage'
 import { UsersPage } from '@/pages/UsersPage'
+import { FaqManagementPage } from '@/pages/FaqManagementPage'
+import { UnauthorizedPage } from '@/pages/UnauthorizedPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
+import { RequirePermission } from '@/routes/RequirePermission'
 import { UserProfilePage } from '@/pages/UserProfilePage'
 
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -50,38 +53,146 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           <Route element={<ProtectedRoute />}>
-            {/* Mobile / standalone QR routes (keep available for employees) */}
+            {/* Mobile / standalone QR routes (open to all authenticated users) */}
             <Route path="/qr" element={<QRScannerPage />} />
             <Route path="/qr/:identifier" element={<EmployeeAssetPage />} />
 
             <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/assets" element={<AssetPage />} />
-              <Route path="/reservations" element={<ReservationPage />} />
-              <Route path="/borrowings" element={<BorrowingPage />} />
-              <Route path="/borrowings/:id" element={<BorrowingDetailsPage />} />
-              <Route path="/extension-requests" element={<ExtensionRequestsPage />} />
-              <Route path="/issued-assets" element={<IssuedAssetsPage />} />
-              <Route path="/inventory" element={<InventoryPage />} />
-              <Route path="/maintenance" element={<MaintenancePage />} />
-              <Route path="/damage-reports" element={<DamageReportsPage />} />
-              <Route path="/lost-asset-reports" element={<LostAssetReportsPage />} />
-              <Route path="/reports" element={<ReportPage />} />
-              <Route path="/users" element={<UsersPage />} />
-              <Route path="/users/:id" element={<UserProfilePage />} />
-              <Route path="/roles" element={<RolesPage />} />
-              <Route path="/permissions" element={<PermissionsPage />} />
-              <Route path="/system-setup" element={<SystemSetupPage />} />
-              <Route path="/workflows" element={<WorkflowsPage />} />
-              <Route path="/qr-scan-history" element={<QRScanHistoryPage />} />
-              <Route path="/document-templates" element={<DocumentTemplatesPage />} />
+              {/* -- All authenticated users -- */}
+              <Route path="/dashboard" element={
+                <RequirePermission permission="nav.dashboard">
+                  <DashboardPage />
+                </RequirePermission>
+              } />
+
+              {/* -- Assets & Borrowing (Employee + Staff + Admin) -- */}
+              <Route path="/assets" element={
+                <RequirePermission permission="nav.assets">
+                  <AssetPage />
+                </RequirePermission>
+              } />
+              <Route path="/reservations" element={
+                <RequirePermission permission="nav.reservations">
+                  <ReservationPage />
+                </RequirePermission>
+              } />
+              <Route path="/borrowings" element={
+                <RequirePermission permission="nav.borrowings">
+                  <BorrowingPage />
+                </RequirePermission>
+              } />
+              <Route path="/borrowings/:id" element={
+                <RequirePermission permission="nav.borrowings">
+                  <BorrowingDetailsPage />
+                </RequirePermission>
+              } />
+              <Route path="/issued-assets" element={
+                <RequirePermission permission="nav.issued_assets">
+                  <IssuedAssetsPage />
+                </RequirePermission>
+              } />
+
+              {/* -- Staff + Admin operations -- */}
+              <Route path="/extension-requests" element={
+                <RequirePermission permission="nav.extension_requests">
+                  <ExtensionRequestsPage />
+                </RequirePermission>
+              } />
+              <Route path="/inventory" element={
+                <RequirePermission permission="nav.inventory">
+                  <InventoryPage />
+                </RequirePermission>
+              } />
+              <Route path="/maintenance" element={
+                <RequirePermission permission="nav.maintenance">
+                  <MaintenancePage />
+                </RequirePermission>
+              } />
+              <Route path="/reports/*" element={
+                <RequirePermission permission="nav.reports">
+                  <ReportPage />
+                </RequirePermission>
+              } />
+              <Route path="/history" element={
+                <RequirePermission permission="nav.history">
+                  <HistoryPage />
+                </RequirePermission>
+              } />
+              <Route path="/qr-scan-history" element={
+                <RequirePermission permission="nav.qr_scan_history">
+                  <QRScanHistoryPage />
+                </RequirePermission>
+              } />
+
+              {/* Legacy redirect aliases */}
+              <Route path="/damage-reports" element={<Navigate to="/reports/damage" replace />} />
+              <Route path="/lost-asset-reports" element={<Navigate to="/reports/lost-assets" replace />} />
+
+              {/* -- Admin-only -- */}
+              <Route path="/audit-logs" element={
+                <RequirePermission permission="nav.audit_logs">
+                  <AuditLogsPage />
+                </RequirePermission>
+              } />
+              <Route path="/users" element={
+                <RequirePermission permission="nav.users">
+                  <UsersPage />
+                </RequirePermission>
+              } />
+              {/*
+                /users/:id: guarded by nav.users for listing; backend policy also
+                allows self-view (user.id === model.id), which the backend enforces.
+                We guard with nav.users so non-admin users cannot enumerate profiles.
+              */}
+              <Route path="/users/:id" element={
+                <RequirePermission permission="nav.users">
+                  <UserProfilePage />
+                </RequirePermission>
+              } />
+              <Route path="/roles" element={
+                <RequirePermission permission="nav.roles">
+                  <RolesPage />
+                </RequirePermission>
+              } />
+              {/*
+                /permissions: backend guards this with role:Super Administrator.
+                No nav.* permission exists for it, so we check the role directly.
+              */}
+              <Route path="/permissions" element={
+                <RequirePermission role="Super Administrator">
+                  <PermissionsPage />
+                </RequirePermission>
+              } />
+              <Route path="/faqs" element={
+                <RequirePermission permission="nav.faqs">
+                  <FaqManagementPage />
+                </RequirePermission>
+              } />
+              <Route path="/system-setup" element={
+                <RequirePermission permission="nav.system_setup">
+                  <SystemSetupPage />
+                </RequirePermission>
+              } />
+              <Route path="/workflows" element={
+                <RequirePermission permission="nav.workflows">
+                  <WorkflowsPage />
+                </RequirePermission>
+              } />
+              <Route path="/document-templates" element={
+                <RequirePermission permission="nav.system_setup">
+                  <DocumentTemplatesPage />
+                </RequirePermission>
+              } />
+
+              {/* -- Open to all authenticated users (no RBAC guard) -- */}
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/documentation" element={<DocumentationPage />} />
               <Route path="/sessions" element={<SessionsPage />} />
               <Route path="/privacy" element={<PrivacyNoticePage />} />
               <Route path="/developers" element={<DevelopersPage />} />
+              <Route path="/documentation" element={<DocumentationPage />} />
 
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>

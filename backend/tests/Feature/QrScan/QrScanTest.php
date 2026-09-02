@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\QrScan;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Modules\Asset\Enums\AssetStatus;
 use App\Modules\Asset\Models\Asset;
@@ -10,6 +11,7 @@ use App\Modules\Asset\Models\Manufacturer;
 use App\Modules\Asset\Models\Office;
 use App\Modules\AssetCategory\Models\AssetCategory;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
+use App\Modules\QrScan\Models\QrScanHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -169,5 +171,45 @@ class QrScanTest extends TestCase
             'user_id' => $this->employee->id,
             'scan_source' => 'sidebar_scanner',
         ]);
+    }
+
+    public function test_admin_can_archive_qr_scan_history_without_destroying_records(): void
+    {
+        $admin = User::factory()->create();
+        $admin->roles()->detach();
+        $admin->assignRole(UserRole::SUPER_ADMINISTRATOR->value);
+
+        $this->withToken($this->employeeToken)
+            ->getJson('/api/v1/qr/asset/PSA-ASSET-009999');
+
+        $scan = QrScanHistory::query()->firstOrFail();
+
+        $response = $this->actingAs($admin)
+            ->deleteJson('/api/v1/qr/history');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.cleared', 1)
+            ->assertJsonPath('data.archived', true);
+
+        $this->assertSoftDeleted('qr_scan_histories', ['id' => $scan->id]);
+        $this->assertSame(0, QrScanHistory::query()->count());
+        $this->assertSame(1, QrScanHistory::withTrashed()->count());
+    }
+
+    public function test_employee_cannot_archive_qr_scan_history(): void
+    {
+        $employee = User::factory()->create();
+        $employee->roles()->detach();
+        $employee->assignRole(UserRole::EMPLOYEE->value);
+        $token = $employee->createToken('auth')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/qr/asset/PSA-ASSET-009999');
+
+        $response = $this->withToken($token)
+            ->deleteJson('/api/v1/qr/history');
+
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('qr_scan_histories', ['user_id' => $employee->id]);
     }
 }

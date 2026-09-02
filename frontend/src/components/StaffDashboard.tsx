@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, CalendarClock, ClipboardCheck, HandCoins, QrCode as QrCodeIcon, Camera, TrendingUp } from 'lucide-react'
 import {
-  Badge, Button, EmptyState, Spinner, Table, Alert, Input, type Column,
+ Button, EmptyState, Spinner, Table, Alert, Input, type Column,
 } from '@/components/ui'
 import { DashboardStatCard } from '@/components/DashboardStatCard'
 import { PageHeader } from '@/components/PageHeader'
@@ -11,11 +11,11 @@ import { assetService } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
 import { borrowExtensionService } from '@/services/borrowExtensionService'
-import { dashboardService } from '@/services/dashboardService'
+import { dashboardService, type OverdueAsset } from '@/services/dashboardService'
 import { useAuth } from '@/hooks/useAuth'
-import type { Reservation, Borrowing } from '@/types'
-import { borrowingStatusTone } from '@/utils/statusTone'
-import { borrowingStatusLabel } from '@/utils/displayLabels'
+import type { Reservation, Borrowing, DashboardAnalytics, DashboardStats } from '@/types'
+
+
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
 import { hasRole, isAdmin } from '@/utils/roleHelpers'
 
@@ -114,12 +114,42 @@ function Panel({
   )
 }
 
+function MiniBarChart({ data, color }: { data: Array<{ label: string; value: number }>; color: string }) {
+  const max = Math.max(...data.map((item) => Number(item.value)), 1)
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(54px, 1fr))', gap: 10, alignItems: 'end', minHeight: 150, marginTop: 16 }}>
+      {data.map((item) => (
+        <div key={item.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: '100%', height: 120, display: 'flex', alignItems: 'end', justifyContent: 'center' }}>
+            <div
+              style={{
+                width: '100%',
+                maxWidth: 42,
+                height: `${Math.max((Number(item.value) / max) * 100, Number(item.value) > 0 ? 18 : 6)}px`,
+                borderRadius: '10px 10px 0 0',
+                background: color,
+                boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.4)',
+              }}
+              aria-label={`${item.label}: ${item.value}`}
+            />
+          </div>
+          <span style={{ fontSize: 10, color: T.textMuted, textAlign: 'center', lineHeight: 1.3 }}>{item.label}</span>
+          <strong style={{ fontSize: 11, color: T.text }}>{item.value}</strong>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function StaffDashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [pendingReservations,    setPendingReservations]    = useState<Reservation[]>([])
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null)
+  const [pendingReservations, setPendingReservations] = useState<Reservation[]>([])
   const [activeBorrowings,       setActiveBorrowings]       = useState<Borrowing[]>([])
-  const [overdueBorrowings,      setOverdueBorrowings]      = useState<Borrowing[]>([])
+  const [overdueBorrowings, setOverdueBorrowings] = useState<OverdueAsset[]>([])
   const [pendingExtensionsCount, setPendingExtensionsCount] = useState<number>(0)
   const [reissuedCount,          setReissuedCount]          = useState<number>(0)
   const [loading,                setLoading]                = useState(true)
@@ -130,16 +160,20 @@ export function StaffDashboard() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [reservationsRes, borrowingsRes, extCountRes, statsRes] = await Promise.all([
-        reservationService.list(),
-        borrowingService.list(),
+      const [reservationsRes, borrowingsRes, overdueRes, extCountRes, statsRes, analyticsRes] = await Promise.all([
+        reservationService.list({ status: 'PENDING', per_page: 10 }),
+        borrowingService.list({ status: 'BORROWED', per_page: 10 }),
+        dashboardService.getOverdueAssets().catch(() => []),
         borrowExtensionService.getPendingExtensionRequests().catch(() => ({ count: 0 })),
         dashboardService.getStats().catch(() => null),
+        dashboardService.getAnalytics().catch(() => null),
       ])
-      setPendingReservations(reservationsRes.items.filter((r) => r.status === 'PENDING'))
-      setActiveBorrowings(borrowingsRes.items.filter((b) => b.status === 'BORROWED' || b.status === 'ACTIVE'))
-      setOverdueBorrowings(borrowingsRes.items.filter((b) => b.status === 'OVERDUE'))
+      setPendingReservations(reservationsRes.items)
+      setActiveBorrowings(borrowingsRes.items)
+      setOverdueBorrowings(overdueRes)
       setPendingExtensionsCount(extCountRes.count ?? 0)
+      setStats(statsRes)
+      setAnalytics(analyticsRes)
       if (statsRes?.assets) {
         setReissuedCount(statsRes.assets.reissued_this_month ?? 0)
       }
@@ -224,25 +258,35 @@ export function StaffDashboard() {
     { key: 'actions',       header: '',         render: (r) => <Button size="sm" variant="primary" onClick={() => handleReturnBorrowing(r.id)}>Return</Button> },
   ]
 
-  const overdueColumns: Column<Borrowing>[] = [
-    { key: 'id',            header: '#',        render: (r) => <span className="font-mono text-[12px] text-slate-400">#{r.id}</span> },
-    { key: 'asset_name',    header: 'Asset',    render: (r) => <span className="text-[13px] font-medium text-slate-800">{r.asset_name}</span> },
-    { key: 'employee_name', header: 'Employee', render: (r) => <span className="text-[13px] text-slate-500">{r.employee_name}</span> },
-    { key: 'status',        header: 'Status',   render: (r) => <Badge tone={borrowingStatusTone(r.status)}>{borrowingStatusLabel(r.status)}</Badge> },
-    { key: 'due_at',        header: 'Due',      render: (r) => <span className="whitespace-nowrap font-mono text-[12px] text-red-500">{r.due_at}</span> },
-    { key: 'actions',       header: '',         render: (r) => <Button size="sm" variant="danger" onClick={() => handleReturnBorrowing(r.id)}>Return</Button> },
+  const overdueColumns: Column<OverdueAsset>[] = [
+    { key: 'id',           header: '#',           render: (r) => <span className="font-mono text-[12px] text-slate-400">#{r.id}</span> },
+    { key: 'asset_name',   header: 'Asset',       render: (r) => <span className="text-[13px] font-medium text-slate-800">{r.asset_name}</span> },
+    { key: 'borrower',     header: 'Borrower',    render: (r) => <span className="text-[13px] text-slate-500">{r.borrower}</span> },
+    { key: 'days_overdue', header: 'Days Overdue',render: (r) => <span className="font-mono text-[12px] text-red-600 font-semibold">{r.days_overdue}d</span> },
+    { key: 'due_date',     header: 'Due',         render: (r) => <span className="whitespace-nowrap font-mono text-[12px] text-red-500">{r.due_date}</span> },
   ]
 
+  const pendingCount = stats?.reservations?.pending ?? pendingReservations.length
+  const activeCount = stats?.borrowings?.active ?? activeBorrowings.length
+  const overdueCount = stats?.borrowings?.overdue ?? overdueBorrowings.length
+
   const statCards = [
-    { label: 'Borrow Requests',    value: pendingReservations.length,                           description: 'Waiting for approval',                icon: CalendarClock,  tone: 'blue'  as const },
-    { label: 'Borrowed Items',     value: activeBorrowings.length,                              description: 'Currently borrowed items',             icon: HandCoins,      tone: 'green' as const },
-    { label: 'Pending Extensions', value: pendingExtensionsCount,                               description: 'Awaiting due date extension approval', icon: CalendarClock,  tone: 'amber' as const, onClick: () => navigate('/extension-requests') },
-    { label: 'Overdue Items',      value: overdueBorrowings.length,                             description: 'Need immediate follow-up',             icon: AlertTriangle,  tone: 'red'   as const },
-    { label: 'Ready to Process',   value: pendingReservations.length + activeBorrowings.length, description: 'Operations requiring attention',       icon: ClipboardCheck, tone: 'amber' as const },
+    { label: 'Borrow Requests',    value: pendingCount,                               description: 'Waiting for approval',                icon: CalendarClock,  tone: 'blue'  as const },
+    { label: 'Borrowed Items',     value: activeCount,                                description: 'Currently borrowed items',             icon: HandCoins,      tone: 'green' as const },
+    { label: 'Pending Extensions', value: pendingExtensionsCount,                     description: 'Awaiting due date extension approval', icon: CalendarClock,  tone: 'amber' as const, onClick: () => navigate('/extension-requests') },
+    { label: 'Overdue Items',      value: overdueCount,                               description: 'Need immediate follow-up',             icon: AlertTriangle,  tone: 'red'   as const },
+    { label: 'Ready to Process',   value: pendingCount + activeCount,                 description: 'Operations requiring attention',       icon: ClipboardCheck, tone: 'amber' as const },
     ...(hasRole(user, 'Property Custodian') || isAdmin(user) ? [{
       label: 'Re-Issued This Month', value: reissuedCount, description: 'Permanent accountability transfers', icon: TrendingUp, tone: 'teal' as const,
     }] : []),
   ]
+
+  const analyticsCharts = analytics ? [
+    { title: 'Asset Status Distribution', data: analytics.asset_status_distribution, color: '#1565C0' },
+    { title: 'Inventory Health', data: analytics.inventory_health, color: '#2E7D32' },
+    { title: 'Borrowing Trend', data: analytics.borrowing_trend, color: '#D97706' },
+    { title: 'Reservation Trend', data: analytics.reservation_trend, color: '#7C3AED' },
+  ] : []
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -257,6 +301,29 @@ export function StaffDashboard() {
       }}>
         {statCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
       </div>
+
+      {analyticsCharts.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 20 }} className="xl:!grid-cols-2">
+          {analyticsCharts.map((chart) => (
+            <div key={chart.title} style={{
+              background: T.white,
+              border: `1px solid ${T.border}`,
+              borderRadius: 16,
+              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+              padding: 20,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: T.textMuted }}>
+                {chart.title}
+              </div>
+              {chart.data.length > 0 ? (
+                <MiniBarChart data={chart.data} color={chart.color} />
+              ) : (
+                <div style={{ paddingTop: 20, color: T.textMuted }}>No data available.</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Quick QR Scanner ── */}
       <div style={{
@@ -299,7 +366,7 @@ export function StaffDashboard() {
         <Panel
           title="Borrow Requests"
           subtitle="Approve before releasing assets for pickup"
-          count={pendingReservations.length}
+          count={pendingCount}
           countTone="amber"
           onViewAll={() => navigate('/reservations')}
           loading={loading}
@@ -313,6 +380,8 @@ export function StaffDashboard() {
         <Panel
           title="Currently Borrowed Items"
           subtitle="Process returns for currently borrowed items"
+          count={activeCount}
+          countTone="amber"
           onViewAll={() => navigate('/borrowings')}
           loading={loading}
         >
@@ -323,12 +392,12 @@ export function StaffDashboard() {
         </Panel>
       </div>
 
-      {/* Overdue — only shown when there are overdue items */}
-      {overdueBorrowings.length > 0 && (
+      {/* Overdue – only shown when there are overdue items */}
+      {overdueCount > 0 && (
         <Panel
           title="Overdue Items"
           subtitle="These items are past their return date"
-          count={overdueBorrowings.length}
+          count={overdueCount}
           countTone="red"
           onViewAll={() => navigate('/borrowings')}
           loading={loading}

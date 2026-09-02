@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, Pencil, Search, ChevronDown, Check, X } from 'lucide-react'
-import { Modal, Button, Input } from '@/components/ui'
+import { Modal, Button, Input, Spinner } from '@/components/ui'
 import { setupService, type SetupPayload, type SetupRecord, type SetupResource } from '@/services/setupService'
 
 interface Option {
@@ -22,6 +22,7 @@ interface SetupDropdownProps {
   needsOffice?: boolean
   currentOfficeId?: number | null
   codeLabel?: string
+  isLoading?: boolean
 }
 
 const RESOURCE_LABELS: Record<SetupResource, string> = {
@@ -46,6 +47,7 @@ export function SetupDropdown({
   needsOffice = false,
   currentOfficeId = null,
   codeLabel,
+  isLoading = false,
 }: SetupDropdownProps) {
   const [open, setOpen]             = useState(false)
   const [search, setSearch]         = useState('')
@@ -310,7 +312,9 @@ export function SetupDropdown({
           </div>
 
           <div className="flex-1 overflow-y-auto p-1">
-            {filteredOptions.length === 0 ? (
+            {(typeof isLoading !== 'undefined' && isLoading && options.length === 0) ? (
+              <Spinner label={`Loading ${titleName.toLowerCase()}s...`} />
+            ) : filteredOptions.length === 0 ? (
               <div className="px-3 py-4 text-center text-xs text-slate-400">
                 No matching {titleName.toLowerCase()}s found.
               </div>

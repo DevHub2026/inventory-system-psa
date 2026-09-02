@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -179,6 +180,74 @@ class AuthenticationTest extends TestCase
         ]);
     }
  
+    public function test_username_change_keeps_user_identity_and_updates_login_fallback(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'oldusername',
+            'password' => Hash::make('password123'),
+            'email' => 'user@example.com',
+        ]);
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $this->assertTrue(Auth::guard('web')->attempt([
+            'username' => 'oldusername',
+            'password' => 'password123',
+        ]));
+
+        $response = $this->withToken($token)
+            ->putJson('/api/v1/users/'.$user->id, [
+                'username' => 'newusername',
+                'email' => $user->email,
+            ]);
+
+        $response->assertStatus(200);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'username' => 'newusername',
+        ]);
+
+        $this->assertTrue(Auth::guard('web')->attempt([
+            'username' => 'newusername',
+            'password' => 'password123',
+        ]));
+
+        $this->assertFalse(Auth::guard('web')->attempt([
+            'username' => 'oldusername',
+            'password' => 'password123',
+        ]));
+
+        $meResponse = $this->withToken($token)
+            ->getJson('/api/v1/me');
+
+        $meResponse->assertStatus(200)
+            ->assertJsonPath('data.id', $user->id);
+    }
+
+    public function test_username_change_keeps_roles_and_permissions_unchanged(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'initial_name',
+            'password' => Hash::make('password123'),
+        ]);
+        $role = \App\Models\Role::query()->firstOrCreate(
+            ['name' => 'Employee'],
+            ['description' => 'Employee role'],
+        );
+        $user->roles()->sync([$role->id]);
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->putJson('/api/v1/users/'.$user->id, [
+                'username' => 'updated_name',
+                'email' => $user->email,
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertSame($user->id, $user->fresh()->id);
+        $this->assertTrue($user->fresh()->roles()->whereKey($role->id)->exists());
+    }
+
     public function test_authenticated_user_can_change_password(): void
     {
         $user = User::factory()->create([

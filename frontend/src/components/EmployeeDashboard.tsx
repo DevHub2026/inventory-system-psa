@@ -8,7 +8,8 @@ import { DashboardStatCard } from '@/components/DashboardStatCard'
 import { PageHeader } from '@/components/PageHeader'
 import { reservationService } from '@/services/reservationService'
 import { borrowingService } from '@/services/borrowingService'
-import type { Reservation, Borrowing } from '@/types'
+import type { Reservation, Borrowing, DashboardStats } from '@/types'
+import { dashboardService } from '@/services/dashboardService'
 import { reservationStatusTone, borrowingStatusTone } from '@/utils/statusTone'
 import { borrowingStatusLabel, reservationStatusLabel } from '@/utils/displayLabels'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
@@ -79,7 +80,8 @@ function Panel({
 
 export function EmployeeDashboard() {
   const navigate = useNavigate()
-  const [myReservations,   setMyReservations]   = useState<Reservation[]>([])
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [myReservations, setMyReservations] = useState<Reservation[]>([])
   const [myBorrowings,     setMyBorrowings]     = useState<Borrowing[]>([])
   const [activeBorrowings, setActiveBorrowings] = useState<Borrowing[]>([])
   const [loading,          setLoading]          = useState(true)
@@ -88,15 +90,16 @@ export function EmployeeDashboard() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [reservationsRes, borrowingsRes] = await Promise.all([
-        reservationService.list(),
-        borrowingService.list(),
+      const [reservationsRes, borrowingsRes, activeRes, statsRes] = await Promise.all([
+        reservationService.list({ per_page: 10 }),
+        borrowingService.list({ per_page: 10 }),
+        borrowingService.list({ status: 'BORROWED', per_page: 10 }),
+        dashboardService.getStats().catch(() => null),
       ])
       setMyReservations(reservationsRes.items)
       setMyBorrowings(borrowingsRes.items)
-      setActiveBorrowings(
-        borrowingsRes.items.filter((b) => b.status === 'BORROWED' || b.status === 'ACTIVE' || b.status === 'OVERDUE'),
-      )
+      setActiveBorrowings(activeRes.items)
+      setStats(statsRes)
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load your data.' })
     } finally {
@@ -155,14 +158,16 @@ export function EmployeeDashboard() {
     },
   ]
 
-  const overdueCount = activeBorrowings.filter((b) => b.status === 'OVERDUE').length
-  const dueSoonCount = activeBorrowings.filter((b) => b.status !== 'OVERDUE').length
+  const overdueCount = stats?.my_stats?.overdue ?? activeBorrowings.filter((b) => b.status === 'OVERDUE').length
+  const activeCount = stats?.my_stats?.active_borrowings ?? activeBorrowings.length
+  const dueSoonCount = activeCount - overdueCount
+  const requestsCount = stats ? (stats.reservations.pending + stats.reservations.approved + stats.reservations.rejected) : myReservations.length
 
   const statCards = [
-    { label: 'My Borrow Requests', value: myReservations.length,   description: 'Requests you submitted',  icon: ClipboardList, tone: 'blue'  as const },
-    { label: 'My Borrowed Items',  value: activeBorrowings.length, description: 'Items currently borrowed', icon: HandCoins,     tone: 'green' as const },
-    { label: 'Due Soon',           value: dueSoonCount,            description: 'Active items to monitor',  icon: CalendarDays,  tone: 'amber' as const },
-    { label: 'Overdue',            value: overdueCount,            description: 'Items needing return',     icon: AlertTriangle, tone: 'red'   as const },
+    { label: 'My Borrow Requests', value: requestsCount, description: 'Requests you submitted',  icon: ClipboardList, tone: 'blue'  as const },
+    { label: 'My Borrowed Items',  value: activeCount,   description: 'Items currently borrowed', icon: HandCoins,     tone: 'green' as const },
+    { label: 'Due Soon',           value: dueSoonCount,  description: 'Active items to monitor',  icon: CalendarDays,  tone: 'amber' as const },
+    { label: 'Overdue',            value: overdueCount,  description: 'Items needing return',     icon: AlertTriangle, tone: 'red'   as const },
   ]
 
   return (
@@ -237,3 +242,5 @@ export function EmployeeDashboard() {
     </div>
   )
 }
+
+

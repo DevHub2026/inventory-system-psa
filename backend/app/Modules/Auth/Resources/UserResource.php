@@ -40,6 +40,12 @@ class UserResource extends JsonResource
                     'name' => $role->name,
                 ]);
             }),
+            'permissions' => $this->whenLoaded('roles', fn() =>
+                $this->roles->flatMap(fn($r) => $r->relationLoaded('permissions') 
+                    ? $r->permissions->pluck('name') 
+                    : collect()
+                )->unique()->values()
+            ),
             'accessibility_preferences' => [
                 'fontSize' => $this->accessibility_preferences['font_size'] ?? 'default',
                 'highContrast' => (bool) ($this->accessibility_preferences['high_contrast'] ?? false),

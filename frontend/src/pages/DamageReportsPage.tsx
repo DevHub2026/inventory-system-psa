@@ -49,7 +49,11 @@ function formatDate(value?: string | null) {
   })
 }
 
-export function DamageReportsPage() {
+interface DamageReportsPageProps {
+  embedded?: boolean
+}
+
+export function DamageReportsPage({ embedded = false }: DamageReportsPageProps) {
   const [reports, setReports] = useState<DamageReportRow[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -230,28 +234,30 @@ export function DamageReportsPage() {
   ]
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              display: 'grid',
-              placeItems: 'center',
-              width: 44,
-              height: 44,
-              borderRadius: 14,
-              background: '#fef2f2',
-              color: '#b91c1c',
-            }}
-          >
-            <AlertTriangle size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>Damage Reports</div>
-            <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Review asset damage submissions and workflow status.</div>
+    <div style={{ padding: embedded ? 0 : 24 }}>
+      {!embedded && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                display: 'grid',
+                placeItems: 'center',
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                background: '#fef2f2',
+                color: '#b91c1c',
+              }}
+            >
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>Damage Reports</div>
+              <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Review asset damage submissions and workflow status.</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {message && (
         <div

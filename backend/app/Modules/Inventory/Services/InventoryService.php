@@ -55,6 +55,9 @@ class InventoryService
             ->when(! empty($filters['type']), function ($query) use ($filters) {
                 $query->where('type', $filters['type']);
             })
+            ->when(! empty($filters['item_type_id']), function ($query) use ($filters) {
+                $query->where('item_type_id', $filters['item_type_id']);
+            })
             ->when(! empty($filters['search']), function ($query) use ($filters) {
                 $search = $filters['search'];
                 $query->where(function ($q) use ($search) {
@@ -430,6 +433,10 @@ class InventoryService
             $query->where('type', $filters['type']);
         }
 
+        if (! empty($filters['item_type_id'])) {
+            $query->where('item_type_id', $filters['item_type_id']);
+        }
+
         if (! empty($filters['search'])) {
             $search = $filters['search'];
 
@@ -509,6 +516,10 @@ class InventoryService
                     $query->whereNull('reorder_level')
                         ->orWhere('reorder_level', '<=', 0)
                         ->orWhereColumn('quantity', '>', 'reorder_level');
+                }),
+                // Asset-level disposed status — filter by linked asset.status
+                'DISPOSED' => $query->whereHas('asset', function ($aq) {
+                    $aq->where('status', AssetStatus::DISPOSED->value);
                 }),
                 default => null,
             };

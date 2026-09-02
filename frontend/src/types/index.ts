@@ -57,6 +57,7 @@ export interface User {
     id: number
     name: string
   }>
+  permissions?: string[]
   created_at?: string | null
 }
 
@@ -381,32 +382,55 @@ export interface BorrowExtensionRequest {
   created_at?: string
 }
 
-export interface DashboardStats {
-  total_assets: number
-  available: number
-  borrowed: number
-  reserved: number
-  maintenance: number
-  assets: {
+export interface DashboardSeriesPoint {
+  label: string
+  value: number
+}
+
+export interface DashboardAnalytics {
+  asset_status_distribution: DashboardSeriesPoint[]
+  inventory_health: DashboardSeriesPoint[]
+  borrowing_trend: DashboardSeriesPoint[]
+  reservation_trend: DashboardSeriesPoint[]
+  maintenance_summary: {
     total: number
-    available: number
-    borrowed: number
-    reserved: number
-    maintenance: number
-    reissued_this_month?: number
+    pending: number
+    ongoing: number
+    completed: number
+    cancelled: number
+  }
+  category_distribution: DashboardSeriesPoint[]
+  office_distribution: DashboardSeriesPoint[]
+}
+
+export interface DashboardStats {
+  // Flat aliases (may be null for employees who don't see system-wide metrics)
+  total_assets: number | null
+  available: number | null
+  borrowed: number | null
+  reserved: number | null
+  maintenance: number | null
+  assets: {
+    total: number | null
+    available: number | null
+    borrowed: number | null
+    reserved: number | null
+    maintenance: number | null
+    reissued_this_month?: number | null
   }
   inventory: {
-    total: number
-    expendable: number
-    non_expendable: number
-    low_stock: number
-    out_of_stock: number
+    total: number | null
+    expendable: number | null
+    non_expendable: number | null
+    low_stock: number | null
+    out_of_stock: number | null
   }
   borrowings: {
     active: number
     returned: number
     pending_requests: number
     approved_requests: number
+    overdue: number
   }
   reservations: {
     pending: number
@@ -414,11 +438,19 @@ export interface DashboardStats {
     rejected: number
   }
   users: {
-    total: number
-    active: number
-    employees: number
-    staff: number
-    administrators: number
+    total: number | null
+    active: number | null
+    employees: number | null
+    staff: number | null
+    administrators: number | null
+  }
+  /** Employee-scoped personal statistics. Only present when the caller is an Employee. */
+  my_stats?: {
+    active_borrowings: number
+    total_borrowings: number
+    pending_requests: number
+    approved_requests: number
+    overdue: number
   }
 }
 

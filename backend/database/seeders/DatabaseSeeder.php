@@ -17,9 +17,13 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            DepartmentSeeder::class,
             RoleSeeder::class,
+            PermissionSeeder::class,
+            DepartmentSeeder::class,
+            OfficeSeeder::class,
+            UserSeeder::class,
             DocumentTemplateSeeder::class,
+            FaqProductionSeeder::class,
         ]);
 
         $departmentId = Department::query()->firstOrFail()->id;

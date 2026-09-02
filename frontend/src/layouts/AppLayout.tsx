@@ -9,7 +9,7 @@ import { AssetPage } from '@/pages/AssetPage'
 import { InventoryPage } from '@/pages/InventoryPage'
 import { ReservationPage } from '@/pages/ReservationPage'
 import { SharedQrScanner } from '@/components/qr/SharedQrScanner'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
 /**
  * AppLayout — guaranteed two-column shell using 100% inline styles.
@@ -65,47 +65,21 @@ export function AppLayout() {
       }}>
         <TopNav onMenuClick={() => setSidebarOpen((s) => !s)} />
         <main style={{ flex: 1, overflowY: 'auto' }}>
-          <div style={{ maxWidth: 1440, margin: '0 auto', padding: '24px 32px' }}>
+          <div style={{ maxWidth: 1440, margin: '0 auto', padding: isDesktop ? '24px 32px' : '16px 16px 24px' }}>
             {/* If a splitRight query param exists, render the current route (Outlet) as left and the requested page as right */}
             <SplitArea />
           </div>
         </main>
       </div>
 
-      {/* Global Quick Access — consolidates split selector, help, scanner, etc. */}
-      <GlobalQuickAccess />
-      {/* Bottom navigation for mobile */}
-      {!isDesktop && (
-        <MobileBottomNav />
-      )}
+      {/* Global Quick Access — consolidates split selector, help, scanner, etc.
+           On mobile it becomes a draggable FAB with the full quick-action menu. */}
+      <GlobalQuickAccess isDesktop={isDesktop} />
 
     </div>
   )
 }
 
-function MobileBottomNav() {
-  const navigate = useNavigate()
-  return (
-    <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 60, display: 'flex', justifyContent: 'space-around', padding: '8px 12px', background: 'rgba(255,255,255,0.98)', borderTop: '1px solid #E6EDF4' }}>
-      <button onClick={() => navigate('/assets')} style={mobileBtnStyle}>Assets</button>
-      <button onClick={() => navigate('/inventory')} style={mobileBtnStyle}>Inventory</button>
-      <button onClick={() => navigate('/borrowings')} style={mobileBtnStyle}>Borrowings</button>
-      <button onClick={() => navigate('/reservations')} style={mobileBtnStyle}>Reservations</button>
-    </div>
-  )
-}
-
-const mobileBtnStyle: React.CSSProperties = {
-  flex: 1,
-  height: 44,
-  margin: '0 6px',
-  borderRadius: 10,
-  border: '1px solid #E2E8F0',
-  background: '#fff',
-  color: '#0F172A',
-  fontSize: 14,
-  fontWeight: 700,
-}
 
 function SplitArea() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -114,7 +88,7 @@ function SplitArea() {
   const rightMap: Record<string, React.ReactNode> = {
     borrowings: <BorrowingPage />,
     assets: <AssetPage />,
-    inventory: <InventoryPage />,
+    inventory: <InventoryPage embedded={true} />,
     reservations: <ReservationPage />,
     scanner: <SharedQrScanner open={true} onClose={() => setSearchParams({})} mode="page" />,
   }

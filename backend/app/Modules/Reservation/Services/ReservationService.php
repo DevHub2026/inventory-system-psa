@@ -23,11 +23,12 @@ class ReservationService
         private readonly BorrowingService $borrowingService,
     ) {}
 
-    public function list(User $user, int $perPage = 20): LengthAwarePaginator
+    public function list(User $user, int $perPage = 20, ?string $status = null): LengthAwarePaginator
     {
         return Reservation::query()
             ->with(['user', 'assets', 'authorizer'])
             ->when(! $this->canViewAllReservations($user), fn ($query) => $query->where('user_id', $user->id))
+            ->when($status !== null, fn ($query) => $query->where('status', $status))
             ->orderByDesc('created_at')
             ->paginate($perPage);
     }
@@ -391,6 +392,9 @@ class ReservationService
         return $user->hasRole(UserRole::SUPER_ADMINISTRATOR->value)
             || $user->hasRole(UserRole::SYSTEM_ADMINISTRATOR->value)
             || $user->hasRole(UserRole::PROPERTY_CUSTODIAN->value)
-            || $user->hasRole(UserRole::DEPARTMENT_HEAD->value);
+            || $user->hasRole(UserRole::INVENTORY_OFFICER->value)
+            || $user->hasRole(UserRole::DEPARTMENT_HEAD->value)
+            || $user->hasRole(UserRole::AUDITOR->value)
+            || $user->hasRole(UserRole::SUPPLY_OFFICER->value);
     }
 }

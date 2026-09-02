@@ -43,7 +43,7 @@ export function AssetSheetSelector({ open, onClose, onConfirm, initialSelected =
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 10 }}>
             {assets.map(a => (
               <label key={a.id} style={{ display: 'flex', gap: 8, alignItems: 'center', border: '1px solid #E6EEF8', padding: 10, borderRadius: 8, background: selected.includes(a.id) ? '#F1F7FF' : '#fff', cursor: 'pointer' }}>
                 <input type="checkbox" checked={selected.includes(a.id)} onChange={() => toggle(a.id)} />

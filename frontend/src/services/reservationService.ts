@@ -57,9 +57,11 @@ export interface CreateReservationPayload {
   remarks?: string
 }
 
+export interface ListReservationsParams { per_page?: number; page?: number; status?: string; }
+
 export const reservationService = {
-  async list(): Promise<Paginated<Reservation>> {
-    const { data } = await api.get<ApiResponse<BackendReservation[] | Paginated<BackendReservation>>>('/reservations')
+  async list(params?: ListReservationsParams): Promise<Paginated<Reservation>> {
+    const { data } = await api.get<ApiResponse<BackendReservation[] | Paginated<BackendReservation>>>('/reservations', { params })
     const result = unwrapPaginated(data)
     return {
       ...result,

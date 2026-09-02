@@ -229,7 +229,7 @@ function InventoryCard({ accent, badge, illustration, title, description, featur
       onClick={onClick}
       style={{
         flex: '1 1 0',
-        minWidth: 300,
+        minWidth: 'min(100%, 300px)',
         maxWidth: 520,
         display: 'flex',
         flexDirection: 'column',

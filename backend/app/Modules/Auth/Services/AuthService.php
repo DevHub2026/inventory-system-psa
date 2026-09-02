@@ -45,8 +45,9 @@ class AuthService
 
     public function updateProfile(User $user, array $data): User
     {
-        // Remove any keys that are not on the users table to prevent mass-assignment issues
-        $allowedKeys = ['first_name', 'middle_name', 'last_name', 'email', 'username', 'employee_number', 'email_notifications_enabled'];
+        // Remove any keys that are not on the users table to prevent mass-assignment issues.
+        // Username changes are intentionally disabled for self-service profile updates.
+        $allowedKeys = ['first_name', 'middle_name', 'last_name', 'email', 'employee_number', 'email_notifications_enabled'];
         $filtered = array_intersect_key($data, array_flip($allowedKeys));
 
         // Remove null values only for fields not explicitly set to null

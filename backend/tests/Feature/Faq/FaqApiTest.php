@@ -3,157 +3,345 @@
 namespace Tests\Feature\Faq;
 
 use App\Enums\UserRole;
-use App\Http\Controllers\FaqController;
+use App\Models\Faq;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class FaqApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_system_admin_can_create_shared_faq_and_employee_can_read_updated_destination(): void
+    protected function setUp(): void
     {
-        $admin = User::factory()->create();
-        $admin->roles()->detach();
-        $admin->assignRole(UserRole::SYSTEM_ADMINISTRATOR->value);
-
-        $employee = User::factory()->create();
-        $employee->roles()->detach();
-        $employee->assignRole('Employee');
-
-        $controller = new FaqController();
-
-        $createRequest = Request::create('/api/v1/faqs', 'POST', [
-            'question' => 'How do I borrow a test asset?',
-            'answer' => 'Open Borrowings and select the asset you need before continuing the borrowing flow.',
-            'category' => 'Borrowing',
-            'roles' => ['Employee'],
-            'destination' => '/borrowings',
-            'keywords' => ['borrow', 'asset'],
-        ]);
-        $createRequest->setUserResolver(fn () => $admin);
-
-        $createResponse = $controller->store($createRequest);
-        $this->assertSame(201, $createResponse->getStatusCode());
-
-        $payload = json_decode($createResponse->getContent(), true);
-        $faqId = $payload['data']['id'];
-
-        $employeeRequest = Request::create('/api/v1/faqs', 'GET');
-        $employeeRequest->setUserResolver(fn () => $employee);
-        $employeeResponse = $controller->index($employeeRequest);
-        $employeeData = json_decode($employeeResponse->getContent(), true)['data'];
-
-        $this->assertTrue(collect($employeeData)->contains(fn (array $faq) => $faq['question'] === 'How do I borrow a test asset?'));
-        $this->assertTrue(collect($employeeData)->contains(fn (array $faq) => $faq['destination'] === '/borrowings'));
-
-        $updateRequest = Request::create('/api/v1/faqs/'.$faqId, 'PUT', [
-            'question' => 'How do I borrow a test asset?',
-            'answer' => 'Open Borrowings and select the asset you need before continuing the borrowing flow.',
-            'category' => 'Borrowing',
-            'roles' => ['Employee'],
-            'destination' => '/borrow',
-            'keywords' => ['borrow', 'asset'],
-            'active' => true,
-        ]);
-        $updateRequest->setUserResolver(fn () => $admin);
-
-        $updateResponse = $controller->update($updateRequest, \App\Models\Faq::findOrFail($faqId));
-        $this->assertSame(200, $updateResponse->getStatusCode());
-        $this->assertSame('/borrow', json_decode($updateResponse->getContent(), true)['data']['destination']);
-
-        $refreshRequest = Request::create('/api/v1/faqs', 'GET');
-        $refreshRequest->setUserResolver(fn () => $employee);
-        $refreshData = json_decode($controller->index($refreshRequest)->getContent(), true)['data'];
-
-        $this->assertTrue(collect($refreshData)->contains(fn (array $faq) => $faq['destination'] === '/borrow'));
-        $this->assertFalse(collect($refreshData)->contains(fn (array $faq) => $faq['destination'] === '/borrowings' && $faq['question'] === 'How do I borrow a test asset?'));
+        parent::setUp();
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
     }
 
-    public function test_faq_visibility_respects_roles_and_admin_only_writes(): void
+    private function makeAdmin(): User
     {
-        $admin = User::factory()->create();
-        $admin->roles()->detach();
-        $admin->assignRole(UserRole::SUPER_ADMINISTRATOR->value);
+        $user = User::factory()->create();
+        $role = Role::where('name', UserRole::SUPER_ADMINISTRATOR->value)->first();
+        $user->roles()->sync([$role->id]);
+        return $user;
+    }
 
-        $employee = User::factory()->create();
-        $employee->roles()->detach();
-        $employee->assignRole('Employee');
+    private function makeSysAdmin(): User
+    {
+        $user = User::factory()->create();
+        $role = Role::where('name', UserRole::SYSTEM_ADMINISTRATOR->value)->first();
+        $user->roles()->sync([$role->id]);
+        return $user;
+    }
 
-        $controller = new FaqController();
+    private function makeEmployee(): User
+    {
+        $user = User::factory()->create();
+        $role = Role::where('name', 'Employee')->first();
+        $user->roles()->sync([$role->id]);
+        return $user;
+    }
 
-        $createEmployeeFaq = Request::create('/api/v1/faqs', 'POST', [
-            'question' => 'Employee-only help test role gate',
-            'answer' => 'This FAQ is only visible to employees and should appear for the employee account.',
-            'category' => 'General',
-            'roles' => ['Employee'],
+    // ─── Visibility ─────────────────────────────────────────────────────────────
+
+    public function test_active_faqs_are_visible_to_authorized_role(): void
+    {
+        $admin    = $this->makeAdmin();
+        $employee = $this->makeEmployee();
+
+        $faq = Faq::create([
+            'question'    => 'Employee-visible FAQ',
+            'answer'      => 'This FAQ is visible to employees.',
+            'category'    => 'General',
+            'roles'       => ['Employee'],
             'destination' => '/borrowings',
+            'active'      => true,
         ]);
-        $createEmployeeFaq->setUserResolver(fn () => $admin);
-        $this->assertSame(201, $controller->store($createEmployeeFaq)->getStatusCode());
 
-        $createAdminFaq = Request::create('/api/v1/faqs', 'POST', [
-            'question' => 'Admin-only help test role gate',
-            'answer' => 'This FAQ should not be visible to employees or other users without the admin roles.',
-            'category' => 'Administration',
-            'roles' => ['System Administrator'],
+        $response = $this->withToken($employee->createToken('auth')->plainTextToken)
+            ->getJson('/api/v1/faqs');
+
+        $response->assertStatus(200);
+        $ids = collect($response->json('data'))->pluck('id');
+        $this->assertTrue($ids->contains($faq->id));
+    }
+
+    public function test_faqs_restricted_to_admin_role_are_not_visible_to_employee(): void
+    {
+        $admin    = $this->makeAdmin();
+        $employee = $this->makeEmployee();
+
+        $faq = Faq::create([
+            'question'    => 'Admin-only FAQ',
+            'answer'      => 'Only admins should see this FAQ entry.',
+            'category'    => 'Administration',
+            'roles'       => ['System Administrator'],
             'destination' => '/system-setup',
+            'active'      => true,
         ]);
-        $createAdminFaq->setUserResolver(fn () => $admin);
-        $this->assertSame(201, $controller->store($createAdminFaq)->getStatusCode());
 
-        $employeeListRequest = Request::create('/api/v1/faqs', 'GET');
-        $employeeListRequest->setUserResolver(fn () => $employee);
-        $employeeFaqs = json_decode($controller->index($employeeListRequest)->getContent(), true)['data'];
+        $response = $this->withToken($employee->createToken('auth')->plainTextToken)
+            ->getJson('/api/v1/faqs');
 
-        $this->assertTrue(collect($employeeFaqs)->contains(fn (array $faq) => $faq['question'] === 'Employee-only help test role gate'));
-        $this->assertFalse(collect($employeeFaqs)->contains(fn (array $faq) => $faq['question'] === 'Admin-only help test role gate'));
-
-        $forbiddenRequest = Request::create('/api/v1/faqs', 'POST', [
-            'question' => 'Employee should not create faq test role gate',
-            'answer' => 'This should be forbidden.',
-            'destination' => '/borrowings',
-        ]);
-        $forbiddenRequest->setUserResolver(fn () => $employee);
-
-        $this->assertSame(403, $controller->store($forbiddenRequest)->getStatusCode());
+        $response->assertStatus(200);
+        $ids = collect($response->json('data'))->pluck('id');
+        $this->assertFalse($ids->contains($faq->id));
     }
 
-    public function test_employee_cannot_edit_or_delete_faqs(): void
+    public function test_inactive_faqs_are_not_returned_by_public_index(): void
     {
-        $admin = User::factory()->create();
-        $admin->roles()->detach();
-        $admin->assignRole(UserRole::SYSTEM_ADMINISTRATOR->value);
+        $employee = $this->makeEmployee();
 
-        $employee = User::factory()->create();
-        $employee->roles()->detach();
-        $employee->assignRole('Employee');
-
-        $controller = new FaqController();
-        $faq = \App\Models\Faq::query()->create([
-            'question' => 'Employee should not update this FAQ',
-            'answer' => 'This record should stay protected from employee edits.',
-            'category' => 'General',
-            'roles' => ['Employee'],
+        Faq::create([
+            'question'    => 'Inactive FAQ question',
+            'answer'      => 'This FAQ should not be visible because it is inactive.',
+            'category'    => 'General',
+            'roles'       => ['Employee'],
             'destination' => '/borrowings',
-            'active' => true,
+            'active'      => false,
         ]);
 
-        $updateRequest = Request::create('/api/v1/faqs/'.$faq->id, 'PUT', [
-            'question' => 'Employee should not update this FAQ',
-            'answer' => 'This record should stay protected from employee edits.',
-            'category' => 'General',
-            'roles' => ['Employee'],
-            'destination' => '/inventory',
-            'active' => true,
-        ]);
-        $updateRequest->setUserResolver(fn () => $employee);
-        $this->assertSame(403, $controller->update($updateRequest, $faq)->getStatusCode());
+        $response = $this->withToken($employee->createToken('auth')->plainTextToken)
+            ->getJson('/api/v1/faqs');
 
-        $deleteRequest = Request::create('/api/v1/faqs/'.$faq->id, 'DELETE');
-        $deleteRequest->setUserResolver(fn () => $employee);
-        $this->assertSame(403, $controller->destroy($deleteRequest, $faq)->getStatusCode());
+        $response->assertStatus(200);
+        $questions = collect($response->json('data'))->pluck('question');
+        $this->assertFalse($questions->contains('Inactive FAQ question'));
+    }
+
+    // ─── Admin index ────────────────────────────────────────────────────────────
+
+    public function test_admin_can_list_all_faqs_including_inactive(): void
+    {
+        $admin = $this->makeAdmin();
+
+        Faq::create([
+            'question'    => 'Hidden inactive FAQ',
+            'answer'      => 'This FAQ is inactive and should appear in admin listing.',
+            'category'    => 'General',
+            'roles'       => [],
+            'destination' => '/dashboard',
+            'active'      => false,
+        ]);
+
+        $response = $this->withToken($admin->createToken('auth')->plainTextToken)
+            ->getJson('/api/v1/faqs/admin');
+
+        $response->assertStatus(200);
+        $questions = collect($response->json('data'))->pluck('question');
+        $this->assertTrue($questions->contains('Hidden inactive FAQ'));
+    }
+
+    public function test_employee_cannot_access_admin_faq_index(): void
+    {
+        $employee = $this->makeEmployee();
+
+        $response = $this->withToken($employee->createToken('auth')->plainTextToken)
+            ->getJson('/api/v1/faqs/admin');
+
+        $response->assertStatus(403);
+    }
+
+    // ─── Create ─────────────────────────────────────────────────────────────────
+
+    public function test_user_with_manage_faqs_permission_can_create_faq(): void
+    {
+        $admin = $this->makeAdmin();
+
+        $response = $this->withToken($admin->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/faqs', [
+                'question'    => 'How do I test FAQ creation?',
+                'answer'      => 'Simply POST to the FAQ endpoint with valid data.',
+                'category'    => 'Testing',
+                'roles'       => ['Employee'],
+                'destination' => '/borrowings',
+                'active'      => true,
+            ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('faqs', ['question' => 'How do I test FAQ creation?']);
+    }
+
+    public function test_system_administrator_can_create_faq(): void
+    {
+        $sysAdmin = $this->makeSysAdmin();
+
+        $response = $this->withToken($sysAdmin->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/faqs', [
+                'question'    => 'Can system admins create FAQs?',
+                'answer'      => 'Yes, they have the manage faqs permission by default.',
+                'category'    => 'Testing',
+                'roles'       => [],
+                'destination' => '/dashboard',
+                'active'      => true,
+            ]);
+
+        $response->assertStatus(201);
+    }
+
+    public function test_employee_cannot_create_faq(): void
+    {
+        $employee = $this->makeEmployee();
+
+        $response = $this->withToken($employee->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/faqs', [
+                'question'    => 'Employee tries to create FAQ',
+                'answer'      => 'This should be forbidden by the FaqPolicy.',
+                'destination' => '/borrowings',
+            ]);
+
+        $response->assertStatus(403);
+    }
+
+    // ─── Update ─────────────────────────────────────────────────────────────────
+
+    public function test_user_with_manage_faqs_permission_can_update_faq(): void
+    {
+        $admin = $this->makeAdmin();
+
+        $faq = Faq::create([
+            'question'    => 'Original question text',
+            'answer'      => 'Original answer text that is long enough to pass validation.',
+            'category'    => 'General',
+            'roles'       => [],
+            'destination' => '/dashboard',
+            'active'      => true,
+        ]);
+
+        $response = $this->withToken($admin->createToken('auth')->plainTextToken)
+            ->putJson("/api/v1/faqs/{$faq->id}", [
+                'question'    => 'Updated question text',
+                'answer'      => 'Original answer text that is long enough to pass validation.',
+                'category'    => 'General',
+                'destination' => '/dashboard',
+                'active'      => true,
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('faqs', ['id' => $faq->id, 'question' => 'Updated question text']);
+    }
+
+    public function test_employee_cannot_update_faq(): void
+    {
+        $employee = $this->makeEmployee();
+
+        $faq = Faq::create([
+            'question'    => 'Question employee cannot update',
+            'answer'      => 'Employees do not have the manage faqs permission.',
+            'category'    => 'General',
+            'roles'       => ['Employee'],
+            'destination' => '/borrowings',
+            'active'      => true,
+        ]);
+
+        $response = $this->withToken($employee->createToken('auth')->plainTextToken)
+            ->putJson("/api/v1/faqs/{$faq->id}", [
+                'question'    => 'Question employee cannot update',
+                'answer'      => 'Employees do not have the manage faqs permission.',
+                'destination' => '/inventory',
+                'active'      => true,
+            ]);
+
+        $response->assertStatus(403);
+    }
+
+    // ─── Delete / Soft Delete ────────────────────────────────────────────────────
+
+    public function test_user_with_manage_faqs_permission_can_soft_delete_faq(): void
+    {
+        $admin = $this->makeAdmin();
+
+        $faq = Faq::create([
+            'question'    => 'FAQ to be soft deleted',
+            'answer'      => 'This record will be soft deleted, not permanently removed.',
+            'category'    => 'General',
+            'roles'       => [],
+            'destination' => '/dashboard',
+            'active'      => true,
+        ]);
+
+        $response = $this->withToken($admin->createToken('auth')->plainTextToken)
+            ->deleteJson("/api/v1/faqs/{$faq->id}");
+
+        $response->assertStatus(200);
+        $this->assertSoftDeleted('faqs', ['id' => $faq->id]);
+    }
+
+    public function test_employee_cannot_delete_faq(): void
+    {
+        $employee = $this->makeEmployee();
+
+        $faq = Faq::create([
+            'question'    => 'FAQ that employee cannot delete',
+            'answer'      => 'Deletion requires the manage faqs permission.',
+            'category'    => 'General',
+            'roles'       => ['Employee'],
+            'destination' => '/borrowings',
+            'active'      => true,
+        ]);
+
+        $response = $this->withToken($employee->createToken('auth')->plainTextToken)
+            ->deleteJson("/api/v1/faqs/{$faq->id}");
+
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('faqs', ['id' => $faq->id, 'deleted_at' => null]);
+    }
+
+    // ─── Applicable roles persist ────────────────────────────────────────────────
+
+    public function test_applicable_roles_are_stored_and_returned_correctly(): void
+    {
+        $admin = $this->makeAdmin();
+
+        $response = $this->withToken($admin->createToken('auth')->plainTextToken)
+            ->postJson('/api/v1/faqs', [
+                'question'    => 'Role persistence FAQ test',
+                'answer'      => 'The applicable roles should be stored as a JSON array.',
+                'category'    => 'Testing',
+                'roles'       => ['Employee', 'Department Head'],
+                'destination' => '/borrowings',
+                'active'      => true,
+            ]);
+
+        $response->assertStatus(201);
+        $data = $response->json('data');
+        $this->assertEquals(['Employee', 'Department Head'], $data['roles']);
+
+        $faq = Faq::find($data['id']);
+        $this->assertEquals(['Employee', 'Department Head'], $faq->roles);
+    }
+
+    // ─── Full flow ───────────────────────────────────────────────────────────────
+
+    public function test_system_admin_can_create_faq_and_employee_can_read_it(): void
+    {
+        $sysAdmin = $this->makeSysAdmin();
+        $employee = $this->makeEmployee();
+
+        \Laravel\Sanctum\Sanctum::actingAs($sysAdmin, ['*']);
+        $createResponse = $this->postJson('/api/v1/faqs', [
+            'question'    => 'How do I borrow a test asset?',
+            'answer'      => 'Open Borrowings and select the asset you need before continuing the borrowing flow.',
+            'category'    => 'Borrowing',
+            'roles'       => ['Employee'],
+            'destination' => '/borrowings',
+            'keywords'    => ['borrow', 'asset'],
+        ]);
+
+        $createResponse->assertStatus(201);
+        $faqId = $createResponse->json('data.id');
+        $this->assertNotNull($faqId, 'FAQ should have been created with an ID.');
+
+        \Laravel\Sanctum\Sanctum::actingAs($employee, ['*']);
+        $listResponse = $this->getJson('/api/v1/faqs');
+
+        $listResponse->assertStatus(200);
+        $data = collect($listResponse->json('data'));
+        $this->assertTrue(
+            $data->contains(fn ($faq) => (int) $faq['id'] === (int) $faqId),
+            "Employee FAQ list (ids: {$data->pluck('id')->implode(',')}) should contain newly created FAQ id={$faqId}."
+        );
     }
 }

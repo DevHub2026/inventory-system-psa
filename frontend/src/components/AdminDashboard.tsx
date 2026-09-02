@@ -33,6 +33,7 @@ import { reservationService } from '@/services/reservationService'
 import { borrowExtensionService } from '@/services/borrowExtensionService'
 import type {
   ActivityItem,
+  DashboardAnalytics,
   DashboardStats,
   Reservation,
 } from '@/types'
@@ -164,10 +165,39 @@ function MetricCard({ children }: { children: React.ReactNode }) {
   )
 }
 
+function MiniBarChart({ data, color }: { data: Array<{ label: string; value: number }>; color: string }) {
+  const max = Math.max(...data.map((item) => Number(item.value)), 1)
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(54px, 1fr))', gap: 10, alignItems: 'end', minHeight: 150, marginTop: 16 }}>
+      {data.map((item) => (
+        <div key={item.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: '100%', height: 120, display: 'flex', alignItems: 'end', justifyContent: 'center' }}>
+            <div
+              style={{
+                width: '100%',
+                maxWidth: 42,
+                height: `${Math.max((Number(item.value) / max) * 100, Number(item.value) > 0 ? 18 : 6)}px`,
+                borderRadius: '10px 10px 0 0',
+                background: color,
+                boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.4)',
+              }}
+              aria-label={`${item.label}: ${item.value}`}
+            />
+          </div>
+          <span style={{ fontSize: 10, color: T.textFaint, textAlign: 'center', lineHeight: 1.3 }}>{item.label}</span>
+          <strong style={{ fontSize: 11, color: T.text }}>{item.value}</strong>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function AdminDashboard() {
   const navigate = useNavigate()
 
   const [stats,                  setStats]                  = useState<DashboardStats | null>(null)
+  const [analytics,              setAnalytics]              = useState<DashboardAnalytics | null>(null)
   const [recentActivity,         setRecentActivity]         = useState<ActivityItem[]>([])
   const [pendingReservations,    setPendingReservations]    = useState<Reservation[]>([])
   const [pendingExtensionsCount, setPendingExtensionsCount] = useState<number>(0)
@@ -177,15 +207,19 @@ export function AdminDashboard() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [statsRes, activityRes, reservationsRes, extCountRes] = await Promise.all([
+      const [statsRes, analyticsRes, activityRes, reservationsRes, extCountRes] = await Promise.all([
         dashboardService.getStats(),
+        dashboardService.getAnalytics(),
         dashboardService.getRecentActivity(),
-        reservationService.list(),
+        // Table display only needs the first few pending items.
+        // It does not need all of them because the true count comes from stats.
+        reservationService.list({ status: 'PENDING', per_page: 10 }),
         borrowExtensionService.getPendingExtensionRequests().catch(() => ({ count: 0 })),
       ])
       setStats(statsRes)
+      setAnalytics(analyticsRes)
       setRecentActivity(activityRes)
-      setPendingReservations(reservationsRes.items.filter((r) => r.status === 'PENDING'))
+      setPendingReservations(reservationsRes.items)
       setPendingExtensionsCount(extCountRes.count ?? 0)
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load dashboard data.' })
@@ -306,6 +340,29 @@ export function AdminDashboard() {
     { label: 'Administrators', value: users?.administrators ?? 0, description: 'System admins', icon: ShieldCheck, tone: 'red' as const },
   ]
 
+  const analyticsCharts = analytics ? [
+    {
+      title: 'Asset Status Distribution',
+      data: analytics.asset_status_distribution,
+      color: '#1565C0',
+    },
+    {
+      title: 'Inventory Health',
+      data: analytics.inventory_health,
+      color: '#2E7D32',
+    },
+    {
+      title: 'Borrowing Trend',
+      data: analytics.borrowing_trend,
+      color: '#D97706',
+    },
+    {
+      title: 'Reservation Trend',
+      data: analytics.reservation_trend,
+      color: '#7C3AED',
+    },
+  ] : []
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
@@ -360,6 +417,23 @@ export function AdminDashboard() {
           {userCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
         </div>
       </div>
+
+      {analyticsCharts.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 20 }} className="xl:!grid-cols-2">
+          {analyticsCharts.map((chart) => (
+            <MetricCard key={chart.title}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: T.textFaint }}>
+                {chart.title}
+              </div>
+              {chart.data.length > 0 ? (
+                <MiniBarChart data={chart.data} color={chart.color} />
+              ) : (
+                <div style={{ paddingTop: 20, color: T.textFaint }}>No data available.</div>
+              )}
+            </MetricCard>
+          ))}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 16 }}
            className="sm:!grid-cols-2">
@@ -444,7 +518,7 @@ export function AdminDashboard() {
         </Panel>
 
         <Panel title="Borrow Requests" subtitle="Waiting for approval before release"
-               count={pendingReservations.length} countTone="amber"
+               count={pendingCount} countTone="amber"
                onViewAll={() => navigate('/reservations')} loading={loading}>
           {pendingReservations.length === 0
             ? <EmptyState title="No pending requests" description="All borrow requests have been processed." />
@@ -452,20 +526,6 @@ export function AdminDashboard() {
         </Panel>
       </div>
 
-      <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 16, padding: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: T.textFaint, marginBottom: 14 }}>
-          Quick Actions
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-          <Button variant="secondary" onClick={() => navigate('/assets')}>Manage Assets</Button>
-          <Button variant="secondary" onClick={() => navigate('/reservations')}>Borrow Requests</Button>
-          <Button variant="secondary" onClick={() => navigate('/borrowings')}>Borrowed Items</Button>
-          <Button variant="secondary" onClick={() => navigate('/inventory')}>Inventory</Button>
-          <Button variant="secondary" onClick={() => navigate('/maintenance')}>Maintenance</Button>
-          <Button variant="secondary" onClick={() => navigate('/reports')}>Reports</Button>
-          <Button variant="secondary" onClick={() => navigate('/users')}>Users</Button>
-        </div>
-      </div>
     </div>
   )
 }

@@ -17,6 +17,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/damage-reports': 'Damage Reports',
   '/lost-asset-reports': 'Lost Asset Reports',
   '/reports':      'Reports',
+  '/reports/damage': 'Damage Reports',
+  '/reports/lost-assets': 'Lost Asset Reports',
   '/users':        'Users',
   '/roles':        'Roles & Permissions',
   '/permissions':  'Permissions',

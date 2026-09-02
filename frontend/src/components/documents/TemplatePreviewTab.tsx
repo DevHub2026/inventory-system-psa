@@ -166,7 +166,7 @@ export function TemplatePreviewTab({ template }: TemplatePreviewTabProps) {
         <div style={{ padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
           <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#334155' }}>Template Being Previewed</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px 20px', padding: '14px 16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '10px 20px', padding: '14px 16px' }}>
           {[
             ['Template Name', template.name],
             ['System Area', info.usage_context_label || info.effective_context_label || 'Document Type Fallback'],

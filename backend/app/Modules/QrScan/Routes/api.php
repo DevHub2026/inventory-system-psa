@@ -24,5 +24,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::middleware('role:Super Administrator,System Administrator,Property Custodian,Inventory Officer')
         ->group(function (): void {
             Route::get('qr/history', [QrScanController::class, 'history']);
+            Route::delete('qr/history', [QrScanController::class, 'clearHistory']);
+            Route::post('qr/history/restore', [QrScanController::class, 'restoreHistory']);
         });
 });

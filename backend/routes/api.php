@@ -93,9 +93,14 @@ Route::prefix('v1')->group(function (): void {
         });
 
         Route::get('/faqs', [FaqController::class, 'index']);
-        Route::middleware('role:Super Administrator,System Administrator')->group(function (): void {
+        Route::middleware('can:create,App\Models\Faq')->group(function (): void {
+            Route::get('/faqs/admin', [FaqController::class, 'adminIndex']);
             Route::post('/faqs', [FaqController::class, 'store']);
+        });
+        Route::middleware('can:update,faq')->group(function (): void {
             Route::put('/faqs/{faq}', [FaqController::class, 'update']);
+        });
+        Route::middleware('can:delete,faq')->group(function (): void {
             Route::delete('/faqs/{faq}', [FaqController::class, 'destroy']);
         });
 

@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  AlertTriangle,
+  BookOpen,
   Boxes,
   CalendarClock,
   ClipboardList,
@@ -23,41 +23,42 @@ import {
   History,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { isAdmin, isStaff, isEmployee, canManageIssuance } from '@/utils/roleHelpers'
+import { hasPermission, canManageIssuance } from '@/utils/roleHelpers'
 import { displayName } from '@/types'
 import logo from '@/assets/logo.png'
 
 const allLinks = [
-  { to: '/dashboard',              label: 'Dashboard',              icon: LayoutDashboard,     roles: ['admin', 'staff', 'employee'] },
-  { to: '/qr',                     label: 'QR Scanner',             icon: QrCode,              roles: ['admin', 'staff', 'employee'] },
-  { to: '/assets',                 label: 'Assets',                 icon: Boxes,               roles: ['admin', 'staff', 'employee'] },
-  { to: '/reservations',           label: 'Borrow Requests',        icon: ClipboardList,       roles: ['admin', 'staff', 'employee'] },
-  { to: '/borrowings',             label: 'Borrowed Items',         icon: HandCoins,           roles: ['admin', 'staff', 'employee'] },
-  { to: '/issued-assets',          label: 'Issued Assets',         icon: Briefcase,           roles: ['admin', 'staff', 'employee'] },
-  { to: '/extension-requests',     label: 'Extension Requests',     icon: CalendarClock,       roles: ['admin', 'staff'] },
-  { to: '/inventory',              label: 'Inventory',              icon: Package,             roles: ['admin', 'staff'] },
-  { to: '/maintenance',            label: 'Maintenance',            icon: Wrench,              roles: ['admin', 'staff'] },
-  { to: '/damage-reports',         label: 'Damage Reports',         icon: AlertTriangle,       roles: ['admin', 'staff'] },
-  { to: '/lost-asset-reports',     label: 'Lost Asset Reports',     icon: AlertTriangle,       roles: ['admin', 'staff'] },
-  { to: '/reports',                label: 'Reports',                icon: FileBarChart,        roles: ['admin', 'staff'] },
-  { to: '/users',                  label: 'Users',                  icon: Users,               roles: ['admin'] },
-  { to: '/roles',                  label: 'Roles & Permissions',    icon: Shield,              roles: ['admin'] },
-  { to: '/system-setup',           label: 'System Setup',           icon: SlidersHorizontal,   roles: ['admin'] },
-  { to: '/workflows',              label: 'Approval Workflows',     icon: GitMerge,            roles: ['admin'] },
-  { to: '/qr-scan-history',        label: 'QR Scan Audit History',  icon: History,             roles: ['admin', 'staff'] },
-  { to: '/document-templates',     label: 'Document Templates',     icon: FileText,            roles: ['admin'] },
-  { to: '/settings',               label: 'Settings',               icon: Settings,            roles: ['admin', 'staff', 'employee'] },
-  { to: '/sessions',               label: 'Active Sessions',        icon: LogOut,              roles: ['admin', 'staff', 'employee'] },
-  { to: '/privacy',                label: 'Privacy Notice',         icon: Shield,              roles: ['admin', 'staff', 'employee'] },
-  { to: '/developers',             label: 'Development Team',       icon: Code2,               roles: ['admin', 'staff', 'employee'] },
+  { to: '/dashboard',              label: 'Dashboard',              icon: LayoutDashboard,     permission: 'nav.dashboard' },
+  { to: '/qr',                     label: 'QR Scanner',             icon: QrCode,              permission: 'always' },
+  { to: '/assets',                 label: 'Assets',                 icon: Boxes,               permission: 'nav.assets' },
+  { to: '/reservations',           label: 'Borrow Requests',        icon: ClipboardList,       permission: 'nav.reservations' },
+  { to: '/borrowings',             label: 'Borrowed Items',         icon: HandCoins,           permission: 'nav.borrowings' },
+  { to: '/issued-assets',          label: 'Issued Assets',         icon: Briefcase,           permission: 'nav.issued_assets' },
+  { to: '/extension-requests',     label: 'Extension Requests',     icon: CalendarClock,       permission: 'nav.extension_requests' },
+  { to: '/inventory',              label: 'Inventory',              icon: Package,             permission: 'nav.inventory' },
+  { to: '/maintenance',            label: 'Maintenance',            icon: Wrench,              permission: 'nav.maintenance' },
+  { to: '/reports',                label: 'Reports',                icon: FileBarChart,        permission: 'nav.reports' },
+  { to: '/history',                label: 'History',                icon: History,             permission: 'nav.history' },
+  { to: '/audit-logs',             label: 'Audit Logs',             icon: Shield,              permission: 'nav.audit_logs' },
+  { to: '/users',                  label: 'Users',                  icon: Users,               permission: 'nav.users' },
+  { to: '/roles',                  label: 'Roles & Permissions',    icon: Shield,              permission: 'nav.roles' },
+  { to: '/faqs',                   label: 'FAQ Management',         icon: BookOpen,            permission: 'nav.faqs' },
+  { to: '/system-setup',           label: 'System Setup',           icon: SlidersHorizontal,   permission: 'nav.system_setup' },
+  { to: '/workflows',              label: 'Approval Workflows',     icon: GitMerge,            permission: 'nav.workflows' },
+  { to: '/qr-scan-history',        label: 'QR Scan Audit History',  icon: History,             permission: 'nav.qr_scan_history' },
+  { to: '/document-templates',     label: 'Document Templates',     icon: FileText,            permission: 'nav.system_setup' },
+  { to: '/settings',               label: 'Settings',               icon: Settings,            permission: 'always' },
+  { to: '/sessions',               label: 'Active Sessions',        icon: LogOut,              permission: 'always' },
+  { to: '/privacy',                label: 'Privacy Notice',         icon: Shield,              permission: 'always' },
+  { to: '/developers',             label: 'Development Team',       icon: Code2,               permission: 'always' },
 ]
 
 
 const NAV_GROUPS = [
   { label: 'Self Service', paths: ['/qr'] },
   { label: 'Main Menu',  paths: ['/dashboard', '/assets', '/reservations', '/borrowings'] },
-  { label: 'Operations', paths: ['/issued-assets', '/extension-requests', '/inventory', '/maintenance', '/damage-reports', '/lost-asset-reports', '/reports'] },
-  { label: 'Admin',      paths: ['/users', '/roles', '/system-setup', '/workflows', '/qr-scan-history', '/document-templates'] },
+  { label: 'Operations', paths: ['/issued-assets', '/extension-requests', '/inventory', '/maintenance', '/reports', '/history'] },
+  { label: 'Admin',      paths: ['/users', '/roles', '/faqs', '/system-setup', '/workflows', '/audit-logs', '/qr-scan-history', '/document-templates'] },
   { label: 'Account',    paths: ['/settings', '/sessions', '/privacy', '/developers'] },
 ]
 
@@ -72,16 +73,16 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
   const navigate = useNavigate()
 
   const getVisibleLinks = () => {
-    let links
-    if (isAdmin(user)) {
-      links = allLinks
-    } else if (isStaff(user)) {
-      links = allLinks.filter((l) => l.roles.includes('staff') || l.roles.includes('employee'))
-    } else if (isEmployee(user)) {
-      links = allLinks.filter((l) => l.roles.includes('employee'))
-    } else {
-      links = allLinks.filter((l) => l.roles.includes('employee'))
+    const links = allLinks.filter((l) => {
+      if (l.permission === 'always') return true
+      return hasPermission(user, l.permission)
+    })
+    
+    // Add fallback if no permissions matched
+    if (links.length === 0) {
+      return allLinks.filter((l) => l.permission === 'always' || l.to === '/dashboard')
     }
+    
     const seen = new Set<string>()
     return links.filter((link) => {
       if (seen.has(link.to)) return false
@@ -146,7 +147,7 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
         />
       )}
 
-      <aside className="psa-sidebar" style={sidebarStyle}>
+      <aside className="psa-sidebar" data-open={open} style={sidebarStyle}>
 
         {/* ── Brand header ── */}
         <div style={{

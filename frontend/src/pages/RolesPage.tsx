@@ -3,10 +3,14 @@ import { Shield, Plus, Users, KeyRound, Clock } from 'lucide-react'
 import { Card, Button, Input, Table, Modal, Alert, Spinner, SearchBar, Pagination, Badge, EmptyState } from '@/components/ui'
 import type { Column } from '@/components/ui'
 import { roleService, type RoleFilters, type CreateRolePayload, type UpdateRolePayload, type Role } from '@/services/roleService'
+import { permissionService, type Permission } from '@/services/permissionService'
 import { PageHeader } from '@/components/PageHeader'
+import { useAuth } from '@/hooks/useAuth'
 
 export function RolesPage() {
+  const { user } = useAuth()
   const [roles, setRoles] = useState<Role[]>([])
+  const [allPermissions, setAllPermissions] = useState<Permission[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<Role | null>(null)
@@ -17,6 +21,12 @@ export function RolesPage() {
   const [search, setSearch] = useState('')
 
   const [formData, setFormData] = useState<CreateRolePayload>({ name: '', description: '', permissions: [] })
+
+  useEffect(() => {
+    permissionService.getPermissions({ per_page: 500 })
+      .then(res => setAllPermissions(res.items))
+      .catch(err => console.error('Failed to load permissions:', err))
+  }, [])
 
   const loadRoles = useCallback(async () => {
     setLoading(true)
@@ -48,7 +58,11 @@ export function RolesPage() {
 
   const handleEdit = useCallback((role: Role) => {
     setEditingRole(role)
-    setFormData({ name: role.name, description: role.description || '', permissions: [] })
+    setFormData({ 
+      name: role.name, 
+      description: role.description || '', 
+      permissions: role.permissions?.map(p => p.id) || [] 
+    })
     setModalOpen(true)
   }, [])
 
@@ -158,7 +172,7 @@ export function RolesPage() {
       )}
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16 }}>
         {stats.map((stat) => (
           <div key={stat.label} style={{
             background: '#fff', borderRadius: 14, border: '1px solid #E2E8F0',
@@ -241,6 +255,7 @@ export function RolesPage() {
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="e.g. Property Custodian"
+            disabled={editingRole?.name === 'Super Administrator'}
           />
           <div>
             <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: '#334155' }}>
@@ -259,6 +274,54 @@ export function RolesPage() {
               rows={3}
             />
           </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: 12, fontSize: 13, fontWeight: 600, color: '#334155' }}>
+              Permissions
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 16 }}>
+              {Object.entries(
+                allPermissions.reduce((acc, p) => {
+                  if (!acc[p.module]) acc[p.module] = [];
+                  acc[p.module].push(p);
+                  return acc;
+                }, {} as Record<string, typeof allPermissions>)
+              ).map(([module, perms]) => (
+                <div key={module} style={{ background: '#F8FAFC', padding: 14, borderRadius: 10, border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: 10 }}>{module}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {perms.map(p => {
+                      const disabled = editingRole?.name === 'Super Administrator' && !user?.roles?.some(r => r.name === 'Super Administrator');
+                      return (
+                        <label key={p.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}>
+                          <input
+                            type="checkbox"
+                            checked={formData.permissions?.includes(p.id)}
+                            disabled={disabled}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setFormData(prev => ({
+                                ...prev,
+                                permissions: checked
+                                  ? [...(prev.permissions || []), p.id]
+                                  : (prev.permissions || []).filter(id => id !== p.id)
+                              }))
+                            }}
+                            style={{ marginTop: 2 }}
+                          />
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: '#0F172A', lineHeight: 1.2 }}>{p.name}</div>
+                            {p.description && <div style={{ fontSize: 11, color: '#64748B', marginTop: 2, lineHeight: 1.3 }}>{p.description}</div>}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {editingRole && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',

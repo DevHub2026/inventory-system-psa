@@ -9,6 +9,7 @@ use App\Modules\Asset\Models\Manufacturer;
 use App\Modules\Asset\Models\Office;
 use App\Modules\AssetCategory\Models\AssetCategory;
 use App\Modules\Inventory\Models\InventoryItem;
+use App\Modules\Inventory\Models\InventoryItemType;
 use App\Modules\AssetIdentifier\Models\AssetIdentifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -113,6 +114,23 @@ class InventoryFilterSortTest extends TestCase
         $resp = $this->withToken($token)->getJson('/api/v1/inventory?office_id='.$officeId.'&location_id='.$locationId.'&manufacturer_id='.$manufacturerId.'&assigned_user_id='.$secondUser->id);
         $resp->assertStatus(200);
         $this->assertCount(1, $resp->json('data.items'));
+    }
+
+    public function test_item_type_filter_matches_only_the_selected_inventory_type(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('auth')->plainTextToken;
+
+        $laptopType = InventoryItemType::firstOrCreate(['name' => 'Laptop', 'code' => 'LAPTOP'], ['description' => 'Laptop type']);
+        $monitorType = InventoryItemType::firstOrCreate(['name' => 'Monitor', 'code' => 'MONITOR'], ['description' => 'Monitor type']);
+
+        $this->createInventoryWithAsset(['name' => 'Laptop Pro', 'item_type_id' => $laptopType->id], ['asset_number' => 'AST-LAP-1'], []);
+        $this->createInventoryWithAsset(['name' => 'Monitor Pro', 'item_type_id' => $monitorType->id], ['asset_number' => 'AST-MON-1'], []);
+
+        $response = $this->withToken($token)->getJson('/api/v1/inventory?item_type_id='.$laptopType->id.'&per_page=10');
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data.items'));
+        $this->assertSame('Laptop Pro', $response->json('data.items.0.name'));
     }
 
     public function test_sorting_name_asc_and_invalid_order_by_falls_back(): void

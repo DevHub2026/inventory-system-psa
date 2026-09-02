@@ -370,6 +370,47 @@ class ReportApiTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_assets_report_export_csv_handles_enum_values(): void
+    {
+        $auditor = $this->userWithRole(UserRole::AUDITOR);
+        $asset = $this->createAsset('AVAILABLE', 99);
+
+        $response = $this->actingAs($auditor)
+            ->get('/api/v1/reports/export?type=assets&format=csv');
+
+        $response->assertOk()
+            ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+
+        $this->assertStringContainsString('attachment; filename=', $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('.csv', $response->headers->get('Content-Disposition'));
+
+        $sheet = IOFactory::load($response->baseResponse->getFile()->getPathname())->getActiveSheet();
+
+        $this->assertSame('ASSET INVENTORY REPORT', $sheet->getCell('A2')->getValue());
+        $this->assertSame((string) $asset->asset_number, (string) $sheet->getCell('C6')->getValue());
+        $this->assertSame('AVAILABLE', (string) $sheet->getCell('I6')->getValue());
+        $this->assertSame('GOOD', (string) $sheet->getCell('K6')->getValue());
+    }
+
+    public function test_assets_report_export_xlsx_handles_enum_values(): void
+    {
+        $auditor = $this->userWithRole(UserRole::AUDITOR);
+        $this->createAsset('AVAILABLE', 101);
+
+        $response = $this->actingAs($auditor)
+            ->get('/api/v1/reports/export?type=assets&format=xlsx');
+
+        $response->assertOk()
+            ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $this->assertStringContainsString('attachment; filename=', $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('.xlsx', $response->headers->get('Content-Disposition'));
+
+        $sheet = IOFactory::load($response->baseResponse->getFile()->getPathname())->getActiveSheet();
+
+        $this->assertSame('ASSET INVENTORY REPORT', $sheet->getCell('A2')->getValue());
+    }
+
     private function createAsset(string $status, int $uniqueId = 0): Asset
     {
         $office = Office::firstOrCreate(

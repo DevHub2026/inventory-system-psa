@@ -24,7 +24,7 @@ class UpdateProfileRequest extends FormRequest
             'last_name'       => ['sometimes', 'nullable', 'string', 'max:255'],
             // Legacy single-field "name" sent by the Settings page
             'name'            => ['sometimes', 'nullable', 'string', 'max:500'],
-            'username'        => ['sometimes', 'nullable', 'string', 'max:50'],
+            'username'        => ['prohibited'],
             'employee_number' => ['sometimes', 'nullable', 'string', 'max:50'],
             'email_notifications_enabled' => ['sometimes', 'boolean'],
             'email'           => [

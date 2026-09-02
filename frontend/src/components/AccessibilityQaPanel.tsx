@@ -121,7 +121,7 @@ export function AccessibilityQaPanel({ open, onClose, inline }: { open?: boolean
         <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Spinner /></div>
       ) : (
         <div style={{ display: 'flex', gap: 14 }}>
-          <div style={{ width: 380, maxHeight: 480, overflowY: 'auto', borderRight: '1px solid #EEF2F7', paddingRight: 12 }}>
+          <div style={{ width: 'min(100%, 380px)', maxHeight: 480, overflowY: 'auto', borderRight: '1px solid #EEF2F7', paddingRight: 12 }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>Detected issues ({issues.length})</div>
             {issues.length === 0 ? (
               <div style={{ color: '#475569' }}>No obvious issues found by the lightweight scan. This is not a replacement for axe-core or manual testing.</div>

@@ -29,6 +29,16 @@ class UserService
 
     public function update(User $user, array $data): User
     {
+        // Privilege escalation protection
+        if (isset($data['roles'])) {
+            $superAdminRole = Role::where('name', \App\Enums\UserRole::SUPER_ADMINISTRATOR->value)->first();
+            if ($superAdminRole && in_array($superAdminRole->id, $data['roles'])) {
+                if (!Auth::user()?->hasRole(\App\Enums\UserRole::SUPER_ADMINISTRATOR->value)) {
+                    abort(403, 'You do not have permission to assign the Super Administrator role.');
+                }
+            }
+        }
+
         $data['updated_by'] = Auth::id();
         $user = $this->userRepository->update($user, $data);
 
