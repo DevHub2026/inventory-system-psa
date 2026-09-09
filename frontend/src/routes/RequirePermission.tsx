@@ -4,8 +4,8 @@ import { Spinner } from '@/components/ui'
 import { hasPermission, hasRole } from '@/utils/roleHelpers'
 
 interface RequirePermissionProps {
-  /** A nav.* permission string from the DB. Checked via hasPermission(). */
-  permission?: string
+  /** A nav.* permission string (or array of strings) from the DB. Checked via hasPermission(). If an array is provided, it acts as an OR condition. */
+  permission?: string | string[]
   /** A role name (exact match). Checked via hasRole(). Useful when no nav.* permission exists. */
   role?: string
   children: React.ReactNode
@@ -35,8 +35,16 @@ export function RequirePermission({ permission, role, children }: RequirePermiss
     return <>{children}</>
   }
 
-  const permissionOk = permission ? hasPermission(user, permission) : false
-  const roleOk       = role       ? hasRole(user, role)             : false
+  let permissionOk = false
+  if (permission) {
+    if (Array.isArray(permission)) {
+      permissionOk = permission.some(p => hasPermission(user, p))
+    } else {
+      permissionOk = hasPermission(user, permission)
+    }
+  }
+
+  const roleOk = role ? hasRole(user, role) : false
 
   if (!permissionOk && !roleOk) {
     return <Navigate to="/unauthorized" replace />

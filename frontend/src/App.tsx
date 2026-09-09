@@ -97,7 +97,7 @@ function App() {
                 </RequirePermission>
               } />
               <Route path="/make-request" element={
-                  <RequirePermission permission="nav.reservations">
+                  <RequirePermission permission={['nav.reservations', 'nav.supply_requests']}>
                     <MakeRequestPage />
                   </RequirePermission>
                 } />

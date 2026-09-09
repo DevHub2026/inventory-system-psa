@@ -27,11 +27,18 @@ import { hasPermission, canManageIssuance } from '@/utils/roleHelpers'
 import { displayName } from '@/types'
 import logo from '@/assets/logo.png'
 
-const allLinks = [
+type NavLinkDef = {
+  to: string
+  label: string
+  icon: any
+  permission: string | string[]
+}
+
+const allLinks: NavLinkDef[] = [
   { to: '/dashboard',              label: 'Dashboard',              icon: LayoutDashboard,     permission: 'nav.dashboard' },
   { to: '/qr',                     label: 'QR Scanner',             icon: QrCode,              permission: 'always' },
   { to: '/assets',                 label: 'Assets',                 icon: Boxes,               permission: 'nav.assets' },
-  { to: '/reservations',           label: 'Borrow Requests',        icon: ClipboardList,       permission: 'nav.reservations' },
+  { to: '/make-request',           label: 'Make Request',           icon: ClipboardList,       permission: ['nav.reservations', 'nav.supply_requests'] },
   { to: '/borrowings',             label: 'Borrowed Items',         icon: HandCoins,           permission: 'nav.borrowings' },
   { to: '/issued-assets',          label: 'Issued Assets',         icon: Briefcase,           permission: 'nav.issued_assets' },
   { to: '/extension-requests',     label: 'Extension Requests',     icon: CalendarClock,       permission: 'nav.extension_requests' },
@@ -56,7 +63,7 @@ const allLinks = [
 
 const NAV_GROUPS = [
   { label: 'Self Service', paths: ['/qr'] },
-  { label: 'Main Menu',  paths: ['/dashboard', '/assets', '/reservations', '/borrowings'] },
+  { label: 'Main Menu',  paths: ['/dashboard', '/assets', '/make-request', '/borrowings'] },
   { label: 'Operations', paths: ['/issued-assets', '/extension-requests', '/inventory', '/maintenance', '/reports', '/history'] },
   { label: 'Admin',      paths: ['/users', '/roles', '/faqs', '/system-setup', '/workflows', '/audit-logs', '/qr-scan-history', '/document-templates'] },
   { label: 'Account',    paths: ['/settings', '/sessions', '/privacy', '/developers'] },
@@ -75,6 +82,9 @@ export function Sidebar({ open, isDesktop, onClose }: SidebarProps) {
   const getVisibleLinks = () => {
     const links = allLinks.filter((l) => {
       if (l.permission === 'always') return true
+      if (Array.isArray(l.permission)) {
+        return l.permission.some(p => hasPermission(user, p))
+      }
       return hasPermission(user, l.permission)
     })
     

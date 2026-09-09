@@ -199,7 +199,7 @@ export function ReservationPage() {
       const result = await reservationService.list()
       setRows(result.items)
     } catch (e: unknown) {
-      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load borrow requests.' })
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to load asset borrow requests.' })
     } finally { setLoading(false) }
   }
 
@@ -245,11 +245,11 @@ export function ReservationPage() {
       setReceipt(buildReceipt(res))
       setCreateOpen(false)
       setForm({ assetIds: [], startDate: '', endDate: '', remarks: '' })
-      setMessage({ type: 'success', text: 'Borrow request sent successfully.' })
+      setMessage({ type: 'success', text: 'Asset borrow request sent successfully.' })
       notifyDataChanged('all')
       await loadReservations()
     } catch (e: unknown) {
-      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to send borrow request.' })
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to send asset borrow request.' })
     } finally { setSaving(false) }
   }
 
@@ -257,33 +257,33 @@ export function ReservationPage() {
     try {
       const res = await reservationService.approve(id)
       setReceipt(buildReceipt(res))
-      setMessage({ type: 'success', text: 'Borrow request approved.' })
+      setMessage({ type: 'success', text: 'Asset borrow request approved.' })
       notifyDataChanged('all')
       await loadReservations()
     } catch (e: unknown) {
-      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to approve borrow request.' })
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to approve asset borrow request.' })
     }
   }
 
   const handleReject = async (id: number) => {
     try {
       await reservationService.reject(id)
-      setMessage({ type: 'success', text: 'Borrow request rejected.' })
+      setMessage({ type: 'success', text: 'Asset borrow request rejected.' })
       notifyDataChanged('all')
       await loadReservations()
     } catch (e: unknown) {
-      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to reject borrow request.' })
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to reject asset borrow request.' })
     }
   }
 
   const handleCancel = async (id: number) => {
     try {
       await reservationService.cancel(id)
-      setMessage({ type: 'success', text: 'Borrow request cancelled.' })
+      setMessage({ type: 'success', text: 'Asset borrow request cancelled.' })
       notifyDataChanged('all')
       await loadReservations()
     } catch (e: unknown) {
-      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to cancel borrow request.' })
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Unable to cancel asset borrow request.' })
     }
   }
 
@@ -310,7 +310,7 @@ export function ReservationPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <PageHeader
-        title="My Borrow Requests"
+        title="My Asset Borrow Requests"
         subtitle="Send and manage requests to borrow assets."
         actions={
           <button
@@ -330,7 +330,7 @@ export function ReservationPage() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
-            New Borrow Request
+            New Asset Borrow Request
           </button>
         }
       />
@@ -367,8 +367,8 @@ export function ReservationPage() {
         ) : rows.length === 0 ? (
           <div style={{ padding: '64px 0' }}>
             <EmptyState
-              title="No borrow requests found"
-              description="Create a borrow request when you need an available asset."
+              title="No asset borrow requests found"
+              description="Create a asset borrow request when you need an available asset."
             />
           </div>
         ) : (
@@ -496,13 +496,13 @@ export function ReservationPage() {
         )}
       </Card>
 
-      {/* ── New Borrow Request modal ── */}
+      {/* ── New Asset Borrow Request modal ── */}
       <Modal
-        open={createOpen} title="New Borrow Request" onClose={() => setCreateOpen(false)}
+        open={createOpen} title="New Asset Borrow Request" onClose={() => setCreateOpen(false)}
         footer={
           <>
             <Button variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={saving}>{saving ? 'Saving…' : 'Send Borrow Request'}</Button>
+            <Button onClick={handleCreate} disabled={saving}>{saving ? 'Saving…' : 'Send Asset Borrow Request'}</Button>
           </>
         }
       >
@@ -643,7 +643,7 @@ export function ReservationPage() {
             <textarea
               value={form.remarks}
               onChange={(e) => setForm((c) => ({ ...c, remarks: e.target.value }))}
-              placeholder="Describe the purpose of this borrow request or any relevant notes…"
+              placeholder="Describe the purpose of this asset borrow request or any relevant notes…"
               rows={3}
               style={{
                 width: '100%', borderRadius: 10, border: '1px solid #E2E8F0',
@@ -668,7 +668,7 @@ export function ReservationPage() {
         <Modal
           open={Boolean(historyModalId)}
           onClose={() => setHistoryModalId(null)}
-          title={`Borrow Request #${historyModalId} — Approval Trail`}
+          title={`Asset Borrow Request #${historyModalId} — Approval Trail`}
           maxWidth="max-w-xl"
         >
           <ApprovalHistoryTimeline
