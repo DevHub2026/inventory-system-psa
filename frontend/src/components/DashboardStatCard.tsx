@@ -1,34 +1,24 @@
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
-export type MetricTone = 'blue' | 'green' | 'amber' | 'red' | 'violet' | 'teal' | 'gray' | 'orange'
+export type MetricTone = 'blue' | 'green' | 'amber' | 'red' | 'violet' | 'teal'
 
 interface DashboardStatCardProps {
   label: string
   value: number | string
-  description?: string
+  description: string
   icon: LucideIcon
   tone?: MetricTone
   onClick?: () => void
-  /**
-   * When true, renders a compact horizontal layout suitable for
-   * module-level summary bars (e.g. asset status strip, inventory totals).
-   * The description field is optional in this mode.
-   */
-  compact?: boolean
-  /** Highlight the card as the currently active filter/selection */
-  active?: boolean
 }
 
-const TONES: Record<MetricTone, { accent: string; iconBg: string; iconColor: string; activeBorder: string }> = {
-  blue:   { accent: '#003DA5', iconBg: 'bg-blue-50',    iconColor: 'text-[#003DA5]', activeBorder: '#003DA5' },
-  green:  { accent: '#2E7D32', iconBg: 'bg-emerald-50', iconColor: 'text-[#2E7D32]', activeBorder: '#2E7D32' },
-  amber:  { accent: '#F9A825', iconBg: 'bg-amber-50',   iconColor: 'text-[#F9A825]', activeBorder: '#F9A825' },
-  red:    { accent: '#D32F2F', iconBg: 'bg-red-50',     iconColor: 'text-[#D32F2F]', activeBorder: '#D32F2F' },
-  violet: { accent: '#5B21B6', iconBg: 'bg-violet-50',  iconColor: 'text-[#5B21B6]', activeBorder: '#5B21B6' },
-  teal:   { accent: '#0F766E', iconBg: 'bg-teal-50',    iconColor: 'text-[#0F766E]', activeBorder: '#0F766E' },
-  gray:   { accent: '#475569', iconBg: 'bg-slate-100',  iconColor: 'text-[#475569]', activeBorder: '#475569' },
-  orange: { accent: '#C2410C', iconBg: 'bg-orange-50',  iconColor: 'text-[#C2410C]', activeBorder: '#C2410C' },
+const TONES: Record<MetricTone, { accent: string; iconBg: string; iconColor: string }> = {
+  blue:   { accent: '#1565C0', iconBg: 'bg-blue-50',    iconColor: 'text-[#1565C0]' },
+  green:  { accent: '#2E7D32', iconBg: 'bg-emerald-50', iconColor: 'text-[#2E7D32]' },
+  amber:  { accent: '#D97706', iconBg: 'bg-amber-50',   iconColor: 'text-[#D97706]' },
+  red:    { accent: '#C62828', iconBg: 'bg-red-50',     iconColor: 'text-[#C62828]' },
+  violet: { accent: '#5B21B6', iconBg: 'bg-violet-50',  iconColor: 'text-[#5B21B6]' },
+  teal:   { accent: '#0F766E', iconBg: 'bg-teal-50',    iconColor: 'text-[#0F766E]' },
 }
 
 export function DashboardStatCard({
@@ -38,87 +28,47 @@ export function DashboardStatCard({
   icon: Icon,
   tone = 'blue',
   onClick,
-  compact = false,
-  active = false,
 }: DashboardStatCardProps) {
-  const { accent, iconBg, iconColor, activeBorder } = TONES[tone]
+  const { accent, iconBg, iconColor } = TONES[tone]
 
-  if (compact) {
-    /* ── Compact / horizontal layout (module summary use case) ── */
-    return (
-      <article
-        onClick={onClick}
-        className={onClick ? 'hover:shadow-[0_4px_16px_rgba(0,0,0,.08)] hover:-translate-y-0.5' : undefined}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          flex: '1 1 0',
-          minWidth: 180,
-          padding: '18px 20px',
-          background: '#ffffff',
-          borderRadius: 14,
-          border: active ? `1px solid ${activeBorder}` : '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          overflow: 'visible',
-          transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
-          cursor: onClick ? 'pointer' : 'default',
-          boxSizing: 'border-box',
-        }}
-      >
-        {/* Icon tile */}
-        <span
-          className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-xl', iconBg)}
-          style={{ border: `1px solid ${accent}22` }}
-          aria-hidden="true"
-        >
-          <Icon className={cn('h-5 w-5', iconColor)} strokeWidth={1.75} />
-        </span>
-
-        {/* Text */}
-        <div style={{ minWidth: 0 }}>
-          <div style={{
-            fontSize: 11,
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            color: '#64748b',
-            lineHeight: 1.3,
-          }}>
-            {label}
-          </div>
-          <div style={{
-            fontSize: 24,
-            fontWeight: 800,
-            color: '#0f172a',
-            lineHeight: 1.2,
-            fontVariantNumeric: 'tabular-nums',
-          }}>
-            {value}
-          </div>
-        </div>
-      </article>
-    )
-  }
-
-  /* ── Standard / vertical layout (dashboard KPI use case) ── */
   return (
+    /*
+     * ALL card-level styles are inline to eliminate any conflict with:
+     *   - Tailwind border utilities (border, border-l-4, rounded-2xl)
+     *   - Global CSS resets (border: 0 solid)
+     *   - overflow clipping from border-radius on flex containers
+     *
+     * Structure:
+     *   card (flex column, 24px padding)
+     *     header (flex row, space-between)
+     *       label (top-left)
+     *       icon  (top-right)
+     *     number  (large, accent color)
+     *     description (pushed to bottom via mt-auto)
+     */
     <article
       onClick={onClick}
       className={onClick ? 'hover:shadow-[0_4px_16px_rgba(0,0,0,.08)] hover:-translate-y-0.5' : undefined}
       style={{
+        /* Layout */
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
         width: '100%',
         minHeight: '148px',
+        /* Spacing — 20px padding on all sides */
         padding: '20px',
+        /* Surface */
         background: '#ffffff',
         borderRadius: '16px',
+        /* Borders: 1px light gray all around, 4px accent on left */
         border: '1px solid #e2e8f0',
         borderLeft: `4px solid ${accent}`,
+        /* Shadow */
         boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+        /* No overflow clipping */
         overflow: 'visible',
+        /* Smooth hover */
         transition: 'box-shadow 0.2s ease',
         cursor: onClick ? 'pointer' : 'default',
       }}
@@ -160,17 +110,15 @@ export function DashboardStatCard({
       </div>
 
       {/* ── Row 3: description (pushed to bottom) ── */}
-      {description && (
-        <div style={{
-          fontSize: '12px',
-          lineHeight: 1.4,
-          color: '#475569',
-          marginTop: 'auto',
-          paddingTop: '10px',
-        }}>
-          {description}
-        </div>
-      )}
+      <div style={{
+        fontSize: '12px',
+        lineHeight: 1.4,
+        color: '#475569',
+        marginTop: 'auto',
+        paddingTop: '10px',
+      }}>
+        {description}
+      </div>
     </article>
   )
 }

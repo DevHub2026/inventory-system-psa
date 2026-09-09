@@ -21,11 +21,11 @@ export default function Input({
   onChange, onRightIconClick,
 }: InputProps) {
   return (
-    <div className="relative flex items-center w-full">
+    <div className="auth-input-wrapper">
       {icon && (
-        <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 pointer-events-none" aria-hidden="true">
+        <span className="auth-input-icon auth-input-icon--left" aria-hidden="true">
           {icon}
-        </div>
+        </span>
       )}
       <input
         id={id}
@@ -37,14 +37,14 @@ export default function Input({
         disabled={disabled}
         required={required}
         onChange={onChange}
-        className={`w-full h-[52px] bg-white border border-slate-300 rounded-[10px] text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-brand-600 transition-colors shadow-sm disabled:bg-slate-100 disabled:text-slate-500 text-[15px] ${icon ? 'pl-12' : 'pl-4'} ${rightIcon ? 'pr-12' : 'pr-4'}`}
+        className="auth-input"
       />
       {rightIcon && (
         <button
           type="button"
           aria-label={type === 'password' ? 'Show password' : 'Hide password'}
           onClick={onRightIconClick}
-          className="absolute right-0 top-0 bottom-0 w-12 flex items-center justify-center text-slate-400 hover:text-slate-600 focus:outline-none focus:text-brand-600 transition-colors"
+          className="auth-input-icon auth-input-icon--right"
         >
           {rightIcon}
         </button>
