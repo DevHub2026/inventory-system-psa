@@ -1,43 +1,16 @@
+import { useState } from 'react'
+import { ArrowRight, BarChart3, Building2, ChevronLeft, LockKeyhole, ShieldCheck, TimerReset } from 'lucide-react'
 import logo from '../assets/logo.png'
 import LoginForm from '../components/LoginForm'
-import { useState } from 'react'
 import { Modal } from '@/components/ui'
 import { PrivacyNoticePage } from './PrivacyNoticePage'
 
-/* ── Floating SVG particles for the brand panel ── */
-function Particles() {
-  const dots = [
-    { cx: '12%', cy: '18%', r: 2.5, op: 0.35, delay: '0s' },
-    { cx: '28%', cy: '72%', r: 1.8, op: 0.25, delay: '0.8s' },
-    { cx: '78%', cy: '14%', r: 3.2, op: 0.20, delay: '1.4s' },
-    { cx: '68%', cy: '80%', r: 2.0, op: 0.30, delay: '0.4s' },
-    { cx: '52%', cy: '50%', r: 1.4, op: 0.18, delay: '2s' },
-    { cx: '88%', cy: '44%', r: 2.8, op: 0.22, delay: '1.1s' },
-    { cx: '40%', cy: '28%', r: 1.6, op: 0.28, delay: '1.7s' },
-    { cx: '18%', cy: '58%', r: 2.2, op: 0.20, delay: '0.6s' },
-    { cx: '62%', cy: '36%', r: 1.2, op: 0.15, delay: '2.3s' },
-    { cx: '84%', cy: '68%', r: 2.4, op: 0.25, delay: '0.2s' },
-  ]
+function Feature({ icon: Icon, title, children }: { icon: typeof ShieldCheck; title: string; children: string }) {
   return (
-    <svg
-      className="auth-particles"
-      aria-hidden="true"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="xMidYMid slice"
-    >
-      {dots.map((d, i) => (
-        <circle
-          key={i}
-          cx={d.cx}
-          cy={d.cy}
-          r={d.r}
-          fill="white"
-          opacity={d.op}
-          style={{ animationDelay: d.delay }}
-          className="auth-particle"
-        />
-      ))}
-    </svg>
+    <div className="auth-feature">
+      <span className="auth-feature-icon" aria-hidden="true"><Icon size={21} strokeWidth={1.8} /></span>
+      <div><strong>{title}</strong><p>{children}</p></div>
+    </div>
   )
 }
 
@@ -46,147 +19,53 @@ export default function LoginPage() {
 
   return (
     <main className="auth-page">
-
-      {/* ══════════════════════════════════════
-          LEFT — PSA Branding Panel
-          ══════════════════════════════════════ */}
-      <section className="auth-brand-panel" aria-label="Philippine Statistics Authority">
-
-        {/* Animated particle field */}
-        <Particles />
-
-        {/* Large background rings — removed for cleaner look */}
-
-        {/* Bottom wave */}
-        <svg
-          className="auth-wave"
-          aria-hidden="true"
-          viewBox="0 0 1440 120"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M0,60 C360,120 1080,0 1440,60 L1440,120 L0,120 Z"
-            fill="rgba(255,255,255,0.04)"
-          />
-          <path
-            d="M0,80 C480,20 960,100 1440,40 L1440,120 L0,120 Z"
-            fill="rgba(255,255,255,0.03)"
-          />
-        </svg>
-
-        {/* Brand content */}
-        <div className="auth-brand-content">
-
-          {/* Logo — clean, no bubble rings */}
-          <div className="auth-logo-stack">
-            <div className="auth-logo-ring">
-              <img src={logo} alt="PSA seal" className="auth-brand-logo" />
-            </div>
-          </div>
-
-          {/* Agency name */}
-          <h1 className="auth-brand-title">
-            <span>Philippine</span>
-            <span>Statistics</span>
-            <span>Authority</span>
-          </h1>
-
-          {/* Tri-colour rule */}
-          <div className="auth-tricolor" aria-hidden="true">
-            <span className="tc-blue" />
-            <span className="tc-yellow" />
-            <span className="tc-red" />
-          </div>
-
-          <p className="auth-brand-tagline">
-            Solid&ensp;
-            <span className="tc-dot tc-dot--blue" aria-hidden="true">●</span>
-            &ensp;Responsive&ensp;
-            <span className="tc-dot tc-dot--yellow" aria-hidden="true">●</span>
-            &ensp;World-class
-          </p>
-
-          {/* System label pill */}
-          <div className="auth-system-pill">
-            <span className="auth-system-pill-dot" aria-hidden="true" />
-            Inventory Management System
-          </div>
-
-          {/* Region badge */}
-          <div className="auth-region-badge">Region XII</div>
-
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════
-          RIGHT — Login Panel
-          ══════════════════════════════════════ */}
       <section className="auth-login-panel" aria-labelledby="login-heading">
+        <button className="auth-back-button" type="button" aria-label="Go back" onClick={() => window.history.back()}>
+          <ChevronLeft size={18} />
+        </button>
+        <div className="auth-login-inner">
+          <header className="auth-official-header">
+            <img src={logo} alt="Philippine Statistics Authority seal" className="auth-official-logo" />
+            <div>
+              <p className="auth-agency-name">Philippine Statistics Authority</p>
+              <p className="auth-system-name">REGION XII · INVENTORY SYSTEM</p>
+              <div className="auth-tricolor" aria-hidden="true"><span /><span /><span /></div>
+            </div>
+          </header>
 
-        {/* Background mesh */}
-        <div className="auth-mesh" aria-hidden="true" />
-
-        {/* Decorative blobs */}
-        <div className="auth-blob auth-blob--1" aria-hidden="true" />
-        <div className="auth-blob auth-blob--2" aria-hidden="true" />
-
-        {/* Login card */}
-        <div className="auth-card">
-
-          {/* PSA tri-colour top strip */}
-          <div className="auth-card-strip" aria-hidden="true">
-            <span /><span /><span />
-          </div>
-
-          {/* Header */}
-          <div className="auth-card-header">
-            <img src={logo} alt="" className="auth-card-logo" aria-hidden="true" />
-            <h2 id="login-heading" className="auth-card-title">
-              Philippine Statistics Authority
-            </h2>
-            <p className="auth-card-sub">
-              Region XII · Inventory System
-            </p>
-          </div>
-          {/* Divider */}
-          <div className="auth-card-divider" aria-hidden="true">
-            <span />
-            <span className="auth-card-divider-label">Sign in to continue</span>
-            <span />
+          <div className="auth-heading-block">
+            <h1 id="login-heading">Sign In</h1>
+            <p>Secure your access to the PSA Region XII<br className="auth-desktop-break" /> Inventory Management System.</p>
           </div>
 
           <LoginForm />
 
-          {/* Security note */}
-          <p className="auth-card-security">
-            <svg
-              width="12" height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <rect x="3" y="11" width="18" height="11" rx="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            Secure connection · PSA official portal
-          </p>
-
+          <div className="auth-trust-footer">
+            <LockKeyhole size={17} aria-hidden="true" />
+            <div><p>This is a secure and private system.</p><strong>Philippine Statistics Authority · Region XII</strong></div>
+          </div>
+          <button type="button" onClick={() => setShowPrivacy(true)} className="auth-privacy-link">Privacy Notice</button>
         </div>
-
-        <div className="auth-card-links" style={{ textAlign: 'center', marginTop: 12 }}>
-          <button onClick={() => setShowPrivacy(true)} className="underline text-sm text-slate-600" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>Privacy Notice</button>
-        </div>
-        <Modal open={showPrivacy} onClose={() => setShowPrivacy(false)} title="Privacy Notice" maxWidth={900}>
-          <PrivacyNoticePage />
-        </Modal>
-
-        <footer className="auth-footer">
-          © 2025 Philippine Statistics Authority. All rights reserved.
-        </footer>
+        <Modal open={showPrivacy} onClose={() => setShowPrivacy(false)} title="Privacy Notice" maxWidth={900}><PrivacyNoticePage /></Modal>
       </section>
 
+      <section className="auth-brand-panel" aria-label="About the PSA Region XII Inventory Management System">
+        <div className="auth-brand-pattern" aria-hidden="true" />
+        <div className="auth-brand-content">
+          <div className="auth-brand-intro"><span className="auth-brand-kicker">PSA REGION XII</span><h2>Better stewardship<br />through better data.</h2><p>A trusted platform for managing government assets with clarity, accountability, and purpose.</p></div>
+          <div className="auth-showcase-card">
+            <div className="auth-showcase-image"><div className="auth-image-placeholder"><Building2 size={36} aria-hidden="true" /><span>Inventory Management</span></div></div>
+            <div className="auth-showcase-copy"><span className="auth-showcase-icon"><BarChart3 size={22} /></span><h3>Inventory Management</h3><p>Track and manage government assets efficiently.</p></div>
+          </div>
+          <div className="auth-feature-list">
+            <Feature icon={ShieldCheck} title="Secure">Data protection and access control.</Feature>
+            <Feature icon={TimerReset} title="Efficient">Streamlined processes for better service.</Feature>
+            <Feature icon={BarChart3} title="Transparent">Accountability through real-time reporting.</Feature>
+          </div>
+          <div className="auth-panel-footer"><span>Supporting data-driven decisions for a stronger, more responsive Philippines.</span><ArrowRight size={20} aria-hidden="true" /></div>
+        </div>
+        <footer className="auth-footer">© 2025 Philippine Statistics Authority. All rights reserved.</footer>
+      </section>
     </main>
   )
 }
