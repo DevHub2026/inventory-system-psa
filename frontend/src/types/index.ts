@@ -390,6 +390,23 @@ export interface DashboardSeriesPoint {
 export interface DashboardAnalytics {
   asset_status_distribution: DashboardSeriesPoint[]
   inventory_health: DashboardSeriesPoint[]
+  /**
+   * Stock health scoped strictly to classification = 'SUPPLY'.
+   * PPE and SE are excluded — reorder-point tracking is a Supply concept.
+   * Labels: 'In Stock' | 'Low Stock' | 'Out of Stock'
+   * Added in dashboard analytics v2; optional so existing consumers compile
+   * against older API versions without changes.
+   */
+  supply_stock_health?: DashboardSeriesPoint[]
+  /**
+   * Inventory item counts by PSA classification field (PPE / SE / Supply).
+   * Source: inventory_items.classification — not derived from type or category.
+   * This is a plain count breakdown, NOT a stock-health metric.
+   * PPE and SE are counted as-is; no reorder-level logic applies.
+   * Labels: 'PPE' | 'SE' | 'Supply'
+   * Optional for backward compatibility with older API responses.
+   */
+  inventory_classification?: DashboardSeriesPoint[]
   borrowing_trend: DashboardSeriesPoint[]
   reservation_trend: DashboardSeriesPoint[]
   maintenance_summary: {

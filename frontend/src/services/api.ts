@@ -1,4 +1,4 @@
-﻿import axios, { AxiosError } from 'axios'
+import axios, { AxiosError } from 'axios'
 import type { AxiosHeaders } from 'axios'
 import type { ApiResponse, Paginated } from '@/types'
 
@@ -56,7 +56,7 @@ api.interceptors.response.use(
     }
 
     if (status && status >= 500) {
-      return Promise.reject(new Error('The server could not complete the request. Please try again.'))
+      return Promise.reject(new Error(backendMessage || 'The server could not complete the request. Please try again.'))
     }
 
     return Promise.reject(new Error(backendMessage || error.message || 'Unable to connect to the server.'))
@@ -133,3 +133,4 @@ export function unwrapPaginated<T>(payload: ApiResponse<T[] | Paginated<T> | Rec
     },
   }
 }
+

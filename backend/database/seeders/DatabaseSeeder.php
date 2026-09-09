@@ -20,8 +20,8 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             PermissionSeeder::class,
             DepartmentSeeder::class,
-            OfficeSeeder::class,
-            UserSeeder::class,
+            // OfficeSeeder::class,
+            // UserSeeder::class,
             DocumentTemplateSeeder::class,
             FaqProductionSeeder::class,
         ]);
@@ -78,3 +78,4 @@ class DatabaseSeeder extends Seeder
         $employee->roles()->syncWithoutDetaching([$employeeRole->id]);
     }
 }
+

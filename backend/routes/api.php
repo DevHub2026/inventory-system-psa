@@ -111,6 +111,15 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/assets/{asset}/borrow', [BorrowController::class, 'borrow']);
         Route::post('/assets/{asset}/return', [BorrowController::class, 'return']);
 
+        // AI Assistant - custom throttle to prevent Ollama overload (e.g. 15 requests per minute)
+        Route::middleware('throttle:15,1')->group(function (): void {
+            Route::post('/ai/chat', [\App\Modules\AI\Controllers\ChatController::class, 'chat']);
+            Route::get('/ai/health', [\App\Modules\AI\Controllers\ChatController::class, 'health']);
+            Route::get('/ai/models', [\App\Modules\AI\Controllers\ChatController::class, 'models']);
+            Route::put('/ai/settings/model', [\App\Modules\AI\Controllers\ChatController::class, 'updateModel']);
+        });
+
         }); // end throttle:120,1
     });
 });
+

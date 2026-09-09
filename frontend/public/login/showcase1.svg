@@ -1,0 +1,91 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3B82F6" />
+      <stop offset="50%" stop-color="#93C5FD" />
+      <stop offset="85%" stop-color="#DBEAFE" />
+      <stop offset="100%" stop-color="#EFF6FF" />
+    </linearGradient>
+    <linearGradient id="bldg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F1F5F9" />
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1E40AF" />
+      <stop offset="100%" stop-color="#003DA5" />
+    </linearGradient>
+    <linearGradient id="lawn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#22C55E" />
+      <stop offset="100%" stop-color="#15803D" />
+    </linearGradient>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="640" height="400" fill="url(#sky)" />
+
+  <!-- Soft clouds -->
+  <ellipse cx="140" cy="80" rx="90" ry="22" fill="#FFFFFF" opacity="0.8" />
+  <ellipse cx="200" cy="70" rx="60" ry="26" fill="#FFFFFF" opacity="0.9" />
+  <ellipse cx="480" cy="95" rx="100" ry="20" fill="#FFFFFF" opacity="0.75" />
+  <ellipse cx="530" cy="85" rx="65" ry="24" fill="#FFFFFF" opacity="0.85" />
+
+  <!-- Mountain backdrop -->
+  <path d="M0,260 Q180,220 320,250 T640,230 L640,400 L0,400 Z" fill="#94A3B8" opacity="0.35" />
+
+  <!-- Main Government Building Structure -->
+  <rect x="110" y="170" width="420" height="120" fill="url(#bldg)" rx="4" />
+  <rect x="210" y="145" width="220" height="145" fill="#FFFFFF" rx="4" />
+  <polygon points="200,145 320,110 440,145" fill="#003DA5" />
+  <polygon points="210,145 320,116 430,145" fill="#FFFFFF" />
+  <rect x="200" y="145" width="240" height="8" fill="#CBD5E1" />
+
+  <!-- Columns -->
+  <rect x="235" y="153" width="10" height="137" fill="#E2E8F0" />
+  <rect x="275" y="153" width="10" height="137" fill="#E2E8F0" />
+  <rect x="355" y="153" width="10" height="137" fill="#E2E8F0" />
+  <rect x="395" y="153" width="10" height="137" fill="#E2E8F0" />
+
+  <!-- Windows Left Wing -->
+  <g fill="url(#glass)">
+    <rect x="130" y="185" width="18" height="28" rx="2" />
+    <rect x="156" y="185" width="18" height="28" rx="2" />
+    <rect x="182" y="185" width="18" height="28" rx="2" />
+    <rect x="130" y="230" width="18" height="32" rx="2" />
+    <rect x="156" y="230" width="18" height="32" rx="2" />
+    <rect x="182" y="230" width="18" height="32" rx="2" />
+  </g>
+
+  <!-- Windows Right Wing -->
+  <g fill="url(#glass)">
+    <rect x="440" y="185" width="18" height="28" rx="2" />
+    <rect x="466" y="185" width="18" height="28" rx="2" />
+    <rect x="492" y="185" width="18" height="28" rx="2" />
+    <rect x="440" y="230" width="18" height="32" rx="2" />
+    <rect x="466" y="230" width="18" height="32" rx="2" />
+    <rect x="492" y="230" width="18" height="32" rx="2" />
+  </g>
+
+  <!-- Main Center Glass Entrance -->
+  <rect x="295" y="170" width="50" height="55" fill="url(#glass)" rx="2" />
+  <rect x="295" y="235" width="50" height="55" fill="url(#glass)" rx="2" />
+
+  <!-- Flagpole & Philippine Flag -->
+  <line x1="320" y1="70" x2="320" y2="110" stroke="#94A3B8" stroke-width="2.5" />
+  <circle cx="320" cy="70" r="2.5" fill="#FFD400" />
+  <!-- Flag -->
+  <path d="M321,72 C338,68 350,80 368,74 L368,88 C350,94 338,82 321,86 Z" fill="#003DA5" />
+  <path d="M321,86 C338,82 350,94 368,88 L368,100 C350,106 338,94 321,98 Z" fill="#E31C23" />
+  <polygon points="321,72 338,85 321,98" fill="#FFFFFF" />
+  <circle cx="326" cy="85" r="2.5" fill="#FFD400" />
+
+  <!-- Ground Plaza & Trees -->
+  <rect x="0" y="290" width="640" height="110" fill="#E2E8F0" />
+  <path d="M0,315 L640,315 L640,400 L0,400 Z" fill="url(#lawn)" />
+  <ellipse cx="320" cy="330" rx="180" ry="25" fill="#4ADE80" opacity="0.6" />
+
+  <!-- Landscape shrubs -->
+  <circle cx="70" cy="285" r="28" fill="#166534" />
+  <circle cx="95" cy="290" r="22" fill="#15803D" />
+  <circle cx="545" cy="290" r="22" fill="#15803D" />
+  <circle cx="570" cy="285" r="28" fill="#166534" />
+</svg>

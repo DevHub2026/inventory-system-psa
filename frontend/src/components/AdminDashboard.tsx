@@ -1,33 +1,44 @@
-import { useEffect, useState } from 'react'
+/**
+ * AdminDashboard
+ *
+ * Redesigned per approved Stage 2 / Stage 3 plan.
+ *
+ * Layout zones:
+ *  1. Header — greeting + refresh
+ *  2. Asset KPI row (6 compact DashboardStatCard)
+ *  3. Charts row — Asset Status Distribution donut + Supply Stock Health donut
+ *  4. Trends row — Borrowing Trend line + Reservation Trend line
+ *  5. Bottom row — Operational Insights | Recent Activities | System Overview
+ *  6. Pending Borrow Requests table (Approve / Reject inline)
+ *
+ * Data: all from existing getStats(), getAnalytics(), getRecentActivity(),
+ * getOverdueAssets(), reservationService.list(), and
+ * borrowExtensionService.getPendingExtensionRequests().
+ * No new API calls. No fabricated metrics. No fake status banners.
+ *
+ * RBAC: Admin/Staff see full system data. This component is only rendered
+ * when getUserRoleCategory(user) === 'admin' — enforced by DashboardPage.
+ */
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Archive,
   BadgeCheck,
   Boxes,
-  CalendarClock,
-  CheckCircle2,
   Clock3,
-  Package,
-  PackageMinus,
-  PackageX,
-  ShieldAlert,
-  ShieldCheck,
   TrendingUp,
-  Users,
-  UserCheck,
-  UserCog,
   Wrench,
+  RefreshCw,
 } from 'lucide-react'
-import {
-  Alert,
-  Badge,
-  Button,
-  EmptyState,
-  Spinner,
-  Table,
-  type Column,
-} from '@/components/ui'
+import { Alert, Button, EmptyState, Table, type Column } from '@/components/ui'
 import { DashboardStatCard } from '@/components/DashboardStatCard'
+import { DashboardPanel } from '@/components/dashboard/DashboardPanel'
+import { DashboardDonutChart, type DonutSegment } from '@/components/dashboard/DashboardDonutChart'
+import { DashboardLineChart } from '@/components/dashboard/DashboardLineChart'
+import { OperationalInsights } from '@/components/dashboard/OperationalInsights'
+import { SystemOverview } from '@/components/dashboard/SystemOverview'
+import { ActivityFeed } from '@/components/dashboard/ActivityFeed'
+import { InventoryClassificationOverview } from '@/components/dashboard/InventoryClassificationOverview'
 import { dashboardService } from '@/services/dashboardService'
 import { reservationService } from '@/services/reservationService'
 import { borrowExtensionService } from '@/services/borrowExtensionService'
@@ -36,212 +47,212 @@ import type {
   DashboardAnalytics,
   DashboardStats,
   Reservation,
+  DashboardSeriesPoint,
 } from '@/types'
 import { affectsScope, notifyDataChanged, onDataChanged } from '@/utils/dataRefresh'
+import { useAuth } from '@/hooks/useAuth'
 
-const T = {
-  text:        '#1e293b',
-  textMid:     '#475569',
-  textMuted:   '#64748b',
-  textFaint:   '#64748b',
-  accent:      '#0B3D91',
-  accentLight: '#1565C0',
-  success:     '#2E7D32',
-  warning:     '#D97706',
-  danger:      '#C62828',
-  border:      '#e2e8f0',
-  borderLight: '#f1f5f9',
-  white:       '#ffffff',
+/* ── Human-readable asset status label map ──────────────────────────────── */
+const ASSET_STATUS_LABELS: Record<string, string> = {
+  AVAILABLE:   'Available',
+  BORROWED:    'Borrowed',
+  RESERVED:    'Reserved',
+  MAINTENANCE: 'Under Maintenance',
+  FOR_DISPOSAL:'For Disposal',
+  RETIRED:     'Retired',
+  DISPOSED:    'Disposed',
+  UNAVAILABLE: 'Unavailable',
 }
 
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <span style={{
-        fontSize: 11, fontWeight: 700,
-        textTransform: 'uppercase', letterSpacing: '0.10em',
-        color: T.textFaint,
-      }}>
-        {children}
-      </span>
-    </div>
-  )
+/* ── Asset status → donut segment colour ────────────────────────────────── */
+const ASSET_STATUS_COLORS: Record<string, string> = {
+  AVAILABLE:    '#2E7D32',
+  BORROWED:     '#003DA5',
+  RESERVED:     '#5B21B6',
+  MAINTENANCE:  '#F9A825',
+  FOR_DISPOSAL: '#64748B',
+  RETIRED:      '#94A3B8',
+  DISPOSED:     '#CBD5E1',
+  UNAVAILABLE:  '#475569',
+}
+const ASSET_STATUS_COLOR_FALLBACK = '#CBD5E1'
+
+/* ── Supply stock health colours ─────────────────────────────────────────── */
+const SUPPLY_HEALTH_COLORS: Record<string, string> = {
+  'In Stock':     '#2E7D32',
+  'Low Stock':    '#F9A825',
+  'Out of Stock': '#D32F2F',
 }
 
-function CountBadge({ n, tone }: { n: number; tone: 'amber' | 'red' | 'teal' }) {
-  const bg    = tone === 'red' ? '#fee2e2' : tone === 'teal' ? '#ccfbf1' : '#fef3c7'
-  const color = tone === 'red' ? T.danger   : tone === 'teal' ? '#0F766E' : T.warning
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      minWidth: 18, padding: '1px 6px', marginLeft: 8,
-      borderRadius: 999, fontSize: 10, fontWeight: 700, lineHeight: 1,
-      background: bg, color,
-    }}>
-      {n}
-    </span>
-  )
+/* ── Time-of-day greeting ────────────────────────────────────────────────── */
+function greeting(): string {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
 }
 
-function Panel({
-  title, subtitle, count, countTone, onViewAll, loading, children,
-}: {
-  title: string
-  subtitle: string
-  count?: number
-  countTone?: 'amber' | 'red' | 'teal'
-  onViewAll?: () => void
-  loading: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <section style={{
-      display: 'flex', flexDirection: 'column',
-      background: T.white,
-      border: `1px solid ${T.border}`,
-      borderRadius: 16,
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-      overflow: 'hidden',
-      boxSizing: 'border-box',
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 16, padding: '16px 20px',
-        borderBottom: `1px solid ${T.borderLight}`,
-        flexShrink: 0,
-      }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>
-              {title}
-            </span>
-            {count !== undefined && count > 0 && countTone && (
-              <CountBadge n={count} tone={countTone} />
-            )}
-          </div>
-          <div style={{ fontSize: 12, color: T.textFaint, marginTop: 2 }}>
-            {subtitle}
-          </div>
+/* ── Build donut segments from API data ──────────────────────────────────── */
+function buildAssetDonut(data: DashboardSeriesPoint[]): DonutSegment[] {
+  return data.map((p) => ({
+    label: ASSET_STATUS_LABELS[p.label] ?? p.label,
+    value: p.value,
+    color: ASSET_STATUS_COLORS[p.label] ?? ASSET_STATUS_COLOR_FALLBACK,
+  }))
+}
+
+function buildSupplyDonut(data: DashboardSeriesPoint[] | undefined): DonutSegment[] | null {
+  if (!data) return null
+  return data.map((p) => ({
+    label: p.label,
+    value: p.value,
+    color: SUPPLY_HEALTH_COLORS[p.label] ?? '#CBD5E1',
+  }))
+}
+
+/* ── Reservation table columns ───────────────────────────────────────────── */
+function useReservationColumns(
+  onApprove: (id: number) => void,
+  onReject: (id: number) => void,
+): Column<Reservation>[] {
+  return [
+    {
+      key: 'id',
+      header: '#',
+      render: (r) => (
+        <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#94a3b8' }}>
+          #{r.id}
+        </span>
+      ),
+    },
+    {
+      key: 'employee_name',
+      header: 'Employee',
+      render: (r) => (
+        <span style={{ fontSize: 13, fontWeight: 500, color: '#1e293b' }}>
+          {r.employee_name}
+        </span>
+      ),
+    },
+    {
+      key: 'purpose',
+      header: 'Purpose',
+      render: (r) => (
+        <span
+          style={{
+            fontSize: 13,
+            color: '#475569',
+            display: 'block',
+            maxWidth: 160,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {r.purpose}
+        </span>
+      ),
+    },
+    {
+      key: 'dates',
+      header: 'Schedule',
+      render: (r) => (
+        <span
+          style={{
+            fontFamily: 'ui-monospace, monospace',
+            fontSize: 12,
+            color: '#94a3b8',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {r.reserved_from} → {r.reserved_until}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (r) => (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <Button size="sm" variant="success" onClick={() => onApprove(r.id)}>
+            Approve
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => onReject(r.id)}>
+            Reject
+          </Button>
         </div>
-        {onViewAll && (
-          <button
-            type="button"
-            onClick={onViewAll}
-            style={{
-              flexShrink: 0, whiteSpace: 'nowrap',
-              fontSize: 12, fontWeight: 500,
-              color: T.accentLight, background: 'none', border: 'none',
-              cursor: 'pointer', padding: 0,
-            }}
-          >
-            View all
-          </button>
-        )}
-      </div>
-
-      <div style={{ flex: 1, overflowX: 'auto' }}>
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '48px 0' }}>
-            <Spinner />
-          </div>
-        ) : children}
-      </div>
-    </section>
-  )
+      ),
+    },
+  ]
 }
 
-function MetricCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      background: T.white,
-      border: `1px solid ${T.border}`,
-      borderRadius: 16,
-      padding: 20,
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-      boxSizing: 'border-box',
-    }}>
-      {children}
-    </div>
-  )
-}
-
-function MiniBarChart({ data, color }: { data: Array<{ label: string; value: number }>; color: string }) {
-  const max = Math.max(...data.map((item) => Number(item.value)), 1)
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(54px, 1fr))', gap: 10, alignItems: 'end', minHeight: 150, marginTop: 16 }}>
-      {data.map((item) => (
-        <div key={item.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: '100%', height: 120, display: 'flex', alignItems: 'end', justifyContent: 'center' }}>
-            <div
-              style={{
-                width: '100%',
-                maxWidth: 42,
-                height: `${Math.max((Number(item.value) / max) * 100, Number(item.value) > 0 ? 18 : 6)}px`,
-                borderRadius: '10px 10px 0 0',
-                background: color,
-                boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.4)',
-              }}
-              aria-label={`${item.label}: ${item.value}`}
-            />
-          </div>
-          <span style={{ fontSize: 10, color: T.textFaint, textAlign: 'center', lineHeight: 1.3 }}>{item.label}</span>
-          <strong style={{ fontSize: 11, color: T.text }}>{item.value}</strong>
-        </div>
-      ))}
-    </div>
-  )
-}
-
+/* ══════════════════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+   ══════════════════════════════════════════════════════════════════════════ */
 export function AdminDashboard() {
   const navigate = useNavigate()
+  const { user }  = useAuth()
 
-  const [stats,                  setStats]                  = useState<DashboardStats | null>(null)
-  const [analytics,              setAnalytics]              = useState<DashboardAnalytics | null>(null)
-  const [recentActivity,         setRecentActivity]         = useState<ActivityItem[]>([])
-  const [pendingReservations,    setPendingReservations]    = useState<Reservation[]>([])
-  const [pendingExtensionsCount, setPendingExtensionsCount] = useState<number>(0)
-  const [loading,                setLoading]                = useState(true)
-  const [message,                setMessage]                = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [stats,               setStats]               = useState<DashboardStats | null>(null)
+  const [analytics,           setAnalytics]           = useState<DashboardAnalytics | null>(null)
+  const [recentActivity,      setRecentActivity]       = useState<ActivityItem[]>([])
+  const [pendingReservations, setPendingReservations]  = useState<Reservation[]>([])
+  const [overdueAssets,       setOverdueAssets]        = useState<{ id: number }[]>([])
+  const [pendingExtCount,     setPendingExtCount]      = useState(0)
+  const [loading,             setLoading]             = useState(true)
+  const [chartsLoading,       setChartsLoading]       = useState(true)
+  const [message,             setMessage]             = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
+    setChartsLoading(true)
     try {
-      const [statsRes, analyticsRes, activityRes, reservationsRes, extCountRes] = await Promise.all([
-        dashboardService.getStats(),
-        dashboardService.getAnalytics(),
-        dashboardService.getRecentActivity(),
-        // Table display only needs the first few pending items.
-        // It does not need all of them because the true count comes from stats.
-        reservationService.list({ status: 'PENDING', per_page: 10 }),
-        borrowExtensionService.getPendingExtensionRequests().catch(() => ({ count: 0 })),
-      ])
+      const [statsRes, analyticsRes, activityRes, reservationsRes, extCountRes, overdueRes] =
+        await Promise.all([
+          dashboardService.getStats(),
+          dashboardService.getAnalytics(),
+          dashboardService.getRecentActivity(),
+          reservationService.list({ status: 'PENDING', per_page: 10 }),
+          borrowExtensionService.getPendingExtensionRequests().catch(() => ({ count: 0 })),
+          dashboardService.getOverdueAssets().catch(() => []),
+        ])
       setStats(statsRes)
       setAnalytics(analyticsRes)
       setRecentActivity(activityRes)
       setPendingReservations(reservationsRes.items)
-      setPendingExtensionsCount(extCountRes.count ?? 0)
+      setPendingExtCount(extCountRes.count ?? 0)
+      setOverdueAssets(overdueRes)
     } catch (err: unknown) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load dashboard data.' })
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to load dashboard data.',
+      })
     } finally {
       setLoading(false)
+      setChartsLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { void loadData() }, [])
-  useEffect(() => onDataChanged((scope) => {
-    if (
-      affectsScope(scope, 'dashboard') ||
-      affectsScope(scope, 'borrowings') ||
-      affectsScope(scope, 'reservations') ||
-      affectsScope(scope, 'assets') ||
-      affectsScope(scope, 'inventory') ||
-      affectsScope(scope, 'maintenance')
-    ) {
-      void loadData()
-    }
-  }), [])
+  useEffect(() => { void loadData() }, [loadData])
 
+  useEffect(
+    () =>
+      onDataChanged((scope) => {
+        if (
+          affectsScope(scope, 'dashboard') ||
+          affectsScope(scope, 'borrowings') ||
+          affectsScope(scope, 'reservations') ||
+          affectsScope(scope, 'assets') ||
+          affectsScope(scope, 'inventory') ||
+          affectsScope(scope, 'maintenance')
+        ) {
+          void loadData()
+        }
+      }),
+    [loadData],
+  )
+
+  /* ── Reservation actions (preserved exactly) ─────────────────────────── */
   const handleApproveReservation = async (id: number) => {
     try {
       await reservationService.approve(id)
@@ -249,7 +260,10 @@ export function AdminDashboard() {
       notifyDataChanged('all')
       await loadData()
     } catch (err: unknown) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Unable to approve borrow request.' })
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Unable to approve borrow request.',
+      })
     }
   }
 
@@ -260,271 +274,441 @@ export function AdminDashboard() {
       notifyDataChanged('all')
       await loadData()
     } catch (err: unknown) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Unable to reject borrow request.' })
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Unable to reject borrow request.',
+      })
     }
   }
 
-  const assets = stats?.assets
-  const inventory = stats?.inventory
-  const borrowings = stats?.borrowings
+  const reservationColumns = useReservationColumns(
+    (id) => void handleApproveReservation(id),
+    (id) => void handleRejectReservation(id),
+  )
+
+  /* ── Derived values ──────────────────────────────────────────────────── */
+  const assets       = stats?.assets
+  const inventory    = stats?.inventory
   const reservations = stats?.reservations
-  const users = stats?.users
+  const users        = stats?.users
 
   const totalAssets = assets?.total ?? stats?.total_assets ?? 0
-  const borrowedAssets = assets?.borrowed ?? stats?.borrowed ?? 0
+
+  const assetKpiCards = [
+    {
+      label: 'Total Assets',
+      value: totalAssets,
+      description: 'All registered assets',
+      icon: Boxes,
+      tone: 'blue' as const,
+    },
+    {
+      label: 'Available',
+      value: assets?.available ?? stats?.available ?? 0,
+      description: 'Ready for use',
+      icon: BadgeCheck,
+      tone: 'green' as const,
+    },
+    {
+      label: 'Borrowed',
+      value: assets?.borrowed ?? stats?.borrowed ?? 0,
+      description: 'Currently in use',
+      icon: Archive,
+      tone: 'amber' as const,
+    },
+    {
+      label: 'Reserved',
+      value: assets?.reserved ?? stats?.reserved ?? 0,
+      description: 'Held for requests',
+      icon: Clock3,
+      tone: 'violet' as const,
+    },
+    {
+      label: 'Under Maintenance',
+      value: assets?.maintenance ?? stats?.maintenance ?? 0,
+      description: 'Temporarily unavailable',
+      icon: Wrench,
+      tone: 'red' as const,
+    },
+    {
+      label: 'Re-issued This Month',
+      value: assets?.reissued_this_month ?? 0,
+      description: 'Permanent transfers',
+      icon: TrendingUp,
+      tone: 'teal' as const,
+    },
+  ]
+
+  const assetDonutData = buildAssetDonut(analytics?.asset_status_distribution ?? [])
+  const supplyDonutData = buildSupplyDonut(analytics?.supply_stock_health)
+
   const pendingCount = reservations?.pending ?? pendingReservations.length
-  const utilizationRate = totalAssets
-    ? Math.round((borrowedAssets / totalAssets) * 100) : 0
-  const isHealthy = pendingCount < 5
+  const overdueCount = overdueAssets.length
 
-  const activityColumns: Column<ActivityItem>[] = [
-    { key: 'action',     header: 'Action',  render: (r) => <span style={{ fontSize: 13, fontWeight: 500, color: T.text,     display: 'block', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.action}</span> },
-    { key: 'user',       header: 'User',    render: (r) => <span style={{ fontSize: 13, color: T.textMid }}>{r.user}</span> },
-    { key: 'module',     header: 'Module',  render: (r) => <Badge tone="blue">{r.module}</Badge> },
-    { key: 'created_at', header: 'Time',    render: (r) => <span style={{ fontSize: 12, fontFamily: 'monospace', color: T.textFaint, whiteSpace: 'nowrap' }}>{new Date(r.created_at).toLocaleString()}</span> },
-  ]
+  const userName = user?.full_name?.trim() || user?.name?.trim() || user?.email || ''
 
-  const reservationColumns: Column<Reservation>[] = [
-    { key: 'id',            header: '#',        render: (r) => <span style={{ fontSize: 12, fontFamily: 'monospace', color: T.textFaint }}>#{r.id}</span> },
-    { key: 'employee_name', header: 'Employee', render: (r) => <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{r.employee_name}</span> },
-    { key: 'purpose',       header: 'Purpose',  render: (r) => <span style={{ fontSize: 13, color: T.textMid, display: 'block', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.purpose}</span> },
-    { key: 'dates',         header: 'Schedule', render: (r) => <span style={{ fontSize: 12, fontFamily: 'monospace', color: T.textFaint, whiteSpace: 'nowrap' }}>{r.reserved_from} → {r.reserved_until}</span> },
-    {
-      key: 'actions',
-      header: '',
-      render: (r) => (
-        <div style={{ display: 'flex', gap: 6 }}>
-          <Button size="sm" variant="success" onClick={() => handleApproveReservation(r.id)}>Approve</Button>
-          <Button size="sm" variant="outline" onClick={() => handleRejectReservation(r.id)}>Reject</Button>
-        </div>
-      ),
-    },
-  ]
-
-  const assetCards = [
-    { label: 'Total Assets', value: totalAssets, description: 'All registered assets', icon: Boxes, tone: 'blue' as const },
-    { label: 'Available', value: assets?.available ?? stats?.available ?? 0, description: 'Ready for use', icon: BadgeCheck, tone: 'green' as const },
-    { label: 'Borrowed', value: borrowedAssets, description: 'Currently in use', icon: Archive, tone: 'amber' as const },
-    { label: 'Reserved', value: assets?.reserved ?? stats?.reserved ?? 0, description: 'Held for requests', icon: Clock3, tone: 'violet' as const },
-    { label: 'Under Maintenance', value: assets?.maintenance ?? stats?.maintenance ?? 0, description: 'Temporarily unavailable', icon: Wrench, tone: 'red' as const },
-    { label: 'Re-Issued This Month', value: assets?.reissued_this_month ?? 0, description: 'Permanent transfers', icon: TrendingUp, tone: 'blue' as const },
-  ]
-
-  const inventoryCards = [
-    { label: 'Total Inventory Items', value: inventory?.total ?? 0, description: 'Tracked stock items', icon: Package, tone: 'blue' as const },
-    { label: 'Semi-Expendable (SE)', value: inventory?.expendable ?? 0, description: 'Consumable stock', icon: PackageMinus, tone: 'amber' as const },
-    { label: 'Property, Plant & Equipment (PPE)', value: inventory?.non_expendable ?? 0, description: 'Reusable stock', icon: Boxes, tone: 'green' as const },
-    { label: 'Low Stock', value: inventory?.low_stock ?? 0, description: 'At or below reorder', icon: PackageMinus, tone: 'amber' as const },
-    { label: 'Out of Stock', value: inventory?.out_of_stock ?? 0, description: 'Zero quantity', icon: PackageX, tone: 'red' as const },
-  ]
-
-  const borrowingCards = [
-    { label: 'Active Borrowings', value: borrowings?.active ?? 0, description: 'Currently borrowed', icon: Archive, tone: 'amber' as const },
-    { label: 'Returned Items', value: borrowings?.returned ?? 0, description: 'Completed returns', icon: BadgeCheck, tone: 'green' as const },
-    { label: 'Pending Borrow Requests', value: borrowings?.pending_requests ?? 0, description: 'Awaiting approval', icon: CalendarClock, tone: 'amber' as const },
-    { label: 'Approved Borrow Requests', value: borrowings?.approved_requests ?? 0, description: 'Ready for release', icon: CheckCircle2, tone: 'green' as const },
-    { label: 'Pending Extensions', value: pendingExtensionsCount, description: 'Awaiting due date extension approval', icon: CalendarClock, tone: 'amber' as const, onClick: () => navigate('/extension-requests') },
-  ]
-
-  const reservationCards = [
-    { label: 'Pending Reservations', value: reservations?.pending ?? 0, description: 'Need review', icon: CalendarClock, tone: 'amber' as const },
-    { label: 'Approved Reservations', value: reservations?.approved ?? 0, description: 'Authorized', icon: CheckCircle2, tone: 'green' as const },
-    { label: 'Rejected Reservations', value: reservations?.rejected ?? 0, description: 'Declined requests', icon: ShieldAlert, tone: 'red' as const },
-  ]
-
-  const userCards = [
-    { label: 'Total Users', value: users?.total ?? 0, description: 'Registered accounts', icon: Users, tone: 'blue' as const },
-    { label: 'Active Users', value: users?.active ?? 0, description: 'Active accounts', icon: UserCheck, tone: 'green' as const },
-    { label: 'Employees', value: users?.employees ?? 0, description: 'Employee role', icon: Users, tone: 'violet' as const },
-    { label: 'Staff', value: users?.staff ?? 0, description: 'Operational roles', icon: UserCog, tone: 'amber' as const },
-    { label: 'Administrators', value: users?.administrators ?? 0, description: 'System admins', icon: ShieldCheck, tone: 'red' as const },
-  ]
-
-  const analyticsCharts = analytics ? [
-    {
-      title: 'Asset Status Distribution',
-      data: analytics.asset_status_distribution,
-      color: '#1565C0',
-    },
-    {
-      title: 'Inventory Health',
-      data: analytics.inventory_health,
-      color: '#2E7D32',
-    },
-    {
-      title: 'Borrowing Trend',
-      data: analytics.borrowing_trend,
-      color: '#D97706',
-    },
-    {
-      title: 'Reservation Trend',
-      data: analytics.reservation_trend,
-      color: '#7C3AED',
-    },
-  ] : []
+  /* ── Grid utility removed — grids use CSS classes instead ── */
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      {/* ── 1. Header ── */}
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
+      >
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: T.textFaint, marginBottom: 4 }}>
-            PSA Region XII · Asset Management
-          </div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.02em', color: T.text, margin: 0 }}>
-            Admin Dashboard
+          <h1
+            style={{
+              fontSize: 22,
+              fontWeight: 800,
+              color: '#0f172a',
+              letterSpacing: '-0.02em',
+              lineHeight: 1.2,
+              margin: 0,
+            }}
+          >
+            {greeting()}{userName ? `, ${userName}` : ''}
           </h1>
-          <div style={{ fontSize: 13, color: T.textMuted, marginTop: 6, lineHeight: 1.5 }}>
-            Live metrics for assets, inventory, borrowings, reservations, and users.
-          </div>
+          <p style={{ fontSize: 13, color: '#64748b', marginTop: 5, lineHeight: 1.5 }}>
+            Here's what's happening with your inventory today.
+          </p>
         </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => void loadData()}
+          loading={loading}
+          aria-label="Refresh dashboard data"
+        >
+          <RefreshCw size={14} />
+          Refresh
+        </Button>
       </div>
 
+      {/* Alert */}
       {message && (
-        <Alert tone={message.type} onClose={() => setMessage(null)}>{message.text}</Alert>
+        <Alert tone={message.type} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
       )}
 
+      {/* ── 2. Asset KPI row (6 compact cards) ── */}
       <div>
-        <SectionLabel>Assets</SectionLabel>
-        <div className="stat-grid">
-          {assetCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.10em',
+            color: '#64748b',
+            marginBottom: 10,
+          }}
+        >
+          Assets
         </div>
-      </div>
-
-      <div>
-        <SectionLabel>Inventory</SectionLabel>
-        <div className="stat-grid">
-          {inventoryCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
-        </div>
-      </div>
-
-      <div>
-        <SectionLabel>Borrowing</SectionLabel>
-        <div className="stat-grid">
-          {borrowingCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
-        </div>
-      </div>
-
-      <div>
-        <SectionLabel>Reservations</SectionLabel>
-        <div className="stat-grid">
-          {reservationCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
-        </div>
-      </div>
-
-      <div>
-        <SectionLabel>Users</SectionLabel>
-        <div className="stat-grid">
-          {userCards.map((c) => <DashboardStatCard key={c.label} {...c} />)}
-        </div>
-      </div>
-
-      {analyticsCharts.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 20 }} className="xl:!grid-cols-2">
-          {analyticsCharts.map((chart) => (
-            <MetricCard key={chart.title}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: T.textFaint }}>
-                {chart.title}
-              </div>
-              {chart.data.length > 0 ? (
-                <MiniBarChart data={chart.data} color={chart.color} />
-              ) : (
-                <div style={{ paddingTop: 20, color: T.textFaint }}>No data available.</div>
-              )}
-            </MetricCard>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))',
+            gap: 12,
+          }}
+        >
+          {assetKpiCards.map((c) => (
+            <DashboardStatCard key={c.label} compact {...c} />
           ))}
         </div>
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 16 }}
-           className="sm:!grid-cols-2">
-        <MetricCard>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: T.textFaint }}>
-                Asset Utilization Rate
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 12 }}>
-                <span style={{ fontSize: 38, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.02em', color: T.text }}>
-                  {utilizationRate}%
-                </span>
-                <span style={{ fontSize: 12, color: T.textFaint, marginBottom: 4 }}>
-                  of assets borrowed
-                </span>
-              </div>
-            </div>
-            <span style={{ display: 'grid', width: 40, height: 40, flexShrink: 0, placeItems: 'center', borderRadius: 12, background: '#eff6ff' }}>
-              <TrendingUp size={20} style={{ color: T.accentLight }} />
-            </span>
-          </div>
-          <div style={{ marginTop: 20 }}>
-            <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden' }}>
-              <div style={{ height: '100%', borderRadius: 999, background: T.accentLight, width: `${Math.min(utilizationRate, 100)}%`, transition: 'width 0.7s ease' }}
-                   role="progressbar" aria-valuenow={utilizationRate} aria-valuemin={0} aria-valuemax={100} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11, color: T.textFaint }}>
-              <span>0%</span>
-              <span>100%</span>
-            </div>
-          </div>
-        </MetricCard>
-
-        <MetricCard>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: T.textFaint }}>
-                System Health
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-                {isHealthy
-                  ? <CheckCircle2 size={22} style={{ color: T.success, flexShrink: 0 }} />
-                  : <ShieldAlert  size={22} style={{ color: T.warning, flexShrink: 0 }} />
-                }
-                <span style={{ fontSize: 22, fontWeight: 700, lineHeight: 1, color: isHealthy ? T.success : T.warning }}>
-                  {isHealthy ? 'Healthy' : 'Attention Needed'}
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: T.textFaint, marginTop: 8, lineHeight: 1.5 }}>
-                {isHealthy
-                  ? 'Pending borrow requests are within normal levels.'
-                  : `${pendingCount} pending borrow requests require attention.`}
-              </div>
-            </div>
-            <span style={{ display: 'grid', width: 40, height: 40, flexShrink: 0, placeItems: 'center', borderRadius: 12, background: isHealthy ? '#f0fdf4' : '#fffbeb' }}>
-              <ShieldCheck size={20} style={{ color: isHealthy ? T.success : T.warning }} />
-            </span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 20 }}>
-            {[
-              { label: 'Pending Requests', value: pendingCount, ok: pendingCount < 5 },
-              { label: 'Low Stock Items', value: inventory?.low_stock ?? 0, ok: (inventory?.low_stock ?? 0) === 0 },
-            ].map((item) => (
-              <div key={item.label} style={{ borderRadius: 12, padding: '12px 16px', background: item.ok ? '#f8fafc' : '#fffbeb' }}>
-                <div style={{ fontSize: 11, color: T.textFaint }}>{item.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1, marginTop: 4, color: item.ok ? T.text : T.warning }}>
-                  {item.value}
-                </div>
-              </div>
-            ))}
-          </div>
-        </MetricCard>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0,1fr))', gap: 20 }} className="lg:!grid-cols-2">
-        <Panel title="Recent Activity" subtitle="Latest actions across all modules"
-               onViewAll={() => navigate('/reports')} loading={loading}>
-          {recentActivity.length === 0
-            ? <EmptyState title="No recent activity" description="System activity will appear here." />
-            : <Table columns={activityColumns} rows={recentActivity} rowKey={(r) => String(r.id)} empty={<EmptyState title="No recent activity" />} />}
-        </Panel>
+      {/* ── 3. Charts row — two donuts ── */}
+      <div className="dashboard-two-col">
+        {/* Asset Status Distribution */}
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 16,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.10em',
+              color: '#64748b',
+              marginBottom: 4,
+            }}
+          >
+            Asset Status Distribution
+          </div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 14 }}>
+            Overview of all assets by status
+          </div>
+          <DashboardDonutChart
+            data={assetDonutData}
+            centerLabel={String(totalAssets)}
+            centerSublabel="Total Assets"
+            loading={chartsLoading}
+            ariaLabel="Asset Status Distribution"
+            actionLabel="View all assets"
+            onAction={() => navigate('/assets')}
+            height={200}
+          />
+        </div>
 
-        <Panel title="Borrow Requests" subtitle="Waiting for approval before release"
-               count={pendingCount} countTone="amber"
-               onViewAll={() => navigate('/reservations')} loading={loading}>
-          {pendingReservations.length === 0
-            ? <EmptyState title="No pending requests" description="All borrow requests have been processed." />
-            : <Table columns={reservationColumns} rows={pendingReservations} rowKey={(r) => r.id} empty={<EmptyState title="No pending requests" />} />}
-        </Panel>
+        {/* Supply Stock Health */}
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 16,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.10em',
+              color: '#64748b',
+              marginBottom: 4,
+            }}
+          >
+            Inventory Health (Supply Only)
+          </div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 14 }}>
+            Stock health for SUPPLY category
+          </div>
+
+          {chartsLoading ? (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: 200,
+              }}
+            >
+              <div
+                style={{
+                  width: 20,
+                  height: 20,
+                  border: '2px solid #e2e8f0',
+                  borderTopColor: '#003DA5',
+                  borderRadius: '50%',
+                  animation: 'spin 0.7s linear infinite',
+                }}
+              />
+            </div>
+          ) : supplyDonutData === null ? (
+            <div>
+              <EmptyState
+                title="Supply stock health unavailable"
+                description="The dashboard backend needs updating to provide classification-scoped supply data."
+              />
+            </div>
+          ) : (
+            <DashboardDonutChart
+              data={supplyDonutData}
+              centerLabel={String(
+                supplyDonutData.reduce((s, d) => s + d.value, 0),
+              )}
+              centerSublabel="Supply Items"
+              loading={false}
+              ariaLabel="Supply Stock Health"
+              actionLabel="View inventory"
+              onAction={() => navigate('/inventory')}
+              note="PPE and SE categories are not evaluated for stock health — they are not consumable."
+              height={200}
+            />
+          )}
+        </div>
       </div>
+
+      {/* ── 4. Inventory Classification Overview ── */}
+      <div
+        style={{
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: 16,
+          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+          padding: 20,
+          boxSizing: 'border-box',
+        }}
+      >
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.10em',
+            color: '#64748b',
+            marginBottom: 4,
+          }}
+        >
+          Inventory Classification Overview
+        </div>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>
+          Item counts by classification — PPE, SE, and Supply
+        </div>
+        <InventoryClassificationOverview
+          data={analytics?.inventory_classification}
+          loading={chartsLoading}
+        />
+      </div>
+
+      {/* ── 5. Trend charts row ── */}
+      <div className="dashboard-two-col">
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 16,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.10em',
+              color: '#64748b',
+              marginBottom: 4,
+            }}
+          >
+            Borrowing Trend
+          </div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
+            Borrowings over the past 5 months
+          </div>
+          <DashboardLineChart
+            data={analytics?.borrowing_trend ?? []}
+            color="#003DA5"
+            loading={chartsLoading}
+            ariaLabel="Borrowing Trend"
+            emptyTitle="No borrowing activity in the past 5 months"
+            emptyDescription="Borrowing data will appear here once records exist."
+          />
+        </div>
+
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 16,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+            padding: 20,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.10em',
+              color: '#64748b',
+              marginBottom: 4,
+            }}
+          >
+            Reservation Trend
+          </div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
+            Reservations over the past 5 months
+          </div>
+          <DashboardLineChart
+            data={analytics?.reservation_trend ?? []}
+            color="#5B21B6"
+            loading={chartsLoading}
+            ariaLabel="Reservation Trend"
+            emptyTitle="No reservation activity in the past 5 months"
+            emptyDescription="Reservation data will appear here once records exist."
+          />
+        </div>
+      </div>
+
+      {/* ── 6. Bottom 3-column row ── */}
+      <div className="dashboard-three-col">
+        {/* Operational Insights */}
+        <DashboardPanel
+          title="Operational Insights"
+          subtitle="Items requiring attention"
+          loading={loading}
+        >
+          <OperationalInsights
+            overdueCount={overdueCount}
+            lowStockCount={inventory?.low_stock ?? 0}
+            pendingRequests={pendingCount}
+            pendingExtensions={pendingExtCount}
+            maintenancePending={analytics?.maintenance_summary?.pending ?? 0}
+            maintenanceOngoing={analytics?.maintenance_summary?.ongoing ?? 0}
+          />
+        </DashboardPanel>
+
+        {/* Recent Activities */}
+        <DashboardPanel
+          title="Recent Activities"
+          subtitle="Latest actions across all modules"
+          onViewAll={() => navigate('/history')}
+          loading={loading}
+        >
+          <ActivityFeed items={recentActivity} />
+        </DashboardPanel>
+
+        {/* System Overview */}
+        <DashboardPanel
+          title="System Overview"
+          subtitle="User and role counts"
+          loading={loading}
+        >
+          <SystemOverview
+            total={users?.total ?? null}
+            active={users?.active ?? null}
+            employees={users?.employees ?? null}
+            staff={users?.staff ?? null}
+            administrators={users?.administrators ?? null}
+          />
+        </DashboardPanel>
+      </div>
+
+      {/* ── 7. Pending Borrow Requests table ── */}
+      <DashboardPanel
+        title="Pending Borrow Requests"
+        subtitle="Waiting for approval before release"
+        count={pendingCount}
+        countTone="amber"
+        onViewAll={() => navigate('/reservations')}
+        loading={loading}
+      >
+        {pendingReservations.length === 0 ? (
+          <EmptyState
+            title="No pending requests"
+            description="All borrow requests have been processed."
+          />
+        ) : (
+          <Table
+            columns={reservationColumns}
+            rows={pendingReservations}
+            rowKey={(r) => r.id}
+            empty={<EmptyState title="No pending requests" />}
+          />
+        )}
+      </DashboardPanel>
 
     </div>
   )

@@ -18,6 +18,7 @@ import { PermissionsPage } from '@/pages/PermissionsPage'
 import { PrivacyNoticePage } from '@/pages/PrivacyNoticePage'
 import { ReportPage } from '@/pages/ReportPage'
 import { ReservationPage } from '@/pages/ReservationPage'
+import { MakeRequestPage } from '@/pages/MakeRequestPage'
 import { RolesPage } from '@/pages/RolesPage'
 import { SessionsPage } from '@/pages/SessionsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
@@ -34,6 +35,10 @@ import { UnauthorizedPage } from '@/pages/UnauthorizedPage'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { RequirePermission } from '@/routes/RequirePermission'
 import { UserProfilePage } from '@/pages/UserProfilePage'
+
+import { SupplyRequestListPage } from '@/pages/SupplyRequests/SupplyRequestListPage'
+import { SupplyRequestDetailPage } from '@/pages/SupplyRequests/SupplyRequestDetailPage'
+import { CreateSupplyRequestPage } from '@/pages/SupplyRequests/CreateSupplyRequestPage'
 
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 
@@ -62,6 +67,23 @@ function App() {
 
             <Route element={<AppLayout />}>
               {/* -- All authenticated users -- */}
+              
+              <Route path="/supply-requests" element={
+                <RequirePermission permission="nav.supply_requests">
+                  <SupplyRequestListPage />
+                </RequirePermission>
+              } />
+              <Route path="/supply-requests/new" element={
+                <RequirePermission permission="nav.supply_requests">
+                  <CreateSupplyRequestPage />
+                </RequirePermission>
+              } />
+              <Route path="/supply-requests/:id" element={
+                <RequirePermission permission="nav.supply_requests">
+                  <SupplyRequestDetailPage />
+                </RequirePermission>
+              } />
+
               <Route path="/dashboard" element={
                 <RequirePermission permission="nav.dashboard">
                   <DashboardPage />
@@ -74,7 +96,12 @@ function App() {
                   <AssetPage />
                 </RequirePermission>
               } />
-              <Route path="/reservations" element={
+              <Route path="/make-request" element={
+                  <RequirePermission permission="nav.reservations">
+                    <MakeRequestPage />
+                  </RequirePermission>
+                } />
+                <Route path="/reservations" element={
                 <RequirePermission permission="nav.reservations">
                   <ReservationPage />
                 </RequirePermission>
@@ -206,3 +233,5 @@ function App() {
 }
 
 export default App
+
+

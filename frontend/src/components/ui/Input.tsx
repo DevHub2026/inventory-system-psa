@@ -32,9 +32,9 @@ export function Input({ label, error, helperText, className, id, ...props }: Inp
           'placeholder:text-[#94a3b8]',
           'shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
           'transition-colors duration-150',
-          'focus:border-[#0B3D91] focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/15',
+          'focus:border-[#003DA5] focus:outline-none focus:ring-2 focus:ring-[#003DA5]/15',
           'disabled:cursor-not-allowed disabled:bg-[#F8FAFC] disabled:text-[#94a3b8]',
-          error && 'border-[#C62828] focus:ring-[#C62828]/15',
+          error && 'border-[#D32F2F] focus:ring-[#D32F2F]/15',
           className,
         )}
         {...props}

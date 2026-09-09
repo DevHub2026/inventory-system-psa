@@ -34,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Modules\Inventory\Models\InventoryItem::class;
         // Register InventoryItem policy
         Gate::policy(\App\Modules\Inventory\Models\InventoryItem::class, \App\Policies\InventoryItemPolicy::class);
+        Gate::policy(\App\Modules\SupplyRequest\Models\SupplyRequest::class, \App\Modules\SupplyRequest\Policies\SupplyRequestPolicy::class);
 
         // Centralized case-insensitive 'like' helper for searchable fields.
         // Usage: ->whereLikeInsensitive(['first_name', 'last_name'], $search)
@@ -52,3 +53,4 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 }
+

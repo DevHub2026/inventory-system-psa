@@ -11,6 +11,7 @@ enum WorkflowModuleType: string
     case CLEARANCE_PROCESSING = 'clearance_processing';
     case MAINTENANCE_REQUEST = 'maintenance_request';
     case LOST_ASSET_REPORT = 'lost_asset_report';
+    case SUPPLY_REQUEST = 'supply_request';
 
     public function label(): string
     {
@@ -22,6 +23,7 @@ enum WorkflowModuleType: string
             self::CLEARANCE_PROCESSING => 'Clearance Processing',
             self::MAINTENANCE_REQUEST => 'Maintenance Request',
             self::LOST_ASSET_REPORT   => 'Lost Asset Report',
+            self::SUPPLY_REQUEST      => 'Supply Request',
         };
     }
 
@@ -30,3 +32,4 @@ enum WorkflowModuleType: string
         return array_column(self::cases(), 'value');
     }
 }
+

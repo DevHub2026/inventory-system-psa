@@ -9,6 +9,7 @@ import { AssetPage } from '@/pages/AssetPage'
 import { InventoryPage } from '@/pages/InventoryPage'
 import { ReservationPage } from '@/pages/ReservationPage'
 import { SharedQrScanner } from '@/components/qr/SharedQrScanner'
+import { GlobalAIAssistant } from '@/components/chat/GlobalAIAssistant'
 import { useSearchParams } from 'react-router-dom'
 
 /**
@@ -75,6 +76,7 @@ export function AppLayout() {
       {/* Global Quick Access — consolidates split selector, help, scanner, etc.
            On mobile it becomes a draggable FAB with the full quick-action menu. */}
       <GlobalQuickAccess isDesktop={isDesktop} />
+      <GlobalAIAssistant />
 
     </div>
   )

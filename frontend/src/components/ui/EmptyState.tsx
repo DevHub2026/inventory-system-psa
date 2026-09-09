@@ -23,7 +23,7 @@ export function EmptyState({
       )}
     >
       {/* Icon container */}
-      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#EEF4FF] text-[#0D47A1]">
+      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#EEF4FF] text-[#003DA5]">
         <Inbox className="h-7 w-7" strokeWidth={1.5} />
       </span>
 

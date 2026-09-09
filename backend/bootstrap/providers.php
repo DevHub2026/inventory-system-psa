@@ -39,4 +39,6 @@ return [
     App\Modules\Workflow\Providers\WorkflowServiceProvider::class,
     QrScanServiceProvider::class,
     LostAssetReportServiceProvider::class,
+    App\Modules\SupplyRequest\Providers\SupplyRequestServiceProvider::class,
 ];
+

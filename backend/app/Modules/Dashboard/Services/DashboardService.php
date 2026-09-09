@@ -262,6 +262,32 @@ class DashboardService
             ->where('quantity', '<=', 0)
             ->count();
 
+        // Supply Stock Health — scoped strictly to classification = 'SUPPLY'.
+        // Uses the same quantity / reorder_level semantics as the existing
+        // $inventoryHealthy / $inventoryLowStock / $inventoryOutOfStock queries above.
+        // PPE and SE items are intentionally excluded: stock-health tracking
+        // (reorder points) is a Supply-specific concept in this system.
+        $supplyHealthy = InventoryItem::query()
+            ->where('classification', 'SUPPLY')
+            ->where('quantity', '>', 0)
+            ->where(function ($query) {
+                $query->whereNull('reorder_level')
+                    ->orWhereColumn('quantity', '>', 'reorder_level');
+            })
+            ->count();
+
+        $supplyLowStock = InventoryItem::query()
+            ->where('classification', 'SUPPLY')
+            ->where('quantity', '>', 0)
+            ->whereNotNull('reorder_level')
+            ->whereColumn('quantity', '<=', 'reorder_level')
+            ->count();
+
+        $supplyOutOfStock = InventoryItem::query()
+            ->where('classification', 'SUPPLY')
+            ->where('quantity', '<=', 0)
+            ->count();
+
         $borrowingTrend = Borrowing::query()
             ->select('created_at')
             ->where('created_at', '>=', now()->subMonths(5)->startOfMonth())
@@ -316,12 +342,48 @@ class DashboardService
             ->values()
             ->all();
 
+        // Inventory Classification Overview — counts InventoryItems by the
+        // classification field (PPE / SE / SUPPLY / null).
+        // Intentionally separate from supply_stock_health: this is a plain
+        // item-count breakdown by classification, not a stock-health metric.
+        // PPE and SE are counted as-is; no reorder-level logic is applied.
+        // null classification = manual review pending — excluded from the
+        // named buckets (not meaningful as a dashboard count).
+        $classificationPpe    = InventoryItem::query()->where('classification', 'PPE')->count();
+        $classificationSe     = InventoryItem::query()->where('classification', 'SE')->count();
+        $classificationSupply = InventoryItem::query()->where('classification', 'SUPPLY')->count();
+        // Unclassified: records whose classification is NULL or not one of the three
+        // valid values (PPE / SE / SUPPLY). The primary source of NULL rows is the
+        // DemoDataSeeder and InventoryImportWizardService, which bypass
+        // normalizeClassificationData() and create items without a classification.
+        // The NOT IN guard makes this future-safe against direct DB writes.
+        $classificationUnclassified = InventoryItem::query()
+            ->where(function ($query): void {
+                $query->whereNull('classification')
+                    ->orWhereNotIn('classification', ['PPE', 'SE', 'SUPPLY']);
+            })
+            ->count();
+
         $base = [
             'asset_status_distribution' => $statuses,
+            'inventory_classification' => [
+                ['label' => 'PPE',          'value' => $classificationPpe],
+                ['label' => 'SE',           'value' => $classificationSe],
+                ['label' => 'Supply',       'value' => $classificationSupply],
+                ['label' => 'Unclassified', 'value' => $classificationUnclassified],
+            ],
             'inventory_health' => [
                 ['label' => 'Healthy', 'value' => $inventoryHealthy],
                 ['label' => 'Low stock', 'value' => $inventoryLowStock],
                 ['label' => 'Out of stock', 'value' => $inventoryOutOfStock],
+            ],
+            // Supply-only stock health. PPE and SE are excluded — reorder-point
+            // tracking is a Supply concept; those classifications do not have
+            // consumable stock semantics and must not be mixed in here.
+            'supply_stock_health' => [
+                ['label' => 'In Stock',     'value' => $supplyHealthy],
+                ['label' => 'Low Stock',    'value' => $supplyLowStock],
+                ['label' => 'Out of Stock', 'value' => $supplyOutOfStock],
             ],
             'borrowing_trend' => $borrowingTrend,
             'reservation_trend' => $reservationTrend,

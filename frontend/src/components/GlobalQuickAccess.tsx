@@ -27,7 +27,7 @@ function useQuickAccessMenu(pathname: string, user: User | null, isDesktop: bool
     const contextItems: QuickAccessItem[] = []
     if (pathname.startsWith('/assets')) {
       if (can('nav.assets')) contextItems.push({ label: 'Browse Assets', route: '/assets', icon: Boxes })
-      if (can('nav.reservations')) contextItems.push({ label: 'Borrow Request', route: '/reservations', icon: ClipboardList })
+      if (can('nav.reservations')) contextItems.push({ label: 'Make Request', route: '/make-request', icon: ClipboardList })
       if (can('nav.issued_assets')) contextItems.push({ label: 'My Issued Assets', route: '/issued-assets', icon: Briefcase })
     } else if (pathname.startsWith('/inventory')) {
       if (can('nav.inventory')) contextItems.push({ label: 'Browse Inventory', route: '/inventory', icon: Package })
@@ -36,7 +36,7 @@ function useQuickAccessMenu(pathname: string, user: User | null, isDesktop: bool
     } else if (pathname.startsWith('/borrowings')) {
       if (can('nav.borrowings')) contextItems.push({ label: 'Borrowed Items', route: '/borrowings', icon: HandCoins })
       if (can('nav.issued_assets')) contextItems.push({ label: 'My Issued Assets', route: '/issued-assets', icon: Briefcase })
-      if (can('nav.reservations')) contextItems.push({ label: 'Borrow Request', route: '/reservations', icon: ClipboardList })
+      if (can('nav.reservations')) contextItems.push({ label: 'Make Request', route: '/make-request', icon: ClipboardList })
       if (can('nav.extension_requests')) contextItems.push({ label: 'Extension Requests', route: '/extension-requests', icon: CalendarClock })
     } else if (pathname.startsWith('/reservations')) {
       if (can('nav.reservations')) contextItems.push({ label: 'Borrow Requests', route: '/reservations', icon: ClipboardList })
@@ -454,3 +454,4 @@ const menuItemIcon: React.CSSProperties = {
   flexShrink: 0,
   color: '#0B3D91',
 }
+

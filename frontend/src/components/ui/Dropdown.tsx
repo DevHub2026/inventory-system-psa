@@ -120,7 +120,7 @@ export function Dropdown({
             paddingInline: 14,
             borderRadius: 10,
             border: focused || open
-              ? '1.5px solid #0B3D91'
+              ? '1.5px solid #003DA5'
               : '1.5px solid #e2e8f0',
             background: disabled ? '#f8fafc' : '#ffffff',
             boxShadow: focused || open
@@ -224,7 +224,7 @@ export function Dropdown({
                     cursor: 'pointer',
                     fontSize: 13,
                     fontWeight: isSelected ? 600 : 400,
-                    color: isSelected ? '#0B3D91' : '#1e293b',
+                    color: isSelected ? '#003DA5' : '#1e293b',
                     background: isSelected ? '#eff6ff' : 'transparent',
                     transition: 'background 0.1s',
                   }}
@@ -239,7 +239,7 @@ export function Dropdown({
                     {opt.label}
                   </span>
                   {isSelected && (
-                    <Check size={14} style={{ flexShrink: 0, color: '#0B3D91' }} />
+                    <Check size={14} style={{ flexShrink: 0, color: '#003DA5' }} />
                   )}
                 </div>
               )

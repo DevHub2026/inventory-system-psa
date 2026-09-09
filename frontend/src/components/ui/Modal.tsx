@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 
 interface ModalProps {
@@ -21,6 +21,7 @@ interface ModalProps {
 }
 
 export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }: ModalProps) {
+  const titleId = useId()
   const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 420 : false)
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }
       }}
       aria-modal="true"
       role="dialog"
+      aria-labelledby={titleId}
     >
       <div style={{
         display: 'flex', flexDirection: 'column',
@@ -92,11 +94,11 @@ export function Modal({ open, title, children, onClose, footer, maxWidth = 520 }
           <div>
             {/* PSA tri-colour accent bar */}
             <div style={{ display: 'flex', gap: 4, marginBottom: isNarrow ? 6 : 8 }}>
-              <span style={{ height: 3, width: 24, borderRadius: 999, background: '#0B3D91', display: 'block' }} />
+              <span style={{ height: 3, width: 24, borderRadius: 999, background: '#003DA5', display: 'block' }} />
               <span style={{ height: 3, width: 12, borderRadius: 999, background: '#FFD400', display: 'block' }} />
               <span style={{ height: 3, width: 8,  borderRadius: 999, background: '#E31C23', display: 'block' }} />
             </div>
-            <h2 style={{ fontSize: isNarrow ? 16 : 17, fontWeight: 700, color: '#1e293b', margin: 0, lineHeight: 1.2 }}>
+            <h2 style={{ fontSize: isNarrow ? 16 : 17, fontWeight: 700, color: '#1e293b', margin: 0, lineHeight: 1.2 }} id={titleId}>
               {title}
             </h2>
           </div>

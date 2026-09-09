@@ -1021,3 +1021,22 @@ input[type="search"]::-webkit-search-results-decoration {
   .auth-input { height: 46px; }
   .auth-submit { height: 46px; }
 }
+/* ── Login page: three-arrow animation ── */
+@keyframes loginArrowDrift {
+  0%   { transform: translateX(0); opacity: 0; }
+  8%   { opacity: 0.5; }
+  50%  { opacity: 0.5; }
+  92%  { opacity: 0.5; }
+  100% { transform: translateX(60px); opacity: 0; }
+}
+
+.login-arrow-group {
+  animation: loginArrowDrift 5.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-arrow-group {
+    animation: none;
+    opacity: 0.35;
+  }
+}

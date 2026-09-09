@@ -58,6 +58,9 @@ class PermissionSeeder extends Seeder
             ['name' => 'history.clear', 'module' => 'History', 'description' => 'Clear history records'],
             
             ['name' => 'manage faqs', 'module' => 'Faq', 'description' => 'Create, update, delete FAQ entries'],
+
+            ['name' => 'nav.supply_requests', 'module' => 'Navigation', 'description' => 'See Supply Requests in sidebar'],
+            ['name' => 'supply_requests.fulfill', 'module' => 'Supply Requests', 'description' => 'Fulfill approved supply requests'],
         ];
 
         foreach ($permissions as $perm) {
@@ -66,7 +69,7 @@ class PermissionSeeder extends Seeder
 
         $rolesMap = [
             'Super Administrator' => [
-                'nav.dashboard', 'nav.assets', 'nav.inventory', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets', 'nav.extension_requests', 'nav.maintenance', 'nav.reports', 'nav.history', 'nav.users', 'nav.roles', 'nav.system_setup', 'nav.workflows', 'nav.audit_logs', 'nav.qr_scan_history', 'nav.faqs',
+                'nav.dashboard', 'nav.assets', 'nav.inventory', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets', 'nav.extension_requests', 'nav.maintenance', 'nav.reports', 'nav.history', 'nav.users', 'nav.roles', 'nav.system_setup', 'nav.workflows', 'nav.audit_logs', 'nav.supply_requests', 'nav.qr_scan_history', 'nav.supply_requests', 'nav.faqs',
                 'manage users', 'manage roles', 'manage permissions', 'manage faqs',
                 'assets.create', 'assets.edit', 'assets.delete', 'assets.issue', 'assets.dispose',
                 'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete',
@@ -75,7 +78,7 @@ class PermissionSeeder extends Seeder
                 'history.view', 'history.clear'
             ],
             'System Administrator' => [
-                'nav.dashboard', 'nav.assets', 'nav.inventory', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets', 'nav.extension_requests', 'nav.maintenance', 'nav.reports', 'nav.history', 'nav.users', 'nav.roles', 'nav.system_setup', 'nav.workflows', 'nav.qr_scan_history', 'nav.faqs',
+                'nav.dashboard', 'nav.assets', 'nav.inventory', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets', 'nav.extension_requests', 'nav.maintenance', 'nav.reports', 'nav.history', 'nav.users', 'nav.roles', 'nav.system_setup', 'nav.workflows', 'nav.supply_requests', 'nav.qr_scan_history', 'nav.supply_requests', 'nav.faqs',
                 'manage users', 'manage roles', 'manage faqs',
                 'assets.create', 'assets.edit', 'assets.delete', 'assets.issue', 'assets.dispose',
                 'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete',
@@ -84,7 +87,7 @@ class PermissionSeeder extends Seeder
                 'history.view'
             ],
             'Property Custodian' => [
-                'nav.dashboard', 'nav.assets', 'nav.inventory', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets', 'nav.extension_requests', 'nav.maintenance', 'nav.reports', 'nav.history', 'nav.qr_scan_history',
+                'nav.dashboard', 'nav.assets', 'nav.inventory', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets', 'nav.extension_requests', 'nav.maintenance', 'nav.reports', 'nav.history', 'nav.supply_requests', 'nav.qr_scan_history',
                 'assets.issue', 'assets.dispose',
                 'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete',
                 'borrowings.approve', 'reservations.approve', 'extensions.approve',
@@ -92,7 +95,7 @@ class PermissionSeeder extends Seeder
                 'history.view'
             ],
             'Inventory Officer' => [
-                'nav.dashboard', 'nav.assets', 'nav.inventory', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets', 'nav.extension_requests', 'nav.maintenance', 'nav.reports', 'nav.history', 'nav.qr_scan_history',
+                'nav.dashboard', 'nav.assets', 'nav.inventory', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets', 'nav.extension_requests', 'nav.maintenance', 'nav.reports', 'nav.history', 'nav.supply_requests', 'nav.qr_scan_history',
                 'assets.issue', 'assets.dispose',
                 'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete',
                 'borrowings.approve', 'reservations.approve', 'extensions.approve',
@@ -108,7 +111,7 @@ class PermissionSeeder extends Seeder
                 'history.view'
             ],
             'Employee' => [
-                'nav.dashboard', 'nav.assets', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets'
+                'nav.dashboard', 'nav.assets', 'nav.borrowings', 'nav.reservations', 'nav.supply_requests', 'nav.issued_assets'
             ],
             'Auditor' => [
                 'nav.dashboard', 'nav.assets', 'nav.inventory', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets', 'nav.extension_requests', 'nav.maintenance', 'nav.reports', 'nav.history', 'nav.qr_scan_history',
@@ -118,7 +121,7 @@ class PermissionSeeder extends Seeder
                 'history.view'
             ],
             'Supply Officer' => [
-                'nav.dashboard', 'nav.assets', 'nav.inventory', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets', 'nav.extension_requests', 'nav.maintenance', 'nav.reports', 'nav.history', 'nav.qr_scan_history',
+                'nav.dashboard', 'nav.assets', 'nav.inventory', 'nav.borrowings', 'nav.reservations', 'nav.issued_assets', 'nav.extension_requests', 'nav.maintenance', 'nav.reports', 'nav.history', 'nav.supply_requests', 'nav.qr_scan_history',
                 'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete',
                 'borrowings.approve', 'reservations.approve', 'extensions.approve',
                 'reports.view', 'reports.export',
@@ -135,3 +138,5 @@ class PermissionSeeder extends Seeder
         }
     }
 }
+
+

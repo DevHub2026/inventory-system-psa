@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Card, EmptyState, Input, Modal, Spinner } from '@/components/ui'
+import { useSearchParams } from 'react-router-dom'
 import { ReceiptModal, type ReceiptRecord } from '@/components/ReceiptModal'
 import { assetService } from '@/services/assetService'
 import { reservationService } from '@/services/reservationService'
@@ -177,6 +178,8 @@ const XIcon = (
 // ─── page ──────────────────────────────────────────────────────────────────────
 
 export function ReservationPage() {
+  const [searchParams] = useSearchParams()
+  const [initialCreateOpened, setInitialCreateOpened] = useState(false)
   const { user } = useAuth()
   const canApprove = isAdmin(user) || isStaff(user)
 
@@ -286,6 +289,13 @@ export function ReservationPage() {
 
   useEffect(() => { void loadReservations() }, [])
 
+  useEffect(() => {
+    if (searchParams.get('create') === 'true' && !initialCreateOpened) {
+      setCreateOpen(true)
+      setInitialCreateOpened(true)
+    }
+  }, [searchParams, initialCreateOpened])
+
   useEffect(() => onDataChanged((scope) => {
     if (affectsScope(scope, 'reservations') || affectsScope(scope, 'borrowings')) {
       void loadReservations()
@@ -300,7 +310,7 @@ export function ReservationPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <PageHeader
-        title="Borrow Requests"
+        title="My Borrow Requests"
         subtitle="Send and manage requests to borrow assets."
         actions={
           <button
@@ -670,3 +680,6 @@ export function ReservationPage() {
     </div>
   )
 }
+
+
+

@@ -10,7 +10,6 @@
     "preview": "vite preview",
     "a11y:test": "node tests/a11y/run-axe-puppeteer.js"
   },
-
   "dependencies": {
     "@types/dompurify": "3.0.5",
     "@zxing/browser": "^0.2.1",
@@ -23,7 +22,9 @@
     "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.1"
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.18.1",
+    "recharts": "3.10.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
