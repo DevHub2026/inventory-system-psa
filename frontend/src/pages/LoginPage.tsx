@@ -1,192 +1,164 @@
+import { useEffect, useState } from 'react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  BarChart3,
+  Building2,
+  ChevronDown,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+} from 'lucide-react'
 import logo from '../assets/logo.png'
+import loginBg from '../assets/login-bg.jpg'
+import arrowsVideo from '../assets/smol.mp4'
 import LoginForm from '../components/LoginForm'
-import { useState } from 'react'
-import { Modal } from '@/components/ui'
+import { Modal } from '../components/ui'
 import { PrivacyNoticePage } from './PrivacyNoticePage'
 
-/* ── Floating SVG particles for the brand panel ── */
-function Particles() {
-  const dots = [
-    { cx: '12%', cy: '18%', r: 2.5, op: 0.35, delay: '0s' },
-    { cx: '28%', cy: '72%', r: 1.8, op: 0.25, delay: '0.8s' },
-    { cx: '78%', cy: '14%', r: 3.2, op: 0.20, delay: '1.4s' },
-    { cx: '68%', cy: '80%', r: 2.0, op: 0.30, delay: '0.4s' },
-    { cx: '52%', cy: '50%', r: 1.4, op: 0.18, delay: '2s' },
-    { cx: '88%', cy: '44%', r: 2.8, op: 0.22, delay: '1.1s' },
-    { cx: '40%', cy: '28%', r: 1.6, op: 0.28, delay: '1.7s' },
-    { cx: '18%', cy: '58%', r: 2.2, op: 0.20, delay: '0.6s' },
-    { cx: '62%', cy: '36%', r: 1.2, op: 0.15, delay: '2.3s' },
-    { cx: '84%', cy: '68%', r: 2.4, op: 0.25, delay: '0.2s' },
-  ]
-  return (
-    <svg
-      className="auth-particles"
-      aria-hidden="true"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="xMidYMid slice"
-    >
-      {dots.map((d, i) => (
-        <circle
-          key={i}
-          cx={d.cx}
-          cy={d.cy}
-          r={d.r}
-          fill="white"
-          opacity={d.op}
-          style={{ animationDelay: d.delay }}
-          className="auth-particle"
-        />
-      ))}
-    </svg>
-  )
-}
+const showcaseSlides = [
+  {
+    eyebrow: 'Inventory Management',
+    title: 'Know what you have. Plan what comes next.',
+    description: 'Track and manage government assets with precision, clarity, and accountability.',
+  },
+  {
+    eyebrow: 'PSA SarGen',
+    title: 'Better data for better public service.',
+    description: 'Supporting data-driven decisions for a stronger, more responsive Philippines.',
+  },
+  {
+    eyebrow: 'Built for teams',
+    title: 'Everything organized in one place.',
+    description: 'Streamline workflows and keep every government asset visible and moving forward.',
+  },
+]
 
 export default function LoginPage() {
+  const [activeSlide, setActiveSlide] = useState(0)
   const [showPrivacy, setShowPrivacy] = useState(false)
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setActiveSlide((current) => (current + 1) % showcaseSlides.length)
+    }, 5000)
+    return () => window.clearTimeout(timer)
+  }, [activeSlide])
+
+  const goToSlide = (direction: 'prev' | 'next') => {
+    setActiveSlide((current) => (
+      direction === 'prev'
+        ? (current - 1 + showcaseSlides.length) % showcaseSlides.length
+        : (current + 1) % showcaseSlides.length
+    ))
+  }
+
+  const current = showcaseSlides[activeSlide]
+
   return (
-    <main className="auth-page">
+    <main className="min-h-screen bg-[#edf5ff] p-4 text-[#102b67] sm:p-8 lg:p-12">
+      <section className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1420px] overflow-hidden rounded-[28px] bg-white shadow-[0_24px_70px_rgba(29,78,153,0.14)] sm:min-h-[calc(100vh-4rem)] lg:min-h-[720px]">
+        <div className="flex w-full flex-col justify-between px-6 py-7 sm:px-12 sm:py-10 lg:w-[52%] lg:px-16 lg:py-12 xl:px-24">
+          <header className="flex items-center gap-4">
+            <img src={logo} alt="PSA seal" className="size-14 shrink-0 object-contain" />
+            <div>
+              <p className="text-lg font-extrabold leading-tight tracking-[-0.03em] sm:text-xl">Philippine Statistics Authority</p>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#164aa6]">SarGen · Inventory System</p>
+              <div className="mt-2 flex h-1 w-32 overflow-hidden rounded-full">
+                <span className="w-1/3 bg-[#164aa6]" />
+                <span className="w-1/3 bg-[#f5c400]" />
+                <span className="w-1/3 bg-[#e62d3f]" />
+              </div>
+            </div>
+          </header>
 
-      {/* ══════════════════════════════════════
-          LEFT — PSA Branding Panel
-          ══════════════════════════════════════ */}
-      <section className="auth-brand-panel" aria-label="Philippine Statistics Authority">
+          <div className="mx-auto w-full max-w-[500px] py-12 lg:py-6">
+            <div className="mb-8">
+              <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-[#2670db]">
+                <Sparkles className="size-4" /> Welcome back
+              </p>
+              <h1 className="text-4xl font-extrabold tracking-[-0.05em] text-[#102b67] sm:text-5xl">Sign in</h1>
+              <p className="mt-3 max-w-md text-sm leading-6 text-[#6d85ad]">
+                Secure your access to the PSA SarGen Inventory Management System.
+              </p>
+            </div>
+            <LoginForm />
+          </div>
 
-        {/* Animated particle field */}
-        <Particles />
+          <footer className="flex items-end justify-between gap-4 border-t border-[#e4eefb] pt-5 text-[11px] text-[#7891b5]">
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="mt-0.5 size-4 text-[#1260d4]" />
+              <p>This is a secure and private system.<br /><strong className="text-[#164aa6]">Philippine Statistics Authority · SarGen</strong></p>
+            </div>
+            <div className="flex items-center gap-4">
+              <button type="button" onClick={() => setShowPrivacy(true)} className="text-[#7891b5] underline underline-offset-2 transition hover:text-[#164aa6]">Privacy Notice</button>
+            </div>
+          </footer>
+        </div>
 
-        {/* Large background rings — removed for cleaner look */}
+        <aside className="relative hidden w-[48%] overflow-hidden bg-[#092863] lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
+          <div className="pointer-events-none absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+          <div className="pointer-events-none absolute -right-24 bottom-[-90px] size-[380px] rounded-full border-[42px] border-white/10" />
+          
+          {/* Premium AI Generated 3D Arrows Video Background */}
+          <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden mix-blend-screen opacity-90">
+            <video
+              src={arrowsVideo}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="h-full w-full object-cover"
+            />
+          </div>
 
-        {/* Bottom wave */}
-        <svg
-          className="auth-wave"
-          aria-hidden="true"
-          viewBox="0 0 1440 120"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M0,60 C360,120 1080,0 1440,60 L1440,120 L0,120 Z"
-            fill="rgba(255,255,255,0.04)"
-          />
-          <path
-            d="M0,80 C480,20 960,100 1440,40 L1440,120 L0,120 Z"
-            fill="rgba(255,255,255,0.03)"
-          />
-        </svg>
+          <div className="relative z-10 flex items-center justify-between text-white/90 drop-shadow-md">
+            <p className="text-xs font-bold uppercase tracking-[0.24em]">Digital public service</p>
+            <div className="flex gap-2"><span className="size-2 rounded-full bg-white" /><span className="size-2 rounded-full bg-[#f5c400]" /><span className="size-2 rounded-full bg-[#e62d3f]" /></div>
+          </div>
 
-        {/* Brand content */}
-        <div className="auth-brand-content">
-
-          {/* Logo — clean, no bubble rings */}
-          <div className="auth-logo-stack">
-            <div className="auth-logo-ring">
-              <img src={logo} alt="PSA seal" className="auth-brand-logo" />
+          <div className="relative z-10 grid gap-7 xl:grid-cols-[1fr_0.8fr] xl:items-center">
+            <div className="overflow-hidden rounded-2xl bg-white shadow-2xl">
+              <img src={loginBg} alt="PSA SarGen inventory system" className="h-40 w-full object-cover object-center" />
+              <div className="p-6">
+                <Building2 className="size-7 text-[#1260d4]" />
+                <p className="mt-4 text-xl font-extrabold tracking-tight text-[#102b67]">{current.eyebrow}</p>
+                <p className="mt-2 text-sm leading-5 text-[#6d85ad]">{current.description}</p>
+              </div>
+            </div>
+            <div className="space-y-6 text-white">
+              <Feature icon={<ShieldCheck />} title="Secure" text="Protected access and controlled data." />
+              <Feature icon={<Zap />} title="Efficient" text="Streamlined workflows for better service." />
+              <Feature icon={<BarChart3 />} title="Transparent" text="Accountability through real-time reporting." />
             </div>
           </div>
 
-          {/* Agency name */}
-          <h1 className="auth-brand-title">
-            <span>Philippine</span>
-            <span>Statistics</span>
-            <span>Authority</span>
-          </h1>
-
-          {/* Tri-colour rule */}
-          <div className="auth-tricolor" aria-hidden="true">
-            <span className="tc-blue" />
-            <span className="tc-yellow" />
-            <span className="tc-red" />
+          <div className="relative z-10 flex items-center justify-between">
+            <button type="button" aria-label="Previous slide" onClick={() => goToSlide('prev')} className="flex size-11 items-center justify-center rounded-full border border-white/40 text-white transition hover:bg-white/20"><ArrowLeft className="size-5" /></button>
+            <div className="flex items-center gap-2">
+              {showcaseSlides.map((_, index) => (
+                <button type="button" key={index} aria-label={`Go to slide ${index + 1}`} onClick={() => setActiveSlide(index)} className={`h-2 rounded-full transition-all ${index === activeSlide ? 'w-8 bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'w-2 bg-white/50'}`} />
+              ))}
+            </div>
+            <button type="button" aria-label="Next slide" onClick={() => goToSlide('next')} className="flex size-11 items-center justify-center rounded-full bg-white text-[#1260d4] shadow-lg transition hover:bg-[#f5c400]"><ArrowRight className="size-5" /></button>
           </div>
-
-          <p className="auth-brand-tagline">
-            Solid&ensp;
-            <span className="tc-dot tc-dot--blue" aria-hidden="true">●</span>
-            &ensp;Responsive&ensp;
-            <span className="tc-dot tc-dot--yellow" aria-hidden="true">●</span>
-            &ensp;World-class
-          </p>
-
-          {/* System label pill */}
-          <div className="auth-system-pill">
-            <span className="auth-system-pill-dot" aria-hidden="true" />
-            Inventory Management System
-          </div>
-
-          {/* Region badge */}
-          <div className="auth-region-badge">Region XII</div>
-
-        </div>
+        </aside>
       </section>
-
-      {/* ══════════════════════════════════════
-          RIGHT — Login Panel
-          ══════════════════════════════════════ */}
-      <section className="auth-login-panel" aria-labelledby="login-heading">
-
-        {/* Background mesh */}
-        <div className="auth-mesh" aria-hidden="true" />
-
-        {/* Decorative blobs */}
-        <div className="auth-blob auth-blob--1" aria-hidden="true" />
-        <div className="auth-blob auth-blob--2" aria-hidden="true" />
-
-        {/* Login card */}
-        <div className="auth-card">
-
-          {/* PSA tri-colour top strip */}
-          <div className="auth-card-strip" aria-hidden="true">
-            <span /><span /><span />
-          </div>
-
-          {/* Header */}
-          <div className="auth-card-header">
-            <img src={logo} alt="" className="auth-card-logo" aria-hidden="true" />
-            <h2 id="login-heading" className="auth-card-title">
-              Philippine Statistics Authority
-            </h2>
-            <p className="auth-card-sub">
-              Region XII · Inventory System
-            </p>
-          </div>
-          {/* Divider */}
-          <div className="auth-card-divider" aria-hidden="true">
-            <span />
-            <span className="auth-card-divider-label">Sign in to continue</span>
-            <span />
-          </div>
-
-          <LoginForm />
-
-          {/* Security note */}
-          <p className="auth-card-security">
-            <svg
-              width="12" height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <rect x="3" y="11" width="18" height="11" rx="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            Secure connection · PSA official portal
-          </p>
-
-        </div>
-
-        <div className="auth-card-links" style={{ textAlign: 'center', marginTop: 12 }}>
-          <button onClick={() => setShowPrivacy(true)} className="underline text-sm text-slate-600" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>Privacy Notice</button>
-        </div>
-        <Modal open={showPrivacy} onClose={() => setShowPrivacy(false)} title="Privacy Notice" maxWidth={900}>
-          <PrivacyNoticePage />
-        </Modal>
-
-        <footer className="auth-footer">
-          © 2025 Philippine Statistics Authority. All rights reserved.
-        </footer>
-      </section>
-
+      <Modal open={showPrivacy} onClose={() => setShowPrivacy(false)} title="Privacy Notice" maxWidth={900}>
+        <PrivacyNoticePage />
+      </Modal>
     </main>
+  )
+}
+
+function Feature({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+  return (
+    <div className="flex gap-4 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]">
+      <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white text-[#1260d4] shadow-md">{icon}</div>
+      <div>
+        <p className="font-bold text-white tracking-wide">{title}</p>
+        <p className="mt-1 text-sm leading-5 text-white/95">{text}</p>
+      </div>
+    </div>
   )
 }

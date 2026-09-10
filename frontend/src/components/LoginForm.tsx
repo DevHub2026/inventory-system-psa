@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Eye, EyeOff, Lock, User } from 'lucide-react'
+import { Eye, EyeOff, User, Lock, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { authService } from '@/services/authService'
-import Input from './Input'
 
 function describeError(err: unknown): string {
   if (axios.isAxiosError(err)) {
@@ -70,56 +69,99 @@ export default function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="auth-form">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
+      {/* Email Input */}
+      <div>
+        <label htmlFor="email" className="sr-only">
+          Email or Employee Number
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-[#5a82c1]">
+            <User size={18} strokeWidth={2.5} />
+          </div>
+          <input
+            id="email"
+            name="email"
+            type="text"
+            placeholder="Employee Number or Email"
+            value={email}
+            autoComplete="username"
+            required
+            onChange={(e) => setEmail(e.target.value)}
+            className="block w-full h-[52px] rounded-[12px] border-[1.5px] border-[#c9dcf8] bg-[#fbfdff] text-[14px] text-[#102b67] placeholder-[#88a4ce] transition-colors focus:outline-none focus:border-[#2670db] focus:ring-[3px] focus:ring-[#2670db]/10 hover:border-[#9ebce6]"
+            style={{ paddingLeft: '2.75rem', paddingRight: '1rem' }}
+          />
+        </div>
+      </div>
 
-      {/* Email / username */}
-      <Input
-        id="email"
-        name="email"
-        placeholder="Username or Email"
-        icon={<User size={18} strokeWidth={1.75} />}
-        value={email}
-        autoComplete="username"
-        required
-        onChange={(e) => setEmail(e.target.value)}
-      />
+      {/* Password Input */}
+      <div>
+        <label htmlFor="password" className="sr-only">
+          Password
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-[#5a82c1]">
+            <Lock size={18} strokeWidth={2.5} />
+          </div>
+          <input
+            id="password"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Password"
+            value={password}
+            autoComplete="current-password"
+            required
+            onChange={(e) => setPassword(e.target.value)}
+            className="block w-full h-[52px] rounded-[12px] border-[1.5px] border-[#c9dcf8] bg-[#fbfdff] text-[14px] text-[#102b67] placeholder-[#88a4ce] transition-colors focus:outline-none focus:border-[#2670db] focus:ring-[3px] focus:ring-[#2670db]/10 hover:border-[#9ebce6]"
+            style={{ paddingLeft: '2.75rem', paddingRight: '2.75rem' }}
+          />
+          <button
+            type="button"
+            className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#5a82c1] hover:text-[#164aa6] transition-colors focus:outline-none"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? <EyeOff size={18} strokeWidth={2} /> : <Eye size={18} strokeWidth={2} />}
+          </button>
+        </div>
+      </div>
 
-      {/* Password */}
-      <Input
-        id="password"
-        name="password"
-        type={showPassword ? 'text' : 'password'}
-        placeholder="Password"
-        icon={<Lock size={18} strokeWidth={1.75} />}
-        value={password}
-        autoComplete="current-password"
-        required
-        onChange={(e) => setPassword(e.target.value)}
-        rightIcon={showPassword ? <EyeOff size={18} strokeWidth={1.75} /> : <Eye size={18} strokeWidth={1.75} />}
-        onRightIconClick={() => setShowPassword((v) => !v)}
-      />
-
-      {/* Forgot password link */}
-      <div className="auth-forgot-row">
+      {/* Utility Row */}
+      <div className="flex items-center justify-end mt-[-4px]">
+        {/* Remember me removed entirely as per instruction since no backend support exists */}
         <button
           type="button"
           disabled={forgotLoading}
           onClick={handleForgotPassword}
-          className="auth-forgot-password"
+          className="text-[13px] font-bold text-[#1260d4] hover:underline transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
         >
-          {forgotLoading ? 'Sending reset link…' : 'Forgot Password?'}
+          {forgotLoading ? 'Sending link...' : 'Forgot Password?'}
         </button>
       </div>
 
-      {/* Feedback messages */}
-      {errorMessage   && <p className="auth-message auth-message--error">{errorMessage}</p>}
-      {successMessage && <p className="auth-message auth-message--success">{successMessage}</p>}
+      {/* Messages */}
+      {errorMessage && (
+        <div className="flex items-start gap-2.5 p-3 rounded-[10px] bg-[#FEF2F2] border border-[#FCA5A5] text-[#D32F2F]">
+          <AlertCircle size={16} className="mt-[2px] shrink-0" strokeWidth={2.5} />
+          <p className="text-[13px] font-medium leading-[1.4]">{errorMessage}</p>
+        </div>
+      )}
+      
+      {successMessage && (
+        <div className="flex items-start gap-2.5 p-3 rounded-[10px] bg-[#F0FDF4] border border-[#86EFAC] text-[#2E7D32]">
+          <CheckCircle2 size={16} className="mt-[2px] shrink-0" strokeWidth={2.5} />
+          <p className="text-[13px] font-medium leading-[1.4]">{successMessage}</p>
+        </div>
+      )}
 
       {/* Submit */}
-      <button type="submit" disabled={loading} className="auth-submit">
-        {loading ? 'SIGNING IN…' : 'SIGN IN'}
+      <button 
+        type="submit" 
+        disabled={loading}
+        className="w-full mt-2 h-[52px] text-[15px] font-bold text-white rounded-[12px] shadow-[0_10px_22px_rgba(18,96,212,0.22)] transition-all flex items-center justify-center gap-2 bg-[#1260d4] hover:bg-[#0e4eaf] border-none disabled:opacity-70 disabled:cursor-wait"
+      >
+        {loading ? 'Checking access…' : 'Sign In'} {!loading && <ArrowRight size={18} strokeWidth={2.5} />}
       </button>
-
     </form>
   )
 }
